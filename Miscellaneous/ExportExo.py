@@ -37,8 +37,6 @@ def SplitExo(c):
 			assert current is text
 			current = comment
 			continue
-		elif line == "<!---ExoRemoveNext--->\n":
-			continue
 		elif line == '--->' or line =='--->\n':
 			assert current is not text
 			current = text
@@ -84,7 +82,7 @@ def MakeExo(FileName,ExoName):
 				removeCell=False
 				continue
 			elif 'ExoSplit' in tags or c['cell_type']=='markdown':
-				if "<!---ExoRemoveNext--->\n" in c['source']:
+				if "<!---ExoCode\n" in c['source']:
 					removeCell=True # Remove next cell
 				for x in SplitExo(c):
 					newcells.append(x)

@@ -1,6 +1,7 @@
 import numpy as np
 from .. import AutomaticDifferentiation as ad
 from .. import LinearParallel as lp
+from .. import FiniteDifferences as fd
 
 class Base(object):
 	"""
@@ -175,7 +176,7 @@ class Base(object):
 		g = self.gradient(v)
 		return lp.dot_VV(g,v)*g
 
-	def set_interpolation(grid,**kwargs):
+	def set_interpolation(self,grid,**kwargs):
 		"""
 		Sets interpolation_data, required to specialize the norm 
 		at a given position.

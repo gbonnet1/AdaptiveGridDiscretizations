@@ -257,6 +257,9 @@ def _UniformGridInterpolator(lbounds,ubounds,values,
 
 	lbounds,ubounds=np.array(lbounds),np.array(ubounds)
 	ndim_interp = len(lbounds)
+	assert len(ubounds)==ndim_interp
+	assert val.ndim>=ndim_interp
+	
 	if axes is None:
 		axes = tuple(range(-ndim_interp,0))
 	val = np.moveaxis(values,axes,range(ndim_interp))
@@ -271,8 +274,13 @@ def _UniformGridInterpolator(lbounds,ubounds,values,
 		lbounds  += h/2.
 		ubounds += (h if mode=='wrap' else -h)/2.
 
-	def interp(*position):
+	def interp(position):
+		"""
+		Interpolates the given data at the prescribed position, which should be an array 
+		of shape (vdim, d1,d2,...) where vdim is the space dimension.
+		"""
 		position = ad.array(position)
+		assert position.shape[0]==ndim_interp
 		endpoint = not (mode=='wrap')
 		pos_shape = position.shape[1:]
 		lbd,ubd = as_field(lbounds,pos_shape,False),as_field(ubounds,pos_shape,False)

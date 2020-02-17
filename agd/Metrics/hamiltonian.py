@@ -37,7 +37,7 @@ def fixedpoint(f,x,tol=1e-9,nitermax=100):
 
 
 class Hamiltonian(object):
-	def __init__(self, H, shape_free=None):
+	def __init__(self, H, shape_free=None, grid=None):
 		"""
 		Inputs:
 		- H : the hamiltonian, which may be either:
@@ -46,8 +46,13 @@ class Hamiltonian(object):
 			* a pair of callable functions, for a separable hamiltonian.
 				(in that case, may also be scalars or matrices, for quadratic hamiltonians)
 		- shape_free (optional) : the shape of the position and impulsion
+		- grid : if not None, used dual metric interpolated on the grid
 		"""		
 		if isinstance(H,list): H = tuple(H)
+		if grid is not None:
+			assert isinstance(H,Base)
+			H = H.dual()
+			H.set_interpolation(grid)
 		self._H = H
 		if self.is_separable: assert len(H)==2
 
