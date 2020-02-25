@@ -4,10 +4,33 @@ import os
 
 """
 Produce an exercise notebook, from a standard notebook with some special 
-tags in the cell metadata, and comments in the cell source. 
+comments in the cell source, and optionally tags in the cell metadata.
 
-TODO : A comment only version might be preferable, since the use of tags 
-is rather redundant and error prone.
+Usage : 
+	python ExportExo filename.ipynb
+
+
+Notebook formatting : 
+- In a markdown cell, introduce a comment of the following form.
+It will create a new markdown cell, containing the comment contents, preceded with 
+the exercise number.
+
+<!---ExoFR
+Statement of exercise.
+--->
+
+- In a markdown cell, introduce a comment of the following form.
+It will create a new code cell, containing the comment contents. 
+In addition, the next code cell is removed.
+
+<!---ExoCode
+def f(x):
+	# TODO : complete the definition of f.
+--->
+
+- In an arbitrary cell, introduce the tag 'ExoRemove'.
+The cell will be removed in the produced exercise.
+
 """
 
 indexExo = 0
@@ -70,24 +93,30 @@ def SplitExo(c):
 		})
 	return result
 
+def HasTag(cell,tag):
+	if 'metadata' in cell:
+		metadata=cell['metadata']
+		if 'tags' in metadata:
+			tags = metadata['tags']
+			return tag in tags
+	return False
+
 def MakeExo(FileName,ExoName):
 	with open(FileName, encoding='utf8') as data_file:
 		data=json.load(data_file)
 	newcells = []
 	removeCell = False
-	for c in data['cells']:
-		if 'tags' in c['metadata']:
-			tags = c['metadata']['tags']
-			if 'ExoRemove' in tags or removeCell:
-				removeCell=False
-				continue
-			elif 'ExoSplit' in tags or c['cell_type']=='markdown':
-				if "<!---ExoCode\n" in c['source']:
-					removeCell=True # Remove next cell
-				for x in SplitExo(c):
-					newcells.append(x)
-				continue
-		newcells.append(c)
+	for cell in data['cells']:
+		if HasTag(cell,'ExoRemove') or removeCell:
+			removeCell=False
+			continue
+		elif HasTag(cell,'ExoSplit') or cell['cell_type']=='markdown':
+			if "<!---ExoCode\n" in cell['source']:
+				removeCell=True # Remove next cell
+			for subCell in SplitExo(cell):
+				newcells.append(subCell)
+			continue
+		newcells.append(cell)
 	data['cells']=newcells
 
 	with open(ExoName,'w') as f:
