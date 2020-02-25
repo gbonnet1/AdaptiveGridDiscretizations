@@ -258,8 +258,8 @@ def _UniformGridInterpolator(lbounds,ubounds,values,
 	lbounds,ubounds=np.array(lbounds),np.array(ubounds)
 	ndim_interp = len(lbounds)
 	assert len(ubounds)==ndim_interp
-	assert val.ndim>=ndim_interp
-	
+	assert values.ndim>=ndim_interp
+
 	if axes is None:
 		axes = tuple(range(-ndim_interp,0))
 	val = np.moveaxis(values,axes,range(ndim_interp))
