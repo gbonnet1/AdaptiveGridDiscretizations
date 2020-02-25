@@ -89,5 +89,36 @@ class Riemann(Base):
 		isotropic = Isotropic.from_cast(metric)
 		return Riemann.from_diagonal( *(isotropic.cost**2,)*isotropic.vdim )
 
+	@classmethod
+	def from_mapped_eigenvalues(cls,matrix,mapping):
+		"""
+		Defines a Riemannian metric which has the same eigenvectors as the provided 
+		matrix, but (possibly) distinct eigenvalues obtained by the provided mapping.
+		Inputs : 
+			- matrix: a symmetric matrix, with shape (dim,dim,...)
+			- mapping: a function, taking as input an array of shape (dim,...),
+			and returning a similarly shaped array. 
+			Called with the eigenvalues of matrix, sorted from smallest to largest.
+		"""
+
+		# Get eigenvalues and eigenvectors, caring that numpy puts physical axes last
+		m_ = np.moveaxis(matrix,(0,1),(-2,-1)) 
+		eVal_,eVec_ = np.linalg.eig(m_) # Not compatible with AD.
+		eVal,eVec = np.moveaxis(eVal_,-1,0),np.moveaxis(eVec_,(-2,-1),(0,1))
+
+		# Sort eigenvalues for convenience, apply provided mapping, reorder
+		order = np.argsort(eVal,axis=0)
+		eVal_sorted = np.take_along_axis(eVal,order,axis=0)
+		mVal_sorted = ad.array(mapping(eVal_sorted))
+		order_inv = np.argsort(order,axis=0) # inverse permutation
+		mVal = np.take_along_axis(mVal_sorted,order_inv,axis=0)
+
+		# Construct new matrix, return 
+		m = lp.outer(eVec,mVal*eVec).sum(axis=2)
+
+		return cls(m)
+
+
+
 	def __iter__(self):
 		yield self.m
