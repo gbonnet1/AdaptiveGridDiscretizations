@@ -174,6 +174,18 @@ class Hamiltonian(object):
 		"""
 		return (self.DpH(q,p),-self.DqH(q,p))
 
+	def flow_cat(self,qp,t=None):
+		"""
+		Symplectic gradient of the hamiltonian. 
+		Input : 
+			- qp : position q, impulsion p, concatenated
+			- t : ignored parameter (compatibility with scipy.integrate.odeint)
+		Output : 
+			- symplectic gradient, concatenated.
+		"""
+		d = len(qp)//2
+		return ad.concatenate(self.flow(qp[:d],qp[d:]),axis=0)
+
 	def integrate(self,q,p,scheme,niter,T=1,path=False):
 		"""
 		Solves Hamilton's equations by running the scheme niter times.

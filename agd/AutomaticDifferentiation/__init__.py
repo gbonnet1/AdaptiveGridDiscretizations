@@ -44,8 +44,9 @@ def remove_ad(data,iterables=tuple()):
 
 def left_operand(data,iterables=tuple()):
 	"""
-	Turns numpy scalars into zero-dimensional arrays, suitable as 
-	left operands in AD operations
+	Turns numpy scalars into array scalars (zero-dimensional arrays).
+	This operation is REQUIRED when the right operand is an array scalar with AD content 
+	(due to a bug/feature in numpy operator precedence and casting rules). Harmless otherwise.
 	"""
 	if np.isscalar(data) and not isinstance(data,np.ndarray): 
 		return np.array(data)
