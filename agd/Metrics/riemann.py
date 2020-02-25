@@ -26,7 +26,7 @@ class Riemann(Base):
 	def shape(self): return self.shape.m[2:]	
 
 	def eigvals(self):
-		return np.moveaxis(np.linalg.eigvals(np.moveaxis(self.m,(0,1),(-2,-1))),-1,0)
+		return np.moveaxis(np.linalg.eigvalsh(np.moveaxis(self.m,(0,1),(-2,-1))),-1,0)
 	def is_definite(self):
 		return self.eigvals().min(axis=0)>0
 	def anisotropy(self):
@@ -106,17 +106,9 @@ class Riemann(Base):
 		eVal_,eVec_ = np.linalg.eigh(m_) # Not compatible with AD.
 		eVal,eVec = np.moveaxis(eVal_,-1,0),np.moveaxis(eVec_,(-2,-1),(0,1))
 
-		# Sort eigenvalues for convenience, apply provided mapping, reorder
+		# Apply provided mapping and construct new matrix
 		mVal = ad.array(mapping(eVal))
-#		order = np.argsort(eVal,axis=0)
-#		eVal_sorted = np.take_along_axis(eVal,order,axis=0)
-#		mVal = ad.array(mapping(eVal_sorted))
-#		order_inv = np.argsort(order,axis=0) # inverse permutation
-#		mVal = np.take_along_axis(mVal_sorted,order_inv,axis=0)
-
-		# Construct new matrix, return 
 		m = lp.outer(eVec,mVal*eVec).sum(axis=2)
-
 		return cls(m)
 
 
