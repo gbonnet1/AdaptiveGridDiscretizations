@@ -8,91 +8,140 @@ from . import AutomaticDifferentiation as ad
 """
 This file implements some basic spline interpolation methods,
 in a manner compatible with automatic differentiation.
+
+TODO : used a smaller stencil for 2nd degree interpolation when far from the boundary,
+in non-periodic mode. (Introduce interior nodes.)
 """
 
 class _spline_univariate(object):
 	"""
-	A univariate spline of a given order.
+	A univariate spline of a given order, with not-a-knot boundary conditions.
 	"""
-	def __init__(self,order):
+	def __init__(self,order,shape,periodic):
 		assert isinstance(order,int)
 		self.order=order
 		if not (order>=1 and order<=3):
 			raise ValueError("Unsupported spline order")
 
-	def __call__(self,x):
-		x=ad.array(x)
-		if   self.order==1: return self._call1(x)
-		elif self.order==2: return self._call2(x)
-		elif self.order==3: return self._call3(x)
+		assert isinstance(shape,int) and shape>=0
+		self.shape = shape
+
+		assert isinstance(periodic,bool)
+		self.periodic=periodic
+
+
+	def __call__(self,xa,xs):
+		"""
+		Weight at absolute position xa, of of spline centered at xs.
+		"""
+		xa=ad.array(xa)
+		xs=ad.array(xs)
+		if   self.order==1: return self._call1(xa,xs)
+		elif self.order==2: return self._call2(xa,xs)
+		elif self.order==3: return self._call3(xa,xs)
 		assert False
 
 	def nodes(self):
 		"""
 		For each node, the spline is nonzero on ]node,node+1[.
+		(Except special case in degree two for the not-a-knot boundary one.)
 		"""
 		if   self.order==1: return range(-1,1)
-		elif self.order==2: return range(-1,2)
+		elif self.order==2: #return range(-1,2)
+			return range(-1,2) if self.periodic else range(-2,2)
 		elif self.order==3: return range(-2,2)
 		assert False
 
-	def _call1(self,x):
+	def _call1(self,xa,xs):
 		"""
 		A piecewise linear spline, defined over [-1,1].
 		"""
+		x=xa-xs
 		return np.maximum(0.,1.-np.abs(x))
 
-	def _call2(self,x):
+	def _call2(self,xa,xs):
 		"""
 		A piecewise quadratic spline function, defined over [-1,2]
 		"""
+		x=ad.array(xa-xs)
 		result = ad.zeros_like(x)
-	
-		# interval [-1,0[
-		pos = np.logical_and(x>=-1,x<0)
+
+
+		# Which spline segment to use
+		seg = ad.array(np.floor(x+1))
+
+		if not self.periodic:
+			# Implements the not-a-knot boundary condition
+			pos = np.logical_and(xa<=1,xs<=3)
+			seg[pos] = 2-xs[pos]
+
+		# relative interval [-1,0[
+		pos = seg==0
 		x_ = x[pos]+1
 		result[pos] = x_**2
 
-		# interval [0,1[
-		pos = np.logical_and(x>=0,x<1)
+		# relative interval [0,1[
+		pos = seg==1
 		x_ = x[pos]-0.5
 		result[pos] = 1.5 - 2.*x_**2
 
-		# interval [1,2[
-		pos = np.logical_and(x>=1,x<2)
+		# relative interval [1,2[
+		pos = seg==2
 		x_ = 2.-x[pos]
 		result[pos] = x_**2 
 
 		return result
 
-	def _call3(self,x):
+	def _call3(self,xa,xs):
 		"""
 		A piecewise cubic spline function, defined over [-2,2]
 		"""
+		x=ad.array(xa-xs)
 		result = ad.zeros_like(x)
+
+		# Which spline segment to use
+		seg = ad.array(np.floor(x+2))
+		if not self.periodic:
+			# Implements the not-a-knot boundary condition
+			pos = np.logical_and(xa<=1,xs<=1)
+			seg[pos] = 3-xs[pos]
+			pos = np.logical_and(xa>=self.shape-2,xs>=self.shape-2)
+			seg[pos] = self.shape-1-xs[pos]
 
 		def f(y): return 3.*y**2 - y**3
 
-		# interval [-2,-1[
-		pos = np.logical_and(x>=-2,x<-1)
+		# Same polynomial on segments 0 and 1. Likewise 2 and 3.
+
+		# relative interval [-2,-1[
+		pos = np.logical_or(seg==0,seg==1)
 		result[pos] = f(x[pos]+2)
 
-		# interval [-1,0[
-		pos = np.logical_and(x>=-1,x<0)
-		result[pos] = 4.-f(-x[pos])
+		# relative interval [-1,0[
+#		pos = seg==1
+#		result[pos] = 4.-f(-x[pos])
 
-		#interval [0,1[
-		pos = np.logical_and(x>=0,x<1)
+		# relative interval [0,1[
+		pos = np.logical_or(seg==2,seg==3)
 		result[pos] = 4-f(x[pos])
 
-		#interval [1,2[
-		pos = np.logical_and(x>=1,x<2)
-		result[pos] = f(2.-x[pos])
+		# relative interval [1,2[
+#		pos = seg==3
+#		result[pos] = f(2.-x[pos])
 
 		return result
 
+	def _band(self,n):
+		rg = np.arange(n)
+		if self.order==2:
+			band_tr = np.stack((self(rg,rg-1),self(rg,rg),self(rg,rg+1),self(rg,rg+2)),axis=0)
+			return _banded_transpose((2,1),band_tr)
+		elif self.order==3:
+			band_tr = np.stack((self(rg,rg-1),self(rg,rg),self(rg,rg+1)),axis=0)
+			return _banded_transpose((1,1),band_tr)
+		else: assert False
 
-	def make_coefs(self,values,periodic,overwrite_values=False):
+
+	def make_coefs(self,values,overwrite_values=False):
 		"""
 		Produces the node coefficients corresponding to given values.
 		!! Call convention : interpolation is along the first axis. !!
@@ -100,42 +149,59 @@ class _spline_univariate(object):
 		if self.order==1: 
 			return values
 
-		n = len(values)
-		if periodic: 
+		if self.periodic: 
 			raise ValueError("Periodic interpolation is not supported for degree > 1")
 
-		if self.order==2:
-			band = np.zeros( (2,n) )
-			band[0,:] = self.__call__(0.)
-			band[1,:-1]  = self.__call__(1.)
-			return scipy.linalg.solve_banded((1,0),band,values,
-				overwrite_ab=True,overwrite_b=overwrite_values) 
-		elif self.order==3:
-			band = np.zeros( (2,n) )
-			band[0,1:] = self.__call__(1.)
-			band[1,:]  = self.__call__(0.)
-			return scipy.linalg.solveh_banded(band,values,
+		return scipy.linalg.solve_banded(*self._band(len(values)),values,
 				overwrite_ab=True,overwrite_b=overwrite_values) 
 
+def _banded_transpose(lu,t):
+	l,u=lu
+	return (u,l),np.stack(tuple(np.roll(t[i],i-u) for i in reversed(range(l+u+1))))
+#	return np.stack((np.roll(t[2],1),t[1],np.roll(t[0],-1)),axis=0)
 
+def _banded_densify(lu,t):
+	"""Turn banded matrix in to dense matrix (inefficient, for testing)"""
+	l,u=lu
+	n = t.shape[1]
+	mat = np.zeros((n,n))
+	for i in range(n):
+		for j in range(n):
+			k=u+i-j
+			if 0<=k and k<=len(t):
+				mat[i,j]=t[k,j]
+	return mat
 
 class _spline_tensor(object):
 	"""
 	A tensor product of univariate splines.
 	"""
-	def __init__(self,orders):
-		assert isinstance(orders,tuple)
-		self.splines = tuple(_spline_univariate(order) for order in orders)
+	def __init__(self,orders,shape,periodic):
+		assert all(isinstance(t,tuple) for t in (orders,shape,periodic))
+		self.splines = tuple(_spline_univariate(order,s,per) 
+			for (order,s,per) in zip(orders,shape,periodic))
+		assert all(len(t)==self.vdim for t in (orders,shape,periodic))
 
 	@property
 	def order(self):
 		return tuple(spline.order for spline in self.splines)
 	@property
+	def shape(self):
+		return tuple(spline.shape for spline in self.splines)
+	@property
+	def periodic(self):
+		return tuple(spline.periodic for spline in self.splines)
+	
+	@property
 	def vdim(self):
 		return len(self.splines)
 
-	def __call__(self,x):
-		return np.prod( tuple(spline(xi) for (xi,spline) in zip(x,self.splines)) ,axis=0)
+	def __call__(self,xa,xs):
+		"""
+		Weight at absolute position xa, of of spline centered at xs.
+		"""
+		return np.prod( tuple(spline(xai,xsi) 
+			for (xai,xsi,spline) in zip(xa,xs,self.splines)) ,axis=0)
 
 	def nodes(self):
 		"""
@@ -144,15 +210,14 @@ class _spline_tensor(object):
 		_nodes = tuple(spline.nodes() for spline in self.splines)
 		return np.array(tuple(itertools.product(*_nodes))).T
 
-	def make_coefs(self,values,periodic,overwrite_values=False):
+	def make_coefs(self,values,overwrite_values=False):
 		"""
 		Produces the node coefficients corresponding to given values.
-		!! Call convention : interpolation is along the first axes. !!
+		!! Call convention : interpolation is along the first axes. 
 		"""
-		assert len(periodic)==len(self.splines)
-		for i,(spline,per) in enumerate(zip(self.splines,periodic)):
+		for i,spline in enumerate(self.splines): #reversed(list(enumerate(self.splines))):
 			values = np.moveaxis(spline.make_coefs(
-				np.moveaxis(values,i,0),per,overwrite_values=overwrite_values),0,i)
+				np.moveaxis(values,i,0),overwrite_values=overwrite_values),0,i)
 		return values
 
 def _append_dims(x,ndim):
@@ -177,16 +242,16 @@ class UniformGridInterpolation(object):
 		self.origin = grid.__getitem__((slice(None),)+(0,)*self.vdim)
 		self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
 		
-
 		if order is None: order = 1
 		if isinstance(order,int): order = (order,)*self.vdim
-		self.spline = _spline_tensor(order)
-		assert self.spline.vdim == self.vdim
-		self.nodes = self.spline.nodes()
 
 		if periodic is None: periodic=False
 		if isinstance(periodic,bool): periodic = (periodic,)*self.vdim
-		self.periodic = periodic
+		self.periodic=periodic
+
+		self.spline = _spline_tensor(order,self.shape,periodic)
+		assert self.spline.vdim == self.vdim
+		self.nodes = self.spline.nodes()
 
 		self.coef = None if values is None else self.make_coefs(values)
 
@@ -236,7 +301,7 @@ class UniformGridInterpolation(object):
 		coef = np.moveaxis(coef,range(-odim,0),range(odim))
 		
 		# Spline weights
-		weight = self.spline(y-ys)
+		weight = self.spline(y,ys)
 
 		return (coef*weight).sum(axis=odim)
 
@@ -250,8 +315,7 @@ class UniformGridInterpolation(object):
 		# (Contrary to external interface)
 		val = np.moveaxis(values,range(odim),range(-odim,0))
 
-		return self.spline.make_coefs(val,periodic=self.periodic,
-			overwrite_values=overwrite_values)
+		return self.spline.make_coefs(val,overwrite_values=overwrite_values)
 
 
 
