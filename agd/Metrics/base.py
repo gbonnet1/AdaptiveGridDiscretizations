@@ -2,6 +2,7 @@ import numpy as np
 from .. import AutomaticDifferentiation as ad
 from .. import LinearParallel as lp
 from .. import FiniteDifferences as fd
+from .. import Interpolation
 
 class Base(object):
 	"""
@@ -189,7 +190,7 @@ class Base(object):
 		def make_interp(value):
 			if not isinstance(value,np.ndarray): return value
 			if value.shape[-self.vdim:]!=grid[0].shape: return value
-			return fd.UniformGridInterpolator(grid,value,**kwargs)
+			return Interpolation.UniformGridInterpolation(grid,value,order=1,**kwargs)
 
 		self.interpolation_data = tuple(make_interp(value) for value in self)
 
@@ -200,7 +201,7 @@ class Base(object):
 			- x (optional). Place where interpolation is needed.
 		"""
 		return self.from_generator(
-			field(x) if getattr(field,'__name__',None)=='interp' else field
+			field(x) if isinstance(field,Interpolation.UniformGridInterpolation) else field
 			for field in self.interpolation_data)
 	
 

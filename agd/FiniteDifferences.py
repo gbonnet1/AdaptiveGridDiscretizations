@@ -10,6 +10,7 @@ def as_field(u,shape,conditional=True):
 	If not, u is extended with these additional dimensions.
 	conditional : if False, reshaping is always done
 	"""
+	u=ad.array(u)
 	ndim = len(shape)
 	if conditional and u.ndim>=ndim and u.shape[-ndim:]==shape: return u
 	else: return ad.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)

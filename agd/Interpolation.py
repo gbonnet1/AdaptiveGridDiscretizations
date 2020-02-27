@@ -3,15 +3,17 @@ import itertools
 import scipy.linalg
 
 from . import AutomaticDifferentiation as ad
+lo = ad.left_operand
 
 
 """
 This file implements some basic spline interpolation methods,
 in a manner compatible with automatic differentiation.
-
-TODO : used a smaller stencil for 2nd degree interpolation when far from the boundary,
-in non-periodic mode. (Introduce interior nodes.)
 """
+
+#TODO : use a smaller stencil (3 pts instead of 4) for 2nd degree interpolation 
+# when far from the boundary, in non-periodic mode. (Introduce interior nodes.)
+
 
 class _spline_univariate(object):
 	"""
@@ -39,7 +41,7 @@ class _spline_univariate(object):
 		if   self.order==1: return self._call1(xa,xs)
 		elif self.order==2: return self._call2(xa,xs)
 		elif self.order==3: return self._call3(xa,xs)
-		assert False
+		else: assert False
 
 	def nodes(self):
 		"""
@@ -49,7 +51,8 @@ class _spline_univariate(object):
 		if   self.order==1: return range(-1,1)
 		elif self.order==2: #return range(-1,2)
 			return range(-1,2) if self.periodic else range(-2,2)
-		elif self.order==3: return range(-2,2)
+		elif self.order==3: 
+			return range(-2,2) if self.periodic else range(-3,3)
 		assert False
 
 	def _call1(self,xa,xs):
@@ -98,6 +101,7 @@ class _spline_univariate(object):
 		"""
 		x=ad.array(xa-xs)
 		result = ad.zeros_like(x)
+		s=self.shape-1
 
 		# Which spline segment to use
 		seg = ad.array(np.floor(x+2))
@@ -105,7 +109,7 @@ class _spline_univariate(object):
 			# Implements the not-a-knot boundary condition
 			pos = np.logical_and(xa<=1,xs<=1)
 			seg[pos] = 3-xs[pos]
-			pos = np.logical_and(xa>=self.shape-2,xs>=self.shape-2)
+			pos = np.logical_and(xa>=s-1,xs>=s-1)
 			seg[pos] = self.shape-1-xs[pos]
 
 		def f(y): return 3.*y**2 - y**3
@@ -114,7 +118,7 @@ class _spline_univariate(object):
 
 		# relative interval [-2,-1[
 		pos = np.logical_or(seg==0,seg==1)
-		result[pos] = f(x[pos]+2)
+		result[pos] = f(x[pos]+2.)
 
 		# relative interval [-1,0[
 #		pos = seg==1
@@ -122,22 +126,32 @@ class _spline_univariate(object):
 
 		# relative interval [0,1[
 		pos = np.logical_or(seg==2,seg==3)
-		result[pos] = 4-f(x[pos])
+		result[pos] = 4.-f(x[pos])
 
 		# relative interval [1,2[
 #		pos = seg==3
 #		result[pos] = f(2.-x[pos])
+		
+		if not self.periodic:
+			# End of not-a-knot boundary condition
+			def g(y): return 4.-3.*y**2+(23./27.)*y**3
+			xa=ad.broadcast_to(xa,x.shape)
+			pos = np.logical_and(xa<=3,xs==3)
+			result[pos] = g(3.-xa[pos])
+			pos = np.logical_and(xa>s-3,xs==s-3)
+			result[pos] = g(xa[pos]-(s-3))
 
 		return result
 
-	def _band(self,n):
-		rg = np.arange(n)
+	def _band(self):
+		rg = np.arange(self.shape+0.)
 		if self.order==2:
 			band_tr = np.stack((self(rg,rg-1),self(rg,rg),self(rg,rg+1),self(rg,rg+2)),axis=0)
 			return _banded_transpose((2,1),band_tr)
 		elif self.order==3:
-			band_tr = np.stack((self(rg,rg-1),self(rg,rg),self(rg,rg+1)),axis=0)
-			return _banded_transpose((1,1),band_tr)
+			band_tr = np.stack((self(rg,rg-3),self(rg,rg-2),self(rg,rg-1),
+				self(rg,rg),self(rg,rg+1),self(rg,rg+2),self(rg,rg+3)),axis=0)
+			return _banded_transpose((3,3),band_tr)
 		else: assert False
 
 
@@ -151,8 +165,9 @@ class _spline_univariate(object):
 
 		if self.periodic: 
 			raise ValueError("Periodic interpolation is not supported for degree > 1")
+		assert len(values)==self.shape
 
-		return scipy.linalg.solve_banded(*self._band(len(values)),values,
+		return scipy.linalg.solve_banded(*self._band(),values,
 				overwrite_ab=True,overwrite_b=overwrite_values) 
 
 def _banded_transpose(lu,t):
@@ -168,7 +183,7 @@ def _banded_densify(lu,t):
 	for i in range(n):
 		for j in range(n):
 			k=u+i-j
-			if 0<=k and k<=len(t):
+			if 0<=k and k<len(t):
 				mat[i,j]=t[k,j]
 	return mat
 
@@ -200,8 +215,8 @@ class _spline_tensor(object):
 		"""
 		Weight at absolute position xa, of of spline centered at xs.
 		"""
-		return np.prod( tuple(spline(xai,xsi) 
-			for (xai,xsi,spline) in zip(xa,xs,self.splines)) ,axis=0)
+		return np.prod( ad.array(tuple(spline(xai,xsi) 
+			for (xai,xsi,spline) in zip(xa,xs,self.splines))), axis=0)
 
 	def nodes(self):
 		"""
@@ -229,7 +244,7 @@ class UniformGridInterpolation(object):
 	a given order.
 	"""
 
-	def __init__(self,grid,values=None,order=1,periodic=False):
+	def __init__(self,grid,values=None,order=1,periodic=False,check_grid=True):
 		"""
 		- grid (ndarray) : must be a uniform grid. E.g. np.meshgrid(aX,aY,indexing='ij')
 		 where aX,aY have uniform spacing.
@@ -241,6 +256,8 @@ class UniformGridInterpolation(object):
 		self.shape = grid.shape[1:]
 		self.origin = grid.__getitem__((slice(None),)+(0,)*self.vdim)
 		self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
+		if check_grid:
+			assert np.allclose(grid,self._grid())
 		
 		if order is None: order = 1
 		if isinstance(order,int): order = (order,)*self.vdim
@@ -302,8 +319,9 @@ class UniformGridInterpolation(object):
 		
 		# Spline weights
 		weight = self.spline(y,ys)
+#		print(weight)
 
-		return (coef*weight).sum(axis=odim)
+		return (lo(coef)*weight).sum(axis=odim)
 
 	def set_values(self,values):
 		self.coef = self.make_coefs(values)
@@ -317,14 +335,9 @@ class UniformGridInterpolation(object):
 
 		return self.spline.make_coefs(val,overwrite_values=overwrite_values)
 
-
-
-
-
-
-
-
-
+	def _grid(self):
+		return np.meshgrid(*(o+h*np.arange(s+0.) 
+			for (o,h,s) in zip(self.origin,self.scale,self.shape)), indexing='ij')
 
 
 
