@@ -52,8 +52,19 @@ class _spline_univariate(object):
 		elif self.order==2: #return range(-1,2)
 			return range(-1,2) if interior else range(-2,2)
 		elif self.order==3: 
-			return range(-2,2) if interior else range(-3,3)
+			return range(-2,2) if interior else range(-3,4)
 		assert False
+
+	def interior(self,x):
+		"""
+		Wether the interior nodes can be used, or one should fall back to boundary nodes.
+		"""
+		if self.order==1 or self.periodic:
+			return np.full(x.shape,True)
+		elif self.order==2:
+			return x>=1
+		elif self.order==3:
+			return np.logical_and(x>=1,x<=self.shape-2)
 
 	def _call1(self,xa,xs):
 		"""
@@ -121,9 +132,9 @@ class _spline_univariate(object):
 		seg = ad.array(np.floor(x+2))
 		if not self.periodic:
 			# Implements the not-a-knot boundary condition
-			pos = np.logical_and(xa<=1,xs<=2)
+			pos = np.logical_and(xa<=1,xs<=3)
 			seg[pos] = 3-xs[pos]
-			pos = np.logical_and(xa>=s-1,xs>=s-2)
+			pos = np.logical_and(xa>=s-1,xs>=s-3)
 			seg[pos] = self.shape-1-xs[pos]
 
 		def f0(y): return y**3
@@ -145,6 +156,7 @@ class _spline_univariate(object):
 		pos = seg==3
 		result[pos] = f0(2.-x[pos])
 		
+		"""
 		if not self.periodic:
 			# End of not-a-knot boundary condition
 			def g(y): return 4.-6.*y**2+(50./27.)*y**3
@@ -153,6 +165,7 @@ class _spline_univariate(object):
 			result[pos] = g(3.-xa[pos])
 			pos = np.logical_and(xa>s-3,xs==s-3)
 			result[pos] = g(xa[pos]-(s-3))
+		"""
 
 		return result
 
@@ -231,12 +244,20 @@ class _spline_tensor(object):
 		return np.prod( ad.array(tuple(spline(xai,xsi) 
 			for (xai,xsi,spline) in zip(xa,xs,self.splines))), axis=0)
 
-	def nodes(self):
+	def nodes(self,interior):
 		"""
-		for each node, the spline is non-zero on node+]0,1[**vdim
+		The spline at x (interior or boundary) is supported 
+		on the union of x+node+[0,1]**vdim
 		"""
-		_nodes = tuple(spline.nodes() for spline in self.splines)
+		_nodes = tuple(spline.nodes(interior) for spline in self.splines)
 		return np.array(tuple(itertools.product(*_nodes))).T
+
+	def interior(self,x):
+		"""
+		Wether the interior nodes can be used.
+		"""
+		return np.logical_and.reduce(tuple(spline.interior(xi) 
+			for (spline,xi) in zip(self.splines,x)))
 
 	def make_coefs(self,values,overwrite_values=False):
 		"""
@@ -281,29 +302,37 @@ class UniformGridInterpolation(object):
 
 		self.spline = _spline_tensor(order,self.shape,periodic)
 		assert self.spline.vdim == self.vdim
-		self.nodes = self.spline.nodes()
+		self.interior_nodes = self.spline.nodes(interior=True)
+		self.boundary_nodes = self.spline.nodes(interior=False)
 
 		self.coef = None if values is None else self.make_coefs(values)
 
 	@property
 	def vdim(self):
 		"""
-		Dimension of the interpolation points.
+		Vector dimension of the interpolation points.
 		"""
 		return len(self.shape)
-
 	@property
-	def odim(self):
+	def oshape(self):
 		"""
-		Dimension of the interpolated objects.
+		Number of dimension of the interpolated objects.
 		"""
-		return self.coef.ndim - self.vdim
+		return self.coef.shape[self.vdim:]
 
-	def __call__(self,x):
+	def __call__(self,x,interior=None):
 		"""
 		Interpolates the data at the position x.
 		"""
 		x=ad.array(x)
+		if interior is None:
+			result_shape = self.oshape+x.shape[1:]
+			result = ad.zeros_like(x,shape = result_shape)
+			interior_x = self.spline.interior(x)
+			result[...,interior_x] = self(x[:,interior_x],True)
+			boundary_x = np.logical_not(interior_x)
+			result[...,boundary_x] = self(x[:,boundary_x],False)
+
 		assert len(x)==self.vdim
 		pdim = x.ndim-1 # Number of dimensions of position
 		# Rescale the coordinates in reference rectangle
@@ -312,7 +341,8 @@ class UniformGridInterpolation(object):
 		# Bottom left pixel
 		yf = np.floor(y).astype(int)
 		# All pixels supporting an active spline
-		ys = yf - _append_dims(self.nodes,pdim)
+		nodes = self.interior_nodes if interior else self.boundary_nodes
+		ys = yf - _append_dims(nodes,pdim)
 		
 		# Spline coefficients, taking care of out of domain 
 		ys_ = ys.copy()
@@ -327,24 +357,24 @@ class UniformGridInterpolation(object):
 
 		coef = self.coef[tuple(ys_)]
 		coef[out]=0.
-		odim = self.odim
-		coef = np.moveaxis(coef,range(-odim,0),range(odim))
+		ondim = len(self.oshape)
+		coef = np.moveaxis(coef,range(-ondim,0),range(ondim))
 		
 		# Spline weights
 		weight = self.spline(y,ys)
 #		print(weight)
 
-		return (lo(coef)*weight).sum(axis=odim)
+		return (lo(coef)*weight).sum(axis=ondim)
 
 	def set_values(self,values):
 		self.coef = self.make_coefs(values)
 
 	def make_coefs(self,values,overwrite_values=False):
 		values = ad.array(values)
-		odim = values.ndim - self.vdim
+		ondim = values.ndim - self.vdim
 		# Internally, interpolation is along the first axes.
 		# (Contrary to external interface)
-		val = np.moveaxis(values,range(odim),range(-odim,0))
+		val = np.moveaxis(values,range(ondim),range(-ondim,0))
 
 		return self.spline.make_coefs(val,overwrite_values=overwrite_values)
 
