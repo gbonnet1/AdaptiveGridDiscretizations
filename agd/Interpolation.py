@@ -43,16 +43,16 @@ class _spline_univariate(object):
 		elif self.order==3: return self._call3(xa,xs)
 		else: assert False
 
-	def nodes(self):
+	def nodes(self,interior):
 		"""
-		For each node, the spline is nonzero on ]node,node+1[.
-		(Except special case in degree two for the not-a-knot boundary one.)
+		Returns range(a,b) where [x+a,x+b] contains the support
+		 of the spline centered at some point x (interior or boundary) 
 		"""
 		if   self.order==1: return range(-1,1)
 		elif self.order==2: #return range(-1,2)
-			return range(-1,2) if self.periodic else range(-2,2)
+			return range(-1,2) if interior else range(-2,2)
 		elif self.order==3: 
-			return range(-2,2) if self.periodic else range(-3,3)
+			return range(-2,2) if interior else range(-3,3)
 		assert False
 
 	def _call1(self,xa,xs):
@@ -60,7 +60,21 @@ class _spline_univariate(object):
 		A piecewise linear spline, defined over [-1,1].
 		"""
 		x=xa-xs
-		return np.maximum(0.,1.-np.abs(x))
+		result = ad.zeros_like(x)
+		seg=ad.array(np.floor(x+1))
+		
+		# relative interval [-1,0[
+		pos = seg==0
+		result[pos] = 1+x[pos]
+
+		# relative interval [0,1[
+		pos = seg==1
+		result[pos] = 1-x[pos]
+
+		return result
+
+		# Rejected because derivative at node points is inconsistent accross nodes
+		# return np.maximum(0.,1.-np.abs(x))
 
 	def _call2(self,xa,xs):
 		"""
@@ -107,34 +121,33 @@ class _spline_univariate(object):
 		seg = ad.array(np.floor(x+2))
 		if not self.periodic:
 			# Implements the not-a-knot boundary condition
-			pos = np.logical_and(xa<=1,xs<=1)
+			pos = np.logical_and(xa<=1,xs<=2)
 			seg[pos] = 3-xs[pos]
-			pos = np.logical_and(xa>=s-1,xs>=s-1)
+			pos = np.logical_and(xa>=s-1,xs>=s-2)
 			seg[pos] = self.shape-1-xs[pos]
 
-		def f(y): return 3.*y**2 - y**3
-
-		# Same polynomial on segments 0 and 1. Likewise 2 and 3.
+		def f0(y): return y**3
+		def f1(y): return 1+3*y+3*y**2-3.*y**3
 
 		# relative interval [-2,-1[
-		pos = np.logical_or(seg==0,seg==1)
-		result[pos] = f(x[pos]+2.)
+		pos = seg==0
+		result[pos] = f0(x[pos]+2.)
 
 		# relative interval [-1,0[
-#		pos = seg==1
-#		result[pos] = 4.-f(-x[pos])
+		pos = seg==1
+		result[pos] = f1(x[pos]+1.)
 
 		# relative interval [0,1[
-		pos = np.logical_or(seg==2,seg==3)
-		result[pos] = 4.-f(x[pos])
+		pos = seg==2
+		result[pos] = f1(1.-x[pos])
 
 		# relative interval [1,2[
-#		pos = seg==3
-#		result[pos] = f(2.-x[pos])
+		pos = seg==3
+		result[pos] = f0(2.-x[pos])
 		
 		if not self.periodic:
 			# End of not-a-knot boundary condition
-			def g(y): return 4.-3.*y**2+(23./27.)*y**3
+			def g(y): return 4.-6.*y**2+(50./27.)*y**3
 			xa=ad.broadcast_to(xa,x.shape)
 			pos = np.logical_and(xa<=3,xs==3)
 			result[pos] = g(3.-xa[pos])
