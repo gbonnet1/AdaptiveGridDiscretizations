@@ -183,14 +183,14 @@ class Base(object):
 		at a given position.
 		Inputs:
 			- grid (optional). Coordinate system (required on first call). 
-			- kwargs (optional). Passed to fd.UniformGridInterpolator
+			- kwargs (optional). Passed to fUniformGridInterpolation
 		"""
 		assert self.vdim == len(grid)
 
 		def make_interp(value):
 			if not isinstance(value,np.ndarray): return value
 			if value.shape[-self.vdim:]!=grid[0].shape: return value
-			return Interpolation.UniformGridInterpolation(grid,value,order=1,**kwargs)
+			return Interpolation.UniformGridInterpolation(grid,value,order=2,**kwargs)
 
 		self.interpolation_data = tuple(make_interp(value) for value in self)
 
@@ -201,8 +201,9 @@ class Base(object):
 			- x (optional). Place where interpolation is needed.
 		"""
 		return self.from_generator(
-			field(x) if isinstance(field,Interpolation.UniformGridInterpolation) else field
+			field(x) if callable(field) else field
 			for field in self.interpolation_data)
+		# isinstance(field,Interpolation.UniformGridInterpolation)
 	
 
 #	def is_ad(self):
@@ -210,8 +211,3 @@ class Base(object):
 
 #	def remove_ad(self):
 #		return self.from_generator(ad.remove_ad(x) for x in self)
-
-""" 
-Possible additions : 
- - shoot geodesic (with a grid), 
-"""

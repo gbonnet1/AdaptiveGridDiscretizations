@@ -325,18 +325,21 @@ class UniformGridInterpolation(object):
 		Interpolates the data at the position x.
 		"""
 		x=ad.array(x)
+		assert len(x)==self.vdim
+		pdim = x.ndim-1 # Number of dimensions of position
+		origin,scale = (_append_dims(e,pdim) for e in (self.origin,self.scale))
+
+		# Separate treatment of interior and boundary points
 		if interior is None:
 			result_shape = self.oshape+x.shape[1:]
 			result = ad.zeros_like(x,shape = result_shape)
-			interior_x = self.spline.interior(x)
+			y = (ad.remove_ad(x) - origin)/scale
+			interior_x = self.spline.interior(y)
 			result[...,interior_x] = self(x[:,interior_x],True)
 			boundary_x = np.logical_not(interior_x)
 			result[...,boundary_x] = self(x[:,boundary_x],False)
 
-		assert len(x)==self.vdim
-		pdim = x.ndim-1 # Number of dimensions of position
 		# Rescale the coordinates in reference rectangle
-		origin,scale = (_append_dims(e,pdim) for e in (self.origin,self.scale))
 		y = np.expand_dims((x - origin)/scale,axis=1)
 		# Bottom left pixel
 		yf = np.floor(y).astype(int)
