@@ -183,14 +183,14 @@ class Base(object):
 		at a given position.
 		Inputs:
 			- grid (optional). Coordinate system (required on first call). 
-			- kwargs (optional). Passed to fUniformGridInterpolation
+			- kwargs. Passed to UniformGridInterpolation (includes order)
 		"""
 		assert self.vdim == len(grid)
 
 		def make_interp(value):
 			if not isinstance(value,np.ndarray): return value
 			if value.shape[-self.vdim:]!=grid[0].shape: return value
-			return Interpolation.UniformGridInterpolation(grid,value,order=2,**kwargs)
+			return Interpolation.UniformGridInterpolation(grid,value,**kwargs)
 
 		self.interpolation_data = tuple(make_interp(value) for value in self)
 

@@ -55,10 +55,12 @@ class _spline_univariate(object):
 			return range(-2,2) if interior else range(-3,4)
 		assert False
 
-	def interior(self,x):
+	def interior(self,x,tol=1e-8):
 		"""
 		Wether the interior nodes can be used, or one should fall back to boundary nodes.
 		"""
+		if np.any(x<-tol) or np.any(x>self.shape-1+tol):
+			raise ValueError("Interpolating data outside domain")
 		if self.order==1 or self.periodic:
 			return np.full(x.shape,True)
 		elif self.order==2:
