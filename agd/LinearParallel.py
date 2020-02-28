@@ -119,6 +119,7 @@ def det(a):
 		raise ValueError("det error : unsupported dimension") 
 
 def inverse(a):
+	a=ad.array(a)
 	if isinstance(a,ad.Dense.denseAD):
 		b = inverse(a.value)
 		b_ = fd.as_field(b,(a.size_ad,),conditional=False) #np.expand_dims(b,axis=-1)
@@ -141,9 +142,21 @@ def inverse(a):
 	elif ad.is_ad(a):
 		d=len(a)
 		return ad.apply(inverse,a,shape_bound=a.shape[2:])
+	elif a.dtype==np.dtype('object'):
+		if   a.shape[:2] == (2,2):
+			return ad.array([[a[1,1],-a[0,1]],[-a[1,0],a[0,0]]])/det(a)
+		elif a.shape[:2] == (3,3):
+			return ad.array([[
+				a[(i+1)%3,(j+1)%3]*a[(i+2)%3,(j+2)%3]-a[(i+1)%3,(j+2)%3]*a[(i+2)%3,(j+1)%3]
+				for i in range(3)] for j in range(3)])/det(a)
+		else: 
+			raise ValueError(f"inverse error (dtype=object) : unsupported dimension {a.shape}")
 	else:
 		return np.moveaxis(np.linalg.inv(np.moveaxis(a,(0,1),(-2,-1))),(-2,-1),(0,1))
 
 def solve_AV(a,v):
-	if ad.is_ad(v): return dot_AV(inverse(a),v) # Inefficient, but compatible with ndarray subclasses
+	a=ad.array(a)
+	if ad.is_ad(v) or a.dtype==np.dtype('object'): return dot_AV(inverse(a),v) # Inefficient, but compatible with ndarray subclasses
 	return np.moveaxis(np.linalg.solve(np.moveaxis(a,(0,1),(-2,-1)),np.moveaxis(v,0,-1)),-1,0)			
+
+

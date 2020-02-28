@@ -37,7 +37,9 @@ def fixedpoint(f,x,tol=1e-9,nitermax=100):
 
 
 class Hamiltonian(object):
-	def __init__(self, H, shape_free=None, **kwargs):
+	def __init__(self, H, 
+		shape_free=None, vdim=-1, disassociate_ad = False,
+		**kwargs):
 		"""
 		Inputs:
 		- H : the hamiltonian, which may be either:
@@ -46,6 +48,8 @@ class Hamiltonian(object):
 			* a pair of callable functions, for a separable hamiltonian.
 				(in that case, may also be scalars or matrices, for quadratic hamiltonians)
 		- shape_free (optional) : the shape of the position and impulsion
+		- vdim (optional): equivalent to shape_free = (vdim,)
+		- disassociate_ad: hide the AD information when calling H.
 		- **kwargs : if not empty, use dual metric interpolated with these arguments
 		"""		
 		if isinstance(H,list): H = tuple(H)
@@ -63,6 +67,9 @@ class Hamiltonian(object):
 			self.vdim = self._H.vdim
 		else:
 			self.shape_free = shape_free
+
+		self.disassociate_ad = disassociate_ad
+		if vdim!=-1: self.vdim = vdim
 
 	@property
 	def is_separable(self):
@@ -126,10 +133,21 @@ class Hamiltonian(object):
 		else:
 			return self._H(q,p)
 
+	def _identity_ad(self,x,noad=None):
+		x_ad = ad.Dense.identity(constant=x,shape_free=self.shape_free) 
+		if self.disassociate_ad: 
+			x_dis = ad.disassociate(x_ad,shape_free=self.shape_free)
+			return (x_dis if noad is None else 
+				(x_dis,ad.disassociate(type(x_ad)(noad),shape_free=self.shape_free)) )
+		else: 
+			return x_ad if noad is None else (x_ad,noad)
+
+		return 
 	def _gradient_ad(self,x):
 		"""
 		Extracts the gradient from an AD variable and reshapes as required.
 		"""
+		if self.disassociate_ad: x=ad.associate(x)
 		g = x.gradient()
 		return g.reshape(self.shape_free+g.shape[1:])
 
@@ -138,8 +156,7 @@ class Hamiltonian(object):
 		Differentiates a function with the given structure.
 		"""
 		if callable(f):
-			x_ad = ad.Dense.identity(constant=x,shape_free=self.shape_free) 
-			return self._gradient_ad( f(x_ad) )
+			return self._gradient_ad( f(self._identity_ad(x)) )
 		else:
 			return ad.apply_linear_mapping(f,x)
 
@@ -151,7 +168,7 @@ class Hamiltonian(object):
 		if self.is_separable:
 			return self._gradient(self._H[0],q)
 
-		q_ad = ad.Dense.identity(constant=q,shape_free=self.shape_free)
+		q_ad,p = self._identity_ad(q,noad=p)
 		if self.is_metric:
 			return self._gradient_ad(self._H.at(q_ad).norm2(p))
 		else: 
@@ -167,8 +184,8 @@ class Hamiltonian(object):
 		elif self.is_metric:
 			return self._H.at(q).gradient2(p)
 		else: 
-			p_ad = ad.Dense.identity(constant=p,shape_free=self.shape_free)
-			return self._gradient_ad(self._H(q,p_ad))
+			p_ad,q = self._identity_ad(p,noad=q)
+			return self._gradient_ad(self._H(q,self._identity_ad(p)))
 
 	def flow(self,q,p):
 		"""
@@ -189,7 +206,7 @@ class Hamiltonian(object):
 		q = qp[:d]
 		p = qp[d:]
 		if self.shape_free is not None:
-			size_free = np.prod(self.shape_free)
+			size_free = np.prod(self.shape_free,dtype=int)
 			if size_free==d:
 				q=q.reshape(self.shape_free)
 				p=p.reshape(self.shape_free)

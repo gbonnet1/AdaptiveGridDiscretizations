@@ -52,6 +52,12 @@ class dictIn(dict):
 		return GetCorners(self)
 	def SetRect(self,*args,**kwargs):
 		self.update(Rect(*args,**kwargs))
+	@property
+	def vdim(self):
+		"""Vector dimension of the ambient space."""
+		return len(self['dims'])
+	
+
 
 	def copy(self):
 		return dictIn(dict.copy(self))
