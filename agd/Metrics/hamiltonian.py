@@ -178,15 +178,28 @@ class Hamiltonian(object):
 
 	def flow_cat(self,qp,t=None):
 		"""
-		Symplectic gradient of the hamiltonian. 
+		Symplectic gradient of the hamiltonian, intended for odeint. 
 		Input : 
-			- qp : position q, impulsion p, concatenated
+			- qp : position q, impulsion p, concatenated and flattened.
 			- t : ignored parameter (compatibility with scipy.integrate.odeint)
 		Output : 
-			- symplectic gradient, concatenated.
+			- symplectic gradient, concatenated and flattened.
 		"""
 		d = len(qp)//2
-		return ad.concatenate(self.flow(qp[:d],qp[d:]),axis=0)
+		q = qp[:d]
+		p = qp[d:]
+		if self.shape_free is not None:
+			size_free = np.prod(self.shape_free)
+			if size_free==d:
+				q=q.reshape(self.shape_free)
+				p=p.reshape(self.shape_free)
+			else:
+				size_bound = d//size_free
+				q=q.reshape(self.shape_free+(size_bound,))
+				p=p.reshape(self.shape_free+(size_bound,))
+		dq,dp = self.flow(q,p)
+		return ad.concatenate((dq,dp),axis=0).flatten()
+#		return ad.concatenate(self.flow(qp[:d],qp[d:]),axis=0)
 
 	def integrate(self,q,p,scheme,niter,T=1,path=False):
 		"""
