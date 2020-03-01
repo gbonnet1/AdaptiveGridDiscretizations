@@ -193,6 +193,8 @@ class _spline_univariate(object):
 
 		if self.periodic: 
 			raise ValueError("Periodic interpolation is not supported for degree > 1")
+		if ad.is_ad(values):
+			raise ValueError("AD interpolation is not supported for degree > 1")
 		assert len(values)==self.shape
 
 		return scipy.linalg.solve_banded(*self._band(),values,

@@ -194,6 +194,7 @@ def DiffGradient(u,offsets=None,dimension=None,**kwargs):
 
 def UniformGridInterpolator1D(bounds,values,mode='clip',axis=-1):
 	"""Interpolation on a uniform grid. mode is in ('clip','wrap', ('fill',fill_value) )"""
+	
 	val = values.swapaxes(axis,0)
 	fill_value = None
 	if isinstance(mode,tuple):
@@ -255,6 +256,8 @@ def _UniformGridInterpolator(lbounds,ubounds,values,
 	axes : the axes along which the interpolation is done. By default these are the *last axes* of the array.
 	cell_centered : if true, the values given correspond to the cell centers
 	"""
+
+	assert False
 
 	lbounds,ubounds=np.array(lbounds),np.array(ubounds)
 	ndim_interp = len(lbounds)

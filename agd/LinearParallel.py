@@ -20,7 +20,7 @@ def rotation(theta,axis=None):
 		c,s=np.cos(theta),np.sin(theta)
 		return ad.array([[c,-s],[s,c]])
 	else:
-		theta,axis = (ad.toarray(e) for e in (theta,axis))
+		theta,axis = (ad.array(e) for e in (theta,axis))
 		axis = axis / np.linalg.norm(axis,axis=0)
 		theta,axis=fd.common_field((theta,axis),(0,1))
 		a = np.cos(theta / 2.0)
