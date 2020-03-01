@@ -81,15 +81,16 @@ class Hooke(ImplicitBase):
 		hooke, = params
 		Voigt,Voigti = self._Voigt,self._Voigti
 		d = self.vdim
+		lo = ad.left_operand
 		m = ad.array([[
-			sum(ad.toarray(v[j]*v[l]) * hooke[Voigt[i,j],Voigt[k,l]]
+			sum(lo(v[j]*v[l]) * hooke[Voigt[i,j],Voigt[k,l]]
 				for j in range(d) for l in range(d))
 			for i in range(d)] for k in range(d)])
 
 		# Evaluate det
 		s = np.exp(-relax)
 		ident = fd.as_field(np.eye(d),m.shape[2:],conditional=False)
-		return ad.toarray(1.-s) - lp.det(ident - m*s) 
+		return lo(1.-s) - lp.det(ident - m*s) 
 
 	def extract_xz(self):
 		"""

@@ -10,11 +10,11 @@ from ..FiniteDifferences import common_field
 class AsymQuad(Base):
 
 	def __init__(self,m,w):
-		m,w = (ad.toarray(e) for e in (m,w))
+		m,w = (ad.array(e) for e in (m,w))
 		self.m,self.w =common_field((m,w),(2,1))
 
 	def norm(self,v):
-		v,m,w = common_field((ad.toarray(v),self.m,self.w),(1,2,1))
+		v,m,w = common_field((ad.array(v),self.m,self.w),(1,2,1))
 		return np.sqrt(lp.dot_VAV(v,m,v) + np.maximum(lp.dot_VV(w,v),0.)**2)
 
 	def dual(self):

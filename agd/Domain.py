@@ -80,7 +80,7 @@ class Ball(Domain):
 
 	def __init__(self,center=(0.,0.),radius=1.):
 		super(Ball,self).__init__()
-		self.center = ad.toarray(center)
+		self.center = ad.array(center)
 		self.radius = radius
 
 	def _centered(self,x):
@@ -169,7 +169,7 @@ class Box(Domain):
 
 		a,b = np.minimum(a,b),np.maximum(a,b)
 		a,b = a.max(axis=0),b.min(axis=0)
-		a,b = (ad.toarray(e) for e in (a,b)) 
+		a,b = (ad.array(e) for e in (a,b)) 
 
 		# Normalize empty intervals
 		pos = a>b
@@ -245,7 +245,7 @@ class Intersection(Domain):
 			# Find the next beginning
 			unchanged=0
 			for it,(beg,end) in cycle(enumerate(zip(begs,ends))):
-				ind=ad.toarray(inds[it])
+				ind=ad.array(inds[it])
 				valid = ind<len(end)
 				pos = np.full(shape,False)
 				endiv = tax(end,ind,valid)
@@ -301,7 +301,7 @@ class Band(Domain):
 
 	def __init__(self,direction,bounds):
 		super(Band,self).__init__()
-		self.direction,self.bounds = (ad.toarray(e) for e in (direction,bounds))
+		self.direction,self.bounds = (ad.array(e) for e in (direction,bounds))
 		norm = ad.Optimization.norm(self.direction,ord=2)
 		if norm!=0.:
 			self.direction/=norm
@@ -344,7 +344,7 @@ def ConvexPolygon(pts):
 		direction = np.array([pq[1],-pq[0]])
 		lower_bound = np.dot(direction,p)
 		return direction,[lower_bound,np.inf]
-	pts = ad.toarray(pts)
+	pts = ad.array(pts)
 	assert len(pts)==2
 	return Intersection(*[Band(*params(p,q)) for p,q in zip(pts.T,np.roll(pts,1,axis=1).T)])
 
@@ -361,18 +361,18 @@ class AffineTransform(Domain):
 	def __init__(self,dom,mult=None,shift=None,center=None):
 		super(AffineTransform,self).__init__()
 		self.dom=dom
-		if mult is not None: mult = ad.toarray(mult)
+		if mult is not None: mult = ad.array(mult)
 		self._mult = mult
 
-		if shift is not None: shift = ad.toarray(shift)
+		if shift is not None: shift = ad.array(shift)
 		if center is not None:
-			center=ad.toarray(center)
+			center=ad.array(center)
 			shift2=center-self.forward(center,linear=True)
 			shift = shift2 if shift is None else shift+shift2
 
 		self._shift = shift
 		self._mult_inv = (None if mult is None else 
-			(ad.toarray(1./mult) if mult.ndim==0 else np.linalg.inv(mult) ) )
+			(ad.array(1./mult) if mult.ndim==0 else np.linalg.inv(mult) ) )
 		self._mult_inv_norm = (1. if self._mult_inv is None 
 			else np.linalg.norm(self._mult_inv,ord=2) )
 
@@ -449,7 +449,7 @@ class Dirichlet(object):
 		else:
 			self.value = value
 
-		self.grid = ad.toarray(grid)
+		self.grid = ad.array(grid)
 		self.gridscale = self._gridscale(self.grid)
 
 		if interior is not None:

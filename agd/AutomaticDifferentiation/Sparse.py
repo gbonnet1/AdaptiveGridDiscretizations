@@ -85,7 +85,11 @@ class spAD(np.ndarray):
 	__rmul__ = __mul__
 	__radd__ = __add__
 	def __rsub__(self,other): 		return -(self-other)
-	def __rtruediv__(self,other): 	return spAD(other/self.value,self.coef*_add_dim(-other/self.value**2),self.index)
+	def __rtruediv__(self,other): 	
+		value = other/self.value
+		coef = self.coef*_add_dim(-other/self.value**2)
+		index = np.broadcast_to(self.index,coef.shape)
+		return spAD(value,coef,index)
 
 	def __neg__(self):		return spAD(-self.value,-self.coef,self.index)
 

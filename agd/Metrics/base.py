@@ -80,24 +80,24 @@ class Base(object):
 		asymmetric variant defined as 
 		<grad F(u), v> / F(v)
 		"""
-		u,v=(ad.toarray(e) for e in (u,v))
+		u,v=(ad.array(e) for e in (u,v))
 		return lp.dot_VV(self.gradient(u),v)/self.norm(v)
 
 	def cos(self,u,v):
 		"""
 		Generalized cosine defined by the metric.
 		"""
-		u,v=(ad.toarray(e) for e in (u,v))
+		u,v=(ad.array(e) for e in (u,v))
 		gu,gv=self.gradient(u),self.gradient(v)
 		guu,guv = lp.dot_VV(gu,u),lp.dot_VV(gu,v)
 		gvu,gvv = lp.dot_VV(gv,u),lp.dot_VV(gv,v)
 		return np.minimum(guv/gvv,gvu/guu)
 
 	def angle(self,u,v):
-		c = ad.toarray(self.cos(u,v))
+		c = ad.array(self.cos(u,v))
 		mask=c < -1.
 		c[mask]=0.
-		result = ad.toarray(np.arccos(c))
+		result = ad.array(np.arccos(c))
 		result[mask]=np.inf
 		return result
 

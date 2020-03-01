@@ -61,7 +61,7 @@ class Riemann(Base):
 		Optional argument:
 		- ret_u : wether to return the (normalized) vector u
 		"""
-		u,cost_parallel,cost_orthogonal = (ad.toarray(e) for e in (u,cost_parallel,cost_orthogonal))
+		u,cost_parallel,cost_orthogonal = (ad.array(e) for e in (u,cost_parallel,cost_orthogonal))
 		u,cost_parallel,cost_orthogonal = fd.common_field((u.copy(),cost_parallel,cost_orthogonal),(1,0,0))
 		
 		# Eigenvector normalization
