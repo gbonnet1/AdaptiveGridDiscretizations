@@ -42,6 +42,23 @@ def remove_ad(data,iterables=tuple()):
 		return a.value if is_ad(a) else a
 	return misc.map_iterables(f,data,iterables)
 
+def common_cast(*args):
+	"""
+	If any of the arguments is an AD type, casts all other arguments to that type.
+	Casts to ndarray if no argument is an AD type. 
+	Usage : recommended when using array scalars with AD information.
+	"""
+	args = tuple(array(x) for x in args)
+	common_type = None
+	for x in args: 
+		if is_ad(x):
+			if common_type is None:
+				common_type = type(x)
+			if not isinstance(x,common_type):
+				raise ValueError("Error : several distinct AD types")
+	return args if common_type is None else tuple(common_type(x) for x in args)
+
+
 def left_operand(data,iterables=tuple()):
 	"""
 	Turns numpy scalars into array scalars (zero-dimensional arrays).
