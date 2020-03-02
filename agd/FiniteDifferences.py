@@ -235,10 +235,3 @@ def AxesOrderingBounds(grid):
 	axes = tuple(active(i) for i in range(dim))
 
 	return axes,lbounds,ubounds #lbounds[np.array(axes)],ubounds[np.array(axes)]
-
-
-
-
-
-
-
