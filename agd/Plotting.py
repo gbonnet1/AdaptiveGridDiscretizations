@@ -7,12 +7,17 @@ import numpy as np
 def SetTitle3D(ax,title):
 	ax.text2D(0.5,0.95,title,transform=ax.transAxes,horizontalalignment='center')
 
-def savefig(fig,fileName,dirName=None,**kwargs):
+def savefig(fig,fileName,dirName=None,ax=None,**kwargs):
 	"""Save a figure:
 	- in a given directory, possibly set in the properties of the function. 
 	 Silently fails if dirName is None
 	- with defaulted arguments, possibly set in the properties of the function
 	"""
+	# Choose the subplot to be saved 
+	if ax is not None:
+		kwargs['bbox_inches'] = ax.get_tightbbox(
+			fig.canvas.get_renderer()).transformed(fig.dpi_scale_trans.inverted())
+
 	# Set arguments to be passed
 	for key,value in vars(savefig).items():
 		if key not in kwargs and key!='dirName':
@@ -22,6 +27,12 @@ def savefig(fig,fileName,dirName=None,**kwargs):
 	if dirName is None: 
 		if savefig.dirName is None: return 
 		else: dirName=savefig.dirName
+
+
+#		kwargs['bbox_inches']=ax.get_tightbbox(
+#			fig.canvas.get_renderer()).transformed(fig.dpi_scale_trans.inverted())
+#		kwargs.pop('dpi',None)
+#		kwargs.pop('pad_inches',None)
 	
 	# Save figure
 	if path.isdir(dirName):
