@@ -20,7 +20,6 @@ def ListNotebookFiles(dirname):
 	return [filename for filename,extension in filenames_extensions 
 	if extension==".ipynb" and filename!="Summary"]
 
-
 def UpdateToc(filepath,data,cell,toc,update=False,show=False):
 	if not ( ('tags' in cell['metadata'] and 'TOC' in cell['metadata']['tags'])
 		or (len(cell['source'])>0 and cell['source'][0]==toc[0])): 
@@ -103,10 +102,7 @@ if __name__ == '__main__':
 #	TestToc("Notebooks_Algo","Dense")
 #	TestTocs("Notebooks_Algo")
 #	TestTocss()
-	kwargs = {"update":False,"show":False}
-	for key in sys.argv[1:]:
-		assert key[:2]=="--" and key[2:] in kwargs
-		kwargs[key[2:]]=True
+	kwargs = {key[2:]:True for key in sys.argv[1:] if key[:2]=='--'}
 
 	TestTocss(**kwargs)
 	for dirname in ListNotebookDirs():
