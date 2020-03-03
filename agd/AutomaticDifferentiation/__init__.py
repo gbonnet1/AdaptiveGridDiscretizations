@@ -69,12 +69,6 @@ def left_operand(data,iterables=tuple()):
 		return np.array(data)
 	return data
 
-def toarray(a,array_type=np.ndarray):
-	"""Deprecated"""
-	assert False
-	if isinstance(a,array_type): return a
-	return array_type(a) if is_strict_subclass(array_type,np.ndarray) else np.array(a)
-
 def simplify_ad(a):
 	if type(a) in (Sparse.spAD,Sparse2.spAD2): 
 		a.simplify_ad()
