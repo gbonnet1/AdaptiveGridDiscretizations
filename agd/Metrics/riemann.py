@@ -23,7 +23,7 @@ class Riemann(Base):
 	def vdim(self): return len(self.m)
 
 	@property
-	def shape(self): return self.shape.m[2:]	
+	def shape(self): return self.m.shape[2:]	
 
 	def eigvals(self):
 		return np.moveaxis(np.linalg.eigvalsh(np.moveaxis(self.m,(0,1),(-2,-1))),-1,0)
