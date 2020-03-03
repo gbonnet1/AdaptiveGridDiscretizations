@@ -7,13 +7,13 @@ from TestCode import ListNotebooks
 
 result_path = "ExportedCode"
 
-def ExportCode(inFName,outFName,update=False,show=False):
+def ExportCode(inFName,outFName,update=False,show=False,root="../.."):
 	with open(inFName, encoding='utf8') as data_file:
 		data = json.load(data_file)
 	output = [
-		'# Code automatically exported from notebook '+inFName,
-		'# Do not modify',
-		'import sys; sys.path.append("../..") # Allow imports from parent directory\n\n'
+		f"# Code automatically exported from notebook {inFName}\n",
+		"# Do not modify\n",
+		f'import sys; sys.path.append("{root}") # Path to import agd\n\n'
 	]
 	nAlgo = 0
 	for c in data['cells']:
@@ -23,8 +23,11 @@ def ExportCode(inFName,outFName,update=False,show=False):
 			nAlgo+=1
 	output = ''.join(output)
 	if nAlgo==0: return
-	with open(outFName,'r',encoding='utf8') as output_file:
-		output_previous = output_file.read()
+	try:
+		with open(outFName,'r',encoding='utf8') as output_file:
+			output_previous = output_file.read()
+	except FileNotFoundError:
+		output_previous=""
 	if output_previous==output: return
 	print(f"Exported code changes for file {inFName}")
 	if show:
@@ -37,7 +40,8 @@ def ExportCode(inFName,outFName,update=False,show=False):
 
 if __name__ == '__main__':
 
-	kwargs = {key[2:]:True for key in sys.argv[1:] if key[:2]=='--'}
+	kwargs = {key[2:]:True for key in sys.argv[1:] if key[:2]=='--' and '=' not in key}
+	kwargs.update([key[2:].split('=') for key in sys.argv[1:] if key[:2]=='--' and '=' in key])
 	notebook_filenames = [key for key in sys.argv[1:] if key[:2]!='--']
 	if len(notebook_filenames)==0: notebook_filenames = ListNotebooks()
 
