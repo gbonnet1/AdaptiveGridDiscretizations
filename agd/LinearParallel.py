@@ -35,6 +35,7 @@ def rotation(theta,axis=None):
 
 # Dot product (vector-vector, matrix-vector and matrix-matrix) in parallel
 def dot_VV(v,w):
+	v=ad.array(v); w=ad.array(w)
 	if v.shape[0]!=w.shape[0]: raise ValueError('dot_VV : Incompatible shapes')
 	return (v*w).sum(0)
 
@@ -90,6 +91,7 @@ def outer(v,w):
 	return v.reshape((m,1)+bounds)*w.reshape((1,n)+bounds)
 
 def outer_self(v):
+	v=ad.array(v)
 	return outer(v,v)
 
 def transpose(a):
