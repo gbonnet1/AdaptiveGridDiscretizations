@@ -42,7 +42,7 @@ def ExportCode(inFName,outFName,update=False,show=False,root="../.."):
 	except FileNotFoundError:
 		output_previous=""
 	if output_previous==output: return
-	print(f"Exported code changes for file {inFName}")
+	print(f"Changes in code tagged for export in file {inFName}")
 	if show:
 		print("--- New code ---\n", output, 
 			  "--- Old code ---\n", output_previous)
