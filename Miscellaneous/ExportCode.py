@@ -5,6 +5,19 @@ import os
 
 from TestCode import ListNotebooks
 
+"""
+This file export code from cells tagged 'ExportCode', from notebooks into files.
+
+Arguments:
+	* notebook filenames. (If none, assumes that executed from the root of the 
+	AdaptiveGridDiscretizations repository.)
+	* --update: wether to update the exported code.
+	* --show: wether to show the exported code differences.
+	* --root="mydirectory": Add a command to include that given directory. 
+	(default : "../..")
+
+"""
+
 result_path = "ExportedCode"
 
 def ExportCode(inFName,outFName,update=False,show=False,root="../.."):
@@ -12,9 +25,9 @@ def ExportCode(inFName,outFName,update=False,show=False,root="../.."):
 		data = json.load(data_file)
 	output = [
 		f"# Code automatically exported from notebook {inFName}\n",
-		"# Do not modify\n",
-		f'import sys; sys.path.append("{root}") # Path to import agd\n\n'
-	]
+		"# Do not modify\n"]
+	if root is not None: 
+		output.append(f'import sys; sys.path.append("{root}") # Path to import agd\n\n')
 	nAlgo = 0
 	for c in data['cells']:
 		if 'tags' in c['metadata'] and 'ExportCode' in c['metadata']['tags']:

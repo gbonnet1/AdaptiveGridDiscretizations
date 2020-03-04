@@ -1,4 +1,6 @@
-# Code automatically exported from notebook Notebooks_NonDiv/NonlinearMonotoneFirst2D.ipynb# Do not modifyimport sys; sys.path.append("../..") # Allow imports from parent directory
+# Code automatically exported from notebook Notebooks_NonDiv/NonlinearMonotoneFirst2D.ipynb
+# Do not modify
+import sys; sys.path.append("../..") # Path to import agd
 
 from agd import Selling
 from agd import LinearParallel as lp
