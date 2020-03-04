@@ -14,9 +14,7 @@ class Domain(object):
 	"""
 
 	def __init__(self):
-		s2 = np.sqrt(2.)
-		self.pattern_ball = np.stack([[1.,0.],[s2,s2],[0.,1.],[-s2,s2],
-			[-1.,0.],[-s2,-s2],[0.,-1.],[s2,-s2]],axis=1)
+		pass
 
 	def level(self,x):
 		"""
@@ -33,7 +31,7 @@ class Domain(object):
 
 	def intervals(self,x,v):
 		"""
-		A union of disjoint intervals, sorted in increasing order, such 
+		A union of disjoint intervals, sorted in increasing order, 
 		] a[0],b[0] [ U ] a[1],b[1] [ U ... U ] a[n-1],b[n-1] [
 		such that x+h*v lies in the domain iff t lies on one of these intervals.
 		"""
@@ -57,10 +55,25 @@ class Domain(object):
 		# Fix boundary layer
 		mask = np.logical_and(inside,level>-h) # Recall level is 1-Lipschitz
 		xm=x[:,mask]
-		ball_pattern = fd.as_field(self.pattern_ball,xm.shape[1:],conditional=False)
+		ball_pattern = fd.as_field(self.ball_pattern(),xm.shape[1:],conditional=False)
 		xb = np.expand_dims(xm,axis=1)+h*ball_pattern
 		inside[mask] = np.all(self.contains(xb),axis=0)
 		return inside
+
+	def ball_pattern(self,vdim=None,r=1):
+		if vdim is None: vdim = self.vdim
+		if vdim is None: raise ValueError("Unspecified dimension")
+		aX = list(range(-r,r+1))
+		X = np.array(np.meshgrid(*(aX,)*vdim,indexing='ij')).reshape(vdim,-1)
+		nX = np.sqrt((X**2).sum(axis=0))
+		pos = nX>0
+		return X[:,pos]/nX[pos]	
+
+	@property
+	def vdim(self):
+		"""Dimension of the embedding space"""
+		return None
+	
 
 class WholeSpace(Domain):
 	"""
@@ -82,6 +95,9 @@ class Ball(Domain):
 		super(Ball,self).__init__()
 		self.center = ad.array(center)
 		self.radius = radius
+
+	@property
+	def vdim(self): return len(self.center)
 
 	def _centered(self,x):
 		_center = fd.as_field(self.center,x.shape[1:],conditional=False)
@@ -126,19 +142,23 @@ class Box(Domain):
 		self._sides = sides
 		self._center = sides.sum(axis=1)/2.
 		self._hlen = (sides[:,1]-sides[:,0])/2.
-
+	
 	@property
 	def sides(self): return self._sides
 	@property
 	def center(self): return self._center
 	@property
 	def edgelengths(self): return 2.*self._hlen
+	@property
+	def vdim(self): return len(self.center)
 
 	def _centered(self,x,signs=False):
 		center = fd.as_field(self.center,x.shape[1:],conditional=False)
 		xc = x-center
-		return (np.abs(xc),np.sign(xc)) if signs else np.abs(xc)
-
+		axc = np.abs(xc)
+		if not signs: return axc
+		sxc = 2*(xc>=0)-1 # Non-vanishing sign 
+		return axc,sxc
 
 	def level(self,x):
 		hlen = fd.as_field(self._hlen,x.shape[1:],conditional=False)
@@ -186,6 +206,8 @@ class AbsoluteComplement(Domain):
 		super(AbsoluteComplement,self).__init__()
 		self.dom = dom
 
+	@property
+	def vdim(self): return self.dom.vdim
 	def contains(self,x):
 		return np.logical_not(self.dom.contains(x))
 	def level(self,x):
@@ -197,7 +219,6 @@ class AbsoluteComplement(Domain):
 		inf = np.full((1,)+x.shape[1:],np.inf)
 		return np.concatenate((-inf,b),axis=0),np.concatenate((a,inf),axis=0)
 
-
 class Intersection(Domain):
 	"""
 	This class represents an intersection of several subdomains.
@@ -206,6 +227,14 @@ class Intersection(Domain):
 		super(Intersection,self).__init__()
 		self.doms=doms
 
+	@property
+	def vdim(self): 
+		vdims=[dom.vdim for dom in self.doms if dom.vdim is not None]
+		if len(vdims)==0: return None
+		vdim = vdims[0]
+		assert vdims.count(vdim)==len(vdims)
+		return vdim
+	
 	def contains(self,x):
 		containss = [dom.contains(x) for dom in self.doms]
 		return reduce(np.logical_and,containss)
@@ -283,7 +312,7 @@ class Intersection(Domain):
 	
 def Complement(dom1,dom2):
 	"""
-	Relative complement dom1 \\ dom2
+	Relative complement dom1 - dom2
 	"""
 	return Intersection(dom1,AbsoluteComplement(dom2))
 
@@ -307,6 +336,9 @@ class Band(Domain):
 			self.direction/=norm
 			self.bounds/=norm
 
+	@property
+	def vdim(self): return len(self.direction)
+	
 	def _dotdir(self,x):
 		direction = fd.as_field(self.direction,x.shape[1:],conditional=False)
 		return lp.dot_VV(x,direction)
@@ -375,6 +407,9 @@ class AffineTransform(Domain):
 			(ad.array(1./mult) if mult.ndim==0 else np.linalg.inv(mult) ) )
 		self._mult_inv_norm = (1. if self._mult_inv is None 
 			else np.linalg.norm(self._mult_inv,ord=2) )
+
+	@property
+	def vdim(self): return self.dom.vdim
 
 	def forward(self,x,linear=False):
 		"""
@@ -479,6 +514,9 @@ class Dirichlet(object):
 			raise ValueError("Error : gridscale is axis dependent")
 		return hmax
 
+	@property
+	def vdim(self): return len(self.grid)
+	
 	@property 
 	def shape(self): 
 		return self.grid.shape[1:]
@@ -522,6 +560,11 @@ class Dirichlet(object):
 		"""
 		h = self.domain.freeway(grid,offsets)
 		x = grid+h*offsets
+
+		if np.any(np.isnan(x)):
+			bad = np.isnan(x.sum(axis=0))
+			print("bad",grid[:,bad],offsets[:,bad],h[bad],x[:,bad])
+
 		xvalues = self.value(x)
 		result = (xvalues-u)/h
 		return (result,h) if reth else result
