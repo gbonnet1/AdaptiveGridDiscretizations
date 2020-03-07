@@ -39,8 +39,8 @@ VolumeFilenames = {
     "Isotropic","Riemannian","Rander","AsymmetricQuadratic",
     "Curvature","Curvature3","DeviationHorizontality",
     "Geodesics","HighAccuracy","SmartIO","Sensitivity","SensitivitySL",
-    "Illusion","Tubular","FisherRao","DubinsZermelo",
-    "Seismic",
+    "Illusion","Tubular","FisherRao","DubinsZermelo","MedialAxis",
+    "Seismic"
 ],
 'NonDiv':[
 	"MonotoneSchemes1D","Time1D_NonDiv","OTBoundary1D",

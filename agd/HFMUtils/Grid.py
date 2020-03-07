@@ -94,7 +94,7 @@ def PointFromIndex(params,index,to=False):
 	scale = (top-bottom)/dims
 	start = bottom +0.5*scale
 	if not to: return start+scale*to_YXZ(params,index)
-	else: return to_YXZ((index-start)/scale)
+	else: return to_YXZ(params,(index-start)/scale)
 
 def IndexFromPoint(params,point):
 	"""
