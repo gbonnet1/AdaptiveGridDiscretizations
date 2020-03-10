@@ -1,4 +1,1 @@
-from . import misc
-from .. import Grid
-import numpy as np
-import os
+from .run_detail import RunGPU
