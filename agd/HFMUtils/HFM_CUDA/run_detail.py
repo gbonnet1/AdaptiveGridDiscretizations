@@ -32,7 +32,6 @@ def kernel_source(model,traits):
 	for the given traits and model.
 	"""
 	source = "".join(f"#define {key}_macro\n" for key in traits)
-	print(traits)
 	traits = traits.copy()
 
 	if 'shape_i' in traits:
@@ -52,16 +51,16 @@ def kernel_source(model,traits):
 		source += f"typedef Scalar {ctype};\n"
 
 	if 'Int' in traits:
-		Int = traits['Int']
+		Int = traits.pop('Int')
 		if   'int32' in str(Int): ctype = 'int'
 		elif 'int64' in str(Int): ctype = 'long long'
 		else: raise ValueError(f"Unrecognized scalar type {Int}")
 		source += f"typedef Int {ctype};\n"
 
 	for key,value in traits.items():
-		source += f"const int {key}={value}"
+		source += f"const int {key}={value};\n"
 
-	source += f'#include "{model}.h"'
+	source += f'#include "{model}.h"\n'
 	return source
 
 def RunGPU(hfmIn,returns='out'):
@@ -105,10 +104,10 @@ def RunGPU(hfmIn,returns='out'):
 		help="Cost function for the minimal paths")
 	assert metric.dtype == float_t
 	xp = misc.get_array_module(metric)
-	block_metric = misc.block_expand(metric*h,shape_i)
+	block_metric = misc.block_expand(metric*h,shape_i,mode='constant',constant_values=xp.inf)
 
 	# Prepare the values array
-	if verbosity>=1: print("Preparing the values array (seeing seeds,...)")
+	if verbosity>=1: print("Preparing the values array (setting seeds,...)")
 	values = xp.full(shape,xp.inf,dtype=float_t)
 	seeds = misc.GetValue(hfmIn,'seeds',hfmOut,
 		help="Points from where the front propagation starts")
@@ -122,11 +121,11 @@ def RunGPU(hfmIn,returns='out'):
 		values[tuple(seedIndices)] = seedValues
 	else: 
 		raise ValueError("Positive seedRadius not supported yet")
-	block_values = misc.block_expand(values,shape_i)
+	block_values = misc.block_expand(values,shape_i,mode='constant',constant_values=xp.inf)
 
 	# Tag the seeds
 	block_seedTags = block_values<float_t(np.inf)
-	print(f"{block_seedTags.shape=},{shape_o=}")
+#	print(f"{block_seedTags.shape=},{shape_o=}")
 	block_seedTags = block_seedTags.reshape( tuple(shape_o) + (-1,) )
 	block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 	
@@ -148,7 +147,7 @@ def RunGPU(hfmIn,returns='out'):
 	# Setup and run the eikonal solver
 	solver = misc.GetValue(hfmIn,'solver',hfmOut,
 		help="Choice of fixed point solver")
-	solverIterationMax = misc.GetValue(hfmIn,'solverIterationMax',hfmOut,default=500,
+	solverMaxIter = misc.GetValue(hfmIn,'solverMaxIter',hfmOut,default=500,
 		help="Maximum number of iterations for the solver")
 	tol = float_t(misc.GetValue(hfmIn,'tol',hfmOut,1e-8,
 		help="Convergence tolerance for the fixed point solver"))
@@ -169,15 +168,15 @@ def RunGPU(hfmIn,returns='out'):
 		x_o = xp.stack(x_o,axis=-1)
 		min_chg = xp.full(x_o.shape[:-1],np.inf,dtype=float_t)
 
-		print(f"{x_o.flatten()=},{min_chg=}")
+#		print(f"{x_o.flatten()=},{min_chg=}")
 
-		for i in range(solverIterationMax):
+		for i in range(solverMaxIter):
 			kernel(block_values,block_metric,block_seedTags,shape,x_o,min_chg,tol)
 			if np.all(np.isinf(min_chg)):
 				break
 		else:
 			raise ValueError(f"Solver {solver} did not reach convergence after "
-				f"{solverIterationMax} iterations")
+				f"{solverMaxIter} iterations")
 
 
 	#(u,cost,seeds,shape,x_o,min_chg,tol)

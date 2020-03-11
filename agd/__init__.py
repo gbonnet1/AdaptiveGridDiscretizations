@@ -5,11 +5,11 @@ def get_array_module(*args):
 	assert len(args)>0
 	for arg in args:
 		module_name = type(arg).__module__
-		if module_name=='cupy': 
-			return sys.modules[module_name]
-		elif module_name!='numpy':
-			raise ValueError(f"Module {module_name} not in (numpy,cupy) for" 
-				f" object object {arg}")
+		if 'cupy' in module_name: 
+			return sys.modules['cupy']
+		elif 'numpy' not in module_name:
+			raise ValueError(f"Module {module_name} not par of (numpy,cupy) for" 
+				f" object with type {type(arg)} and value {arg}")
 	return sys.modules['numpy']
 
 #	import cupy # Alternative implementation requiring cupy import

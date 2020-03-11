@@ -11,9 +11,13 @@ hfmIn = HFMUtils.dictIn({
     'seeds':[[0,0]],
     'kernel':"dummy",
     'solver':'globalIteration',
+    'verbosity':1,
 })
 hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
 hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
 
 
 hfmOut = hfmIn.RunGPU(returns='in_raw')
+
+print(hfmOut['source'])
+print(hfmOut)
