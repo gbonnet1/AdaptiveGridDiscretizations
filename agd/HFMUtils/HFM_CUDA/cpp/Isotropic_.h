@@ -94,7 +94,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	}
 
 	// Make the updates
-	for(int i=0; i<niter; ++i){
+	for(int i=0; i<niter_i; ++i){
 		if(active) {u_new[n_i] = _IsotropicUpdate(n_i, cost,v_o,v_i,u_i);}
 		__syncthreads();
 		u_i[n_i]=u_new[n_i];

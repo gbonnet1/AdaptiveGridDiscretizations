@@ -148,8 +148,8 @@ def RunGPU(hfmIn,returns='out'):
 	# Setup and run the eikonal solver
 	solver = misc.GetValue(hfmIn,'solver',hfmOut,
 		help="Choice of fixed point solver")
-	solverMaxIter = misc.GetValue(hfmIn,'solverMaxIter',hfmOut,default=500,
-		help="Maximum number of iterations for the solver")
+	niter_o = misc.GetValue(hfmIn,'niter_o',hfmOut,default=500,
+		help="Maximum number of iterations of the solver")
 	tol = float_t(misc.GetValue(hfmIn,'tol',hfmOut,1e-8,
 		help="Convergence tolerance for the fixed point solver"))
 
@@ -171,13 +171,13 @@ def RunGPU(hfmIn,returns='out'):
 
 #		print(f"{x_o.flatten()=},{min_chg=}")
 
-		for i in range(solverMaxIter):
+		for i in range(niter_o):
 			kernel(block_values,block_metric,block_seedTags,shape,x_o,min_chg,tol)
 			if np.all(np.isinf(min_chg)):
 				break
 		else:
 			raise ValueError(f"Solver {solver} did not reach convergence after "
-				f"{solverMaxIter} iterations")
+				f"{niter_o} iterations")
 
 
 	#(u,cost,seeds,shape,x_o,min_chg,tol)
