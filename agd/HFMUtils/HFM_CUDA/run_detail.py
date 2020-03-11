@@ -48,14 +48,14 @@ def kernel_source(model,traits):
 		if   'float32' in str(Scalar): ctype = 'float'
 		elif 'float64' in str(Scalar): ctype = 'double'
 		else: raise ValueError(f"Unrecognized scalar type {Scalar}")
-		source += f"typedef Scalar {ctype};\n"
+		source += f"typedef {ctype} Scalar;\n"
 
 	if 'Int' in traits:
 		Int = traits.pop('Int')
 		if   'int32' in str(Int): ctype = 'int'
 		elif 'int64' in str(Int): ctype = 'long long'
 		else: raise ValueError(f"Unrecognized scalar type {Int}")
-		source += f"typedef Int {ctype};\n"
+		source += f"typedef {ctype} Int;\n"
 
 	for key,value in traits.items():
 		source += f"const int {key}={value};\n"
@@ -135,10 +135,11 @@ def RunGPU(hfmIn,returns='out'):
 	kernel = misc.GetValue(hfmIn,'kernel',hfmOut,default="None",
 		help="Saved GPU Kernel from a previous run, to bypass compilation")
 	if kernel == "None":
-		cuoptions = (
-			"-default-device",
-			f"-I {os.path.realpath('./cpp')}"
-			)
+		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
+		print(cuda_path)
+		cuoptions = ("-default-device", f"-I {cuda_path}"
+			) + misc.GetValue(hfmIn,'cuoptions',hfmOut,default=tuple(),
+			help="Options passed via cupy.RawKernel to the cuda compiler")
 		import cupy
 		kernel = cupy.RawKernel(source,'IsotropicUpdate',options=cuoptions)
 	else:
@@ -153,31 +154,44 @@ def RunGPU(hfmIn,returns='out'):
 	tol = float_t(misc.GetValue(hfmIn,'tol',hfmOut,1e-8,
 		help="Convergence tolerance for the fixed point solver"))
 
-	if returns=='in_raw':
-		return {
-		'block_values':block_values,
-		'block_metric':block_metric,
-		'block_seedTags':block_seedTags,
-		'kernel':kernel,
-		'source':source,
-		'hfmOut':hfmOut
-		}
+	in_raw = {
+	'block_values':block_values,
+	'block_metric':block_metric,
+	'block_seedTags':block_seedTags,
+	'kernel':kernel,
+	'source':source
+	}
+	if returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
+
 
 	if solver=='globalIteration':
 		ax_o = tuple(xp.arange(s,dtype=int_t) for s in shape_o)
 		x_o = xp.meshgrid(*ax_o, indexing='ij')
 		x_o = xp.stack(x_o,axis=-1)
 		min_chg = xp.full(x_o.shape[:-1],np.inf,dtype=float_t)
-
+		xp_shape = xp.array(shape)
 #		print(f"{x_o.flatten()=},{min_chg=}")
 
 		for i in range(niter_o):
-			kernel(block_values,block_metric,block_seedTags,shape,x_o,min_chg,tol)
+			kernel((min_chg.size,),shape_i,
+				(block_values,block_metric,block_seedTags,xp_shape,x_o,min_chg,tol))
 			if np.all(np.isinf(min_chg)):
 				break
 		else:
 			raise ValueError(f"Solver {solver} did not reach convergence after "
 				f"{niter_o} iterations")
+
+	out_raw = {
+	'x_o':x_o,
+	'min_chg':min_chg,
+	}
+	if returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
+
+	values = misc.block_squeeze(block_values,shape)
+	hfmOut['values'] = values
+
+	return hfmOut
+
 
 
 	#(u,cost,seeds,shape,x_o,min_chg,tol)

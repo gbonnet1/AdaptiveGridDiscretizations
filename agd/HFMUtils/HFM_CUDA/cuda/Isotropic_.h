@@ -87,7 +87,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	if(debug_print && n==n_print2){
 		for(Int k=0; k<ndim; ++k){
 			for(Int s=0; s<ndim; ++s){
-				printf("(k%i,s%i) v_o %f, v_i %i \n", k,s, v_o[k][s],v_i[k][s]);
+				printf("(k%i,s%i) v_o %f, v_i %i \n", k,s, v_o[2*k+s],v_i[2*k+s]);
 			}
 		}
 
@@ -95,7 +95,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 
 	// Make the updates
 	for(int i=0; i<niter_i; ++i){
-		if(active) {u_new[n_i] = _IsotropicUpdate(n_i, cost,v_o,v_i,u_i);}
+		if(active) {u_new[n_i] = HFMUpdate(n_i, cost,v_o,v_i,u_i);}
 		__syncthreads();
 		u_i[n_i]=u_new[n_i];
 		__syncthreads();
@@ -125,6 +125,8 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 		}
 		if(k<log2_size_i-1) {__syncthreads();}
 	}*/
+	if(n_i==0) {min_chg[blockIdx.x]=u_i[0];}
+
 
 	if(debug_print && n==0){
 		printf("u_i[0] %f,u_i[1] %f,u_i[2] %f\n",u_i[0],u_i[1],u_i[2]);
@@ -134,7 +136,6 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 		printf("Hello world %f %i\n", u_i[0],blockIdx.x);
 		printf("min_chg[0] %f\n",min_chg[0]);
 	}
-
 }
 
 } // Extern "C"

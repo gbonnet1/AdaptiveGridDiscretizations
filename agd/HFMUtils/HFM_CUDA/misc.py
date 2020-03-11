@@ -57,11 +57,11 @@ def block_expand(arr,shape_i,**kwargs):
 def block_squeeze(arr,shape):
 	xp = get_array_module(arr)
 	ndim = len(shape)
-	shape_o = arr.shape[:ndim]
-	shape_i = arr.shape[ndim:]
+	shape_o = np.array(arr.shape[:ndim])
+	shape_i = np.array(arr.shape[ndim:])
 
 	# Move axes
-	rg = np.xrange(ndim)
+	rg = np.arange(ndim)
 	axes_interleaved = 1+2*rg
 	axes_split = ndim+rg
 	arr = xp.moveaxis(arr,axes_split,axes_interleaved)
