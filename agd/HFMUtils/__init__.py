@@ -18,6 +18,10 @@ def Run(hfmIn,smart=False,**kwargs):
 	"""
 	return RunSmart(hfmIn,**kwargs) if smart else RunRaw(hfmIn,**kwargs)
 
+def RunGPU(*args,**kwargs):
+	from . import HFM_CUDA
+	return HFM_CUDA.RunGPU(*args,**kwargs)
+
 def VoronoiDecomposition(arr):
 	"""
 	Calls the FileVDQ library to decompose the provided quadratic form(s),
@@ -71,6 +75,7 @@ class dictIn(dict):
 	Run = Run
 	RunRaw = RunRaw
 	RunSmart = RunSmart
+	RunGPU = RunGPU
 
 
 

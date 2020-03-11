@@ -1,5 +1,4 @@
 /*
-
 In this notbook, we implement a GPU scheme for isotropic fast marching.
 Further enhancements may include : 
 - source factorization
@@ -25,7 +24,7 @@ Notes on nvrtc
 // Meta parameters. (We avoid templates, for faster compile, and easier debug.)
 typedef float Scalar;
 typedef int Int;
-typedef char BoolPack; //unsigned 
+typedef char BoolPack; 
 
 const Int ndim = 2;
 const Int shape_i[ndim] = {8,8}; // Shape of a single block
