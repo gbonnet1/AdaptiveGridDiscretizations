@@ -1,18 +1,5 @@
 import numpy as np
-
-def get_array_module(*args):
-	"""Returns the array module (numpy or cupy)"""
-	assert len(args)>0
-	for arg in args:
-		module_name = type(arg).__module__
-		if module_name=='cupy': 
-			return sys.modules[module_name]
-		elif module_name!='numpy':
-			raise ValueError(f"Non array object {arg}")
-	return sys.modules['numpy']
-
-#	import cupy # Alternative implementation requiring cupy import
-#	return cupy.get_array_module(*args)
+from .. import get_array_module
 
 
 def packbits(arr,bitorder='big'):
