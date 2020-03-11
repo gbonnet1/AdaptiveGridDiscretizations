@@ -35,21 +35,24 @@ def kernel_source(model,traits):
 	print(traits)
 	traits = traits.copy()
 
-	if shape_i := traits.pop("shape_i",None):
+	if 'shape_i' in traits:
+		shape_i = traits.pop('shape_i')
 		size_i = np.prod(shape_i)
 		log2_size_i = int(np.ceil(np.log2(size_i)))
 		source += (f"const int shape_i[{len(shape_i)}] = " 
 			+ "{" +",".join(str(s) for s in shape_i)+ "};\n"
-			+ f"const int {size_i=};\n"
-			+ f"const int {log2_size_i=};\n")
+			+ f"const int size_i = {size_i};\n"
+			+ f"const int log2_size_i = {log2_size_i};\n")
 
-	if Scalar := traits.pop("Scalar",None):
+	if 'Scalar' in traits:
+		Scalar = traits.pop('Scalar')
 		if   'float32' in str(Scalar): ctype = 'float'
 		elif 'float64' in str(Scalar): ctype = 'double'
 		else: raise ValueError(f"Unrecognized scalar type {Scalar}")
 		source += f"typedef Scalar {ctype};\n"
 
-	if Int := traits.pop("Int",None):
+	if 'Int' in traits:
+		Int = traits['Int']
 		if   'int32' in str(Int): ctype = 'int'
 		elif 'int64' in str(Int): ctype = 'long long'
 		else: raise ValueError(f"Unrecognized scalar type {Int}")
