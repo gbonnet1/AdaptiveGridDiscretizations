@@ -118,7 +118,8 @@ def RunGPU(hfmIn,returns='out'):
 		help="Spreading the seeds over a few pixels can improve accuracy")
 	if seedRadius==0.:
 		seedIndices,_ = Grid.IndexFromPoint(hfmIn,seeds)
-		values[tuple(seedIndices)] = seedValues
+		print(seedIndices)
+		values[tuple(seedIndices.T)] = seedValues
 	else: 
 		raise ValueError("Positive seedRadius not supported yet")
 	block_values = misc.block_expand(values,shape_i,mode='constant',constant_values=xp.inf)

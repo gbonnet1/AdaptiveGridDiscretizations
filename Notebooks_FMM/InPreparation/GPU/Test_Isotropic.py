@@ -2,7 +2,7 @@ import sys; sys.path.insert(0,"../../..") # Allow import of agd from parent dire
 
 from agd import HFMUtils
 from agd.HFMUtils import HFM_CUDA
-import cupy as xp
+import numpy as xp
 
 
 hfmIn = HFMUtils.dictIn({
