@@ -136,7 +136,9 @@ def RunGPU(hfmIn,returns='out'):
 		help="Saved GPU Kernel from a previous run, to bypass compilation")
 	if kernel == "None":
 		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
-		print(cuda_path)
+		date_modified = max(os.path.getmtime(os.path.join(cuda_path,file)) 
+			for file in os.listdir(cuda_path))
+		source += f"// Date cuda code last modified : {date_modified}\n"
 		cuoptions = ("-default-device", f"-I {cuda_path}"
 			) + misc.GetValue(hfmIn,'cuoptions',hfmOut,default=tuple(),
 			help="Options passed via cupy.RawKernel to the cuda compiler")
@@ -178,8 +180,13 @@ def RunGPU(hfmIn,returns='out'):
 			if np.all(np.isinf(min_chg)):
 				break
 		else:
-			raise ValueError(f"Solver {solver} did not reach convergence after "
-				f"{niter_o} iterations")
+			nonconv_msg = (f"Solver {solver} did not reach convergence after "
+				f"maximum allowed number {niter_o} of iterations")
+			if misc.GetValue(hfmIn,'raiseOnNonConvergence',hfmOut,default=True):
+				raise ValueError(nonconv_msg)
+			else:
+				print("---- Warning ----\n",nonconv_msg,
+					"\n-----------------\n")
 
 	out_raw = {
 	'x_o':x_o,
