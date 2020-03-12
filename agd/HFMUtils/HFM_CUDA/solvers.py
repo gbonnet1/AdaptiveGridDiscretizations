@@ -1,7 +1,9 @@
 import numpy as np
+import time
 from . import misc
 
-def global_iteration(tol,nitermax_o,data_t,shapes_io,kernel_args,kernel):
+def global_iteration(tol,nitermax_o,data_t,shapes_io,
+	kernel_args,kernel):
 	"""
 	Solves the eikonal equation by applying repeatedly the updates on the whole domain.
 	Inputs : 
@@ -30,26 +32,25 @@ def global_iteration(tol,nitermax_o,data_t,shapes_io,kernel_args,kernel):
 def neighbors(x,shape):
 	"""
 	Returns the immediate neighbors of x, including x itself, 
-	on a cartesian grid bounded by shape. (Geometry axes last.)
+	on a cartesian grid of given shape. (Geometry axes last.)
 	- shape : bounds of the cartesian grid box
 	"""
 	xp = misc.get_array_module(x)
 	ndim = len(shape)
-	x = x.reshape((x.shape[0],1,1,x.shape[1]))
-	print(x.shape)
-	x = xp.tile(x,(1,ndim+1,2,1))
-	print(x.shape)
-	for i in range(ndim): x[:,i,i,0] = xp.minimum(x[i,0,:,i]+1,shape[i])
-	for i in range(ndim): x[i,1,:,i] = xp.maximum(x[i,1,:,i]-1,0)
+	x = x.reshape((1,1)+x.shape)
+	x = xp.tile(x,(ndim+1,2,1,1))
+	for i in range(ndim): x[i,0,:,i] = xp.maximum(x[i,0,:,i]-1,0)
+	for i in range(ndim): x[i,1,:,i] = xp.minimum(x[i,1,:,i]+1,shape[i]-1)
 	x = x.reshape(-1,ndim)
-	x = xp.ravel_multi_index(x,shape)
+	x = xp.ravel_multi_index(xp.moveaxis(x,-1,0),shape)
 	x = xp.unique(x)
 	x = xp.unravel_index(x,shape)
-	return x
+	return xp.stack(x,axis=-1)
 
 
 
-def adaptive_gauss_sidel_iteration(tol,nitermax_o,data_t,shapes_io,kernel_args,kernel):
+def adaptive_gauss_siedel_iteration(tol,nitermax_o,data_t,shapes_io,
+	kernel_args,kernel,report):
 	"""
 	Solves the eikonal equation by applying propagating updates, ignoring causality. 
 	"""
@@ -57,20 +58,30 @@ def adaptive_gauss_sidel_iteration(tol,nitermax_o,data_t,shapes_io,kernel_args,k
 	shape_i,shape_o = shapes_io
 	xp = misc.get_array_module(kernel_args[0])
 
-	block_seedTags = kernel_args[3]
+	block_seedTags = kernel_args[2]
 	block_seeds = np.any(block_seedTags!=0,axis=-1)
-	x_o = xp.stack(xp.nonzero(block_seeds,dtype=int_t),axis=-1)
+	x_o = xp.nonzero(block_seeds)
+	x_o = tuple(xp.array(xi_o,dtype=int_t) for xi_o in x_o)
+	x_o = xp.stack(x_o,axis=-1)
 
+	report['kernel_time']=[]
+	report['block_updates']=[]
+	
 	for niter_o in range(nitermax_o):
 		min_chg = xp.empty(len(x_o),dtype=float_t)
+
+		time_start = time.time()
 		kernel((min_chg.size,),shape_i, kernel_args + (x_o,min_chg))
+		report['kernel_time'].append(time.time()-time_start)
+
 		if xp.all(xp.isinf(min_chg)): return niter_o
 
 		# Handle neighbors structure on the CPU, since there are few.
 		x_o,min_chg = x_o.get(),min_chg.get(); yp = np
+#		yp=xp
 		x_o = x_o[yp.isfinite(min_chg),:]
 		x_o = neighbors(x_o,shape_o)
-		x_o = xp.array(x_o)
+		x_o = xp.array(x_o,dtype=int_t)
 
 	return nitermax_o
 

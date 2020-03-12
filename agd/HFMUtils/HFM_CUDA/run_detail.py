@@ -63,7 +63,6 @@ def RunGPU(hfmIn,returns='out'):
 		help="Spreading the seeds over a few pixels can improve accuracy")
 	if seedRadius==0.:
 		seedIndices,_ = Grid.IndexFromPoint(hfmIn,seeds)
-		print(seedIndices)
 		values[tuple(seedIndices.T)] = seedValues
 	else: 
 		raise ValueError("Positive seedRadius not supported yet")
@@ -71,9 +70,9 @@ def RunGPU(hfmIn,returns='out'):
 
 	# Tag the seeds
 	block_seedTags = block_values<float_t(np.inf)
-#	print(f"{block_seedTags.shape=},{shape_o=}")
 	block_seedTags = block_seedTags.reshape( tuple(shape_o) + (-1,) )
 	block_seedTags = misc.packbits(block_seedTags,bitorder='little')
+	block_seedTags=block_seedTags.reshape(tuple(shape_o)+(-1,))
 	
 	# -------- Prepare the GPU kernel ---------
 	source = kernel_traits.kernel_source(model,traits)
@@ -116,18 +115,23 @@ def RunGPU(hfmIn,returns='out'):
 	kernel_args = tuple(arg if isinstance(arg,xp.ndarray) else 
 		xp.array(arg,kernel_traits.dtype(arg,data_t)) for arg in kernel_args)
 
-	print(kernel_args)
+	if verbosity>=1: print("Running the solver")
 	solver_start_time = time.time()
 
 	if solver=='global_iteration':
-		niter_o = solvers.global_iteration(tol,nitermax_o,data_t,shapes_io,kernel_args,kernel)
+		niter_o = solvers.global_iteration(tol,nitermax_o,data_t,shapes_io,
+			kernel_args,kernel)
 	elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
 		niter_o = solvers.adaptive_gauss_siedel_iteration(
-			tol,nitermax_o,data_t,shapes_io,kernel_args,kernel)
+			tol,nitermax_o,data_t,shapes_io,
+			kernel_args,kernel,hfmOut)
 	else:
 		raise ValueError(f"Unrecognized solver : {solver}")
 
-	hfmOut['solverGPUTime']=time.time() - solver_start_time
+	hfmOut.update({
+		'niter_o':niter_o,
+		'solverGPUTime':time.time() - solver_start_time,
+		})
 
 	if niter_o>=nitermax_o:
 		nonconv_msg = (f"Solver {solver} did not reach convergence after "

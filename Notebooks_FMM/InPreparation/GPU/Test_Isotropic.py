@@ -23,20 +23,21 @@ hfmIn = HFMUtils.dictIn({
     'arrayOrdering':'RowMajor',
     'seeds':[[0,0]],
 #    'kernel':"dummy",
-    'solver':'global_iteration',
+    'solver':'AGSI', #'global_iteration',
+#    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':10,
+    'nitermax_o':4000,
     'tol':1e-8,
 
     'verbosity':1,
-#    'help':['niter_o','traits'],
-	'dims':np.array((8,8)),
+#    'help':['nitermax_o','traits'],
+	'dims':np.array((4000,4000)),
 	'gridScale':1,
 
 	'traits':{
 #    'debug_print':1,
 #    'niter_i':1,
-    'strict_iter_i':1,
+#    'strict_iter_i':1,
     },
 
 })
@@ -52,7 +53,8 @@ hfmOut = hfmIn.RunGPU()
 #print(hfmOut)
 
 hfmInCPU = hfmIn.copy()
-for key in ('traits','niter_o','solver','raiseOnNonConvergence'): hfmInCPU.pop(key,None)
+for key in ('traits','niter_o','solver','raiseOnNonConvergence','nitermax_o'): 
+	hfmInCPU.pop(key,None)
 hfmInCPU.update({
 	'exportValues':1,
 	'cost':hfmIn['cost'].get()
@@ -60,10 +62,12 @@ hfmInCPU.update({
 hfmOutCPU = hfmInCPU.Run()
 
 print(norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
-print(hfmOut['values'])
+#print(hfmOut['values'])
 
 print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']}")
+print(f"niter_o : {hfmOut['niter_o']}")
+print("kernel_time : ",sum(hfmOut["kernel_time"][1:]))
 
-import agd.HFMUtils.HFM_CUDA.solvers as solvers
-x = np.array([[1,1]])
-print(solvers.neighbors(x,(3,3)))
+#import agd.HFMUtils.HFM_CUDA.solvers as solvers
+#x = np.array([[1,1],[0,0]])
+#print(solvers.neighbors(x,(3,3)))
