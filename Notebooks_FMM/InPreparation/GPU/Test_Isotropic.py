@@ -63,3 +63,7 @@ print(norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
 print(hfmOut['values'])
 
 print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']}")
+
+import agd.HFMUtils.HFM_CUDA.solvers as solvers
+x = np.array([[1,1]])
+print(solvers.neighbors(x,(3,3)))
