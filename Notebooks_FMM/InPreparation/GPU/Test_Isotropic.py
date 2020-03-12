@@ -25,10 +25,10 @@ hfmIn = HFMUtils.dictIn({
 #    'kernel':"dummy",
     'solver':'globalIteration',
     'raiseOnNonConvergence':False,
-    'niter_o':10,
+    'niter_o':1,
     'traits':{
     'debug_print':0,
-    'niter_i':8
+    'niter_i':1
     },
     'verbosity':1,
 #    'help':['niter_o','traits'],
