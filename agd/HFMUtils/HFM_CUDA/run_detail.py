@@ -1,74 +1,11 @@
-from . import misc
 import numpy as np
 import os
+import time
+
+from . import misc
+from . import kernel_traits
 from .. import Grid
 
-
-def default_traits(model):
-	"""
-	Default traits of the GPU implementation of an HFM model.
-	"""
-	traits = {
-	'Scalar':'float32',
-	'Int':   'int32',
-	}
-
-	if model=='Isotropic2':
-		traits.update({
-		'shape_i':(8,8),
-		})
-	elif model=='Isotropic3':
-		traits.update({
-		'shape_i':(4,4,4),
-		})
-	else:
-		raise ValueError("Unsupported model")
-
-	return traits
-
-def kernel_source(model,traits):
-	"""
-	Returns the source (mostly a preamble) for the gpu kernel code 
-	for the given traits and model.
-	"""
-	source = ""
-	for key in list(traits.keys()):
-		if 'macro' in key:
-			source += f"#define {key} {traits[key]}\n"
-			traits.pop(key)
-		else:
-			source += f"#define {key}_macro\n"
-
-	traits = traits.copy()
-
-	if 'shape_i' in traits:
-		shape_i = traits.pop('shape_i')
-		size_i = np.prod(shape_i)
-		log2_size_i = int(np.ceil(np.log2(size_i)))
-		source += (f"const int shape_i[{len(shape_i)}] = " 
-			+ "{" +",".join(str(s) for s in shape_i)+ "};\n"
-			+ f"const int size_i = {size_i};\n"
-			+ f"const int log2_size_i = {log2_size_i};\n")
-
-	if 'Scalar' in traits:
-		Scalar = traits.pop('Scalar')
-		if   'float32' in str(Scalar): ctype = 'float'
-		elif 'float64' in str(Scalar): ctype = 'double'
-		else: raise ValueError(f"Unrecognized scalar type {Scalar}")
-		source += f"typedef {ctype} Scalar;\n"
-
-	if 'Int' in traits:
-		Int = traits.pop('Int')
-		if   'int32' in str(Int): ctype = 'int'
-		elif 'int64' in str(Int): ctype = 'long long'
-		else: raise ValueError(f"Unrecognized scalar type {Int}")
-		source += f"typedef {ctype} Int;\n"
-
-	for key,value in traits.items():
-		source += f"const int {key}={value};\n"
-
-	source += f'#include "{model}.h"\n'
-	return source
 
 def RunGPU(hfmIn,returns='out'):
 	"""
@@ -93,7 +30,7 @@ def RunGPU(hfmIn,returns='out'):
 
 	# ---- Get traits ----
 	if verbosity>=1: print("Preparing the GPU kernel for (excludes compilation)")
-	traits = default_traits(model)
+	traits = kernel_traits.default_traits(model)
 	traits.update(misc.GetValue(hfmIn,'traits',hfmOut,default={},
 		help="Optional traits parameters passed to kernel"))
 	float_t = np.dtype(traits['Scalar']).type
@@ -138,7 +75,7 @@ def RunGPU(hfmIn,returns='out'):
 	block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 	
 	# -------- Prepare the GPU kernel ---------
-	source = kernel_source(model,traits)
+	source = kernel_traits.kernel_source(model,traits)
 	kernel = misc.GetValue(hfmIn,'kernel',hfmOut,default="None",
 		help="Saved GPU Kernel from a previous run, to bypass compilation")
 	if kernel == "None":
@@ -181,6 +118,7 @@ def RunGPU(hfmIn,returns='out'):
 		xp_shape = xp.array(shape)
 #		print(f"{x_o.flatten()=},{min_chg=}")
 
+		solver_start_time = time.time()
 		for i in range(niter_o):
 			kernel((min_chg.size,),shape_i,
 				(block_values,block_metric,block_seedTags,xp_shape,x_o,min_chg,tol))
