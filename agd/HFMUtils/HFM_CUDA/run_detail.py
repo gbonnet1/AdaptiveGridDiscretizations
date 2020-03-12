@@ -120,7 +120,7 @@ def RunGPU(hfmIn,returns='out'):
 
 	if solver=='global_iteration':
 		niter_o = solvers.global_iteration(tol,nitermax_o,data_t,shapes_io,
-			kernel_args,kernel)
+			kernel_args,kernel,hfmOut)
 	elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
 		niter_o = solvers.adaptive_gauss_siedel_iteration(
 			tol,nitermax_o,data_t,shapes_io,
@@ -132,7 +132,7 @@ def RunGPU(hfmIn,returns='out'):
 		'niter_o':niter_o,
 		'solverGPUTime':time.time() - solver_start_time,
 		})
-
+	if verbosity>=1: print("Post-Processing")
 	if niter_o>=nitermax_o:
 		nonconv_msg = (f"Solver {solver} did not reach convergence after "
 			f"maximum allowed number {niter_o} of iterations")

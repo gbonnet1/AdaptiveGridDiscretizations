@@ -3,7 +3,7 @@ import time
 from . import misc
 
 def global_iteration(tol,nitermax_o,data_t,shapes_io,
-	kernel_args,kernel):
+	kernel_args,kernel,report):
 	"""
 	Solves the eikonal equation by applying repeatedly the updates on the whole domain.
 	Inputs : 
@@ -19,13 +19,19 @@ def global_iteration(tol,nitermax_o,data_t,shapes_io,
 	ax_o = tuple(xp.arange(s,dtype=int_t) for s in shape_o)
 	x_o = xp.meshgrid(*ax_o, indexing='ij')
 	x_o = xp.stack(x_o,axis=-1)
-	min_chg = xp.full(x_o.shape[:-1],np.inf,dtype=float_t)
+	min_chg = xp.full(shape_o,np.inf,dtype=float_t)
+	report['kernel_time']=[]
+
+#	min_chg = xp.full(x_o.shape[:-1],np.inf,dtype=float_t)
 #	print(f"{x_o.flatten()=},{min_chg=}")
 
 	for niter_o in range(nitermax_o):
+		time_start = time.time()
 		kernel((min_chg.size,),shape_i, kernel_args + (x_o,min_chg))
+		report['kernel_time'].append(time.time()-time_start)
+
 #		print(f"min_chg={min_chg}")
-		if xp.all(xp.isinf(min_chg)): return niter_o
+#		if xp.all(xp.isinf(min_chg)): return niter_o
 
 	return nitermax_o
 
@@ -63,25 +69,26 @@ def adaptive_gauss_siedel_iteration(tol,nitermax_o,data_t,shapes_io,
 	x_o = xp.nonzero(block_seeds)
 	x_o = tuple(xp.array(xi_o,dtype=int_t) for xi_o in x_o)
 	x_o = xp.stack(x_o,axis=-1)
+	min_chg = xp.full(shape_o,np.inf,dtype=float_t)
 
 	report['kernel_time']=[]
 	report['block_updates']=[]
 	
 	for niter_o in range(nitermax_o):
-		min_chg = xp.empty(len(x_o),dtype=float_t)
-
 		time_start = time.time()
 		kernel((min_chg.size,),shape_i, kernel_args + (x_o,min_chg))
 		report['kernel_time'].append(time.time()-time_start)
 
-		if xp.all(xp.isinf(min_chg)): return niter_o
+#		if xp.all(xp.isinf(min_chg)): return niter_o
 
+		"""
 		# Handle neighbors structure on the CPU, since there are few.
 		x_o,min_chg = x_o.get(),min_chg.get(); yp = np
 #		yp=xp
 		x_o = x_o[yp.isfinite(min_chg),:]
 		x_o = neighbors(x_o,shape_o)
 		x_o = xp.array(x_o,dtype=int_t)
+"""
 
 	return nitermax_o
 

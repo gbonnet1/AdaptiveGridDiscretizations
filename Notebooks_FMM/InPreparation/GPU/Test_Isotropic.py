@@ -23,10 +23,10 @@ hfmIn = HFMUtils.dictIn({
     'arrayOrdering':'RowMajor',
     'seeds':[[0,0]],
 #    'kernel':"dummy",
-    'solver':'AGSI', #'global_iteration',
-#    'solver':'global_iteration',
+#    'solver':'AGSI', #'global_iteration',
+    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':4000,
+    'nitermax_o':1200,
     'tol':1e-8,
 
     'verbosity':1,
@@ -61,7 +61,7 @@ hfmInCPU.update({
 })
 hfmOutCPU = hfmInCPU.Run()
 
-print(norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
+print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
 #print(hfmOut['values'])
 
 print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']}")
