@@ -1,4 +1,23 @@
 import numpy as np
+import numbers
+
+def dtype(arg,data_t):
+	"""
+	For a numeric array, returns dtype.
+	Otherwise, returns one of the provided floating point 
+	or integer data type, depending on the argument data type.
+	Inputs:
+	 - data_t (tuple) : (float_t,int_t)
+	"""
+	float_t,int_t = data_t
+	if isinstance(arg,numbers.Real): 
+		return float_t
+	elif isinstance(arg,numbers.Integral):
+		return int_t
+	elif isinstance(arg,(tuple,list)):
+		return dtype(arg[0],data_t)
+	else:
+		return arg.dtype
 
 def default_traits(model):
 	"""
@@ -40,6 +59,7 @@ def kernel_source(model,traits):
 	if 'shape_i' in traits:
 		shape_i = traits.pop('shape_i')
 		size_i = np.prod(shape_i)
+		assert size_i%8 == 0
 		log2_size_i = int(np.ceil(np.log2(size_i)))
 		source += (f"const int shape_i[{len(shape_i)}] = " 
 			+ "{" +",".join(str(s) for s in shape_i)+ "};\n"

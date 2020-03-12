@@ -119,11 +119,12 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 			const Scalar v_ = w_i>=0 ? u_i[w_i] : v_o[ks];
 			v[k] = s==0 ? v_ : min(v_,v[k]);
 			
+			/*
 			if(debug_print && n_i==n_print2){
 				printf("k%i,s%i, wi %i, v_ %f, v[k] %f\n",k,s,w_i,v_,v[k]);
 				printf("u_i[2] %f, u_i[3] %f,  u_i[4] %f\n", u_i[2],u_i[3],u_i[4]);
 
-			}
+			}*/
 		}
 	}
 
@@ -135,6 +136,7 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 
 	bubble_sort(v);
 
+/*
 	if(debug_print && n_i==n_print2){
 		printf("\n");
 		for(Int k=0;k<nsym;++k){
@@ -142,7 +144,7 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 		}
 		printf("value %f\n",u_i[n_i]);
 	}
-
+*/
 	// Compute the update
 	const Scalar vmin = v[0];
 	if(vmin==infinity()){return vmin;}
@@ -151,7 +153,7 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 	for(Int k=1; k<nact; ++k){
 		const Scalar t = v[k] - vmin;
 		if(value<=t){
-			if(debug_print && n_i==n_print2) printf("value sent %f\n\n",vmin+value); 
+//			if(debug_print && n_i==n_print2) printf("value sent %f\n\n",vmin+value); 
 			return vmin+value;}
 		a+=1.;
 		b+=t;
@@ -160,11 +162,11 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 		const Scalar sdelta = sqrt(delta);
 		value = (b+sdelta)/a;
 	}
-
+/*
 	if(debug_print && n_i==n_print2){
 		printf("value solved %f\n\n",vmin+value);
 	}
-
+*/
 	return vmin+value;
 }
 

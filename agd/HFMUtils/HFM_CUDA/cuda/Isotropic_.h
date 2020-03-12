@@ -5,8 +5,16 @@ const Int n_print2=3;
 
 extern "C" {
 
-__global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPack * seeds, const Int * shape,
-	const Int * _x_o, Scalar * min_chg, const Scalar tol){
+/**
+	Integer parameters : shape of domain
+	Floating point parameters : convergence tolerance.
+*/
+__global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPack * seeds, 
+	const Int * params_Int, const Scalar * params_Scalar, // parameters
+	const Int * _x_o, Scalar * min_chg){ // block organization
+
+	const Int * shape = params_Int;
+	const Scalar tol = *params_Scalar;
 
 	// Setup coordinate system
 	Int x_i[ndim], x_o[ndim], x[ndim]; 
@@ -35,7 +43,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	u_i[n_i] = u_old;
 //	u_new[n_i] = u_old;
 
-
+/*
 	if(debug_print && n==n_print2){
 		printf("n_print = %i\n",n_print);
 		printf("Grid shape %i %i, %i %i\n", 
@@ -47,11 +55,12 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 		printf("x %i %i \n", x[0], x[1]);
 		printf("Hello world");
 
-	}
+	}*/
 
 	const Scalar cost = metric[n];
 	const bool active = (cost < infinity()) && (! GetBool(seeds,n));
 
+/*
 	if(debug_print && n==n_print2){
 		printf("inRange %i\n",inRange);
 		printf("u_old %f\n",u_old);
@@ -62,7 +71,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 		printf("Seeds : %i %i %i %f %f\n",GetBool(seeds,0),GetBool(seeds,19),
 			cost<infinity(),infinity(),not_a_number());
 	}
-
+*/
 	// Get the neighbor values, or their indices if interior to the block
 	Scalar v_o[2*ndim];
 	Int    v_i[2*ndim];
@@ -83,7 +92,8 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 			y[k]-=eps; y_i[k]-=eps;
 		}
 	}
-
+	__syncthreads();
+/*
 	if(debug_print && n==n_print2){
 		for(Int k=0; k<ndim; ++k){
 			for(Int s=0; s<ndim; ++s){
@@ -91,7 +101,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 			}
 		}
 
-	}
+	}*/
 
 	HFMIter(active,n_i,cost,v_o,v_i,u_i);
 	/*
@@ -105,13 +115,23 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	u[n] = u_i[n_i];
 	
 	// Find the smallest value which was changed.
-	Scalar u_diff = abs(u_old - u_i[n_i]);
+	const Scalar u_diff = abs(u_old - u_i[n_i]);
 	if( !(u_diff>tol) ){// Ignores NaNs (contrary to u_diff<=tol)
 		u_i[n_i]=infinity();}
+	__syncthreads();
 
+/*
+	if(debug_print && n_i==9){
+		printf("n_i %i, u_old %f, u_new %f,\n",n_i,u_old,u_i[n_i]);
+	}
+
+*/
+/*
 	if(debug_print && n==0){
 		printf("u_i[0] %f,u_i[1] %f,u_i[2] %f\n",u_i[0],u_i[1],u_i[2]);
 	}
+*/
+
 
 	Min0(n_i,u_i);
 	/*
@@ -129,6 +149,10 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	}*/
 	if(n_i==0) {min_chg[blockIdx.x]=u_i[0];}
 
+	if(debug_print && n==0){
+		printf("tol %f\n",tol);
+		printf("shape %i,%i\n",shape[0],shape[1]);
+	}
 
 	if(debug_print && n==0){
 		printf("u_i[0] %f,u_i[1] %f,u_i[2] %f\n",u_i[0],u_i[1],u_i[2]);

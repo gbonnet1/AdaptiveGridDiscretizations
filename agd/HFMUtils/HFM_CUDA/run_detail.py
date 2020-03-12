@@ -4,6 +4,7 @@ import time
 
 from . import misc
 from . import kernel_traits
+from . import solvers
 from .. import Grid
 
 
@@ -95,7 +96,7 @@ def RunGPU(hfmIn,returns='out'):
 	# Setup and run the eikonal solver
 	solver = misc.GetValue(hfmIn,'solver',hfmOut,
 		help="Choice of fixed point solver")
-	niter_o = misc.GetValue(hfmIn,'niter_o',hfmOut,default=500,
+	nitermax_o = misc.GetValue(hfmIn,'nitermax_o',hfmOut,default=500,
 		help="Maximum number of iterations of the solver")
 	tol = float_t(misc.GetValue(hfmIn,'tol',hfmOut,1e-8,
 		help="Convergence tolerance for the fixed point solver"))
@@ -109,33 +110,35 @@ def RunGPU(hfmIn,returns='out'):
 	}
 	if returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
 
+	data_t = (float_t,int_t)
+	shapes_io = (shape_i,shape_o)
+	kernel_args = (block_values,block_metric,block_seedTags,shape,tol)
+	kernel_args = tuple(arg if isinstance(arg,xp.ndarray) else 
+		xp.array(arg,kernel_traits.dtype(arg,data_t)) for arg in kernel_args)
 
-	if solver=='globalIteration':
-		ax_o = tuple(xp.arange(s,dtype=int_t) for s in shape_o)
-		x_o = xp.meshgrid(*ax_o, indexing='ij')
-		x_o = xp.stack(x_o,axis=-1)
-		min_chg = xp.full(x_o.shape[:-1],np.inf,dtype=float_t)
-		xp_shape = xp.array(shape)
-#		print(f"{x_o.flatten()=},{min_chg=}")
+	print(kernel_args)
+	solver_start_time = time.time()
 
-		solver_start_time = time.time()
-		for i in range(niter_o):
-			kernel((min_chg.size,),shape_i,
-				(block_values,block_metric,block_seedTags,xp_shape,x_o,min_chg,tol))
-			if np.all(np.isinf(min_chg)):
-				break
+	if solver=='global_iteration':
+		niter_o = solvers.global_iteration(tol,nitermax_o,data_t,shapes_io,kernel_args,kernel)
+	elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
+		niter_o = solvers.adaptive_gauss_siedel_iteration(
+			tol,nitermax_o,data_t,shapes_io,kernel_args,kernel)
+	else:
+		raise ValueError(f"Unrecognized solver : {solver}")
+
+	hfmOut['solverGPUTime']=time.time() - solver_start_time
+
+	if niter_o>=nitermax_o:
+		nonconv_msg = (f"Solver {solver} did not reach convergence after "
+			f"maximum allowed number {niter_o} of iterations")
+		if misc.GetValue(hfmIn,'raiseOnNonConvergence',hfmOut,default=True):
+			raise ValueError(nonconv_msg)
 		else:
-			nonconv_msg = (f"Solver {solver} did not reach convergence after "
-				f"maximum allowed number {niter_o} of iterations")
-			if misc.GetValue(hfmIn,'raiseOnNonConvergence',hfmOut,default=True):
-				raise ValueError(nonconv_msg)
-			else:
-				print("---- Warning ----\n",nonconv_msg,
-					"\n-----------------\n")
+			print("---- Warning ----\n",nonconv_msg,"\n-----------------\n")
 
 	out_raw = {
-	'x_o':x_o,
-	'min_chg':min_chg,
+	'block_values':block_values
 	}
 	if returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
 
