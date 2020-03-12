@@ -52,7 +52,7 @@ def block_expand(arr,shape_i,**kwargs):
 #	print(f"{axes_interleaved=},{axes_split=}")
 	arr = xp.moveaxis(arr,axes_interleaved,axes_split)
 
-	return arr
+	return xp.ascontiguousarray(arr)
 
 def block_squeeze(arr,shape):
 	xp = get_array_module(arr)

@@ -25,10 +25,11 @@ hfmIn = HFMUtils.dictIn({
 #    'kernel':"dummy",
     'solver':'globalIteration',
     'raiseOnNonConvergence':False,
-    'niter_o':1,
+    'niter_o':10,
     'traits':{
     'debug_print':0,
-    'niter_i':1
+    'niter_i':8,
+    'strict_iter_i':1,
     },
     'verbosity':1,
 #    'help':['niter_o','traits'],
@@ -38,7 +39,10 @@ hfmIn = HFMUtils.dictIn({
 #hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
 hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
 
-out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
+
+#in_raw = hfmIn.RunGPU(returns='in_raw'); print(in_raw['in_raw']['source'])
+
+#out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
 hfmOut = hfmIn.RunGPU()
 #print(hfmOut['values'])
 #print(hfmOut)

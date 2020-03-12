@@ -31,7 +31,14 @@ def kernel_source(model,traits):
 	Returns the source (mostly a preamble) for the gpu kernel code 
 	for the given traits and model.
 	"""
-	source = "".join(f"#define {key}_macro\n" for key in traits)
+	source = ""
+	for key in list(traits.keys()):
+		if 'macro' in key:
+			source += f"#define {key} {traits[key]}\n"
+			traits.pop(key)
+		else:
+			source += f"#define {key}_macro\n"
+
 	traits = traits.copy()
 
 	if 'shape_i' in traits:

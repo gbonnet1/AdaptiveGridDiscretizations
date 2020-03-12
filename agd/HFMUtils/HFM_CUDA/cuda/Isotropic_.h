@@ -31,9 +31,9 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	const bool inRange = grid.InRange(x);
 	const Scalar u_old = u[n];
 	__shared__ Scalar u_i[size_i];
-	__shared__ Scalar u_new[size_i];
+//	__shared__ Scalar u_new[size_i];
 	u_i[n_i] = u_old;
-	u_new[n_i] = u_old;
+//	u_new[n_i] = u_old;
 
 
 	if(debug_print && n==n_print2){
@@ -93,13 +93,15 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 
 	}
 
+	HFMIter(active,n_i,cost,v_o,v_i,u_i);
+	/*
 	// Make the updates
 	for(int i=0; i<niter_i; ++i){
-		if(active) {u_new[n_i] = HFMUpdate(n_i, cost,v_o,v_i,u_i);}
+		if(active) {u_new[n_i] = HFMUpdate(n_i,cost,v_o,v_i,u_i);}
 		__syncthreads();
 		u_i[n_i]=u_new[n_i];
 		__syncthreads();
-	}
+	}*/
 	u[n] = u_i[n_i];
 	
 	// Find the smallest value which was changed.
