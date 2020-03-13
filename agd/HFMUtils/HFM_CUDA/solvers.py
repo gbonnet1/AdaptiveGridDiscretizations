@@ -19,20 +19,25 @@ def global_iteration(tol,nitermax_o,data_t,shapes_io,
 	ax_o = tuple(xp.arange(s,dtype=int_t) for s in shape_o)
 	x_o = xp.meshgrid(*ax_o, indexing='ij')
 	x_o = xp.stack(x_o,axis=-1)
-	min_chg = xp.full(shape_o,np.inf,dtype=float_t)
+	min_chg = xp.empty(shape_o,dtype=float_t)
+	where_chg = xp.empty(shape_o,dtype=bool)
+	all_chg = xp.empty(tuple(),dtype=bool)
 	report['kernel_time']=[]
 
 #	min_chg = xp.full(x_o.shape[:-1],np.inf,dtype=float_t)
 #	print(f"{x_o.flatten()=},{min_chg=}")
 
+	
 	for niter_o in range(nitermax_o):
 		time_start = time.time()
 		kernel((min_chg.size,),shape_i, kernel_args + (x_o,min_chg))
 		report['kernel_time'].append(time.time()-time_start)
 
 #		print(f"min_chg={min_chg}")
+		xp.isinf(min_chg,out=where_chg)
+		if xp.all(where_chg): return niter_o
 #		if xp.all(xp.isinf(min_chg)): return niter_o
-
+#	print(all_chg)
 	return nitermax_o
 
 def neighbors(x,shape):

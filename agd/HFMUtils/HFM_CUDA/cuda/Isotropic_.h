@@ -1,20 +1,37 @@
+#pragma once 
+
 const Int n_print = 100;
 const Int n_print2=3;
 
+#include "Grid.h"
 #include "HFM.h"
 
 extern "C" {
 
 /**
-	Integer parameters : shape of domain
-	Floating point parameters : convergence tolerance.
+	Integer parameters params_Int : 
+	 - shape[ndim] : shape of domain
+	 - shape_o[ndim] : outer shape
+	Floating point parameters : 
+	 - tol : convergence tolerance.
+	 - step : avoid roundoff errors
+	front_dist (uchar) : 
+	 distance in blocks to the front. 
+	 0 -> converged, adjusted
+	 1 -> converged,
+	 ..-> not converged
+
 */
 __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPack * seeds, 
 	const Int * params_Int, const Scalar * params_Scalar, // parameters
-	const Int * _x_o, Scalar * min_chg){ // block organization
+	const Int * _x_o, BoolPack * front_dist){ // block organization
 
-	const Int * shape = params_Int;
-	const Scalar tol = *params_Scalar;
+	__shared__ Int shape[ndim]; // Outer shape of domain
+	__shared__ Int shape_o[ndim]; // Inner shape of domain
+	__shared__ Scalar u_i[size_i]; // Shared block values
+
+	const Scalar tol = params_Scalar[0]; // Tolerance for the fixed point problem
+//	const Scalar step = params_Scalar[1]; // Avoid roundoff errors
 
 	// Setup coordinate system
 	Int x_i[ndim], x_o[ndim], x[ndim]; 
@@ -25,53 +42,19 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 		x[k] = x_o[k]*shape_i[k]+x_i[k];
 	}
 
-	GridType grid; // Share ?
-	for(int k=0; k<ndim; ++k){
-		grid.shape[k] = shape[k];
-		grid.shape_o[k] = ceil_div(shape[k],shape_i[k]);
-	}
+	const Int n_i = Index(x_i,shape_i)
+	if(n_i<ndim){shape[n_i] = params_Int[n_i];}
+	if(ndim<=n_i && n_i<2*n_dim){shape_o[n_i-ndim] = params_Int[n_i];}
 
-	// Import local data
-	const Int 
-	n_i = grid.Index_i(x_i),
-	n = grid.Index(x);
-
-	const bool inRange = grid.InRange(x);
+	__syncthreads()
+	const Int n_o = Index(x_o,shape_o);
+	const Int n = n_o*size_i + n_i;
 	const Scalar u_old = u[n];
-	__shared__ Scalar u_i[size_i];
-//	__shared__ Scalar u_new[size_i];
 	u_i[n_i] = u_old;
-//	u_new[n_i] = u_old;
-
-/*
-	if(debug_print && n==n_print2){
-		printf("n_print = %i\n",n_print);
-		printf("Grid shape %i %i, %i %i\n", 
-			grid.shape[0],grid.shape[1],
-			grid.shape_o[0],grid.shape_o[1]);
-
-		printf("x_i %i %i \n", x_i[0], x_i[1]);
-		printf("x_o %i %i \n", x_o[0], x_o[1]);
-		printf("x %i %i \n", x[0], x[1]);
-		printf("Hello world");
-
-	}*/
 
 	const Scalar cost = metric[n];
 	const bool active = (cost < infinity()) && (! GetBool(seeds,n));
 
-/*
-	if(debug_print && n==n_print2){
-		printf("inRange %i\n",inRange);
-		printf("u_old %f\n",u_old);
-		printf("cost %f\n",cost);
-		printf("active %i\n",active);
-		printf("u_i[n_i] %f\n",u_i[n_i]);
-
-		printf("Seeds : %i %i %i %f %f\n",GetBool(seeds,0),GetBool(seeds,19),
-			cost<infinity(),infinity(),not_a_number());
-	}
-*/
 	// Get the neighbor values, or their indices if interior to the block
 	Scalar v_o[2*ndim];
 	Int    v_i[2*ndim];
@@ -83,35 +66,19 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 			const Int ks = 2*k+s;
 
 			y[k]+=eps; y_i[k]+=eps;
-			if(grid.InRange_i(y_i))  {v_i[ks] = grid.Index_i(y_i);}
+			if(InRange(y_i,shape_i))  {v_i[ks] = Index(y_i,shape_i);}
 			else {
 				v_i[ks] = -1;
-				if(grid.InRange(y)) {v_o[ks] = u[grid.Index(y)];}
+				if(InRange(y,shape)) {v_o[ks] = u[Index(y,shape_i,shape_o)];}
 				else {v_o[ks] = infinity();}
 			}
 			y[k]-=eps; y_i[k]-=eps;
 		}
 	}
 	__syncthreads();
-/*
-	if(debug_print && n==n_print2){
-		for(Int k=0; k<ndim; ++k){
-			for(Int s=0; s<ndim; ++s){
-				printf("(k%i,s%i) v_o %f, v_i %i \n", k,s, v_o[2*k+s],v_i[2*k+s]);
-			}
-		}
 
-	}*/
-
+	// Compute and save the values
 	HFMIter(active,n_i,cost,v_o,v_i,u_i);
-	/*
-	// Make the updates
-	for(int i=0; i<niter_i; ++i){
-		if(active) {u_new[n_i] = HFMUpdate(n_i,cost,v_o,v_i,u_i);}
-		__syncthreads();
-		u_i[n_i]=u_new[n_i];
-		__syncthreads();
-	}*/
 	u[n] = u_i[n_i];
 	
 	// Find the smallest value which was changed.

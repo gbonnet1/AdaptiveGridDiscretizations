@@ -1,3 +1,5 @@
+#pragma once
+
 #include "TypeTraits.h"
 
 const Int ndim = 3;

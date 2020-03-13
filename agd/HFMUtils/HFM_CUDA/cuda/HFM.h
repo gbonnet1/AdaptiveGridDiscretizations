@@ -1,74 +1,10 @@
+#pragma once
 /**
 This file implements common rountines for HFM-type fast marching methods 
 implemented on the GPU using CUDA.
 */
-
-Scalar infinity(){return 1./0.;}
-Scalar not_a_number(){return 0./0.;}
-
-/// Ceil of the division of positive numbers
-Int ceil_div(Int num, Int den){return (num+den-1)/den;}
-
 // ---------------- Grid related methods -----------------
 
-struct GridType {
-	/** A multi-dimensional array, with data organized in blocks for faster access.
-	Out of domain values yield +infinity.*/
-
-	Int shape[ndim]; // Shape of full array
-	Int shape_o[ndim]; // shape/blockShape
-
-	bool InRange(Int x[ndim]) const {
-		for(Int k=0; k<ndim; ++k){
-			if(x[k]<0 || x[k]>=shape[k]){
-				return false;
-			}
-		}
-		return true;
-	}
-
-	bool InRange_i(Int x_i[ndim]) const {
-		for(Int k=0; k<ndim; ++k){
-			if(x_i[k]<0 || x_i[k]>=shape_i[k]){
-				return false;
-			}
-		}
-		return true;
-	}
-
-	Int Index(Int x[ndim]) const {
-		// Get the index of a point in the array.
-		// No bounds check 
-		Int n_o=0,n_i=0;
-		for(Int k=0; k<ndim; ++k){
-			const Int 
-			s_i = shape_i[k],
-			x_o= x[k]/s_i,
-			x_i= x[k]%s_i;
-			if(k>0) {n_o*=shape_o[k]; n_i*=s_i;}
-			n_o+=x_o; n_i+=x_i; 
-		}
-
-		const Int n=n_o*size_i+n_i;
-		return n;
-	}
-
-	Int Index_i(Int x_i[ndim]) const {
-		Int n_i=0; 
-		for(Int k=0; k<ndim; ++k){
-			if(k>0) {n_i*=shape_i[k];}
-			n_i+=x_i[k];
-		}
-		return n_i;
-	}
-
-};
-
-bool GetBool(const BoolPack * arr, Int n){
-	const Int m = 8*sizeof(BoolPack);
-	const Int q = n/m, r=n%m;
-	return (arr[q] >> r) & BoolPack(1);
-}
 
 bool order(Scalar * v, Int i){
 	// swaps v[i] and v[i+1] if v[i]>v[i+1]. Used in bubble sort.
@@ -120,7 +56,7 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 			v[k] = s==0 ? v_ : min(v_,v[k]);
 			
 			/*
-			if(debug_print && n_i==n_print2){
+			if(debug_print && n_i==n_2){
 				printf("k%i,s%i, wi %i, v_ %f, v[k] %f\n",k,s,w_i,v_,v[k]);
 				printf("u_i[2] %f, u_i[3] %f,  u_i[4] %f\n", u_i[2],u_i[3],u_i[4]);
 
