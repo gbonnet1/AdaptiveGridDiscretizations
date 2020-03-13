@@ -23,7 +23,7 @@ extern "C" {
 
 */
 __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPack * seeds, 
-	const Int * paramsInt, const Scalar * paramsScalar,
+	const Scalar * paramsScalar,
 	BoolPack * updateNow_o, BoolPack * updateNext_o){ // Used as simple booleans
 
 	__shared__ Int shape_o[ndim];
@@ -62,14 +62,13 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	u_i[n_i] = u_old;
 
 	// Get the neighbor values, or their indices if interior to the block
-	Scalar v_o[2*ndim];
-	Int    v_i[2*ndim];
-	for(Int k=0; k<ndim; ++k){
+	Scalar v_o[ntot];
+	Int    v_i[ntot];
+	for(Int k=0,ks=0; k<nsym; ++k){
 		for(Int s=0; s<2; ++s){
 			Int * y = x; // Caution : aliasing
 			Int * y_i = x_i;
 			const Int eps=2*s-1;
-			const Int ks = 2*k+s;
 
 			y[k]+=eps; y_i[k]+=eps;
 			if(InRange(y_i,shape_i))  {v_i[ks] = Index(y_i,shape_i);}
@@ -79,6 +78,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 				else {v_o[ks] = infinity();}
 			}
 			y[k]-=eps; y_i[k]-=eps;
+			++ks;
 		}
 	}
 	__syncthreads();
@@ -89,38 +89,25 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	
 	// Find the smallest value which was changed.
 	const Scalar u_diff = abs(u_old - u_i[n_i]);
-	if( !(u_diff>tol) ){// Ignores NaNs (contrary to u_diff<=tol)
+	if( !(u_diff>tol) ){// Equivalent to u_diff<=tol, but Ignores NaNs 
 		u_i[n_i]=infinity();}
 	__syncthreads();
 
-/*
-	if(debug_print && n_i==9){
-		printf("n_i %i, u_old %f, u_new %f,\n",n_i,u_old,u_i[n_i]);
+	Reduce_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
+	__syncthreads();
+
+	// Tag neighbor blocks for update
+	if(u_i[0]!=infinity() && n_i<=2*ndim){ 
+		Int k = n_i/2;
+		const Int s = n_i%2;
+		Int eps = 2*s-1;
+		if(n_i==2*ndim){k=0; eps=0;}
+
+		Int neigh_o[ndim];
+		for(Int l=0; l<ndim; ++l) {neigh_o[l]=n_o[l];}
+		neigh_o[k]+=eps;
+		if(InRange(neigh_o,shape_o)) {updateNext_o[Index(neigh_o,shape_o)]=1;}
 	}
-
-*/
-/*
-	if(debug_print && n==0){
-		printf("u_i[0] %f,u_i[1] %f,u_i[2] %f\n",u_i[0],u_i[1],u_i[2]);
-	}
-*/
-
-
-	Min0(n_i,u_i);
-	/*
-	Int shift=1;
-	for(Int k=0; k<log2_size_i; ++k){
-		Int old_shift=shift;
-		shift=shift<<1;
-		if( (n_i%shift)==0){
-			Int m_i = n_i+old_shift;
-			if(m_i<size_i){
-				u_i[n_i] = min(u_i[n_i],u_i[m_i]);
-			}
-		}
-		if(k<log2_size_i-1) {__syncthreads();}
-	}*/
-	if(n_i==0) {min_chg[blockIdx.x]=u_i[0];}
 
 	if(debug_print && n==0){
 		printf("tol %f\n",tol);
