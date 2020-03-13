@@ -17,22 +17,52 @@ extern "C" {
 	 - step : avoid roundoff errors
 	front_dist (uchar) : 
 	 distance in blocks to the front. 
-	 0 -> converged, adjusted
+	 0 -> converged
 	 1 -> converged,
 	 ..-> not converged
 
 */
 __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPack * seeds, 
-	const Int * params_Int, const Scalar * params_Scalar, // parameters
-	const Int * _x_o, BoolPack * front_dist){ // block organization
+	const Int * paramsInt, const Scalar * paramsScalar,
+	BoolPack * updateNow_o, BoolPack * updateNext_o){ // Used as simple booleans
 
-	__shared__ Int shape[ndim]; // Outer shape of domain
-	__shared__ Int shape_o[ndim]; // Inner shape of domain
+	__shared__ Int shape_o[ndim];
+	__shared__ Int x_o[ndim];
+	__shared__ Int n_o;
+	__shared__ BoolPack makeUpdate;
+	if(n==0){
+		x_o[0]=blockIdx.x;     x_o[1]=blockIdx.y;     if(ndim==3) x_o[2]=blockIdx.z;
+		shape_o[0]=blockDim.x; shape_o[1]=blockDim.y; if(ndim==3) shape_o[2]=blockDim.z;
+		n_o = Index(x_o,shape_o);
+		makeUpdate = updateNow_o[n_o];
+	}
+
+	__syncthreads();
+	if(!makeUpdate){return;}
+
+	__shared__ Scalar tol;
+	if(n==0){
+		updateNow_o[n_o] = 0;
+		tol = params_Scalar[0];
+		//	const Scalar step = params_Scalar[1]; // Avoid roundoff errors
+	}
+
+
+	Int x_i[ndim], x[ndim];
+	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[2]=threadIdx.z;
+	for(int k=0; k<ndim; ++k){x[k] = x_o[k]*shape_i[k]+x_i[k];}
+
+	const Int n_i = Index(x_i,shape_i);
+	const Int n = n_o*size_i + n_i;
+
+	const bool isSeed = GetBool(seeds,n);
+	const Scalar cost = metric[n];
+	const Scalar u_old = u[n];
 	__shared__ Scalar u_i[size_i]; // Shared block values
+	u_i[n_i] = u_old;
 
-	const Scalar tol = params_Scalar[0]; // Tolerance for the fixed point problem
-//	const Scalar step = params_Scalar[1]; // Avoid roundoff errors
 
+/*
 	// Setup coordinate system
 	Int x_i[ndim], x_o[ndim], x[ndim]; 
 	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[2]=threadIdx.z;
@@ -45,15 +75,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	const Int n_i = Index(x_i,shape_i)
 	if(n_i<ndim){shape[n_i] = params_Int[n_i];}
 	if(ndim<=n_i && n_i<2*n_dim){shape_o[n_i-ndim] = params_Int[n_i];}
-
-	__syncthreads()
-	const Int n_o = Index(x_o,shape_o);
-	const Int n = n_o*size_i + n_i;
-	const Scalar u_old = u[n];
-	u_i[n_i] = u_old;
-
-	const Scalar cost = metric[n];
-	const bool active = (cost < infinity()) && (! GetBool(seeds,n));
+*/
 
 	// Get the neighbor values, or their indices if interior to the block
 	Scalar v_o[2*ndim];
