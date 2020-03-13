@@ -1,67 +1,12 @@
-from . import misc
 import numpy as np
 import os
+import time
+
+from . import misc
+from . import kernel_traits
+from . import solvers
 from .. import Grid
 
-
-def default_traits(model):
-	"""
-	Default traits of the GPU implementation of an HFM model.
-	"""
-	traits = {
-	'Scalar':'float32',
-	'Int':   'int32',
-	}
-
-	if model=='Isotropic2':
-		traits.update({
-		'shape_i':(8,8),
-		})
-	elif model=='Isotropic3':
-		traits.update({
-		'shape_i':(4,4,4),
-		})
-	else:
-		raise ValueError("Unsupported model")
-
-	return traits
-
-def kernel_source(model,traits):
-	"""
-	Returns the source (mostly a preamble) for the gpu kernel code 
-	for the given traits and model.
-	"""
-	source = "".join(f"#define {key}_macro\n" for key in traits)
-	traits = traits.copy()
-
-	if 'shape_i' in traits:
-		shape_i = traits.pop('shape_i')
-		size_i = np.prod(shape_i)
-		log2_size_i = int(np.ceil(np.log2(size_i)))
-		source += (f"const int shape_i[{len(shape_i)}] = " 
-			+ "{" +",".join(str(s) for s in shape_i)+ "};\n"
-			+ f"const int size_i = {size_i};\n"
-			+ f"const int log2_size_i = {log2_size_i};\n")
-
-	if 'Scalar' in traits:
-		Scalar = traits.pop('Scalar')
-		if   'float32' in str(Scalar): ctype = 'float'
-		elif 'float64' in str(Scalar): ctype = 'double'
-		else: raise ValueError(f"Unrecognized scalar type {Scalar}")
-		source += f"typedef Scalar {ctype};\n"
-
-	if 'Int' in traits:
-		Int = traits.pop('Int')
-		if   'int32' in str(Int): ctype = 'int'
-		elif 'int64' in str(Int): ctype = 'long long'
-		else: raise ValueError(f"Unrecognized scalar type {Int}")
-		source += f"typedef Int {ctype};\n"
-
-	for key,value in traits.items():
-		source += f"const int {key}={value};\n"
-
-	source += f'#include "{model}.h"\n'
-	return source
 
 def RunGPU(hfmIn,returns='out'):
 	"""
@@ -86,7 +31,7 @@ def RunGPU(hfmIn,returns='out'):
 
 	# ---- Get traits ----
 	if verbosity>=1: print("Preparing the GPU kernel for (excludes compilation)")
-	traits = default_traits(model)
+	traits = kernel_traits.default_traits(model)
 	traits.update(misc.GetValue(hfmIn,'traits',hfmOut,default={},
 		help="Optional traits parameters passed to kernel"))
 	float_t = np.dtype(traits['Scalar']).type
@@ -131,14 +76,17 @@ def RunGPU(hfmIn,returns='out'):
 	block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 	
 	# -------- Prepare the GPU kernel ---------
-	source = kernel_source(model,traits)
+	source = kernel_traits.kernel_source(model,traits)
 	kernel = misc.GetValue(hfmIn,'kernel',hfmOut,default="None",
 		help="Saved GPU Kernel from a previous run, to bypass compilation")
 	if kernel == "None":
-		cuoptions = (
-			"-default-device",
-			f"-I {os.path.realpath('./cpp')}"
-			)
+		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
+		date_modified = max(os.path.getmtime(os.path.join(cuda_path,file)) 
+			for file in os.listdir(cuda_path))
+		source += f"// Date cuda code last modified : {date_modified}\n"
+		cuoptions = ("-default-device", f"-I {cuda_path}"
+			) + misc.GetValue(hfmIn,'cuoptions',hfmOut,default=tuple(),
+			help="Options passed via cupy.RawKernel to the cuda compiler")
 		import cupy
 		kernel = cupy.RawKernel(source,'IsotropicUpdate',options=cuoptions)
 	else:
@@ -148,36 +96,57 @@ def RunGPU(hfmIn,returns='out'):
 	# Setup and run the eikonal solver
 	solver = misc.GetValue(hfmIn,'solver',hfmOut,
 		help="Choice of fixed point solver")
-	solverMaxIter = misc.GetValue(hfmIn,'solverMaxIter',hfmOut,default=500,
-		help="Maximum number of iterations for the solver")
+	nitermax_o = misc.GetValue(hfmIn,'nitermax_o',hfmOut,default=500,
+		help="Maximum number of iterations of the solver")
 	tol = float_t(misc.GetValue(hfmIn,'tol',hfmOut,1e-8,
 		help="Convergence tolerance for the fixed point solver"))
 
-	if returns=='in_raw':
-		return {
-		'block_values':block_values,
-		'block_metric':block_metric,
-		'block_seedTags':block_seedTags,
-		'kernel':kernel,
-		'source':source,
-		'hfmOut':hfmOut
-		}
+	in_raw = {
+	'block_values':block_values,
+	'block_metric':block_metric,
+	'block_seedTags':block_seedTags,
+	'kernel':kernel,
+	'source':source
+	}
+	if returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
 
-	if solver=='globalIteration':
-		ax_o = tuple(xp.arange(s,dtype=int_t) for s in shape_o)
-		x_o = xp.meshgrid(*ax_o, indexing='ij')
-		x_o = xp.stack(x_o,axis=-1)
-		min_chg = xp.full(x_o.shape[:-1],np.inf,dtype=float_t)
+	data_t = (float_t,int_t)
+	shapes_io = (shape_i,shape_o)
+	kernel_args = (block_values,block_metric,block_seedTags,shape,tol)
+	kernel_args = tuple(arg if isinstance(arg,xp.ndarray) else 
+		xp.array(arg,kernel_traits.dtype(arg,data_t)) for arg in kernel_args)
 
-#		print(f"{x_o.flatten()=},{min_chg=}")
+	print(kernel_args)
+	solver_start_time = time.time()
 
-		for i in range(solverMaxIter):
-			kernel(block_values,block_metric,block_seedTags,shape,x_o,min_chg,tol)
-			if np.all(np.isinf(min_chg)):
-				break
+	if solver=='global_iteration':
+		niter_o = solvers.global_iteration(tol,nitermax_o,data_t,shapes_io,kernel_args,kernel)
+	elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
+		niter_o = solvers.adaptive_gauss_siedel_iteration(
+			tol,nitermax_o,data_t,shapes_io,kernel_args,kernel)
+	else:
+		raise ValueError(f"Unrecognized solver : {solver}")
+
+	hfmOut['solverGPUTime']=time.time() - solver_start_time
+
+	if niter_o>=nitermax_o:
+		nonconv_msg = (f"Solver {solver} did not reach convergence after "
+			f"maximum allowed number {niter_o} of iterations")
+		if misc.GetValue(hfmIn,'raiseOnNonConvergence',hfmOut,default=True):
+			raise ValueError(nonconv_msg)
 		else:
-			raise ValueError(f"Solver {solver} did not reach convergence after "
-				f"{solverMaxIter} iterations")
+			print("---- Warning ----\n",nonconv_msg,"\n-----------------\n")
+
+	out_raw = {
+	'block_values':block_values
+	}
+	if returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
+
+	values = misc.block_squeeze(block_values,shape)
+	hfmOut['values'] = values
+
+	return hfmOut
+
 
 
 	#(u,cost,seeds,shape,x_o,min_chg,tol)

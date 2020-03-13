@@ -79,6 +79,15 @@ bool order(Scalar * v, Int i){
 	return true;
 }
 
+void bubble_sort(Scalar v[nact]){
+	for(Int k=nact-1; k>=1; --k){
+		for(Int r=0; r<k; ++r){
+			order(v,r);
+		}
+	}
+}
+
+
 void Min0(const Int n_i, Scalar u_i[size_i]){
 	/// Stores the minimum value in the first array entry
 	Int shift=1;
@@ -100,7 +109,8 @@ void Min0(const Int n_i, Scalar u_i[size_i]){
 Scalar HFMUpdate(const Int n_i, const Scalar cost,
 	const Scalar v_o[ntot], const Int v_i[ntot], const Scalar u_i[size_i]){
 
-	// Get the minimal value among the right and left neighbors
+	// Get the value for the symmetric offsets 
+	// (minimal value among the right and left neighbors)
 	Scalar v[nact];
 	for(Int k=0; k<nsym; ++k){
 		for(Int s=0; s<=1; ++s){
@@ -109,26 +119,24 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 			const Scalar v_ = w_i>=0 ? u_i[w_i] : v_o[ks];
 			v[k] = s==0 ? v_ : min(v_,v[k]);
 			
+			/*
 			if(debug_print && n_i==n_print2){
 				printf("k%i,s%i, wi %i, v_ %f, v[k] %f\n",k,s,w_i,v_,v[k]);
 				printf("u_i[2] %f, u_i[3] %f,  u_i[4] %f\n", u_i[2],u_i[3],u_i[4]);
 
-			}
+			}*/
 		}
 	}
 
+	// Get the value for the forward offsets
 	for(Int k=0; k<nfwd; ++k){
 		const Int w_i = v_i[2*nsym+k];
 		v[nsym+k] = w_i>=0 ? u_i[w_i] : v_o[2*nsym+k];
 	}
 
-	// Sort the values (using a bubble sort)
-	for(Int k=nact-1; k>=1; --k){
-		for(Int r=0; r<k; ++r){
-			order(v,r);
-		}
-	}
+	bubble_sort(v);
 
+/*
 	if(debug_print && n_i==n_print2){
 		printf("\n");
 		for(Int k=0;k<nsym;++k){
@@ -136,7 +144,7 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 		}
 		printf("value %f\n",u_i[n_i]);
 	}
-
+*/
 	// Compute the update
 	const Scalar vmin = v[0];
 	if(vmin==infinity()){return vmin;}
@@ -145,7 +153,7 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 	for(Int k=1; k<nact; ++k){
 		const Scalar t = v[k] - vmin;
 		if(value<=t){
-			if(debug_print && n_i==n_print2) printf("value sent %f\n\n",vmin+value); 
+//			if(debug_print && n_i==n_print2) printf("value sent %f\n\n",vmin+value); 
 			return vmin+value;}
 		a+=1.;
 		b+=t;
@@ -154,10 +162,31 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 		const Scalar sdelta = sqrt(delta);
 		value = (b+sdelta)/a;
 	}
-
+/*
 	if(debug_print && n_i==n_print2){
 		printf("value solved %f\n\n",vmin+value);
 	}
-
+*/
 	return vmin+value;
+}
+
+void HFMIter(const bool active, const Int n_i, const Scalar cost,
+	const Scalar v_o[ntot], const Int v_i[ntot], Scalar u_i[size_i]){
+
+	#if strict_iter_i
+	__shared__ Scalar u_i_new[size_i];
+	for(int i=0; i<niter_i; ++i){
+		if(active) {u_i_new[n_i] = HFMUpdate(n_i,cost,v_o,v_i,u_i);}
+		__syncthreads();
+		u_i[n_i]=u_i_new[n_i];
+		__syncthreads();
+	}
+
+	#else
+	for(int i=0; i<niter_i; ++i){
+		if(active) {u_i[n_i] = HFMUpdate(n_i,cost,v_o,v_i,u_i);}
+		__syncthreads();
+	}
+
+	#endif
 }

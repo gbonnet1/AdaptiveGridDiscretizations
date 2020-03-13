@@ -13,8 +13,8 @@ const Int size_i = 64; // Product of shape_i
 const Int log2_size_i = 6; // Upper bound on log_2(size_i)
 #endif
 
-#ifndef niter_macro
-const Int niter = 8;
+#ifndef niter_i_macro
+const Int niter_i = 8;
 #endif
 
 #include "Isotropic_.h"
