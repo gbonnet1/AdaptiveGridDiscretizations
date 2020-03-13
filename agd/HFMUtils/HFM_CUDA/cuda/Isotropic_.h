@@ -61,22 +61,6 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	__shared__ Scalar u_i[size_i]; // Shared block values
 	u_i[n_i] = u_old;
 
-
-/*
-	// Setup coordinate system
-	Int x_i[ndim], x_o[ndim], x[ndim]; 
-	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[2]=threadIdx.z;
-	const Int * __x_o = _x_o + ndim*blockIdx.x;
-	for(int k=0; k<ndim; ++k){
-		x_o[k] = __x_o[k];
-		x[k] = x_o[k]*shape_i[k]+x_i[k];
-	}
-
-	const Int n_i = Index(x_i,shape_i)
-	if(n_i<ndim){shape[n_i] = params_Int[n_i];}
-	if(ndim<=n_i && n_i<2*n_dim){shape_o[n_i-ndim] = params_Int[n_i];}
-*/
-
 	// Get the neighbor values, or their indices if interior to the block
 	Scalar v_o[2*ndim];
 	Int    v_i[2*ndim];
