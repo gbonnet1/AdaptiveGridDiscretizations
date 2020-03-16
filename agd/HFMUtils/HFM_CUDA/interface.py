@@ -146,48 +146,48 @@ class Interface(object):
 			help="Options passed via cupy.RawKernel to the cuda compiler")
 
 		import cupy
-		cupy_has_modules = Version(cupy.__version__) >= Version("8")
-		if cupy_has_modules:
-			self.module = cupy.RawModule(source,options=cuoptions)
-			self.kernels = {"Update":self.module.get_function('Update')}
-			SetConstant = self.SetModuleConstant
+		self.cupy_old = True # or Version(cupy.__version__) < Version("8") # Untested
+		if self.cupy_old:
+			self.module = cupy.core.core.compile_with_cache(self.source, 
+				options=cuoptions, prepend_cupy_headers=False)
 		else:
-			SetConstant = self.SetCompileConstant
+			self.module = cupy.RawModule(source,options=cuoptions)
 
 		float_t,int_t = self.float_t,self.int_t
 		tol = self.float_t(self.GetValue('tol',1e-8,
 			help="Convergence tolerance for the fixed point solver"))
-		SetConstant('tol',tol,float_t)
+		self.SetModuleConstant('tol',tol,float_t)
 
 		self.size_o = np.prod(self.shape_o)
-		SetConstant('shape_o',self.shape_o,int_t)
-		SetConstant('size_o', self.size_o, int_t)
+		self.SetModuleConstant('shape_o',self.shape_o,int_t)
+		self.SetModuleConstant('size_o', self.size_o, int_t)
 
 		shape_tot = np.array(self.shape_o)*np.array(self.shape_i)
 		size_tot = np.prod(shape_tot)
-		SetConstant('shape_tot',shape_tot,int_t)
-		SetConstant('size_tot', size_tot, int_t)
+		self.SetModuleConstant('shape_tot',shape_tot,int_t)
+		self.SetModuleConstant('size_tot', size_tot, int_t)
 
-
+		"""
 		if not cupy_has_modules: 
 			# Support outdated cupy version.
 			# We use compile time constants, rather than cuda __constant__. 
 			# This is silly, since it requires a recompilation each time the size is changed.
 			kernel = cupy.RawKernel(self.source,'Update',options=cuoptions)
 			self.kernels = {"Update":kernel}
+"""
 
 		in_raw.update({
 			'tol':tol,
-			'shape_o':shape_o,
+			'shape_o':self.shape_o,
 			'shape_tot':shape_tot,
 			'source':self.source
 			})
 
 		# TODO : factorization, multiprecision
 
-
+		"""
 	def SetCompileConstant(self,key,value,dtype):
-		"""Sets a compile time constant in the cupy cuda module source"""
+		"Sets a compile time constant in the cupy cuda module source"
 		if   dtype == self.float_t: self.source += "const Scalar "
 		elif dtype == self.int_t:   self.source += "const Int "
 		else: raise ValueError(f"Unrecognized dtype {dtype}")
@@ -198,25 +198,30 @@ class Interface(object):
 		else:
 			self.source += f"{key} = {value}"
 		self.source += ";\n"
+		"""
 
 	def SetModuleConstant(self,key,value,dtype):
 		"""Sets a global constant in the cupy cuda module"""
 		xp = self.xp
 		value=xp.array(value,dtype=dtype)
-		memptr = self.kernel.get_global(key)
-		# ...wrap it using cupy.ndarray with a known shape
-		arr_ndarray = xp.ndarray(value.shape, value.dtype, memptr)
-		# ...perform data transfer to initialize it
-		arr_ndarray[...] = value
+		if self.cupy_old:
+			#https://github.com/cupy/cupy/issues/1703
+			b = xp.core.core.memory_module.BaseMemory()
+			b.ptr = self.module.get_global_var(key)
+			memptr = xp.cuda.MemoryPointer(b,0)
+		else: 
+			memptr = self.kernel.get_global(key)
+		module_constant = xp.ndarray(value.shape, value.dtype, memptr)
+		module_constant[...] = value
 
 
 	def SetSolver(self):
 		if self.verbosity>=1: print("Setup and run the eikonal solver")
-		self.solver = self.GetValue('solver',help="Choice of fixed point solver")
+		solver = self.GetValue('solver',help="Choice of fixed point solver")
 		self.nitermax_o = self.GetValue('nitermax_o',default=2000,
 			help="Maximum number of iterations of the solver")
 
-		if returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
+		if self.returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
 
 		kernel_args = tuple(self.block[key] for key in ('values','metric','seedTags'))
 

@@ -19,6 +19,7 @@ def global_iteration(self,kernel_args):
 	updateNow_o  = xp.arange(self.size_o, dtype=self.int_t)
 	updateNext_o = xp.zeros( self.shape_o,    dtype='uint8')
 	updateList_o = xp.nonzero(updateNow_o.flatten(), dtype=self.int_t)
+	kernel = self.module.get_function("Update")
 
 	raise ValueError("TODO")
 	for niter_o in range(nitermax_o):
@@ -54,12 +55,13 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 	xp = self.xp
 	block_values,block_seedTags = (self.block[key] for key in ('values','seedTags'))
 
-	finite_o = xp.any(xp.isfinite(block_values).reshape( shape_o + (-1,) ),axis=-1)
+	finite_o = xp.any(xp.isfinite(block_values).reshape( self.shape_o + (-1,) ),axis=-1)
 	seed_o = xp.any(block_seedTags,axis=-1)
 
 	updateNow_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
-	updateNext_o = xp.zeros(shape_o, dtype='uint8') 
-	
+	updateNext_o = xp.zeros(self.shape_o, dtype='uint8') 
+	kernel = self.module.get_function("Update")
+
 	raise ValueError("TODO")
 	for niter_o in range(nitermax_o):
 		updateList_o = xp.nonzero(updateNow_o.flatten(), dtype=self.int_t)
