@@ -131,7 +131,10 @@ class Interface(object):
 	def SetKernel():
 		if verbosity>=1: print("Preparing the GPU kernel")
 		if self.GetValue('dummy_kernel',default=False): return
+		in_raw = self.in_raw
 		source = kernel_traits.kernel_source(model,traits)
+		in_raw['source']=source
+
 		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 		date_modified = max(os.path.getmtime(os.path.join(cuda_path,file)) 
 			for file in os.listdir(cuda_path))
@@ -141,11 +144,32 @@ class Interface(object):
 			help="Options passed via cupy.RawKernel to the cuda compiler")
 		import cupy
 		self.kernel = cupy.RawModule(source,options=cuoptions)
-		self.in_raw.update({'kernel_source':kernel_source,'kernel':self.kernel})
+		in_raw['kernel']=kernel
 
-		# TODO : set the constants
-		self.tol = self.float_t(misc.GetValue(hfmIn,'tol',hfmOut,1e-8,
+		tol = self.float_t(misc.GetValue(hfmIn,'tol',hfmOut,1e-8,
 			help="Convergence tolerance for the fixed point solver"))
+
+		float_t,int_t = self.float_t,self.int_t
+		SetKernelConstant('tol',tol,float_t)
+		SetKernelConstant('shape_o',self.shape_o,int_t)
+		SetKernelConstant('size_o',xp.prod(self.size_o,int_t),int_t)
+
+		shape_tot = self.shape_o*self.shape_i
+		SetKernelConstant('shape_tot',shape_tot,int_t)
+		SetKernelConstant('size_tot',xp.prod(shape_tot),int_t)
+
+		# TODO : factorization, multiprecision
+
+		in_raw.update({'tol':tol,'shape_o':shape_o,'shape_tot':shape_tot})
+
+	def SetKernelConstant(key,value,dtype):
+		xp = self.xp
+		value=xp.array(value,dtype=dtype)
+		memptr = self.kernel.get_global(key)
+		# ...wrap it using cupy.ndarray with a known shape
+		arr_ndarray = xp.ndarray(value.shape, value.dtype, memptr)
+		# ...perform data transfer to initialize it
+		arr_ndarray[...] = value
 
 
 	def SetSolver():
@@ -153,5 +177,14 @@ class Interface(object):
 		self.solver = self.GetValue('solver',help="Choice of fixed point solver")
 		self.nitermax_o = self.GetValue('nitermax_o',default=2000,
 			help="Maximum number of iterations of the solver")
+
+		if returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
+
+		data_t = (float_t,int_t)
+		shapes_io = (shape_i,shape_o)
+		kernel_args = (block_values,block_metric,block_seedTags,tol)
+		kernel_args = tuple(arg if isinstance(arg,xp.ndarray) else 
+		xp.array(arg,kernel_traits.dtype(arg,data_t)) for arg in kernel_args)
+
 
 

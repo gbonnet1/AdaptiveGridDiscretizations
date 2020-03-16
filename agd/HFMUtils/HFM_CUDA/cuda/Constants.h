@@ -13,13 +13,15 @@ __constant__ Scalar tol;
 __constant__ Scalar step;
 #endif
 
-/// Shape of the full domain
-__constant__ Int shape[ndim];
-__constant__ Int size; // product(shape)
 
-// Shape of the outer domain
+/// Shape of the outer domain
 __constant__ Int shape_o[ndim];
 __constant__ Int size_o;
+
+/// Shape of the full domain
+__constant__ Int shape_tot[ndim]; // shape_i * shape_o
+__constant__ Int size_tot; // product(shape_tot)
+
 
 #if factor_macro
 __constant__ Scalar factor_metric[factor_macro][metric_size];
