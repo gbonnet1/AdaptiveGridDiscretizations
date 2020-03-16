@@ -42,7 +42,7 @@ def norm_average(arr,*args,**kwargs):
 	"""
 	return norm(arr,1,*args,**kwargs,averaged=True)
 
-class stop_default(object):
+class stop_default:
 	"""
 	Default stopping criterion for the newton method.
 	Parameters : 
@@ -107,7 +107,7 @@ class stop_default(object):
 
 		return False		
 
-class damping_default(object):
+class damping_default:
 	def __init__(self,criterion=None,refine_factor=2.,step_min=2.e-3,raise_on_abort=False):
 		self.criterion=criterion
 		self.refine_factor=refine_factor

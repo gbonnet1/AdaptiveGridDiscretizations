@@ -6,7 +6,7 @@ import numpy as np
 from functools import reduce
 from itertools import cycle
 
-class Domain(object):
+class Domain:
 	"""
 	This class represents a domain from which one can query 
 	a level set function, the boundary distance in a given direction,
@@ -455,7 +455,7 @@ class AffineTransform(Domain):
 	def freeway(self,x,v):
 		return self.dom.freeway(self.reverse(x),self.reverse(v,linear=True))
 
-class Dirichlet(object):
+class Dirichlet:
 	"""
 	Implements Dirichlet boundary conditions.
 	When computing finite differences, values queried outside the domain interior
@@ -619,7 +619,7 @@ class Dirichlet(object):
 
 		return (du0+du1)*(2./(h0+h1))
 
-class MockDirichlet(object):
+class MockDirichlet:
 	"""
 	Implements a crude version of Dirichlet boundary conditions, 
 	where the boundary conditions are given on the full domain complement.

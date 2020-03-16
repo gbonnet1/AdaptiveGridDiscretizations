@@ -15,7 +15,7 @@ in a manner compatible with automatic differentiation.
 # when far from the boundary, in non-periodic mode. (Introduce interior nodes.)
 
 
-class _spline_univariate(object):
+class _spline_univariate:
 	"""
 	A univariate spline of a given order, with not-a-knot boundary conditions.
 	"""
@@ -217,7 +217,7 @@ def _banded_densify(lu,t):
 				mat[i,j]=t[k,j]
 	return mat
 
-class _spline_tensor(object):
+class _spline_tensor:
 	"""
 	A tensor product of univariate splines.
 	"""
@@ -276,7 +276,7 @@ class _spline_tensor(object):
 def _append_dims(x,ndim):
 	return np.reshape(x,x.shape+(1,)*ndim)
 
-class UniformGridInterpolation(object):
+class UniformGridInterpolation:
 	"""
 	Interpolates values on a uniform grid, in arbitrary dimension, using splines of 
 	a given order.
