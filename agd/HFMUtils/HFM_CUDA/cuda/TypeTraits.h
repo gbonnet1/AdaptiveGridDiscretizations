@@ -9,6 +9,7 @@ typedef int Int;
 #endif
 
 typedef unsigned char BoolPack;
+typedef unsigned char BoolAtom;
 
 /* A positive value may cause debug messages to be printed*/
 #ifndef debug_print_macro

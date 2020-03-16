@@ -24,36 +24,42 @@ extern "C" {
 */
 __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPack * seeds, 
 	const Scalar * paramsScalar,
-	BoolPack * updateNow_o, BoolPack * updateNext_o){ // Used as simple booleans
+	BoolAtom * updateNow_o, BoolAtom * updateNext_o){ // Used as simple booleans
 
 	__shared__ Int shape_o[ndim];
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
-	__shared__ BoolPack makeUpdate;
-	if(n==0){
-		x_o[0]=blockIdx.x;     x_o[1]=blockIdx.y;     if(ndim==3) x_o[2]=blockIdx.z;
-		shape_o[0]=blockDim.x; shape_o[1]=blockDim.y; if(ndim==3) shape_o[2]=blockDim.z;
+	__shared__ BoolAtom makeUpdate;
+	if(threadIdx.x==0 && threadIdx.y==0 && threadIdx.z==0){
+		x_o[0]=blockIdx.x;     x_o[1]=blockIdx.y;     if(ndim==3) x_o[ndim-1]=blockIdx.z;
+		shape_o[0]=gridDim.x; shape_o[1]=gridDim.y; if(ndim==3) shape_o[ndim-1]=gridDim.z;
 		n_o = Index(x_o,shape_o);
 		makeUpdate = updateNow_o[n_o];
 	}
 
-	__syncthreads();
+	__syncthreads(); // __shared__ makeUpdate, ...
 	if(!makeUpdate){return;}
 
 	__shared__ Scalar tol;
-	if(n==0){
+	__shared__ Int shape[ndim];
+
+	Int x_i[ndim], x[ndim];
+	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[ndim-1]=threadIdx.z;
+	for(int k=0; k<ndim; ++k){
+		x[k] = x_o[k]*shape_i[k]+x_i[k];}
+
+	const Int n_i = Index(x_i,shape_i);
+	const Int n = n_o*size_i + n_i;
+
+	if(n_i==0){
+		for(int k=0; k<ndim; ++k){
+				shape[k] = shape_o[k]*shape_i[k];}
 		updateNow_o[n_o] = 0;
-		tol = params_Scalar[0];
+		tol = paramsScalar[0];
 		//	const Scalar step = params_Scalar[1]; // Avoid roundoff errors
 	}
 
 
-	Int x_i[ndim], x[ndim];
-	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[2]=threadIdx.z;
-	for(int k=0; k<ndim; ++k){x[k] = x_o[k]*shape_i[k]+x_i[k];}
-
-	const Int n_i = Index(x_i,shape_i);
-	const Int n = n_o*size_i + n_i;
 
 	const bool isSeed = GetBool(seeds,n);
 	const Scalar cost = metric[n];
@@ -61,6 +67,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	__shared__ Scalar u_i[size_i]; // Shared block values
 	u_i[n_i] = u_old;
 
+	__syncthreads(); // __shared__ shape. 
 	// Get the neighbor values, or their indices if interior to the block
 	Scalar v_o[ntot];
 	Int    v_i[ntot];
@@ -81,20 +88,20 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 			++ks;
 		}
 	}
-	__syncthreads();
+//	__syncthreads(); 
 
 	// Compute and save the values
-	HFMIter(active,n_i,cost,v_o,v_i,u_i);
+	HFMIter(!isSeed,n_i,cost,v_o,v_i,u_i);
 	u[n] = u_i[n_i];
 	
 	// Find the smallest value which was changed.
 	const Scalar u_diff = abs(u_old - u_i[n_i]);
 	if( !(u_diff>tol) ){// Equivalent to u_diff<=tol, but Ignores NaNs 
 		u_i[n_i]=infinity();}
-	__syncthreads();
+	__syncthreads(); // Get all values before reduction
 
 	Reduce_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
-	__syncthreads();
+	__syncthreads();  // Make u_i[0] accessible to all 
 
 	// Tag neighbor blocks for update
 	if(u_i[0]!=infinity() && n_i<=2*ndim){ 
@@ -104,11 +111,16 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 		if(n_i==2*ndim){k=0; eps=0;}
 
 		Int neigh_o[ndim];
-		for(Int l=0; l<ndim; ++l) {neigh_o[l]=n_o[l];}
+		for(Int l=0; l<ndim; ++l) {neigh_o[l]=x_o[l];}
 		neigh_o[k]+=eps;
 		if(InRange(neigh_o,shape_o)) {updateNext_o[Index(neigh_o,shape_o)]=1;}
 	}
 
+	if(debug_print && n==0){
+		printf("shape %i,%i",shape[0],shape[1]);
+
+	}
+/*
 	if(debug_print && n==0){
 		printf("tol %f\n",tol);
 		printf("shape %i,%i\n",shape[0],shape[1]);
@@ -122,6 +134,7 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 		printf("Hello world %f %i\n", u_i[0],blockIdx.x);
 		printf("min_chg[0] %f\n",min_chg[0]);
 	}
+	*/
 }
 
 } // Extern "C"

@@ -24,8 +24,8 @@ def default_traits(model):
 	Default traits of the GPU implementation of an HFM model.
 	"""
 	traits = {
-	'Scalar':'float32',
-	'Int':   'int32',
+	'Scalar':  'float32',
+	'Int':     'int32'
 	}
 
 	if model=='Isotropic2':

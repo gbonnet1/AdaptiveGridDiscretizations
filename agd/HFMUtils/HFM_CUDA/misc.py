@@ -16,7 +16,7 @@ def packbits(arr,bitorder='big'):
 def round_up(num,den):
 	"""
 	Returns the least multiple of den after num.
-	num and den must be integers.
+	num and den must be integers. 
 	"""
 	return (num+den-1)//den
 

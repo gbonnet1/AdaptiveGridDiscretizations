@@ -16,28 +16,16 @@ def global_iteration(tol,nitermax_o,data_t,shapes_io,
 	shape_i,shape_o = shapes_io
 	xp = misc.get_array_module(kernel_args[0])
 
-	ax_o = tuple(xp.arange(s,dtype=int_t) for s in shape_o)
-	x_o = xp.meshgrid(*ax_o, indexing='ij')
-	x_o = xp.stack(x_o,axis=-1)
-	min_chg = xp.empty(shape_o,dtype=float_t)
-	where_chg = xp.empty(shape_o,dtype=bool)
-	all_chg = xp.empty(tuple(),dtype=bool)
-	report['kernel_time']=[]
-
-#	min_chg = xp.full(x_o.shape[:-1],np.inf,dtype=float_t)
-#	print(f"{x_o.flatten()=},{min_chg=}")
-
+	updateNow_o  = xp.ones( shape_o,dtype='uint8')
+	updateNext_o = xp.zeros(shape_o,dtype='uint8') 
 	
 	for niter_o in range(nitermax_o):
-		time_start = time.time()
-		kernel((min_chg.size,),shape_i, kernel_args + (x_o,min_chg))
-		report['kernel_time'].append(time.time()-time_start)
+		kernel(shape_o,shape_i, kernel_args + (updateNow_o,updateNext_o))
 
-#		print(f"min_chg={min_chg}")
-		xp.isinf(min_chg,out=where_chg)
-		if xp.all(where_chg): return niter_o
-#		if xp.all(xp.isinf(min_chg)): return niter_o
-#	print(all_chg)
+		if not xp.any(updateNext_o): return niter_o
+		updateNow_o.fill(1)
+		updateNext_o.fill(0)
+
 	return nitermax_o
 
 def neighbors(x,shape):
@@ -67,33 +55,19 @@ def adaptive_gauss_siedel_iteration(tol,nitermax_o,data_t,shapes_io,
 	"""
 	float_t,int_t = data_t
 	shape_i,shape_o = shapes_io
-	xp = misc.get_array_module(kernel_args[0])
+	block_values,_,block_seedTags,_ = kernel_args
+	xp = misc.get_array_module(block_values)
 
-	block_seedTags = kernel_args[2]
-	block_seeds = np.any(block_seedTags!=0,axis=-1)
-	x_o = xp.nonzero(block_seeds)
-	x_o = tuple(xp.array(xi_o,dtype=int_t) for xi_o in x_o)
-	x_o = xp.stack(x_o,axis=-1)
-	min_chg = xp.full(shape_o,np.inf,dtype=float_t)
+	finite_o = xp.any(xp.isfinite(block_values).reshape( shape_o + (-1,) ),axis=-1)
+	seed_o = xp.any(block_seedTags,axis=-1)
 
-	report['kernel_time']=[]
-	report['block_updates']=[]
+	updateNow_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
+	updateNext_o = xp.zeros(shape_o,dtype='uint8') 
 	
 	for niter_o in range(nitermax_o):
-		time_start = time.time()
-		kernel((min_chg.size,),shape_i, kernel_args + (x_o,min_chg))
-		report['kernel_time'].append(time.time()-time_start)
-
-#		if xp.all(xp.isinf(min_chg)): return niter_o
-
-		"""
-		# Handle neighbors structure on the CPU, since there are few.
-		x_o,min_chg = x_o.get(),min_chg.get(); yp = np
-#		yp=xp
-		x_o = x_o[yp.isfinite(min_chg),:]
-		x_o = neighbors(x_o,shape_o)
-		x_o = xp.array(x_o,dtype=int_t)
-"""
+		kernel(shape_o,shape_i, kernel_args + (updateNow_o,updateNext_o))
+		if not xp.any(updateNext_o): return niter_o
+		updateNow_o,updateNext_o = updateNext_o,updateNow_o
 
 	return nitermax_o
 

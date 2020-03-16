@@ -16,7 +16,7 @@ const Int log2_size_i = 6; // Upper bound on log_2(size_i)
 #endif
 
 #ifndef niter_i_macro
-const Int niter_i = 8;
+const Int niter_i = 16;
 #endif
 
 #include "Isotropic_.h"

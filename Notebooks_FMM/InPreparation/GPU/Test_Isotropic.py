@@ -23,10 +23,10 @@ hfmIn = HFMUtils.dictIn({
     'arrayOrdering':'RowMajor',
     'seeds':[[0,0]],
 #    'kernel':"dummy",
-#    'solver':'AGSI', #'global_iteration',
-    'solver':'global_iteration',
+    'solver':'AGSI', 
+#    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':1200,
+    'nitermax_o':2000,
     'tol':1e-8,
 
     'verbosity':1,
@@ -35,12 +35,27 @@ hfmIn = HFMUtils.dictIn({
 	'gridScale':1,
 
 	'traits':{
+	'niter_i':32,'shape_i':(16,16)
 #    'debug_print':1,
 #    'niter_i':1,
 #    'strict_iter_i':1,
     },
 
 })
+
+if True:
+	hfmIn.update({
+		'model':'Isotropic3',
+		'dims':np.array((200,200,200)),
+		'seeds':[[0,0,0]],
+		})
+	hfmIn['traits'].update({
+		'niter_i':12,
+		'shape_i':(4,4,4),
+		})
+
+
+
 #hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
 hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
 
@@ -52,21 +67,39 @@ hfmOut = hfmIn.RunGPU()
 #print(hfmOut['values'])
 #print(hfmOut)
 
+
+if len(hfmOut['values'])<20: print(hfmOut['values'])
+print(f"niter_o : {hfmOut['niter_o']}")
+print(f"GPU time(s) : {hfmOut['solverGPUTime']}")
+
+#Comparison with CPU.
+
 hfmInCPU = hfmIn.copy()
 for key in ('traits','niter_o','solver','raiseOnNonConvergence','nitermax_o'): 
-	hfmInCPU.pop(key,None)
+		hfmInCPU.pop(key,None)
+
 hfmInCPU.update({
 	'exportValues':1,
-	'cost':hfmIn['cost'].get()
 })
-hfmOutCPU = hfmInCPU.Run()
 
-print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
-#print(hfmOut['values'])
+if False: #Isotopic code
+	hfmInCPU['cost']=hfmIn['cost'].get()
+	hfmOutCPU = hfmInCPU.Run()
+	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
+	print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']}")
 
-print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']}")
-print(f"niter_o : {hfmOut['niter_o']}")
-print("kernel_time : ",sum(hfmOut["kernel_time"][1:]))
+if True: # Riemannian code
+	from agd import Metrics
+	ndim = len(hfmInCPU['dims'])
+	hfmInCPU['model'] = f"Riemann{ndim}"
+	hfmInCPU.pop('cost')
+	hfmInCPU['metric'] = Metrics.Riemann(np.eye(ndim))
+
+	hfmOutCPU = hfmInCPU.RunSmart()
+	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
+	print(f"GPU(s) : {hfmOut['solverGPUTime']}, (Riemann) CPU(s) : {hfmOutCPU['FMCPUTime']}")
+
+#print("kernel_time : ",sum(hfmOut["kernel_time"][1:]))
 
 #import agd.HFMUtils.HFM_CUDA.solvers as solvers
 #x = np.array([[1,1],[0,0]])

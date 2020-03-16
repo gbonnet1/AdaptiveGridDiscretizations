@@ -42,7 +42,7 @@ def RunGPU(hfmIn,returns='out'):
 	shape = misc.GetValue(hfmIn,'dims',hfmOut,
 		help="dimensions (shape) of the computational domain").astype(int)
 	shape_i = traits['shape_i']
-	shape_o = misc.round_up(shape,shape_i)
+	shape_o = tuple(misc.round_up(shape,shape_i))
 	h = misc.GetValue(hfmIn,'gridScale',hfmOut,
 		help="Scale of the computational grid")
 	metric = misc.GetValue(hfmIn,'cost',hfmOut,
@@ -66,13 +66,12 @@ def RunGPU(hfmIn,returns='out'):
 		values[tuple(seedIndices.T)] = seedValues
 	else: 
 		raise ValueError("Positive seedRadius not supported yet")
-	block_values = misc.block_expand(values,shape_i,mode='constant',constant_values=xp.inf)
+	block_values = misc.block_expand(values,shape_i,mode='constant',constant_values=xp.nan)
 
 	# Tag the seeds
-	block_seedTags = block_values<float_t(np.inf)
-	block_seedTags = block_seedTags.reshape( tuple(shape_o) + (-1,) )
+	block_seedTags = xp.isfinite(block_values).reshape( shape_o + (-1,) )
 	block_seedTags = misc.packbits(block_seedTags,bitorder='little')
-	block_seedTags=block_seedTags.reshape(tuple(shape_o)+(-1,))
+	block_values[xp.isnan(block_values)] = xp.inf
 	
 	# -------- Prepare the GPU kernel ---------
 	source = kernel_traits.kernel_source(model,traits)
@@ -111,7 +110,7 @@ def RunGPU(hfmIn,returns='out'):
 
 	data_t = (float_t,int_t)
 	shapes_io = (shape_i,shape_o)
-	kernel_args = (block_values,block_metric,block_seedTags,shape,tol)
+	kernel_args = (block_values,block_metric,block_seedTags,tol)
 	kernel_args = tuple(arg if isinstance(arg,xp.ndarray) else 
 		xp.array(arg,kernel_traits.dtype(arg,data_t)) for arg in kernel_args)
 
