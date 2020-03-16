@@ -3,6 +3,7 @@
 const Int n_print = 100;
 const Int n_print2=3;
 
+#include "Constants.h"
 #include "Grid.h"
 #include "HFM.h"
 
@@ -26,13 +27,13 @@ __global__ void IsotropicUpdate(Scalar * u, const Scalar * metric, const BoolPac
 	const Scalar * paramsScalar,
 	BoolAtom * updateNow_o, BoolAtom * updateNext_o){ // Used as simple booleans
 
-	__shared__ Int shape_o[ndim];
+//	__shared__ Int shape_o[ndim];
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
 	__shared__ BoolAtom makeUpdate;
 	if(threadIdx.x==0 && threadIdx.y==0 && threadIdx.z==0){
 		x_o[0]=blockIdx.x;     x_o[1]=blockIdx.y;     if(ndim==3) x_o[ndim-1]=blockIdx.z;
-		shape_o[0]=gridDim.x; shape_o[1]=gridDim.y; if(ndim==3) shape_o[ndim-1]=gridDim.z;
+//		shape_o[0]=gridDim.x; shape_o[1]=gridDim.y; if(ndim==3) shape_o[ndim-1]=gridDim.z;
 		n_o = Index(x_o,shape_o);
 		makeUpdate = updateNow_o[n_o];
 	}
