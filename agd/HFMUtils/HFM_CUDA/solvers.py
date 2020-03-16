@@ -2,30 +2,28 @@ import numpy as np
 import time
 from . import misc
 
-def global_iteration(tol,nitermax_o,data_t,shapes_io,
-	kernel_args,kernel,report):
+"""
+The solvers defined below are member functions of the "interface" class devoted to 
+running the gpu eikonal solver.
+"""
+
+def global_iteration(self,kernel_args):
 	"""
 	Solves the eikonal equation by applying repeatedly the updates on the whole domain.
-	Inputs : 
-	 - tol (float) : convergence tolerance
-	 - nitermax_o (int) : maximum number of iterations 
-	 - data_t (tuple) : GPU float_t and int_t data types
-	 - block (tuple) : block_values,block_metric,block_seedTags
 	"""
-	float_t,int_t = data_t
-	shape_i,shape_o = shapes_io
-	xp = misc.get_array_module(kernel_args[0])
 
-	updateNow_o  = xp.ones( shape_o,dtype='uint8')
-	updateNext_o = xp.zeros(shape_o,dtype='uint8') 
+#	updateNow_o  = xp.ones( shape_o,dtype='uint8')
+#	updateNext_o = xp.zeros(shape_o,dtype='uint8') 
 	
+	xp=self.xp
+	updateNow_o  = xp.arange(self.size_o, dtype=self.int_t)
+	updateNext_o = xp.zeros( self.shape_o,    dtype='uint8')
+	updateList_o = xp.nonzero(updateNow_o.flatten(), dtype=self.int_t)
+
 	for niter_o in range(nitermax_o):
-		kernel(shape_o,shape_i, kernel_args + (updateNow_o,updateNext_o))
-
-		if not xp.any(updateNext_o): return niter_o
-		updateNow_o.fill(1)
-		updateNext_o.fill(0)
-
+		kernel(updateList_o.size,self.shape_i, kernel_args + (updateList_o,updateNext_o))
+		if xp.any(updateNext_o): updateNext_o.fill(0)
+		else: return niter_o
 	return nitermax_o
 
 def neighbors(x,shape):
@@ -48,24 +46,22 @@ def neighbors(x,shape):
 
 
 
-def adaptive_gauss_siedel_iteration(tol,nitermax_o,data_t,shapes_io,
-	kernel_args,kernel,report):
+def adaptive_gauss_siedel_iteration(self,kernel_args):
 	"""
-	Solves the eikonal equation by applying propagating updates, ignoring causality. 
+	Solves the eikonal equation by propagating updates, ignoring causality. 
 	"""
-	float_t,int_t = data_t
-	shape_i,shape_o = shapes_io
-	block_values,_,block_seedTags,_ = kernel_args
-	xp = misc.get_array_module(block_values)
+	xp = self.xp
+	block_values,block_seedTags = (self.block[key] for key in ('values','seedTags'))
 
 	finite_o = xp.any(xp.isfinite(block_values).reshape( shape_o + (-1,) ),axis=-1)
 	seed_o = xp.any(block_seedTags,axis=-1)
 
 	updateNow_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
-	updateNext_o = xp.zeros(shape_o,dtype='uint8') 
+	updateNext_o = xp.zeros(shape_o, dtype='uint8') 
 	
 	for niter_o in range(nitermax_o):
-		kernel(shape_o,shape_i, kernel_args + (updateNow_o,updateNext_o))
+		updateList_o = xp.nonzero(updateNow_o.flatten(), dtype=self.int_t)
+		kernel(updateList_o.size,shape_i, kernel_args + (updateList_o,updateNext_o))
 		if not xp.any(updateNext_o): return niter_o
 		updateNow_o,updateNext_o = updateNext_o,updateNow_o
 

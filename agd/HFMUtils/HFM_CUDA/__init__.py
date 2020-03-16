@@ -1,1 +1,4 @@
-from .run_detail import RunGPU
+import interface
+
+def RunGPU(hfmIn,*args,**kwargs):
+	return interface.Interface(hfmIn).Run(*args,**kwargs)

@@ -1,7 +1,5 @@
 import kernel_traits
-
-
-
+import solvers
 
 class Interface(object):
 	"""
@@ -69,6 +67,7 @@ class Interface(object):
 		self.returns=returns
 		self.block={}
 		self.in_raw = {'block':self.block}
+		self.out_raw = {}
 
 		self.SetKernelTraits()
 		self.SetGeometry()
@@ -150,13 +149,15 @@ class Interface(object):
 			help="Convergence tolerance for the fixed point solver"))
 
 		float_t,int_t = self.float_t,self.int_t
+		self.size_o = xp.prod(self.shape_o)
 		SetKernelConstant('tol',tol,float_t)
 		SetKernelConstant('shape_o',self.shape_o,int_t)
-		SetKernelConstant('size_o',xp.prod(self.size_o,int_t),int_t)
+		SetKernelConstant('size_o', self.size_o, int_t)
 
 		shape_tot = self.shape_o*self.shape_i
+		size_tot = xp.prod(shape_tot)
 		SetKernelConstant('shape_tot',shape_tot,int_t)
-		SetKernelConstant('size_tot',xp.prod(shape_tot),int_t)
+		SetKernelConstant('size_tot', size_tot, int_t)
 
 		# TODO : factorization, multiprecision
 
@@ -180,11 +181,41 @@ class Interface(object):
 
 		if returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
 
-		data_t = (float_t,int_t)
-		shapes_io = (shape_i,shape_o)
-		kernel_args = (block_values,block_metric,block_seedTags,tol)
-		kernel_args = tuple(arg if isinstance(arg,xp.ndarray) else 
-		xp.array(arg,kernel_traits.dtype(arg,data_t)) for arg in kernel_args)
+		kernel_args = tuple(self.block[key] for key in ('values','metric','seedTags'))
+
+		if verbosity>=1: print("Running the solver")
+		solver_start_time = time.time()
+
+		if solver=='global_iteration':
+			niter_o = solvers.global_iteration(self,kernel_args)
+		elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
+			niter_o = solvers.adaptive_gauss_siedel_iteration(self,kernel_args)
+		else:
+			raise ValueError(f"Unrecognized solver : {solver}")
+
+		hfmOut.update({
+			'niter_o':niter_o,
+			'solverGPUTime':time.time() - solver_start_time,
+		})
+		out_raw.update({
+			'block_values':block_values
+		})
+
+
+		if niter_o>=nitermax_o:
+			nonconv_msg = (f"Solver {solver} did not reach convergence after "
+				f"maximum allowed number {niter_o} of iterations")
+			if self.GetValue('raiseOnNonConvergence',default=True):
+				raise ValueError(nonconv_msg)
+			else:
+				print("---- Warning ----\n",nonconv_msg,"\n-----------------\n")
+
+	def PostProcess():
+		if verbosity>=1: print("Post-Processing")
+		if returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
+		values = misc.block_squeeze(block_values,shape)
+		hfmOut['values'] = values
+		return hfmOut
 
 
 
