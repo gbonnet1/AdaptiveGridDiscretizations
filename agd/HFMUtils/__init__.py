@@ -1,5 +1,6 @@
 import numpy as np
 import importlib
+import functools
 
 from .Grid import GetCorners,Rect,GetAxes,GetGrid,PointFromIndex,IndexFromPoint,CenteredLinspace
 from .LibraryCall import GetBinaryDir
@@ -54,6 +55,7 @@ class dictIn(dict):
 	@property
 	def Corners(self):
 		return GetCorners(self)
+	@functools.wraps(Rect)
 	def SetRect(self,*args,**kwargs):
 		self.update(Rect(*args,**kwargs))
 	@property

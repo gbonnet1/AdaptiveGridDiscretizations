@@ -55,6 +55,8 @@ if True:
 		})
 
 
+print(f"Corners {hfmIn.Corners}")
+print(help(hfmIn.SetRect))
 
 #hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
 hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
@@ -88,7 +90,7 @@ if False: #Isotopic code
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
 	print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']}")
 
-if True: # Riemannian code
+if False: # Riemannian code
 	from agd import Metrics
 	ndim = len(hfmInCPU['dims'])
 	hfmInCPU['model'] = f"Riemann{ndim}"
