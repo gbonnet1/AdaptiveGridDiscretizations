@@ -6,6 +6,11 @@ import cupy as xp
 import numpy as np
 import time
 from agd.AutomaticDifferentiation.Optimization import norm_infinity
+from packaging import version
+
+
+print("cupy version : ",xp.__version__)
+print(version.Version(xp.__version__)<version.Version("8.0"))
 
 """
 import os
@@ -26,18 +31,18 @@ hfmIn = HFMUtils.dictIn({
     'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':2000,
+    'nitermax_o':1,
     'tol':1e-8,
 
     'verbosity':1,
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((4000,4000)),
+	'dims':np.array((8,8)),
 	'gridScale':1,
 
 	'traits':{
-	'niter_i':32,'shape_i':(16,16)
+#	'niter_i':32,'shape_i':(16,16)
 #    'debug_print':1,
-#    'niter_i':1,
+    'niter_i':1,
 #    'strict_iter_i':1,
     },
 

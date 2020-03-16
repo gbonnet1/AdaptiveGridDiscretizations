@@ -20,6 +20,7 @@ def global_iteration(self,kernel_args):
 	updateNext_o = xp.zeros( self.shape_o,    dtype='uint8')
 	updateList_o = xp.nonzero(updateNow_o.flatten(), dtype=self.int_t)
 
+	raise ValueError("TODO")
 	for niter_o in range(nitermax_o):
 		kernel(updateList_o.size,self.shape_i, kernel_args + (updateList_o,updateNext_o))
 		if xp.any(updateNext_o): updateNext_o.fill(0)
@@ -59,6 +60,7 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 	updateNow_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
 	updateNext_o = xp.zeros(shape_o, dtype='uint8') 
 	
+	raise ValueError("TODO")
 	for niter_o in range(nitermax_o):
 		updateList_o = xp.nonzero(updateNow_o.flatten(), dtype=self.int_t)
 		kernel(updateList_o.size,shape_i, kernel_args + (updateList_o,updateNext_o))

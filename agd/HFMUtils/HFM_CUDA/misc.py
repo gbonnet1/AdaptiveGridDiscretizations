@@ -76,14 +76,15 @@ def block_squeeze(arr,shape):
 
 # ----- Access an array, maintaining a report of the oprations -------
 
+"""
 def HasValue(dico,key,report):
 	report['key visited'].append(key)
 	return key in dico
 
 def GetValue(dico,key,report,default=None,verbosity=2,help=None):
-	"""
-	Get a value from a dictionnary, printing some requested help.
-	"""
+	
+	#Get a value from a dictionnary, printing some requested help.
+	
 	verb = report['verbosity']
 
 	if key in report['help'] and key not in report['help content']:
@@ -106,3 +107,4 @@ def GetValue(dico,key,report,default=None,verbosity=2,help=None):
 		return default
 	else:
 		raise ValueError(f"Missing value for key {key}")
+"""
