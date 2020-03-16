@@ -4,7 +4,7 @@ from .. import LinearParallel as lp
 from .. import FiniteDifferences as fd
 from .. import Interpolation
 
-class Base(object):
+class Base:
 	"""
 	Base class for a metric
 	"""
