@@ -61,7 +61,7 @@ s[n_i] += s[m_i]
 and the sum will be stored in s[0].
 CAUTION : no syncing in the last iteration, so s[0] is only visible to thread 0.
 */
-#define Reduce_i_macro(cmds) { \
+#define REDUCE_i(cmds) { \
 	Int shift_=1; \
 	for(Int k_=0; k_<log2_size_i; ++k_){ \
 		const Int old_shift_=shift_; \

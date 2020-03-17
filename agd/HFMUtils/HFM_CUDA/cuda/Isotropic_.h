@@ -77,16 +77,28 @@ __global__ void Update(
 	__syncthreads(); // __shared__ u_i
 
 	// Compute and save the values
-	HFMIter(!isSeed,n_i,cost,v_o,MULTIP(vq_o,)v_i,u_i);
+	HFMIter(!isSeed, n_i, cost,
+		v_o MULTIP(,vq_o), v_i, 
+		u_i MULTIP(,uq_i) );
 	u[n] = u_i[n_i];
+	MULTIP(uq[n] = uq_i[n_i];)
 	
 	// Find the smallest value which was changed.
-	const Scalar u_diff = abs(u_old - u_i[n_i]);
+	const Scalar u_diff = abs(u_old - u_i[n_i] MULTIP( + (uq_old - uq_i[n_i]) * multip_step ) );
 	if( !(u_diff>tol) ){// Equivalent to u_diff<=tol, but Ignores NaNs 
-		u_i[n_i]=infinity();}
+		u_i[n_i]=infinity();
+	} else {
+		MULTIP(u_i[n_i] += uq_i[n_i]*multip_step;) // Extended accuracy ditched from this point
+	}
 	__syncthreads(); // Get all values before reduction
 
-	Reduce_i_macro( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
+	REDUCE_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
+
+/*	REDUCE_i( 
+		NOMULTIP( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
+		MULTIP( if(u_i[n_i]-u_i[m_i] > (uq_i[n_i]-uq_i[m_i])*multip_step) {
+			u_i[n_i]=u_i[m_i]; uq_i[n_i]=uq_i[m_i];} )
+		)*/
 	__syncthreads();  // Make u_i[0] accessible to all 
 
 	// Tag neighbor blocks, and this particular block, for update

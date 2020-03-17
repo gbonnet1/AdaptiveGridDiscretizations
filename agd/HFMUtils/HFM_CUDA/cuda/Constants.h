@@ -10,7 +10,8 @@ __constant__ Scalar tol;
 
 
 #if multi_precision_macro
-__constant__ Scalar step;
+__constant__ Scalar multip_step;
+__constant__ Scalar multip_umax; // Drop multi-precision beyond this value to avoid overflow
 #endif
 
 

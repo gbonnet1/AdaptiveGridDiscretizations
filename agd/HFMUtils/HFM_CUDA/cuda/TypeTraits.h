@@ -29,15 +29,19 @@ each iteration*/
 #define strict_iter_i_macro 0
 #endif
 
-/// Address float roundoff errors
+/** In multi-precision, we address float roundoff errors 
+by representing a real in the form u+uq*multip_step, where
+u is a float, uq is an integer, and multip_step is a constant.*/
 #ifndef multi_precision_macro
 #define multi_precision_macro 0
 #endif
 
 #if multi_precision_macro
-#define MULTIP(...) _VA_ARGS_
+#define MULTIP(...) __VA_ARGS__
+#define NOMULTIP(...)
 #else
 #define MULTIP(...) 
+#define NOMULTIP(...) __VA_ARGS__
 #endif
 
 /// Source factorization

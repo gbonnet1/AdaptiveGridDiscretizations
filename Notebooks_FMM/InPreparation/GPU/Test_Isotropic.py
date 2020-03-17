@@ -44,8 +44,8 @@ hfmIn = HFMUtils.dictIn({
 #	'niter_i':32,'shape_i':(16,16),
 	'niter_i':48,'shape_i':(24,24),
 #	'niter_i':64,'shape_i':(32,32),
-#    'debug_print':1,
-#    'niter_i':8,
+#   'debug_print':1,
+#    'niter_i':1,
 #    'strict_iter_i':1,
     },
 
