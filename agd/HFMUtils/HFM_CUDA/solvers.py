@@ -16,17 +16,16 @@ def global_iteration(self,kernel_args):
 #	updateNext_o = xp.zeros(shape_o,dtype='uint8') 
 	
 	xp=self.xp
-	updateNow_o  = xp.arange(self.size_o, dtype=self.int_t)
-	updateNext_o = xp.zeros( self.shape_o,    dtype='uint8')
-	updateList_o = xp.nonzero(updateNow_o.flatten(), dtype=self.int_t)
+	updateNow_o  = xp.ones(	self.shape_o,   dtype='uint8')
+	updateNext_o = xp.zeros(self.shape_o,   dtype='uint8')
+	updateList_o = xp.array(xp.flatnonzero(updateNow_o),dtype=self.int_t)
 	kernel = self.module.get_function("Update")
 
-	raise ValueError("TODO")
-	for niter_o in range(nitermax_o):
-		kernel(updateList_o.size,self.shape_i, kernel_args + (updateList_o,updateNext_o))
+	for niter_o in range(self.nitermax_o):
+		kernel((updateList_o.size,),self.shape_i, kernel_args + (updateList_o,updateNext_o))
 		if xp.any(updateNext_o): updateNext_o.fill(0)
 		else: return niter_o
-	return nitermax_o
+	return self.nitermax_o
 
 def neighbors(x,shape):
 	"""
@@ -58,18 +57,16 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 	finite_o = xp.any(xp.isfinite(block_values).reshape( self.shape_o + (-1,) ),axis=-1)
 	seed_o = xp.any(block_seedTags,axis=-1)
 
-	updateNow_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
-	updateNext_o = xp.zeros(self.shape_o, dtype='uint8') 
+	update_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
+#	updateNext_o = xp.zeros(self.shape_o, dtype='uint8')
 	kernel = self.module.get_function("Update")
 
-	raise ValueError("TODO")
-	for niter_o in range(nitermax_o):
-		updateList_o = xp.nonzero(updateNow_o.flatten(), dtype=self.int_t)
-		kernel(updateList_o.size,shape_i, kernel_args + (updateList_o,updateNext_o))
-		if not xp.any(updateNext_o): return niter_o
-		updateNow_o,updateNext_o = updateNext_o,updateNow_o
-
-	return nitermax_o
+	for niter_o in range(self.nitermax_o):
+		updateList_o = xp.array(xp.flatnonzero(update_o), dtype=self.int_t)
+		update_o.fill(0)
+		if len(updateList_o)==0: return niter_o
+		kernel((updateList_o.size,),self.shape_i, kernel_args + (updateList_o,update_o))
+	return self.nitermax_o
 
 
 

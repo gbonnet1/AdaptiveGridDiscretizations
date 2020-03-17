@@ -235,15 +235,12 @@ class Interface(object):
 			raise ValueError(f"Unrecognized solver : {solver}")
 
 		solverGPUTime = time.time() - solver_start_time
-		hfmOut.update({
+		self.hfmOut.update({
 			'niter_o':niter_o,
 			'solverGPUTime':solverGPUTime,
 		})
-		out_raw.update({
-			'block_values':block_values
-		})
 
-		if niter_o>=nitermax_o:
+		if niter_o>=self.nitermax_o:
 			nonconv_msg = (f"Solver {solver} did not reach convergence after "
 				f"maximum allowed number {niter_o} of iterations")
 			if self.GetValue('raiseOnNonConvergence',default=True):
@@ -251,14 +248,15 @@ class Interface(object):
 			else:
 				print("---- Warning ----\n",nonconv_msg,"\n-----------------\n")
 
-		if self.verbosity>=1: print("GPU solve took {solverGPUTime} seconds")
+		if self.verbosity>=1: print(f"GPU solve took {solverGPUTime} seconds")
 
 	def PostProcess(self):
 		if self.verbosity>=1: print("Post-Processing")
-		if returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
-		values = misc.block_squeeze(block_values,shape)
-		hfmOut['values'] = values
-		return hfmOut
+		if self.returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
+		print(self.shape,self.block['values'].shape)
+		values = misc.block_squeeze(self.block['values'],self.shape)
+		self.hfmOut['values'] = values
+		return self.hfmOut
 
 
 

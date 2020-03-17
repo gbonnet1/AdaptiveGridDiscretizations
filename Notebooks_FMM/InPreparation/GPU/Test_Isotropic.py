@@ -31,18 +31,21 @@ hfmIn = HFMUtils.dictIn({
     'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':1,
+    'nitermax_o':3000,
     'tol':1e-8,
 
     'verbosity':1,
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((8,8)),
+	'dims':np.array((4000,4000)),
 	'gridScale':1,
 
 	'traits':{
-#	'niter_i':32,'shape_i':(16,16)
+#	'niter_i':16,'shape_i':(8,8),
+#	'niter_i':32,'shape_i':(16,16),
+	'niter_i':48,'shape_i':(24,24),
+#	'niter_i':64,'shape_i':(32,32),
 #    'debug_print':1,
-    'niter_i':1,
+#    'niter_i':8,
 #    'strict_iter_i':1,
     },
 
@@ -71,7 +74,7 @@ hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
 hfmOut = hfmIn.RunGPU()
-#print(hfmOut['values'])
+#print(hfmOut['values'].shape)
 #print(hfmOut)
 
 
@@ -89,11 +92,12 @@ hfmInCPU.update({
 	'exportValues':1,
 })
 
-if False: #Isotopic code
+if True: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
-	print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']}")
+	print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']},"
+		f"Acceleration : {hfmOutCPU['FMCPUTime']/hfmOut['solverGPUTime']}")
 
 if False: # Riemannian code
 	from agd import Metrics
