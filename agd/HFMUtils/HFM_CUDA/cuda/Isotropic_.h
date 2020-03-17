@@ -35,26 +35,21 @@ __global__ void Update(
 
 	const bool isSeed = Grid::GetBool(seeds,n);
 	const Scalar cost = metric[n];
-	const Scalar u_old = u[n];
+
+	const Scalar u_old = u[n]; 
 	__shared__ Scalar u_i[size_i]; // Shared block values
 	u_i[n_i] = u_old;
 
-	MULTIP(const Int zz=0+0;
-		const Int zzz=0+0+0;)
-
-
-#if multiprecision_macro
+	MULTIP(
 	const Int uq_old = uq[n];
 	__shared__ Int uq_i[size_i];
 	uq_i[n_i] = uq_old;
-#endif
+	)
 
 	// Get the neighbor values, or their indices if interior to the block
 	Int    v_i[ntot]; // Index of neighbor, if in the block
 	Scalar v_o[ntot]; // Value of neighbor, if outside the block
-#if multiprecision_macro
-	Int vq_o[ntot];
-#endif
+	MULTIP(Int vq_o[ntot];)
 	for(Int k=0,ks=0; k<nsym; ++k){
 		for(Int s=0; s<2; ++s){
 			Int y[ndim], y_i[ndim]; // Position of neighbor. Caution : aliasing
@@ -69,15 +64,11 @@ __global__ void Update(
 				v_i[ks] = -1;
 				if(Grid::InRange(y,shape_tot)) {
 					const Int ny = Grid::Index(y,shape_i,shape_o);
-					v_o[ks] = u[ny];
-#if multiprecision_macro
-					vq_o[ks] = uq[ny];
-#endif
+					v_o[ks] = u[ny]; 
+					MULTIP(vq_o[ks] = uq[ny];)
 				} else {
 					v_o[ks] = infinity();
-#if multiprecision_macro
-					vq_o[ks] = 0;
-#endif
+					MULTIP(vq_o[ks] = 0;)
 				}
 			}
 			++ks;
@@ -86,7 +77,7 @@ __global__ void Update(
 	__syncthreads(); // __shared__ u_i
 
 	// Compute and save the values
-	HFMIter(!isSeed,n_i,cost,v_o,v_i,u_i);
+	HFMIter(!isSeed,n_i,cost,v_o,MULTIP(vq_o,)v_i,u_i);
 	u[n] = u_i[n_i];
 	
 	// Find the smallest value which was changed.
