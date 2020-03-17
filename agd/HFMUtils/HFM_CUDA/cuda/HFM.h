@@ -1,9 +1,8 @@
 #pragma once
 /**
 This file implements common rountines for HFM-type fast marching methods 
-implemented on the GPU using CUDA.
+running on the GPU based on CUDA.
 */
-// ---------------- Grid related methods -----------------
 
 
 bool order(Scalar * v, Int i){
@@ -53,14 +52,7 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 			const Int ks = 2*k+s;
 			const Int w_i = v_i[ks];
 			const Scalar v_ = w_i>=0 ? u_i[w_i] : v_o[ks];
-			v[k] = s==0 ? v_ : min(v_,v[k]);
-			
-			/*
-			if(debug_print && n_i==n_2){
-				printf("k%i,s%i, wi %i, v_ %f, v[k] %f\n",k,s,w_i,v_,v[k]);
-				printf("u_i[2] %f, u_i[3] %f,  u_i[4] %f\n", u_i[2],u_i[3],u_i[4]);
-
-			}*/
+			v[k] = s==0 ? v_ : min(v_,v[k]);			
 		}
 	}
 
@@ -72,15 +64,6 @@ Scalar HFMUpdate(const Int n_i, const Scalar cost,
 
 	bubble_sort(v);
 
-/*
-	if(debug_print && n_i==n_print2){
-		printf("\n");
-		for(Int k=0;k<nsym;++k){
-			printf("v[%i]=%f\n",k,v[k]);
-		}
-		printf("value %f\n",u_i[n_i]);
-	}
-*/
 	// Compute the update
 	const Scalar vmin = v[0];
 	if(vmin==infinity()){return vmin;}

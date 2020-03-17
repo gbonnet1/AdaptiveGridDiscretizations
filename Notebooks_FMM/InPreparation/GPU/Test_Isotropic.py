@@ -51,7 +51,7 @@ hfmIn = HFMUtils.dictIn({
 
 })
 
-if True:
+if False:
 	hfmIn.update({
 		'model':'Isotropic3',
 		'dims':np.array((200,200,200)),
@@ -92,7 +92,7 @@ hfmInCPU.update({
 	'exportValues':1,
 })
 
-if True: #Isotopic code
+if False: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))

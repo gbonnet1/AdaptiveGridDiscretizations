@@ -9,21 +9,9 @@ const Int n_print2=3;
 
 extern "C" {
 
-/**
-	Integer parameters params_Int : 
-	 - shape[ndim] : shape of domain
-	 - shape_o[ndim] : outer shape
-	Floating point parameters : 
-	 - tol : convergence tolerance.
-	 - step : avoid roundoff errors
-	front_dist (uchar) : 
-	 distance in blocks to the front. 
-	 0 -> converged
-	 1 -> converged,
-	 ..-> not converged
-
-*/
-__global__ void Update(Scalar * u, const Scalar * metric, const BoolPack * seeds, 
+__global__ void Update(
+	Scalar * u, MULTIP(Int * uq,)
+	const Scalar * metric, const BoolPack * seeds, 
 	const Int * updateList_o, BoolAtom * updateNext_o){ // Used as simple booleans
 
 //	__shared__ Int shape_o[ndim];
@@ -51,24 +39,47 @@ __global__ void Update(Scalar * u, const Scalar * metric, const BoolPack * seeds
 	__shared__ Scalar u_i[size_i]; // Shared block values
 	u_i[n_i] = u_old;
 
+	MULTIP(const Int zz=0+0;
+		const Int zzz=0+0+0;)
+
+
+#if multiprecision_macro
+	const Int uq_old = uq[n];
+	__shared__ Int uq_i[size_i];
+	uq_i[n_i] = uq_old;
+#endif
+
 	// Get the neighbor values, or their indices if interior to the block
-	Scalar v_o[ntot];
-	Int    v_i[ntot];
+	Int    v_i[ntot]; // Index of neighbor, if in the block
+	Scalar v_o[ntot]; // Value of neighbor, if outside the block
+#if multiprecision_macro
+	Int vq_o[ntot];
+#endif
 	for(Int k=0,ks=0; k<nsym; ++k){
 		for(Int s=0; s<2; ++s){
-			Int * y = x; // Caution : aliasing
-			Int * y_i = x_i;
-			const Int eps=2*s-1;
+			Int y[ndim], y_i[ndim]; // Position of neighbor. Caution : aliasing
+			for(int l=0; l<ndim; ++l){y[l]=x[l]; y_i[l]=x_i[l];}
 
+			const Int eps=2*s-1;
 			y[k]+=eps; y_i[k]+=eps;
+
 			if(Grid::InRange(y_i,shape_i))  {
 				v_i[ks] = Grid::Index(y_i,shape_i);
 			} else {
 				v_i[ks] = -1;
-				if(Grid::InRange(y,shape_tot)) {v_o[ks] = u[Grid::Index(y,shape_i,shape_o)];}
-				else {v_o[ks] = infinity();}
+				if(Grid::InRange(y,shape_tot)) {
+					const Int ny = Grid::Index(y,shape_i,shape_o);
+					v_o[ks] = u[ny];
+#if multiprecision_macro
+					vq_o[ks] = uq[ny];
+#endif
+				} else {
+					v_o[ks] = infinity();
+#if multiprecision_macro
+					vq_o[ks] = 0;
+#endif
+				}
 			}
-			y[k]-=eps; y_i[k]-=eps;
 			++ks;
 		}
 	}

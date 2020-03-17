@@ -10,11 +10,7 @@ running the gpu eikonal solver.
 def global_iteration(self,kernel_args):
 	"""
 	Solves the eikonal equation by applying repeatedly the updates on the whole domain.
-	"""
-
-#	updateNow_o  = xp.ones( shape_o,dtype='uint8')
-#	updateNext_o = xp.zeros(shape_o,dtype='uint8') 
-	
+	"""	
 	xp=self.xp
 	updateNow_o  = xp.ones(	self.shape_o,   dtype='uint8')
 	updateNext_o = xp.zeros(self.shape_o,   dtype='uint8')
@@ -27,26 +23,6 @@ def global_iteration(self,kernel_args):
 		else: return niter_o
 	return self.nitermax_o
 
-def neighbors(x,shape):
-	"""
-	Returns the immediate neighbors of x, including x itself, 
-	on a cartesian grid of given shape. (Geometry axes last.)
-	- shape : bounds of the cartesian grid box
-	"""
-	xp = misc.get_array_module(x)
-	ndim = len(shape)
-	x = x.reshape((1,1)+x.shape)
-	x = xp.tile(x,(ndim+1,2,1,1))
-	for i in range(ndim): x[i,0,:,i] = xp.maximum(x[i,0,:,i]-1,0)
-	for i in range(ndim): x[i,1,:,i] = xp.minimum(x[i,1,:,i]+1,shape[i]-1)
-	x = x.reshape(-1,ndim)
-	x = xp.ravel_multi_index(xp.moveaxis(x,-1,0),shape)
-	x = xp.unique(x)
-	x = xp.unravel_index(x,shape)
-	return xp.stack(x,axis=-1)
-
-
-
 def adaptive_gauss_siedel_iteration(self,kernel_args):
 	"""
 	Solves the eikonal equation by propagating updates, ignoring causality. 
@@ -58,7 +34,6 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 	seed_o = xp.any(block_seedTags,axis=-1)
 
 	update_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
-#	updateNext_o = xp.zeros(self.shape_o, dtype='uint8')
 	kernel = self.module.get_function("Update")
 
 	for niter_o in range(self.nitermax_o):

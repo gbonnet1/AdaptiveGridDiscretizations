@@ -167,15 +167,6 @@ class Interface(object):
 		self.SetModuleConstant('shape_tot',shape_tot,int_t)
 		self.SetModuleConstant('size_tot', size_tot, int_t)
 
-		"""
-		if not cupy_has_modules: 
-			# Support outdated cupy version.
-			# We use compile time constants, rather than cuda __constant__. 
-			# This is silly, since it requires a recompilation each time the size is changed.
-			kernel = cupy.RawKernel(self.source,'Update',options=cuoptions)
-			self.kernels = {"Update":kernel}
-"""
-
 		in_raw.update({
 			'tol':tol,
 			'shape_o':self.shape_o,
@@ -184,21 +175,6 @@ class Interface(object):
 			})
 
 		# TODO : factorization, multiprecision
-
-		"""
-	def SetCompileConstant(self,key,value,dtype):
-		"Sets a compile time constant in the cupy cuda module source"
-		if   dtype == self.float_t: self.source += "const Scalar "
-		elif dtype == self.int_t:   self.source += "const Int "
-		else: raise ValueError(f"Unrecognized dtype {dtype}")
-
-		if isinstance(value,self.xp.ndarray):
-			assert value.ndim==1
-			self.source += f"{key}[{len(key)}] = " + "{" + ",".join(str(s) for s in shape_i) + "}"
-		else:
-			self.source += f"{key} = {value}"
-		self.source += ";\n"
-		"""
 
 	def SetModuleConstant(self,key,value,dtype):
 		"""Sets a global constant in the cupy cuda module"""

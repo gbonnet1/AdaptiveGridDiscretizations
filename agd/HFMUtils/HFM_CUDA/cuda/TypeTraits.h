@@ -34,6 +34,12 @@ each iteration*/
 #define multi_precision_macro 0
 #endif
 
+#if multi_precision_macro
+#define MULTIP(...) _VA_ARGS_
+#else
+#define MULTIP(...) 
+#endif
+
 /// Source factorization
 #ifndef factor_macro
 #define factor_macro 0
