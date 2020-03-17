@@ -30,27 +30,12 @@ __global__ void Update(Scalar * u, const Scalar * metric, const BoolPack * seeds
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
 
-/*
 	if(threadIdx.x==0 && threadIdx.y==0 && threadIdx.z==0){
-		printf("shape_tot %i,%i\n",shape_tot[0],shape_tot[1]);
-		printf("shape_o %i,%i\n",shape_o[0],shape_o[1]);
-		printf("blockIdx.x %i",blockIdx.x);
-//		printf("n_o %i, x_o %i,%i\n",n_o,x_o[0],x_o[1]);
-	}
-*/
-
-	if(threadIdx.x==0 && threadIdx.y==0 && threadIdx.z==0){
-//		x_o[0]=blockIdx.x;     x_o[1]=blockIdx.y;     if(ndim==3) x_o[ndim-1]=blockIdx.z;
-//		shape_o[0]=gridDim.x; shape_o[1]=gridDim.y; if(ndim==3) shape_o[ndim-1]=gridDim.z;
-//		n_o = Index(x_o,shape_o);
-//		makeUpdate = updateNow_o[n_o];
 		n_o = updateList_o[blockIdx.x];
 		Grid::Position(n_o,shape_o,x_o);
 	}
 
-
-
-	__syncthreads(); // __shared__ makeUpdate, ...
+	__syncthreads(); // __shared__ x_o, n_o
 
 	Int x_i[ndim], x[ndim];
 	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[ndim-1]=threadIdx.z;
@@ -60,23 +45,12 @@ __global__ void Update(Scalar * u, const Scalar * metric, const BoolPack * seeds
 	const Int n_i = Grid::Index(x_i,shape_i);
 	const Int n = n_o*size_i + n_i;
 
-/*	if(n_i==0){
-		for(int k=0; k<ndim; ++k){
-				shape[k] = shape_o[k]*shape_i[k];}
-		updateNow_o[n_o] = 0;
-		tol = paramsScalar[0];
-		//	const Scalar step = params_Scalar[1]; // Avoid roundoff errors
-	}*/
-
-
-
 	const bool isSeed = Grid::GetBool(seeds,n);
 	const Scalar cost = metric[n];
 	const Scalar u_old = u[n];
 	__shared__ Scalar u_i[size_i]; // Shared block values
 	u_i[n_i] = u_old;
 
-	__syncthreads(); // __shared__ shape. 
 	// Get the neighbor values, or their indices if interior to the block
 	Scalar v_o[ntot];
 	Int    v_i[ntot];
@@ -98,7 +72,7 @@ __global__ void Update(Scalar * u, const Scalar * metric, const BoolPack * seeds
 			++ks;
 		}
 	}
-//	__syncthreads(); 
+	__syncthreads(); // __shared__ u_i
 
 	// Compute and save the values
 	HFMIter(!isSeed,n_i,cost,v_o,v_i,u_i);
@@ -131,21 +105,6 @@ __global__ void Update(Scalar * u, const Scalar * metric, const BoolPack * seeds
 		printf("shape %i,%i",shape_tot[0],shape_tot[1]);
 
 	}
-/*
-	if(debug_print && n==0){
-		printf("tol %f\n",tol);
-		printf("shape %i,%i\n",shape[0],shape[1]);
-	}
-
-	if(debug_print && n==0){
-		printf("u_i[0] %f,u_i[1] %f,u_i[2] %f\n",u_i[0],u_i[1],u_i[2]);
-		printf("min_chg[0] %f\n",min_chg[0]);
-	}
-	if(debug_print && n_i==0){min_chg[blockIdx.x] = u_i[0];
-		printf("Hello world %f %i\n", u_i[0],blockIdx.x);
-		printf("min_chg[0] %f\n",min_chg[0]);
-	}
-	*/
 }
 
 } // Extern "C"
