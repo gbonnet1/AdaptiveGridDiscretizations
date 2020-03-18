@@ -83,9 +83,8 @@ def array(a):
 	Turns a list or tuple of arrays with the same dimensions. 
 	Turns a scalar into an array scalar.
 	"""
-	if isinstance(a,np.ndarray): return a
-	elif hasattr(a,'__iter__'): return stack([array(e) for e in a],axis=0)
-	else: return np.array(a)
+	if isinstance(a,(list,tuple)): return stack([array(e) for e in a],axis=0)
+	else: return a
 
 def full_like(a,*args,**kwargs):
 	if is_ad(a):
