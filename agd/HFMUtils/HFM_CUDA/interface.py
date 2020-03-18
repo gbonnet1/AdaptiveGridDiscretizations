@@ -6,7 +6,10 @@ from packaging.version import Version
 from . import kernel_traits
 from . import solvers
 from . import misc
-from .. import Grid
+from ... import HFMUtils
+from ... import FiniteDifferences as fd
+from ... import AutomaticDifferentiation as ad
+from ... import Metrics
 
 class Interface(object):
 	"""
@@ -15,7 +18,7 @@ class Interface(object):
 	"""
 	def __init__(self,hfmIn):
 
-		self.hfmIn = hfmIn
+		self.hfmIn = HFMUtils.dictIn(hfmIn)
 		if hfmIn['arrayOrdering'] != 'RowMajor':
 			raise ValueError("Only RowMajor indexing supported")
 
@@ -32,9 +35,6 @@ class Interface(object):
 		self.verbosity = 1
 		self.verbosity = self.GetValue('verbosity',default=1,
 			help="Choose the amount of detail displayed on the run")
-
-
-		self.verbosity = hfmIn.get('verbosity',1)
 		self.model = self.GetValue('model',help='Minimal path model to be solved')
 		self.returns=None
 		
@@ -92,6 +92,10 @@ class Interface(object):
 			self.GetValue('values_float64',default=False) )
 		if self.multiprecision: traits['multiprecision_macro']=1
 
+		self.factoringRadius = self.GetValue('factoringRadius',default=0,
+			help="Use source factorization to improve accuracy")
+		if self.factoringRadius: traits['factor_macro']=1
+
 		self.traits = traits
 		self.in_raw['traits']=traits
 
@@ -106,28 +110,38 @@ class Interface(object):
 			help="dimensions (shape) of the computational domain").astype(int)
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
 		self.h = self.GetValue('gridScale', help="Scale of the computational grid")
-		metric = self.GetValue('cost',help="Cost function for the minimal paths")
-		assert metric.dtype == self.float_t
-		self.xp = misc.get_array_module(metric)
-		self.block['metric'] = misc.block_expand(metric*self.h,self.shape_i,
+		cost = self.GetValue('cost',help="Cost function for the minimal paths")
+		self.xp = misc.get_array_module(cost)
+		self.metric = Metrics.Isotropic(cost)
+		self.grid = self.hfmIn.Grid()
+		self.metric.set_interpolation(self.grid) # First order interpolation
+		assert cost.dtype == self.float_t
+		self.block['metric'] = misc.block_expand(cost*self.h,self.shape_i,
 			mode='constant',constant_values=self.xp.inf)
+
 
 	def SetValuesArray(self):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
 		xp = self.xp
 		values = xp.full(self.shape,xp.inf,dtype=self.float_t)
-		seeds = self.GetValue('seeds', help="Points from where the front propagation starts")
-		seedValues = xp.zeros(len(seeds),dtype=self.float_t)
+		self.seeds = self.GetValue('seeds', help="Points from where the front propagation starts")
+		if len(self.seeds)==1: self.seed=self.seeds[0]
+		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
 		seedValues = self.GetValue('seedValues',default=seedValues,
 			help="Initial value for the front propagation")
 		seedRadius = self.GetValue('seedRadius',default=0.,
-			help="Spreading the seeds over a few pixels can improve accuracy")
+			help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
 		if seedRadius==0.:
-			seedIndices,_ = Grid.IndexFromPoint(self.hfmIn,seeds)
+			seedIndices,_ = self.hfmIn.IndexFromPoint(self.seeds)
 			values[tuple(seedIndices.T)] = seedValues
-		else: 
-			raise ValueError("Positive seedRadius not supported yet")
+		else:
+			neigh = self.hfmIn.Neighbors(self.seed,seedRadius)
+			diff = neigh - self.seed
+			neighIndices,_ = self.hfmIn.IndexFromPoint(neigh)
+			metric0 = self.Metric(self.seed)
+			metric1 = self.Metric(neigh)
+			values[tuple(neighIndices.T)] = 0.5*(metric0.Norm(diff) + metric1.Norm(diff))
 
 		block_values = misc.block_expand(values,self.shape_i,mode='constant',constant_values=xp.nan)
 
@@ -189,6 +203,11 @@ class Interface(object):
 			self.multip_step=multip_step
 			in_raw.update({'multip_step':multip_step,'multip_max':multip_max})
 
+		if self.factoringRadius:
+			self.SetModuleConstant('factor_radius2',self.factoringRadius**2,float_t)
+			self.SetModuleConstant('factor_origin',self.seed,float_t) # Single seed only
+			self.SetModuleConstant('factor_metric',self.Metric(self.seed).to_HFM(),float_t)
+
 		in_raw.update({
 			'tol':tol,
 			'shape_o':self.shape_o,
@@ -196,7 +215,9 @@ class Interface(object):
 			'source':self.source,
 			})
 
-		# TODO : factorization
+	def Metric(self,x):
+		if hasattr(self,'metric'): return self.metric.at(x)
+		else: return self.dual_metric.at(x).dual()
 
 	def SetModuleConstant(self,key,value,dtype):
 		"""Sets a global constant in the cupy cuda module"""

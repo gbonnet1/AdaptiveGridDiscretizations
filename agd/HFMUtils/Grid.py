@@ -82,16 +82,21 @@ def to_YXZ(params,index):
 		return index
 	else:
 		return np.stack((index[:,1],index[:,0],*index[:,2:].T),axis=1)
+def Scale(params):
+	"""
+	Returns the gridscale. Takes care of periodic variables.
+	"""
+	bottom,top = GetCorners(params)
+	dims=np.array(params['dims'])
+	return (top-bottom)/dims
+
 
 def PointFromIndex(params,index,to=False):
 	"""
 	Turns an index into a point.
 	Optional argument to: if true, inverse transformation, turning a point into a continuous index
 	"""
-	bottom,top = GetCorners(params)
-	dims=np.array(params['dims'])
-	
-	scale = (top-bottom)/dims
+	scale = Scale(params)
 	start = bottom +0.5*scale
 	if not to: return start+scale*to_YXZ(params,index)
 	else: return to_YXZ(params,(index-start)/scale)
@@ -103,3 +108,27 @@ def IndexFromPoint(params,point):
 	continuousIndex = PointFromIndex(params,point,to=True)
 	index = np.round(continuousIndex)
 	return index.astype(int),(continuousIndex-index)
+
+def VectorFromOffset(params,offset,to=False):
+	assert params['arrayOrdering']=='RowMajor'
+	scale = Scale(params)
+	if not to: return scale*offset
+	else: return offset/scale  
+
+def GridNeighbors(params,point,gridRadius):
+	"""
+	Returns the neighbors around a point on the grid. 
+	Geometry last convention
+	Inputs: 
+	- params (dict): hfmIn
+	- point (array): geometry last
+	- gridRadius (scalar): given in pixels
+	"""
+	assert params['arrayOrdering']=='RowMajor'
+	cindex = PointFromIndex(params,point)
+	neigh =  np.meshgrid( (np.arange(-np.floor(ci+seedRadius),np.ceil(ci+seedRadius)+1)
+				for ci in cindex) , indexing='ij')
+	neigh = np.stack(neigh,axis=-1).reshape(-1,neigh.shape[-1])
+	diff = neigh-point
+	close = np.sum(diff**2,axis=-1) < gridRadius**2
+	return neigh[close]

@@ -198,7 +198,7 @@ class Base:
 		"""
 		Interpolates the metric to a given position, on a grid given beforehand.
 		Inputs : 
-			- x (optional). Place where interpolation is needed.
+			- x. Place where interpolation is needed.
 		"""
 		return self.from_generator(
 			field(x) if callable(field) else field

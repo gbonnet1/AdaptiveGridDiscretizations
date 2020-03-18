@@ -40,6 +40,7 @@ hfmIn = HFMUtils.dictIn({
 #    'help':['nitermax_o','traits'],
 	'dims':np.array((4000,4000)),
 	'gridScale':1,
+	'factoringRadius':20,
 
 	'traits':{
 #	'niter_i':16,'shape_i':(8,8),
@@ -82,7 +83,6 @@ hfmOut = hfmIn.RunGPU()
 
 if len(hfmOut['values'])<20: print(hfmOut['values'])
 print(f"niter_o : {hfmOut['niter_o']}")
-print(hfmOut['values'].dtype)
 
 #Comparison with CPU.
 
