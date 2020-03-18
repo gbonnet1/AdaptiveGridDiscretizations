@@ -38,7 +38,7 @@ hfmIn = HFMUtils.dictIn({
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((2000,2000)),
+	'dims':np.array((4000,4000)),
 	'gridScale':1,
 
 	'traits':{
@@ -94,7 +94,7 @@ hfmInCPU.update({
 	'exportValues':1,
 })
 
-if True: #Isotopic code
+if False: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))

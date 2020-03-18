@@ -87,8 +87,9 @@ class Interface(object):
 		traits.update(self.GetValue('traits',default=tuple(),
 			help="Optional trait parameters passed to kernel"))
 
-		self.multiprecision = self.GetValue('multiprecision',default=False,
-			help="Improve accuracy using multiprecision")
+		self.multiprecision = (self.GetValue('multiprecision',default=False,
+			help="Improve accuracy using multiprecision") or 
+			self.GetValue('values_float64',default=False) )
 		if self.multiprecision: traits['multiprecision_macro']=1
 
 		self.traits = traits
@@ -180,9 +181,9 @@ class Interface(object):
 
 		if self.multiprecision:
 			# Choose power of two, significantly less than h
-			multip_step = 2.**np.floor(np.log2(self.h/100)) 
+			multip_step = 2.**np.floor(np.log2(self.h/50)) 
 			self.SetModuleConstant('multip_step',multip_step, float_t)
-			multip_max = np.iinfo(self.int_t).max*multip_step/10
+			multip_max = np.iinfo(self.int_t).max*multip_step/2
 			self.SetModuleConstant('multip_max',multip_max, float_t)
 
 			self.multip_step=multip_step
