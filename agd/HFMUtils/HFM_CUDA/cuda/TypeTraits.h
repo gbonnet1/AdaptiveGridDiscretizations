@@ -32,11 +32,11 @@ each iteration*/
 /** In multi-precision, we address float roundoff errors 
 by representing a real in the form u+uq*multip_step, where
 u is a float, uq is an integer, and multip_step is a constant.*/
-#ifndef multi_precision_macro
-#define multi_precision_macro 0
+#ifndef multiprecision_macro
+#define multiprecision_macro 0
 #endif
 
-#if multi_precision_macro
+#if multiprecision_macro
 #define MULTIP(...) __VA_ARGS__
 #define NOMULTIP(...)
 #else

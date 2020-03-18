@@ -50,8 +50,7 @@ void HFMNeighbors(const Int n_i,
 		for(Int s=0; s<=1; ++s){
 			const Int ks = 2*k+s;
 			const Int w_i = v_i[ks];
-			Scalar v_;
-			MULTIP(vq_;)
+			Scalar v_ MULTIP(,vq_);
 			if(w_i>=0){
 				v_ = u_i[w_i];
 				MULTIP(vq_ = uq_i[w_i];)
@@ -102,7 +101,7 @@ void HFMNeighbors(const Int n_i,
 void HFMUpdate(const Int n_i, const Scalar cost,
 	const Scalar v_o[ntot], MULTIP(const Int vq_o[ntot],) const Int v_i[ntot], 
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
-	Scalar * u_out MULTIP(,Scalar * uq_out) ){
+	Scalar * u_out MULTIP(,Int * uq_out) ){
 
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
@@ -119,6 +118,8 @@ void HFMUpdate(const Int n_i, const Scalar cost,
 		printf("HFMUpdate ni : %i\n",n_i);
 		printf("v : %f %f\n",v[0],v[1]);
 		printf("order : %i %i\n",order[0],order[1]);
+/*		printf("multip_step %f, multip_max %f\n",multip_step,multip_max);
+		printf("vq : %i %i\n",vq[0],vq[1]);*/
 	}
 
 
@@ -139,6 +140,13 @@ void HFMUpdate(const Int n_i, const Scalar cost,
 		const Scalar sdelta = sqrt(delta);
 		value = (b+sdelta)/a;
 	}
+
+/*	if(debug_print && n_i==1){
+		Scalar u_out = vmin+value; Int uq_out = vqmin;
+		printf("u_out %f, uq_out %i\n",u_out,uq_out);
+		Normalize(&u_out,&uq_out);
+		printf("u_out %f, uq_out %i\n",u_out,uq_out);
+	}*/
 
 	*u_out = vmin+value; MULTIP(*uq_out = vqmin; Normalize(u_out,uq_out); )
 }

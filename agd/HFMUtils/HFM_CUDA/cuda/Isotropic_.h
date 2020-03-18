@@ -82,6 +82,10 @@ __global__ void Update(
 		u_i MULTIP(,uq_i) );
 	u[n] = u_i[n_i];
 	MULTIP(uq[n] = uq_i[n_i];)
+
+	if(debug_print && n_i==1){
+//		printf("u_i %f, uq_i %i",u_i[n_i],uq_i[n_i]);
+	}
 	
 	// Find the smallest value which was changed.
 	const Scalar u_diff = abs(u_old - u_i[n_i] MULTIP( + (uq_old - uq_i[n_i]) * multip_step ) );
@@ -93,12 +97,6 @@ __global__ void Update(
 	__syncthreads(); // Get all values before reduction
 
 	REDUCE_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
-
-/*	REDUCE_i( 
-		NOMULTIP( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
-		MULTIP( if(u_i[n_i]-u_i[m_i] > (uq_i[n_i]-uq_i[m_i])*multip_step) {
-			u_i[n_i]=u_i[m_i]; uq_i[n_i]=uq_i[m_i];} )
-		)*/
 	__syncthreads();  // Make u_i[0] accessible to all 
 
 	// Tag neighbor blocks, and this particular block, for update
@@ -116,7 +114,7 @@ __global__ void Update(
 	}
 
 	if(debug_print && n==0){
-		printf("shape %i,%i",shape_tot[0],shape_tot[1]);
+		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
 
 	}
 }

@@ -25,18 +25,20 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
 
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
+    'verbosity':1,
     'arrayOrdering':'RowMajor',
     'seeds':[[0,0]],
 #    'kernel':"dummy",
     'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':3000,
+    'nitermax_o':500,
     'tol':1e-8,
+    'multiprecision':True,
+#    'values_float64':True,
 
-    'verbosity':1,
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((4000,4000)),
+	'dims':np.array((2000,2000)),
 	'gridScale':1,
 
 	'traits':{
@@ -80,7 +82,7 @@ hfmOut = hfmIn.RunGPU()
 
 if len(hfmOut['values'])<20: print(hfmOut['values'])
 print(f"niter_o : {hfmOut['niter_o']}")
-print(f"GPU time(s) : {hfmOut['solverGPUTime']}")
+print(hfmOut['values'].dtype)
 
 #Comparison with CPU.
 
@@ -92,7 +94,7 @@ hfmInCPU.update({
 	'exportValues':1,
 })
 
-if False: #Isotopic code
+if True: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))

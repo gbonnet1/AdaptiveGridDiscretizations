@@ -86,12 +86,18 @@ class Interface(object):
 		traits = kernel_traits.default_traits(self.model)
 		traits.update(self.GetValue('traits',default=tuple(),
 			help="Optional trait parameters passed to kernel"))
+
+		self.multiprecision = self.GetValue('multiprecision',default=False,
+			help="Improve accuracy using multiprecision")
+		if self.multiprecision: traits['multiprecision_macro']=1
+
 		self.traits = traits
 		self.in_raw['traits']=traits
 
 		self.float_t = np.dtype(traits['Scalar']).type
 		self.int_t   = np.dtype(traits['Int']   ).type
 		self.shape_i = traits['shape_i']
+
 
 	def SetGeometry(self):
 		if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
@@ -131,6 +137,11 @@ class Interface(object):
 
 		self.block.update({'values':block_values,'seedTags':block_seedTags})
 
+		# Handle multiprecision
+		if self.multiprecision:
+			block_valuesq = xp.zeros(block_values.shape,dtype=self.int_t)
+			self.block.update({'valuesq':block_valuesq})
+
 	def SetKernel(self):
 		if self.verbosity>=1: print("Preparing the GPU kernel")
 		if self.GetValue('dummy_kernel',default=False): return
@@ -167,14 +178,24 @@ class Interface(object):
 		self.SetModuleConstant('shape_tot',shape_tot,int_t)
 		self.SetModuleConstant('size_tot', size_tot, int_t)
 
+		if self.multiprecision:
+			# Choose power of two, significantly less than h
+			multip_step = 2.**np.floor(np.log2(self.h/100)) 
+			self.SetModuleConstant('multip_step',multip_step, float_t)
+			multip_max = np.iinfo(self.int_t).max*multip_step/10
+			self.SetModuleConstant('multip_max',multip_max, float_t)
+
+			self.multip_step=multip_step
+			in_raw.update({'multip_step':multip_step,'multip_max':multip_max})
+
 		in_raw.update({
 			'tol':tol,
 			'shape_o':self.shape_o,
 			'shape_tot':shape_tot,
-			'source':self.source
+			'source':self.source,
 			})
 
-		# TODO : factorization, multiprecision
+		# TODO : factorization
 
 	def SetModuleConstant(self,key,value,dtype):
 		"""Sets a global constant in the cupy cuda module"""
@@ -199,7 +220,9 @@ class Interface(object):
 
 		if self.returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
 
-		kernel_args = tuple(self.block[key] for key in ('values','metric','seedTags'))
+		kernel_argnames = ['values','metric','seedTags']
+		if self.multiprecision:  kernel_argnames.insert(1,'valuesq')
+		kernel_args = tuple(self.block[key] for key in kernel_argnames)
 
 		solver_start_time = time.time()
 
@@ -231,7 +254,18 @@ class Interface(object):
 		if self.returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
 		print(self.shape,self.block['values'].shape)
 		values = misc.block_squeeze(self.block['values'],self.shape)
-		self.hfmOut['values'] = values
+		if self.multiprecision:
+			valuesq = misc.block_squeeze(self.block['valuesq'],self.shape)
+			if self.GetValue('values_float64',default=False,
+				help="Export values using the float64 data type"):
+				float64_t = np.dtype('float64').type
+				self.hfmOut['values'] = (self.xp.array(values,dtype=float64_t) 
+					+ float64_t(self.multip_step) * valuesq)
+			else:
+				self.hfmOut['values'] = (values 
+					+ self.xp.array(valuesq,dtype=self.float_t)*self.multip_step)
+		else:
+			self.hfmOut['values'] = values
 		return self.hfmOut
 
 

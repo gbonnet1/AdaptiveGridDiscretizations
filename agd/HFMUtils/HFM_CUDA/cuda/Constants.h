@@ -9,9 +9,9 @@ Scalar not_a_number(){return 0./0.;}
 __constant__ Scalar tol;
 
 
-#if multi_precision_macro
+#if multiprecision_macro
 __constant__ Scalar multip_step;
-__constant__ Scalar multip_umax; // Drop multi-precision beyond this value to avoid overflow
+__constant__ Scalar multip_max; // Drop multi-precision beyond this value to avoid overflow
 #endif
 
 

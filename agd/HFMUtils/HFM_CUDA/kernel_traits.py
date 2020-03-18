@@ -25,16 +25,19 @@ def default_traits(model):
 	"""
 	traits = {
 	'Scalar':  'float32',
-	'Int':     'int32'
+	'Int':     'int32',
+	'multiprecision_macro':0,
 	}
 
 	if model=='Isotropic2':
 		traits.update({
-		'shape_i':(8,8),
+		'shape_i':(24,24),
+		'niter_i':48,
 		})
 	elif model=='Isotropic3':
 		traits.update({
 		'shape_i':(4,4,4),
+		'niter_i':12,
 		})
 	else:
 		raise ValueError("Unsupported model")
