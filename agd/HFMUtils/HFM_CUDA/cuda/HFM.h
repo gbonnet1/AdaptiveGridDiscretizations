@@ -4,7 +4,21 @@ This file implements common rountines for HFM-type fast marching methods
 running on the GPU based on CUDA.
 */
 
-/// Normalizes so that u is as small as possible
+#ifndef isotropic_macro
+#define isotropic_macro 1
+#endif
+
+#if isotropic_macro
+const Int nact_ = 1;
+#define ISO(...) __VA_ARGS__
+#define ANISO(...)
+#else 
+const Int nact_ = nact;
+#define ISO(...) 
+#define ANISO(...) __VA_ARGS__
+#endif
+
+/// Normalizes a multi-precision variable so that u is as small as possible
 MULTIP( 
 void Normalize(Scalar * u, Int * uq){
 	if( *u<multip_max ){
@@ -19,24 +33,6 @@ bool Greater(const Scalar u MULTIP(, const Int uq), const Scalar v MULTIP(, cons
 	NOMULTIP(return u>v;)
 	MULTIP(return u-v > (vq-uq)*multip_step; )
 }
-
-/*
-bool order(Scalar * v, Int i){
-	// swaps v[i] and v[i+1] if v[i]>v[i+1]. Used in bubble sort.
-	if(v[i]<=v[i+1]) return false;
-	Scalar w = v[i];
-	v[i] = v[i+1];
-	v[i+1] = w;
-	return true;
-}
-
-void bubble_sort(Scalar v[nact]){
-	for(Int k=nact-1; k>=1; --k){
-		for(Int r=0; r<k; ++r){
-			order(v,r);
-		}
-	}
-}*/
 
 // --- Gets all the neighbor values ---
 void HFMNeighbors(const Int n_i, 
@@ -98,7 +94,7 @@ void HFMNeighbors(const Int n_i,
 
 
 /// --------- Eulerian fast marching update operator -----------
-void HFMUpdate(const Int n_i, const Scalar cost,
+void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 	const Scalar v_o[ntot], MULTIP(const Int vq_o[ntot],) const Int v_i[ntot], 
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
 	Scalar * u_out MULTIP(,Int * uq_out) ){
@@ -127,15 +123,24 @@ void HFMUpdate(const Int n_i, const Scalar cost,
 	const Int k=order[0];
 	const Scalar vmin = v[k]; MULTIP(const Int vqmin = vq[k];)
 	if(vmin==infinity()){*u_out = vmin; MULTIP(*uq_out=0;) return;}
-	Scalar value = cost;
-	Scalar a=1., b=0., c = -cost*cost;
+	ISO(const Scalar cost = weights[0];
+		Scalar value = cost;
+		Scalar a=1., b=0., c = -cost*cost;)
+	ANISO(const Scalar w = weights[k];
+		Scalar value = 1./sqrt(w);
+		Scalar a=w, b=0., c=-1.;
+		)
 	for(Int k_=1; k_<nact; ++k_){
 		const Int k = order[k_];
 		const Scalar t = (v[k] - vmin) MULTIP( + (vq[k]-vqmin)*multip_step );
 		if(value<=t){break;}
-		a+=1.;
-		b+=t;
-		c+=t*t;
+		ISO(a+=1.;
+			b+=t;
+			c+=t*t;)
+		ANISO(const Scalar w = weights[k];
+			a+=w;
+			b+=w*t;
+			c+=w*t*t;)
 		const Scalar delta = b*b-a*c;
 		const Scalar sdelta = sqrt(delta);
 		value = (b+sdelta)/a;
@@ -151,7 +156,7 @@ void HFMUpdate(const Int n_i, const Scalar cost,
 	*u_out = vmin+value; MULTIP(*uq_out = vqmin; Normalize(u_out,uq_out); )
 }
 
-void HFMIter(const bool active, const Int n_i, const Scalar cost,
+void HFMIter(const bool active, const Int n_i, const Scalar weights[nact_],
 	const Scalar v_o[ntot], MULTIP(const Int vq_o[ntot],) const Int v_i[ntot], 
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) ){
 
@@ -160,7 +165,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar cost,
 	MULTIP(__shared__ Int uq_i_new[size_i];)
 	for(int i=0; i<niter_i; ++i){
 		if(active) {HFMUpdate(
-			n_i,cost,
+			n_i,weights,
 			v_o MULTIP(,vq_o), v_i,
 			u_i MULTIP(,uq_i),
 			&u_i_new[n_i] MULTIP(,&uq_i_new[n_i]) 
@@ -173,7 +178,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar cost,
 	#else
 	for(int i=0; i<niter_i; ++i){
 		if(active) {HFMUpdate(
-			n_i,cost,
+			n_i,weights,
 			v_o MULTIP(,vq_o), v_i,
 			u_i MULTIP(,uq_i),
 			&u_i[n_i] MULTIP(,&uq_i[n_i]) 

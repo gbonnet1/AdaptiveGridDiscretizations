@@ -77,7 +77,7 @@ __global__ void Update(
 	__syncthreads(); // __shared__ u_i
 
 	// Compute and save the values
-	HFMIter(!isSeed, n_i, cost,
+	HFMIter(!isSeed, n_i, &cost,
 		v_o MULTIP(,vq_o), v_i, 
 		u_i MULTIP(,uq_i) );
 	u[n] = u_i[n_i];

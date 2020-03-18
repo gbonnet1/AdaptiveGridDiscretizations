@@ -34,7 +34,7 @@ hfmIn = HFMUtils.dictIn({
     'raiseOnNonConvergence':False,
     'nitermax_o':500,
     'tol':1e-8,
-    'multiprecision':True,
+#    'multiprecision':True,
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
