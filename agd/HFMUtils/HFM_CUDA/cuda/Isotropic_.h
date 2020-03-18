@@ -1,13 +1,32 @@
 #pragma once 
 
-const Int n_print = 100;
-const Int n_print2=3;
+#define isotropic_macro 1
 
 #include "Constants.h"
 #include "Grid.h"
 #include "HFM.h"
 
 extern "C" {
+
+FACTOR(
+
+/** Returns the perturbations involved in the factored fast marching method.
+Input : x= relative position w.r.t the seed, e finite difference offset.*/
+void factor_sym(const Scalar x[ndim], const Int e[ndim], Scalar fact[2]){
+	// Compute some scalar products
+	Scalar xx=0.,xe=0.,ee=0.;
+	for(Int k=0; k<ndim; ++k){
+		xx += x[k]*x[k];
+		xe += x[k]*e[k];
+		ee += e[k]*e[k];
+	}
+	const Scalar Nx = sqrt(xx), Nxme = sqrt(xx-2*xe+ee), Nxpe = sqrt(xx+2*xe+ee);
+	fact[0] = (-2*xe + ee)/(Nx + Nxme) + xe /Nx;
+	fact[1] = (2*xe +ee)/(Nx+Nxpe) - xe/Nx;
+	for(Int k=0; k<2; ++k){fact[k]*=factor_metric[0];}
+}
+
+)
 
 __global__ void Update(
 	Scalar * u, MULTIP(Int * uq,)
@@ -44,6 +63,11 @@ __global__ void Update(
 	const Int uq_old = uq[n];
 	__shared__ Int uq_i[size_i];
 	uq_i[n_i] = uq_old;
+	)
+
+	FACTOR(
+	Scalar x_rel[ndim]; // Relative position wrt the seed.
+	const bool factors = factors(x,x_rel);
 	)
 
 	// Get the neighbor values, or their indices if interior to the block

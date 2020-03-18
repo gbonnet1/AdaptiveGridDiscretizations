@@ -5,7 +5,7 @@ running on the GPU based on CUDA.
 */
 
 #ifndef isotropic_macro
-#define isotropic_macro 1
+#define isotropic_macro 0
 #endif
 
 #if isotropic_macro
@@ -48,7 +48,7 @@ void HFMNeighbors(const Int n_i,
 			const Int w_i = v_i[ks];
 			Scalar v_ MULTIP(,vq_);
 			if(w_i>=0){
-				v_ = u_i[w_i];
+				v_ = u_i[w_i] FACTOR(+v_o[ks]);
 				MULTIP(vq_ = uq_i[w_i];)
 			} else {
 				v_ = v_o[ks];

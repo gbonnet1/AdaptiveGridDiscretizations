@@ -44,8 +44,14 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 #define NOMULTIP(...) __VA_ARGS__
 #endif
 
-/// Source factorization
+/** Source factorization allows to improve the solution accuracy by subtracting, before 
+the finite differences computation, a expansion of the solution near the source.*/
 #ifndef factor_macro
 #define factor_macro 0
 #endif
 
+#if factor_macro
+#define FACTOR(...) __VA_ARGS__
+#else
+#define FACTOR(...) 
+#endif

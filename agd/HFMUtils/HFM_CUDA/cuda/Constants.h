@@ -25,6 +25,17 @@ __constant__ Int size_tot; // product(shape_tot)
 
 
 #if factor_macro
-__constant__ Scalar factor_metric[factor_macro][metric_size];
-__constant__ Scalar factor_origin[factor_macro][ndim];
+__constant__ Scalar factor_metric[metric_size];
+__constant__ Scalar factor_origin[ndim];
+__constant__ Scalar factor_radius2;
+
+// Input: absolute position of point. 
+// Output: wether factors, and relative position of point.
+bool factor_rel(const Int x_abs[ndim], Scalar x_rel[ndim]){
+	Scalar r2 = 0.;
+	for(Int k=0; k<ndim; ++k){
+		x_rel[k] = x_abs[k]-factor_origin[k];
+		r2+=x_rel[k]*x_rel[k];
+	}
+	return r2 < factor_radius2;}
 #endif
