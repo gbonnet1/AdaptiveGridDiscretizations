@@ -1,4 +1,5 @@
 import numpy as np
+from collections import namedtuple
 
 SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
 'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','DubinsExt2',
@@ -76,19 +77,23 @@ def Rect(sides,sampleBoundary=False,gridScale=None,gridScales=None,dimx=None,dim
 
 # -------------- Point to and from index --------------
 
+GridSpec = namedtuple('GridSpec',['bottom','scale','dims'])
+
 def to_YXZ(params,index):
 	assert params['arrayOrdering'] in ('RowMajor','YXZ_RowMajor')
 	if params['arrayOrdering']=='RowMajor':
 		return index
 	else:
 		return np.stack((index[:,1],index[:,0],*index[:,2:].T),axis=1)
-def Scale(params):
+
+def GetGridSpec(params):
 	"""
-	Returns the gridscale. Takes care of periodic variables.
+	Returns the bottom point, scale and dimensions of the grid.
 	"""
 	bottom,top = GetCorners(params)
 	dims=np.array(params['dims'])
-	return (top-bottom)/dims
+	scale = (top-bottom)/dims
+	return GridSpec(bottom,scale,dims)
 
 
 def PointFromIndex(params,index,to=False):
@@ -96,7 +101,7 @@ def PointFromIndex(params,index,to=False):
 	Turns an index into a point.
 	Optional argument to: if true, inverse transformation, turning a point into a continuous index
 	"""
-	scale = Scale(params)
+	bottom,scale,_ = GetGridSpec(params)
 	start = bottom +0.5*scale
 	if not to: return start+scale*to_YXZ(params,index)
 	else: return to_YXZ(params,(index-start)/scale)

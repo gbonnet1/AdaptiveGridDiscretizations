@@ -41,7 +41,7 @@ hfmIn = HFMUtils.dictIn({
 	'dims':np.array((4000,4000)),
 	'gridScale':1,
 	'factoringRadius':20,
-
+	'returns':'in_raw',
 	'traits':{
 #	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),

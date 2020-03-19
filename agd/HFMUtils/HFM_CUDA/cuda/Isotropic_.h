@@ -67,7 +67,7 @@ __global__ void Update(
 
 	FACTOR(
 	Scalar x_rel[ndim]; // Relative position wrt the seed.
-	const bool factors = factors(x,x_rel);
+	const bool factors = factor_rel(x,x_rel);
 	)
 
 	// Get the neighbor values, or their indices if interior to the block
@@ -75,20 +75,31 @@ __global__ void Update(
 	Scalar v_o[ntot]; // Value of neighbor, if outside the block
 	MULTIP(Int vq_o[ntot];)
 	for(Int k=0,ks=0; k<nsym; ++k){
-		for(Int s=0; s<2; ++s){
-			Int y[ndim], y_i[ndim]; // Position of neighbor. Caution : aliasing
-			for(int l=0; l<ndim; ++l){y[l]=x[l]; y_i[l]=x_i[l];}
+		const Int * e = offsets[k]; // e[ndim]
+		FACTOR(Scalar fact[2];
+			factor_sym(x_rel,e,fact);)
 
+		for(Int s=0; s<2; ++s){
+			
+			Int y[ndim], y_i[ndim]; // Position of neighbor. 
 			const Int eps=2*s-1;
-			y[k]+=eps; y_i[k]+=eps;
+
+			for(int l=0; l<ndim; ++l){
+				y[l]   = x[l]   + eps*e[l]; 
+				y_i[l] = x_i[l] + eps*e[l];
+			}
+
+//			y[k]+=eps; y_i[k]+=eps;
+
 
 			if(Grid::InRange(y_i,shape_i))  {
 				v_i[ks] = Grid::Index(y_i,shape_i);
+				FACTOR(v_o[ks] = fact[s];)
 			} else {
 				v_i[ks] = -1;
 				if(Grid::InRange(y,shape_tot)) {
 					const Int ny = Grid::Index(y,shape_i,shape_o);
-					v_o[ks] = u[ny]; 
+					v_o[ks] = u[ny] FACTOR(+fact[s]);
 					MULTIP(vq_o[ks] = uq[ny];)
 				} else {
 					v_o[ks] = infinity();

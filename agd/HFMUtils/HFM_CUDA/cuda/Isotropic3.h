@@ -19,4 +19,6 @@ const Int log2_size_i = 6; // Upper bound on log_2(size_i)
 const Int niter_i = 8;
 #endif
 
+const Int offsets[nact][ndim] = {{1,0,0},{0,1,0},{0,0,1}};
+
 #include "Isotropic_.h"

@@ -216,6 +216,7 @@ class Interface(object):
 			})
 
 	def Metric(self,x):
+		print(f"Metric : x = {x}, {self.metric.at([1,1]).shape}"); raise ValueError
 		if hasattr(self,'metric'): return self.metric.at(x)
 		else: return self.dual_metric.at(x).dual()
 
@@ -231,6 +232,7 @@ class Interface(object):
 		else: 
 			memptr = self.kernel.get_global(key)
 		module_constant = xp.ndarray(value.shape, value.dtype, memptr)
+		print(f"key : {key}, value : {value}")
 		module_constant[...] = value
 
 

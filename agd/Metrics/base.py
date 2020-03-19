@@ -188,9 +188,9 @@ class Base:
 		assert self.vdim == len(grid)
 
 		def make_interp(value):
-			if not isinstance(value,np.ndarray): return value
-			if value.shape[-self.vdim:]!=grid[0].shape: return value
-			return Interpolation.UniformGridInterpolation(grid,value,**kwargs)
+			if hasattr(value,'shape') and value.shape[-self.vdim:]==grid.shape[1:]:
+				return Interpolation.UniformGridInterpolation(grid,value,**kwargs)
+			return value
 
 		self.interpolation_data = tuple(make_interp(value) for value in self)
 

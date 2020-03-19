@@ -23,6 +23,9 @@ __constant__ Int size_o;
 __constant__ Int shape_tot[ndim]; // shape_i * shape_o
 __constant__ Int size_tot; // product(shape_tot)
 
+#if isotropic_macro
+const Int metric_size = 1;
+#endif
 
 #if factor_macro
 __constant__ Scalar factor_metric[metric_size];
@@ -30,7 +33,7 @@ __constant__ Scalar factor_origin[ndim];
 __constant__ Scalar factor_radius2;
 
 // Input: absolute position of point. 
-// Output: wether factors, and relative position of point.
+// Output: wether factor happens here, and relative position of point.
 bool factor_rel(const Int x_abs[ndim], Scalar x_rel[ndim]){
 	Scalar r2 = 0.;
 	for(Int k=0; k<ndim; ++k){
