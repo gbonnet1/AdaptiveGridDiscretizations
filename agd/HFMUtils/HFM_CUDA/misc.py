@@ -1,6 +1,5 @@
 import numpy as np
-from ... import get_array_module
-
+from ...AutomaticDifferentiation.cupy_generic import get_array_module
 
 def packbits(arr,bitorder='big'):
 	"""Implements bitorder option in cupy"""
@@ -25,12 +24,11 @@ def block_expand(arr,shape_i,**kwargs):
 	Reshape an array so as to factor  shape_i (the inner shape),
 	and move its axes last.
 	Inputs : 
-	 - **kwargs : passed to xp.pad
+	 - **kwargs : passed to np.pad
 	Output : 
 	 - padded and reshaped array
 	 - original shape
 	"""
-	xp = get_array_module(arr)
 	ndim = len(shape_i)
 	shape=np.array(arr.shape)
 	shape_i = np.array(shape_i)
@@ -38,24 +36,22 @@ def block_expand(arr,shape_i,**kwargs):
 	# Extend data
 	shape_o = round_up(shape,shape_i)
 	shape_pad = shape_o*shape_i - shape
-	arr = xp.pad(arr, tuple( (0,s) for s in shape_pad), **kwargs) 
+	arr = np.pad(arr, tuple( (0,s) for s in shape_pad), **kwargs) 
 
 	# Reshape
 	shape_interleaved = np.stack( (shape_o,shape_i), axis=1).flatten()
-#	print(f"{shape=},{shape_i=},{shape_pad=},{shape_o=},{shape_interleaved=}")
 	arr = arr.reshape(shape_interleaved)
 
 	# Move axes
 	rg = np.arange(ndim)
 	axes_interleaved = 1+2*rg
 	axes_split = ndim+rg
-#	print(f"{axes_interleaved=},{axes_split=}")
-	arr = xp.moveaxis(arr,axes_interleaved,axes_split)
+	arr = np.moveaxis(arr,axes_interleaved,axes_split)
 
+	xp = get_array_module(arr)
 	return xp.ascontiguousarray(arr)
 
 def block_squeeze(arr,shape):
-	xp = get_array_module(arr)
 	ndim = len(shape)
 	shape_o = np.array(arr.shape[:ndim])
 	shape_i = np.array(arr.shape[ndim:])
@@ -64,7 +60,7 @@ def block_squeeze(arr,shape):
 	rg = np.arange(ndim)
 	axes_interleaved = 1+2*rg
 	axes_split = ndim+rg
-	arr = xp.moveaxis(arr,axes_split,axes_interleaved)
+	arr = np.moveaxis(arr,axes_split,axes_interleaved)
 
 	# Reshape
 	arr = arr.reshape(shape_o*shape_i)

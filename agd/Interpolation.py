@@ -62,7 +62,7 @@ class _spline_univariate:
 		if np.any(x<-tol) or np.any(x>self.shape-1+tol):
 			raise ValueError("Interpolating data outside domain")
 		if self.order==1 or self.periodic:
-			return np.full(x.shape,True)
+			return np.full_like(x,True,dtype='bool')
 		elif self.order==2:
 			return x>=1
 		elif self.order==3:
@@ -260,8 +260,10 @@ class _spline_tensor:
 		"""
 		Wether the interior nodes can be used.
 		"""
-		return np.logical_and.reduce(tuple(spline.interior(xi) 
-			for (spline,xi) in zip(self.splines,x)))
+		return ad.array(tuple(spline.interior(xi) 
+			for (spline,xi) in zip(self.splines,x))).all(axis=0)
+#		return np.logical_and.reduce(tuple(spline.interior(xi) # cupy has no reduce
+#			for (spline,xi) in zip(self.splines,x)))
 
 	def make_coefs(self,values,overwrite_values=False):
 		"""
@@ -296,7 +298,6 @@ class UniformGridInterpolation:
 		self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
 		if check_grid:
 			assert np.allclose(grid,self._grid())
-		
 		if order is None: order = 1
 		if isinstance(order,int): order = (order,)*self.vdim
 
@@ -310,6 +311,7 @@ class UniformGridInterpolation:
 		self.boundary_nodes = self.spline.nodes(interior=False)
 
 		self.coef = None if values is None else self.make_coefs(values)
+
 
 	@property
 	def vdim(self):
@@ -339,6 +341,7 @@ class UniformGridInterpolation:
 			result = ad.zeros_like(x,shape = result_shape)
 			y = (ad.remove_ad(x) - origin)/scale
 			interior_x = self.spline.interior(y)
+			print(interior_x,type(interior_x))
 			result[...,interior_x] = self(x[:,interior_x],True)
 			boundary_x = np.logical_not(interior_x)
 			result[...,boundary_x] = self(x[:,boundary_x],False)
@@ -353,14 +356,19 @@ class UniformGridInterpolation:
 		
 		# Spline coefficients, taking care of out of domain 
 		ys_ = ys.copy()
-		out = np.full(x.shape[1:],False)
+		out = np.full_like(x[0],False,dtype=bool)
 		for i,(d,per) in enumerate(zip(self.shape,self.periodic)):
 			if per: 
 				ys_[i] = ys_[i]%d
 			else: 
 				bad = np.logical_or(ys_[i]<0,ys_[i]>=d)
 				out = np.logical_or(out,bad)
-				ys_[i,bad] = 0 
+				try: 
+					ys_[i,bad] = 0 
+				except ValueError: # Old cupy versions do not support such slices
+					ys_i = ys_[i]
+					ys_i[bad] = 0
+					ys_[i] = ys_i
 
 		coef = self.coef[tuple(ys_)]
 		coef[out]=0.
@@ -369,7 +377,6 @@ class UniformGridInterpolation:
 		
 		# Spline weights
 		weight = self.spline(y,ys)
-#		print(weight)
 
 		return (lo(coef)*weight).sum(axis=ondim)
 
@@ -378,6 +385,10 @@ class UniformGridInterpolation:
 
 	def make_coefs(self,values,overwrite_values=False):
 		values = ad.array(values)
+		xp = ad.cupy_generic.get_array_module(values)
+		self.interior_nodes = xp.array(self.interior_nodes)
+		self.boundary_nodes = xp.array(self.boundary_nodes)
+
 		ondim = values.ndim - self.vdim
 		# Internally, interpolation is along the first axes.
 		# (Contrary to external interface)
@@ -386,8 +397,10 @@ class UniformGridInterpolation:
 		return self.spline.make_coefs(val,overwrite_values=overwrite_values)
 
 	def _grid(self):
-		return np.meshgrid(*(o+h*np.arange(s+0.) 
-			for (o,h,s) in zip(self.origin,self.scale,self.shape)), indexing='ij')
+		xp = ad.cupy_generic.get_array_module(self.origin)
+		dtype = self.origin.dtype
+		return ad.array(np.meshgrid(*(o+h*xp.arange(s+0.,dtype=dtype) 
+			for (o,h,s) in zip(self.origin,self.scale,self.shape)), indexing='ij'))
 
 
 

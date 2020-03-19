@@ -1,3 +1,4 @@
+from . import cupy_generic
 from . import misc
 from . import Dense
 from . import Sparse
@@ -86,11 +87,18 @@ def array(a):
 	if isinstance(a,(list,tuple)): return stack([array(e) for e in a],axis=0)
 	else: return a
 
+def _full_like(arr,*args,**kwargs):
+	try: 
+		return np.full_like(arr,*args,**kwargs)
+	except TypeError: # Some old versions lack the shape argument
+		arr = np.broadcast_to(arr.flatten()[0], kwargs.pop('shape'))
+		return np.full_like(arr,*args,**kwargs)
+
 def full_like(a,*args,**kwargs):
 	if is_ad(a):
-		return type(a)(np.full_like(a.value,*args,**kwargs))
+		return type(a)(_full_like(a.value,*args,**kwargs))
 	else:
-		return np.full_like(a,*args,**kwargs)
+		return _full_like(a,*args,**kwargs)
 
 def zeros_like(a,*args,**kwargs): return full_like(a,0.,*args,**kwargs)
 def ones_like(a,*args,**kwargs):  return full_like(a,1.,*args,**kwargs)

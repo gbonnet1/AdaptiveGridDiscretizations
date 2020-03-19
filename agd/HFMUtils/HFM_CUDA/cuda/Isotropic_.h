@@ -23,7 +23,7 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim], Scalar fact[2]){
 	const Scalar Nx = sqrt(xx), Nxme = sqrt(xx-2*xe+ee), Nxpe = sqrt(xx+2*xe+ee);
 	fact[0] = (-2*xe + ee)/(Nx + Nxme) + xe /Nx;
 	fact[1] = (2*xe +ee)/(Nx+Nxpe) - xe/Nx;
-	for(Int k=0; k<2; ++k){fact[k]*=factor_metric[0];}
+	for(Int k=0; k<2; ++k){fact[k]*=-factor_metric[0];}
 }
 
 )

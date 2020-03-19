@@ -111,9 +111,9 @@ class Interface(object):
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
 		self.h = self.GetValue('gridScale', help="Scale of the computational grid")
 		cost = self.GetValue('cost',help="Cost function for the minimal paths")
-		self.xp = misc.get_array_module(cost)
+		self.xp = ad.cupy_generic.get_array_module(cost)
 		self.metric = Metrics.Isotropic(cost)
-		self.grid = self.hfmIn.Grid()
+		self.grid = self.xp.array(self.hfmIn.Grid(),dtype=self.float_t)
 		self.metric.set_interpolation(self.grid) # First order interpolation
 		assert cost.dtype == self.float_t
 		self.block['metric'] = misc.block_expand(cost*self.h,self.shape_i,
@@ -124,11 +124,12 @@ class Interface(object):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
 		xp = self.xp
 		values = xp.full(self.shape,xp.inf,dtype=self.float_t)
-		self.seeds = self.GetValue('seeds', help="Points from where the front propagation starts")
+		self.seeds = xp.array(self.GetValue('seeds', 
+			help="Points from where the front propagation starts") )
 		if len(self.seeds)==1: self.seed=self.seeds[0]
 		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
-		seedValues = self.GetValue('seedValues',default=seedValues,
-			help="Initial value for the front propagation")
+		seedValues = xp.array(self.GetValue('seedValues',default=seedValues,
+			help="Initial value for the front propagation"))
 		seedRadius = self.GetValue('seedRadius',default=0.,
 			help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
@@ -136,12 +137,13 @@ class Interface(object):
 			seedIndices,_ = self.hfmIn.IndexFromPoint(self.seeds)
 			values[tuple(seedIndices.T)] = seedValues
 		else:
-			neigh = self.hfmIn.Neighbors(self.seed,seedRadius)
-			diff = neigh - self.seed
+			neigh = self.hfmIn.GridNeighbors(self.seed,seedRadius) # Geometry last
+			diff = (neigh - self.seed).T # Geometry first
 			neighIndices,_ = self.hfmIn.IndexFromPoint(neigh)
+			print(neigh.T,type(neigh))
 			metric0 = self.Metric(self.seed)
-			metric1 = self.Metric(neigh)
-			values[tuple(neighIndices.T)] = 0.5*(metric0.Norm(diff) + metric1.Norm(diff))
+			metric1 = self.Metric(neigh.T)
+			values[tuple(neighIndices.T)] = 0.5*(metric0.norm(diff) + metric1.norm(diff))
 
 		block_values = misc.block_expand(values,self.shape_i,mode='constant',constant_values=xp.nan)
 
@@ -216,7 +218,6 @@ class Interface(object):
 			})
 
 	def Metric(self,x):
-		print(f"Metric : x = {x}, {self.metric.at([1,1]).shape}"); raise ValueError
 		if hasattr(self,'metric'): return self.metric.at(x)
 		else: return self.dual_metric.at(x).dual()
 

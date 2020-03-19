@@ -2,7 +2,7 @@ import numpy as np
 import importlib
 import functools
 
-from .Grid import GetCorners,Rect,GetAxes,GetGrid,PointFromIndex,IndexFromPoint,CenteredLinspace
+from .Grid import GetCorners,Rect,GetAxes,GetGrid,PointFromIndex,IndexFromPoint,CenteredLinspace,GridNeighbors
 from .LibraryCall import GetBinaryDir
 from .run_detail import RunRaw,RunSmart,Cache
 
@@ -72,6 +72,7 @@ class dictIn(dict):
 	Grid=GetGrid
 	PointFromIndex=PointFromIndex
 	IndexFromPoint=IndexFromPoint
+	GridNeighbors=GridNeighbors
 
 	# Running
 	Run = Run

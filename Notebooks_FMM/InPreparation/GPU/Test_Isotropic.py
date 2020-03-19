@@ -32,20 +32,23 @@ hfmIn = HFMUtils.dictIn({
     'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':500,
+#    'nitermax_o':2,
     'tol':1e-8,
 #    'multiprecision':True,
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((4000,4000)),
+	'dims':np.array((8,8)),
+	'origin':[-0.5,-0.5],
 	'gridScale':1,
-	'factoringRadius':20,
+	'factoringRadius':10000,
+	'seedRadius':2,
 	'returns':'in_raw',
 	'traits':{
+#	'niter_i':1,'shape_i':(8,8),
 #	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
-	'niter_i':48,'shape_i':(24,24),
+#	'niter_i':48,'shape_i':(24,24),
 #	'niter_i':64,'shape_i':(32,32),
 #   'debug_print':1,
 #    'niter_i':1,
@@ -59,6 +62,7 @@ if False:
 		'model':'Isotropic3',
 		'dims':np.array((200,200,200)),
 		'seeds':[[0,0,0]],
+		'origin':[-0.5,-0.5,-0.5]
 		})
 	hfmIn['traits'].update({
 		'niter_i':12,
@@ -66,8 +70,8 @@ if False:
 		})
 
 
-print(f"Corners {hfmIn.Corners}")
-print(help(hfmIn.SetRect))
+#print(f"Corners {hfmIn.Corners}")
+#print(help(hfmIn.SetRect))
 
 #hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
 hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
@@ -92,9 +96,11 @@ for key in ('traits','niter_o','solver','raiseOnNonConvergence','nitermax_o'):
 
 hfmInCPU.update({
 	'exportValues':1,
+#	'factoringMethod':'Static',
+#	'factoringPointChoice':'Key',
 })
 
-if False: #Isotopic code
+if True: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))

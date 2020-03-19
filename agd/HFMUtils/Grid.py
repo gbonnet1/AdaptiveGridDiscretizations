@@ -1,10 +1,11 @@
 import numpy as np
 from collections import namedtuple
+from .. import AutomaticDifferentiation as ad
+array_float_caster = ad.cupy_generic.array_float_caster
 
 SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
 'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','DubinsExt2',
 'ReedsShepp3','ReedsSheppForward3'}
-
 
 def GetCorners(params):
 	dims = params['dims']
@@ -16,9 +17,16 @@ def GetCorners(params):
 		hTheta = 2*np.pi/dims[-1]
 		h[-1]=hTheta; origin[-1]=-hTheta/2;
 		if dim==5: h[-2]=hTheta; origin[-2]=-hTheta/2;
-	return [origin,origin+h*dims]
+	caster = array_float_caster(**params)
+	return caster(origin),caster(origin+h*dims)
 
 def CenteredLinspace(a,b,n):
+	"""
+	Returns a linspace shifted by half a node length.
+	Inputs : 
+	 - a,b : interval endpoints
+	 - n : number of points
+	"""
 	n_=int(n); assert(n==n_) #Allow floats for convenience
 	r,dr=np.linspace(a,b,n_,endpoint=False,retstep=True)
 	return r+dr/2
@@ -26,8 +34,8 @@ def CenteredLinspace(a,b,n):
 def GetAxes(params,dims=None):
 	bottom,top = GetCorners(params)
 	if dims is None: dims=params['dims']
-	return [CenteredLinspace(b,t,d) for b,t,d in zip(bottom,top,dims)]
-
+	caster = array_float_caster(**params)
+	return [caster(CenteredLinspace(b,t,d)) for b,t,d in zip(bottom,top,dims)]
 
 def GetGrid(params,dims=None):
 	"""Returns a grid of coordinates for the domain.
@@ -35,9 +43,9 @@ def GetGrid(params,dims=None):
 	axes = GetAxes(params,dims);
 	ordering = params['arrayOrdering']
 	if ordering=='RowMajor':
-		return np.array(np.meshgrid(*axes,indexing='ij'))
+		return ad.array(np.meshgrid(*axes,indexing='ij'))
 	elif ordering=='YXZ_RowMajor':
-		return np.array(np.meshgrid(*axes))
+		return ad.array(np.meshgrid(*axes))
 	else: 
 		raise ValueError('Unsupported arrayOrdering : '+ordering)
 
@@ -90,8 +98,9 @@ def GetGridSpec(params):
 	"""
 	Returns the bottom point, scale and dimensions of the grid.
 	"""
+	caster = array_float_caster(**params)
 	bottom,top = GetCorners(params)
-	dims=np.array(params['dims'])
+	dims=caster(params['dims'])
 	scale = (top-bottom)/dims
 	return GridSpec(bottom,scale,dims)
 
@@ -130,10 +139,19 @@ def GridNeighbors(params,point,gridRadius):
 	- gridRadius (scalar): given in pixels
 	"""
 	assert params['arrayOrdering']=='RowMajor'
-	cindex = PointFromIndex(params,point)
-	neigh =  np.meshgrid( (np.arange(-np.floor(ci+seedRadius),np.ceil(ci+seedRadius)+1)
-				for ci in cindex) , indexing='ij')
-	neigh = np.stack(neigh,axis=-1).reshape(-1,neigh.shape[-1])
-	diff = neigh-point
-	close = np.sum(diff**2,axis=-1) < gridRadius**2
-	return neigh[close]
+	xp = ad.cupy_generic.get_array_module(point)
+	point_cindex = PointFromIndex(params,point,to=True)
+	aX = [xp.arange(-int(np.floor(ci+gridRadius)),int(np.ceil(ci+gridRadius)+1)) for ci in point_cindex]
+	neigh_index =  ad.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
+	neigh_index = neigh_index.reshape(-1,neigh_index.shape[-1])
+
+	# Check which neighbors are close enough
+	offset = neigh_index-point_cindex
+	close = np.sum(offset**2,axis=-1) < gridRadius**2
+
+	# Check which neighbors are in the domain (periodicity omitted)
+	neigh = PointFromIndex(params,neigh_index)
+	bottom,top = GetCorners(params)
+	inRange = np.all(np.logical_and(bottom<neigh,neigh<top),axis=-1)
+
+	return neigh[np.logical_and(close,inRange)]
