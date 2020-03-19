@@ -140,7 +140,6 @@ class Interface(object):
 			neigh = self.hfmIn.GridNeighbors(self.seed,seedRadius) # Geometry last
 			diff = (neigh - self.seed).T # Geometry first
 			neighIndices,_ = self.hfmIn.IndexFromPoint(neigh)
-			print(neigh.T,type(neigh))
 			metric0 = self.Metric(self.seed)
 			metric1 = self.Metric(neigh.T)
 			values[tuple(neighIndices.T)] = 0.5*(metric0.norm(diff) + metric1.norm(diff))
@@ -209,7 +208,7 @@ class Interface(object):
 			self.SetModuleConstant('factor_radius2',self.factoringRadius**2,float_t)
 			self.SetModuleConstant('factor_origin',self.seed,float_t) # Single seed only
 			self.SetModuleConstant('factor_metric',self.Metric(self.seed).to_HFM(),float_t)
-
+		
 		in_raw.update({
 			'tol':tol,
 			'shape_o':self.shape_o,
@@ -233,7 +232,6 @@ class Interface(object):
 		else: 
 			memptr = self.kernel.get_global(key)
 		module_constant = xp.ndarray(value.shape, value.dtype, memptr)
-		print(f"key : {key}, value : {value}")
 		module_constant[...] = value
 
 

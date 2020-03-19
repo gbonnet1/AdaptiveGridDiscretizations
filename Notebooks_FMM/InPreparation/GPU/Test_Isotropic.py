@@ -34,11 +34,11 @@ hfmIn = HFMUtils.dictIn({
     'raiseOnNonConvergence':False,
 #    'nitermax_o':2,
     'tol':1e-8,
-#    'multiprecision':True,
+    'multiprecision':True,
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((8,8)),
+	'dims':np.array((1000,1000)),
 	'origin':[-0.5,-0.5],
 	'gridScale':1,
 	'factoringRadius':10000,
@@ -100,7 +100,7 @@ hfmInCPU.update({
 #	'factoringPointChoice':'Key',
 })
 
-if True: #Isotopic code
+if False: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))

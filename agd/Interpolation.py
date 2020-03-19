@@ -341,7 +341,6 @@ class UniformGridInterpolation:
 			result = ad.zeros_like(x,shape = result_shape)
 			y = (ad.remove_ad(x) - origin)/scale
 			interior_x = self.spline.interior(y)
-			print(interior_x,type(interior_x))
 			result[...,interior_x] = self(x[:,interior_x],True)
 			boundary_x = np.logical_not(interior_x)
 			result[...,boundary_x] = self(x[:,boundary_x],False)
