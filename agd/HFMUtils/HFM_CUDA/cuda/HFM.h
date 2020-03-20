@@ -190,22 +190,24 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 	*u_out = vmin+value; MULTIP(*uq_out = vqmin[0]; Normalize(u_out,uq_out); )
 }
 
-void HFMIter(const bool active, const Int n_i, const Scalar weights[nact_],
-	const Scalar v_o[ntot], MULTIP(const Int vq_o[ntot],) const Int v_i[ntot], 
-	ORDER2(const Scalar v2_o[ntot], MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],)
+void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
+	const Scalar v_o[ntotx], MULTIP(const Int vq_o[ntotx],) const Int v_i[ntotx], 
+	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) ){
 
 	#if strict_iter_i
 	__shared__ Scalar u_i_new[size_i];
 	MULTIP(__shared__ Int uq_i_new[size_i];)
 	for(int i=0; i<niter_i; ++i){
-		if(active) {HFMUpdate(
-			n_i,weights,
-			v_o MULTIP(,vq_o), v_i,
-			ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
-			u_i MULTIP(,uq_i),
-			&u_i_new[n_i] MULTIP(,&uq_i_new[n_i]) 
-			);}
+		if(active) {
+			HFMUpdate(
+				n_i,weights,
+				v_o MULTIP(,vq_o), v_i,
+				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
+				u_i MULTIP(,uq_i),
+				&u_i_new[n_i] MULTIP(,&uq_i_new[n_i]) 
+				);
+		}
 		__syncthreads();
 		u_i[n_i]=u_i_new[n_i]; MULTIP(uq_i[n_i] = uq_i_new[n_i];)
 		__syncthreads();
@@ -213,13 +215,19 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nact_],
 
 	#else
 	for(int i=0; i<niter_i; ++i){
-		if(active) {HFMUpdate(
-			n_i,weights,
-			v_o MULTIP(,vq_o), v_i,
-			ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
-			u_i MULTIP(,uq_i),
-			&u_i[n_i] MULTIP(,&uq_i[n_i]) 
-		 );}
+		if(active) {
+			HFMUpdate(
+				n_i,weights,
+				v_o MULTIP(,vq_o), v_i,
+				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
+				u_i MULTIP(,uq_i),
+				&u_i[n_i] MULTIP(,&uq_i[n_i]) 
+				);
+			for(Int kmix=1; kmix<nmix; ++kmix){
+				const Scalar // save and mix use mix_is_min==Greater...
+			}
+
+		}
 		__syncthreads();
 	}
 

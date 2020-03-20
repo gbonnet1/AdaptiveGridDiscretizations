@@ -29,18 +29,17 @@ __global__ void Update(
 
 	const bool isSeed = Grid::GetBool(seeds,n);
 
-	Scalar weights[nact_];
+	Scalar weights[nactx_];
 	ISO(weights[0] = metric[n];) // Offsets are constant.
 	ANISO(
 		Scalar metric_[metric_size];
-		Int offsets[nact][ndim];
+		Int offsets[nactx][ndim];
 		for(Int k=0; k<metric_size; ++k){
 			metric_[k] = metric[n+size_tot*k];}
 		scheme(metric_,weights,offsets);
 	)
 	DRIFT(
 		Scalar drift_[ndim];
-		Scalar fact_asym[nact];
 		for(Int k=0; k<ndim; ++k){
 			drift_[k] = drift[n+size_tot*k];}
 	)
@@ -61,16 +60,19 @@ __global__ void Update(
 	)
 
 	// Get the neighbor values, or their indices if interior to the block
-	Int    v_i[ntot]; // Index of neighbor, if in the block
-	Scalar v_o[ntot]; // Value of neighbor, if outside the block
-	MULTIP(Int vq_o[ntot];)
+	Int    v_i[ntotx]; // Index of neighbor, if in the block
+	Scalar v_o[ntotx]; // Value of neighbor, if outside the block
+	MULTIP(Int vq_o[ntotx];)
 	ORDER2(
-		Int v2_i[ntot];
-		Scalar v2_o[ntot];
-		MULTIP(Int vq2_o[ntot];)
+		Int v2_i[ntotx];
+		Scalar v2_o[ntotx];
+		MULTIP(Int vq2_o[ntotx];)
 		)
-	for(Int k=0,ks=0; k<nsym; ++k){
-		const Int * e = offsets[k]; // e[ndim]
+	Int koff=0,kv=0; 
+	for(Int kmix=0; kmix<nmix; ++kmix){
+	for(Int kact=0; kact<nact; ++kact){
+		const Int * e = offsets[koff]; // e[ndim]
+		++koff;
 		SHIFT(
 			Scalar fact[2]; ORDER2(Scalar fact2[2];)
 			FACTOR( factor_sym(x_rel,e,fact ORDER2(,fact2)) );
@@ -79,7 +81,8 @@ __global__ void Update(
 			)
 
 		for(Int s=0; s<2; ++s){
-			
+			if(s==0 && kact>=nsym) continue;
+
 			Int y[ndim], y_i[ndim]; // Position of neighbor. 
 			const Int eps=2*s-1;
 
@@ -89,17 +92,17 @@ __global__ void Update(
 			}
 
 			if(Grid::InRange(y_i,shape_i))  {
-				v_i[ks] = Grid::Index(y_i,shape_i);
-				SHIFT(v_o[ks] = fact[s];)
+				v_i[kv] = Grid::Index(y_i,shape_i);
+				SHIFT(v_o[kv] = fact[s];)
 			} else {
-				v_i[ks] = -1;
+				v_i[kv] = -1;
 				if(Grid::InRange(y,shape_tot)) {
 					const Int ny = Grid::Index(y,shape_i,shape_o);
-					v_o[ks] = u[ny] SHIFT(+fact[s]);
-					MULTIP(vq_o[ks] = uq[ny];)
+					v_o[kv] = u[ny] SHIFT(+fact[s]);
+					MULTIP(vq_o[kv] = uq[ny];)
 				} else {
-					v_o[ks] = infinity();
-					MULTIP(vq_o[ks] = 0;)
+					v_o[kv] = infinity();
+					MULTIP(vq_o[kv] = 0;)
 				}
 			}
 
@@ -110,24 +113,26 @@ __global__ void Update(
 			}
 
 			if(Grid::InRange(y_i,shape_i))  {
-				v2_i[ks] = Grid::Index(y_i,shape_i);
-				SHIFT(v2_o[ks] = fact2[s];)
+				v2_i[kv] = Grid::Index(y_i,shape_i);
+				SHIFT(v2_o[kv] = fact2[s];)
 			} else {
-				v2_i[ks] = -1;
+				v2_i[kv] = -1;
 				if(Grid::InRange(y,shape_tot)) {
 					const Int ny = Grid::Index(y,shape_i,shape_o);
-					v2_o[ks] = u[ny] SHIFT(+fact2[s]);
-					MULTIP(vq2_o[ks] = uq[ny];)
+					v2_o[kv] = u[ny] SHIFT(+fact2[s]);
+					MULTIP(vq2_o[kv] = uq[ny];)
 				} else {
-					v2_o[ks] = infinity();
-					MULTIP(vq2_o[ks] = 0;)
+					v2_o[kv] = infinity();
+					MULTIP(vq2_o[kv] = 0;)
 				}
 			}
 			) // ORDER2
 
-			++ks;
-		}
-	}
+			++kv;
+		} // for s 
+	} // for kact
+	} // for kmix
+
 	__syncthreads(); // __shared__ u_i
 
 	// Compute and save the values

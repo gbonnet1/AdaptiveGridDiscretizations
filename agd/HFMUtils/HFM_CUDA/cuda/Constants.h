@@ -1,8 +1,12 @@
 #pragma once
 // ----- Compile time constants ----------
 
-const Int ntot = 2*nsym + nfwd; // total number of offsets in the scheme
 const Int nact = nsym + nfwd; // maximum number of simulatneously active offsets in the scheme
+const Int ntot = 2*nsym + nfwd; // Total number of offsets in the scheme
+
+// Maximum or minimum of several schemes
+const Int nactx = nmix * nact;
+const Int ntotx = nmix * ntot;  
 
 const Int symdim = (ndim*(ndim+1))/2; // Dimension of the space of symmetric matrices.
 const Int Selling_maxiter = ndim==2 ? 50 : 100;
@@ -14,10 +18,12 @@ const Int Selling_maxiter = ndim==2 ? 50 : 100;
 // Special treatment of isotropic metrics, whose scheme uses a single shared weight.
 #if isotropic_macro 
 const Int nact_ = 1;
+const Int nactx_= 1;
 #define ISO(...) __VA_ARGS__
 #define ANISO(...)
 #else 
 const Int nact_ = nact;
+const Int nactx_= nactx;
 #define ISO(...) 
 #define ANISO(...) __VA_ARGS__
 #endif
