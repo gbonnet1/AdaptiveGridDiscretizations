@@ -195,25 +195,33 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) ){
 
-	#if strict_iter_i
-	__shared__ Scalar u_i_new[size_i];
-	MULTIP(__shared__ Int uq_i_new[size_i];)
+	if(strict_iter_i || nmix>1){
+
+	Scalar u_i_new; MULTIP(Int uq_i_new;)
 	for(int i=0; i<niter_i; ++i){
 		if(active) {
-			HFMUpdate(
-				n_i,weights,
-				v_o MULTIP(,vq_o), v_i,
-				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
-				u_i MULTIP(,uq_i),
-				&u_i_new[n_i] MULTIP(,&uq_i_new[n_i]) 
-				);
+			MIX(u_i_mix=mix_neutral(); MULTIP(uq_i_mix=0;) )
+			for(Int kmix=0; kmix<nmix; ++kmix){
+				const Int s = kmix*ntot;
+				HFMUpdate(
+					n_i,weights ANISO(+kmix*nact),
+					v_o+s MULTIP(,vq_o+s), v_i+s,
+					ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
+					u_i MULTIP(,uq_i),
+					&u_i_new MULTIP(,&uq_i_new) 
+					);
+				MIX(if(mix_is_min==Greater(u_i_mix MULTIP(,uq_i_mix), u_i_new MULTIP(,uq_i_new) ) ){
+					u_i_mix=u_i_new; MULTIP(uq_i_mix=uq_i_new;)
+				})
+			}
+			MIX(u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;))
 		}
 		__syncthreads();
-		u_i[n_i]=u_i_new[n_i]; MULTIP(uq_i[n_i] = uq_i_new[n_i];)
+		if(active){u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
 		__syncthreads();
 	}
 
-	#else
+	} else { // strict_iter_i
 	for(int i=0; i<niter_i; ++i){
 		if(active) {
 			HFMUpdate(
@@ -223,13 +231,9 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 				u_i MULTIP(,uq_i),
 				&u_i[n_i] MULTIP(,&uq_i[n_i]) 
 				);
-			for(Int kmix=1; kmix<nmix; ++kmix){
-				const Scalar // save and mix use mix_is_min==Greater...
-			}
-
 		}
 		__syncthreads();
 	}
 
-	#endif
+	} // strict_iter_i
 }

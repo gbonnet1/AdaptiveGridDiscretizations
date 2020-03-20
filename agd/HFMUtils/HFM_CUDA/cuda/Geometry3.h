@@ -27,7 +27,8 @@ void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 	}
 }
 
-void Selling_decomp(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
+// Selling decomposition of a tensor
+void Selling_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
 	Int sb[ndim+1][ndim];
 	obtusesuperbase(m,sb);
 	for(Int r=0; r<symdim; ++r){
@@ -36,4 +37,9 @@ void Selling_decomp(const Scalar m[symdim], Scalar weights[symdim], Int offsets[
 		weights[r] = max(0., - scal_vmv(sb[i],m,sb[j]) );
 		offsets[r] = cross_vv(sb[k],sb[l]);
 	}
+}
+
+// TODO. Based on previous, with some reorienting of offsets, and pruning of weights
+void Selling_v(const Scalar v[ndim], const Scalar eps, Scalar weights[symdim], Int offsets[symdim][ndim]){
+	
 }

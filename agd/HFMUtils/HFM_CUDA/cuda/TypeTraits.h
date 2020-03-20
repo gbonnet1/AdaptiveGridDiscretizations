@@ -90,3 +90,24 @@ the finite differences computation, a expansion of the solution near the source.
 #define ORDER2(...) 
 #endif
 
+/** Min or Max of a family of schemes*/
+#ifndef mix_macro
+#define mix_macro 0
+#endif
+
+#if mix_macro
+#define MIX(...) __VA_ARGS__
+#else
+#define MIX(...) 
+#endif
+
+#ifndef curvature_macro
+#define curvature_macro 0
+#endif
+
+#if curvature_macro
+#define CURVATURE(...) __VA_ARGS__
+#else
+#define CURVATURE(...) 
+#endif
+

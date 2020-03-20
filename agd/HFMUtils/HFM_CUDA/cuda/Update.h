@@ -36,7 +36,7 @@ __global__ void Update(
 		Int offsets[nactx][ndim];
 		for(Int k=0; k<metric_size; ++k){
 			metric_[k] = metric[n+size_tot*k];}
-		scheme(metric_,weights,offsets);
+		scheme(metric_, CURVATURE(x,) weights,offsets);
 	)
 	DRIFT(
 		Scalar drift_[ndim];
@@ -142,10 +142,6 @@ __global__ void Update(
 		u_i MULTIP(,uq_i) );
 	u[n] = u_i[n_i];
 	MULTIP(uq[n] = uq_i[n_i];)
-
-	if(debug_print && n_i==1){
-//		printf("u_i %f, uq_i %i",u_i[n_i],uq_i[n_i]);
-	}
 	
 	// Find the smallest value which was changed.
 	const Scalar u_diff = abs(u_old - u_i[n_i] MULTIP( + (uq_old - uq_i[n_i]) * multip_step ) );
