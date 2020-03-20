@@ -6,6 +6,7 @@ typedef float Scalar;
 
 #ifndef Int_macro
 typedef int Int;
+const Int IntMax = 2147483647;
 #endif
 
 /// Ceil of the division of positive numbers
@@ -54,4 +55,15 @@ the finite differences computation, a expansion of the solution near the source.
 #define FACTOR(...) __VA_ARGS__
 #else
 #define FACTOR(...) 
+#endif
+
+/** The second order scheme allows to improve accuracy*/
+#ifndef order2_macro
+#define order2_macro 0
+#endif
+
+#if order2_macro
+#define ORDER2(...) __VA_ARGS__
+#else
+#define ORDER2(...) 
 #endif

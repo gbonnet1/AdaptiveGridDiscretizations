@@ -88,13 +88,19 @@ class Interface(object):
 			help="Optional trait parameters passed to kernel"))
 
 		self.multiprecision = (self.GetValue('multiprecision',default=False,
-			help="Improve accuracy using multiprecision") or 
+			help="Use multiprecision arithmetic, to tmprove accuracy") or 
 			self.GetValue('values_float64',default=False) )
 		if self.multiprecision: traits['multiprecision_macro']=1
 
 		self.factoringRadius = self.GetValue('factoringRadius',default=0,
-			help="Use source factorization to improve accuracy")
+			help="Use source factorization, to improve accuracy")
 		if self.factoringRadius: traits['factor_macro']=1
+
+		order = self.GetValue('order',default=1,
+			help="Use second order scheme to improve accuracy")
+		if order not in {1,2}: raise ValueError(f"Unsupported scheme order {order}")
+		if order==2: traits['order2_macro']=1
+		self.order=order
 
 		self.traits = traits
 		self.in_raw['traits']=traits
@@ -208,6 +214,12 @@ class Interface(object):
 			self.SetModuleConstant('factor_radius2',self.factoringRadius**2,float_t)
 			self.SetModuleConstant('factor_origin',self.seed,float_t) # Single seed only
 			self.SetModuleConstant('factor_metric',self.Metric(self.seed).to_HFM(),float_t)
+
+		if self.order==2:
+			order2_threshold = self.GetValue('order2_threshold',0.2,
+				help="Relative threshold on second order differences / first order difference,"
+				"beyond which the second order scheme deactivates")
+			self.SetModuleConstant('order2_threshold',order2_threshold,float_t)
 		
 		in_raw.update({
 			'tol':tol,

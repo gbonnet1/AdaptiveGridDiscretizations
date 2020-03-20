@@ -9,17 +9,6 @@ from agd.AutomaticDifferentiation.Optimization import norm_infinity
 from packaging import version
 
 
-print("cupy version : ",xp.__version__)
-print(version.Version(xp.__version__)<version.Version("8.0"))
-
-"""
-import os
-print(os.listdir("folder"))
-print(max(os.path.getmtime(os.path.join("folder",file)) for file in os.listdir("folder")))
-print(os.path.getmtime("./folder"))
-"""
-
-
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
@@ -34,19 +23,21 @@ hfmIn = HFMUtils.dictIn({
     'raiseOnNonConvergence':False,
 #    'nitermax_o':2,
     'tol':1e-8,
-    'multiprecision':True,
+#    'multiprecision':True,
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((1000,1000)),
+	'dims':np.array((8,8)),
 	'origin':[-0.5,-0.5],
 	'gridScale':1,
+	'order':2,
+	'order2_threshold':0.3,
 	'factoringRadius':10000,
 	'seedRadius':2,
 	'returns':'in_raw',
 	'traits':{
 #	'niter_i':1,'shape_i':(8,8),
-#	'niter_i':16,'shape_i':(8,8),
+	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
 #	'niter_i':48,'shape_i':(24,24),
 #	'niter_i':64,'shape_i':(32,32),
@@ -100,7 +91,7 @@ hfmInCPU.update({
 #	'factoringPointChoice':'Key',
 })
 
-if False: #Isotopic code
+if True: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
@@ -123,3 +114,4 @@ if False: # Riemannian code
 #import agd.HFMUtils.HFM_CUDA.solvers as solvers
 #x = np.array([[1,1],[0,0]])
 #print(solvers.neighbors(x,(3,3)))
+if len(hfmOut['values'])<20: print(hfmOut['values'].get() - hfmOutCPU['values'])

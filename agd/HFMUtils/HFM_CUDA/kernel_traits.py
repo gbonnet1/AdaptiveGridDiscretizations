@@ -82,6 +82,7 @@ def kernel_source(model,traits):
 		elif 'int64' in str(Int): ctype = 'long long'
 		else: raise ValueError(f"Unrecognized scalar type {Int}")
 		source += f"typedef {ctype} Int;\n"
+		source += f"const Int Int_MAX = {np.iinfo(Int).max};"
 
 	for key,value in traits.items():
 		source += f"const int {key}={value};\n"

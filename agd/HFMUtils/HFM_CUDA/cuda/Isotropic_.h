@@ -9,10 +9,10 @@
 extern "C" {
 
 FACTOR(
-
 /** Returns the perturbations involved in the factored fast marching method.
 Input : x= relative position w.r.t the seed, e finite difference offset.*/
-void factor_sym(const Scalar x[ndim], const Int e[ndim], Scalar fact[2]){
+void factor_sym(const Scalar x[ndim], const Int e[ndim], 
+	Scalar fact[2] ORDER2(,Scalar fact2[2])){
 	// Compute some scalar products
 	Scalar xx=0.,xe=0.,ee=0.;
 	for(Int k=0; k<ndim; ++k){
@@ -20,13 +20,33 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim], Scalar fact[2]){
 		xe += x[k]*e[k];
 		ee += e[k]*e[k];
 	}
-	const Scalar Nx = sqrt(xx), Nxme = sqrt(xx-2*xe+ee), Nxpe = sqrt(xx+2*xe+ee);
-	fact[0] = (-2*xe + ee)/(Nx + Nxme) + xe /Nx;
-	fact[1] = (2*xe +ee)/(Nx+Nxpe) - xe/Nx;
-	for(Int k=0; k<2; ++k){fact[k]*=-factor_metric[0];}
-}
+	const Scalar Nx = sqrt(xx), // |x|
+	Nxme = sqrt(xx-2*xe+ee), // |x-e|
+	Nxpe = sqrt(xx+2*xe+ee); // |x+e|
+	const Scalar 
+	Nx_Nxme = ( 2*xe - ee)/(Nx + Nxme), // |x|-|x-e| computed in a stable way
+	Nx_Nxpe = (-2*xe - ee)/(Nx + Nxpe), // |x|-|x+e| computed in a stable way
+	grad_e = xe/Nx; // <e, x/|x|>
+	fact[0] = -grad_e + Nx_Nxme; // <-e,x/|x|> + |x|-|x-e|
+	fact[1] =  grad_e + Nx_Nxpe; // < e,x/|x|> + |x|-|x+e|
 
-)
+	ORDER2(
+	const Scalar 
+	Nxme2 = sqrt(xx-4*xe+4*ee), // |x-2e| 
+	Nxpe2 = sqrt(xx+4*xe+4*ee); // |x+2e| 
+	const Scalar 
+	Nxme2_Nxme = (-2*xe + 3*ee)/(Nxme+Nxme2), // |x-2e|-|x-e| computed in a stable way
+	Nxpe2_Nxpe = ( 2*xe + 3*ee)/(Nxpe+Nxpe2); // |x+2e|-|x+e| computed in a stable way
+	fact2[0] = 2*fact[0]-(Nx_Nxme + Nxme2_Nxme); // |x|-2|x-e|+|x-2e|
+	fact2[1] = 2*fact[1]-(Nx_Nxpe + Nxpe2_Nxpe); // |x|-2|x+e|+|x+2e|
+	)
+
+	for(Int k=0; k<2; ++k){
+		fact[k]*=factor_metric[0];
+		ORDER2(fact2[k]*=factor_metric[0];)
+	}	
+}
+) // FACTOR
 
 __global__ void Update(
 	Scalar * u, MULTIP(Int * uq,)
@@ -74,10 +94,17 @@ __global__ void Update(
 	Int    v_i[ntot]; // Index of neighbor, if in the block
 	Scalar v_o[ntot]; // Value of neighbor, if outside the block
 	MULTIP(Int vq_o[ntot];)
+	ORDER2(
+		Int v2_i[ntot];
+		Scalar v2_o[ntot];
+		MULTIP(Int vq2_o[ntot];)
+		)
 	for(Int k=0,ks=0; k<nsym; ++k){
 		const Int * e = offsets[k]; // e[ndim]
-		FACTOR(Scalar fact[2];
-			factor_sym(x_rel,e,fact);)
+		FACTOR(
+			Scalar fact[2]; ORDER2(Scalar fact2[2];)
+			factor_sym(x_rel,e,fact ORDER2(,fact2));
+			)
 
 		for(Int s=0; s<2; ++s){
 			
@@ -88,9 +115,6 @@ __global__ void Update(
 				y[l]   = x[l]   + eps*e[l]; 
 				y_i[l] = x_i[l] + eps*e[l];
 			}
-
-//			y[k]+=eps; y_i[k]+=eps;
-
 
 			if(Grid::InRange(y_i,shape_i))  {
 				v_i[ks] = Grid::Index(y_i,shape_i);
@@ -106,6 +130,29 @@ __global__ void Update(
 					MULTIP(vq_o[ks] = 0;)
 				}
 			}
+
+			ORDER2(
+			for(int l=0; l<ndim; ++l){
+				y[l]   +=  eps*e[l]; 
+				y_i[l] +=  eps*e[l];
+			}
+
+			if(Grid::InRange(y_i,shape_i))  {
+				v2_i[ks] = Grid::Index(y_i,shape_i);
+				FACTOR(v2_o[ks] = fact2[s];)
+			} else {
+				v2_i[ks] = -1;
+				if(Grid::InRange(y,shape_tot)) {
+					const Int ny = Grid::Index(y,shape_i,shape_o);
+					v2_o[ks] = u[ny] FACTOR(+fact2[s]);
+					MULTIP(vq2_o[ks] = uq[ny];)
+				} else {
+					v2_o[ks] = infinity();
+					MULTIP(vq2_o[ks] = 0;)
+				}
+			}
+			) // ORDER2
+
 			++ks;
 		}
 	}
@@ -114,6 +161,7 @@ __global__ void Update(
 	// Compute and save the values
 	HFMIter(!isSeed, n_i, &cost,
 		v_o MULTIP(,vq_o), v_i, 
+		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 		u_i MULTIP(,uq_i) );
 	u[n] = u_i[n_i];
 	MULTIP(uq[n] = uq_i[n_i];)

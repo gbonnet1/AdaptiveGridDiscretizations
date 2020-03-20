@@ -42,3 +42,7 @@ bool factor_rel(const Int x_abs[ndim], Scalar x_rel[ndim]){
 	}
 	return r2 < factor_radius2;}
 #endif
+
+ORDER2(
+__constant__ Scalar order2_threshold;
+)
