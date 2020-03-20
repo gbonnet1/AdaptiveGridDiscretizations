@@ -1,9 +1,31 @@
 #pragma once
-// ----------- Constants -------------
+// ----- Compile time constants ----------
+
+const Int ntot = 2*nsym + nfwd; // total number of offsets in the scheme
+const Int nact = nsym + nfwd; // maximum number of simulatneously active offsets in the scheme
+
+const Int symdim = (ndim*(ndim+1))/2; // Dimension of the space of symmetric matrices.
+const Int Selling_maxiter = ndim==2 ? 50 : 100;
+
+#ifndef isotropic_macro
+#define isotropic_macro 0
+#endif
+
+// Special treatment of isotropic metrics, whose scheme uses a single shared weight.
+#if isotropic_macro 
+const Int nact_ = 1;
+#define ISO(...) __VA_ARGS__
+#define ANISO(...)
+#else 
+const Int nact_ = nact;
+#define ISO(...) 
+#define ANISO(...) __VA_ARGS__
+#endif
 
 Scalar infinity(){return 1./0.;}
 Scalar not_a_number(){return 0./0.;}
 
+// -------- Module constants ---------
 
 /// Tolerance for the fixed point solver.
 __constant__ Scalar tol;

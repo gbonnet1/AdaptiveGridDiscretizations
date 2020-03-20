@@ -4,20 +4,6 @@ This file implements common rountines for HFM-type fast marching methods
 running on the GPU based on CUDA.
 */
 
-#ifndef isotropic_macro
-#define isotropic_macro 0
-#endif
-
-#if isotropic_macro
-const Int nact_ = 1;
-#define ISO(...) __VA_ARGS__
-#define ANISO(...)
-#else 
-const Int nact_ = nact;
-#define ISO(...) 
-#define ANISO(...) __VA_ARGS__
-#endif
-
 /// Normalizes a multi-precision variable so that u is as small as possible
 MULTIP( 
 void Normalize(Scalar * u, Int * uq){
@@ -52,7 +38,7 @@ void HFMNeighbors(const Int n_i,
 			const Int w_i = v_i[ks];
 			Scalar v_ MULTIP(,vq_);
 			if(w_i>=0){
-				v_ = u_i[w_i] FACTOR(+v_o[ks]);
+				v_ = u_i[w_i] SHIFT(+v_o[ks]);
 				MULTIP(vq_ = uq_i[w_i];)
 			} else {
 				v_ = v_o[ks];
@@ -72,7 +58,7 @@ void HFMNeighbors(const Int n_i,
 		const Int nk = nsym+k, n2k = 2*nsym+k;
 		const Int w_i = v_i[n2k];
 		if(w_i>=0){
-			v[nk] = u_i[w_i] FACTOR(+v_o[n2k]);
+			v[nk] = u_i[w_i] SHIFT(+v_o[n2k]);
 			MULTIP(vq[nk] = uq_i[w_i];)
 		} else {
 			v[nk] = v_o[n2k];
@@ -105,7 +91,7 @@ void HFMNeighbors(const Int n_i,
 		const Int w_i=v2_i[ks];
 		Scalar v2;
 		if(w_i>=0){
-			v2 = u_i[w_i] MULTIP(+ (uq_i[w_i]-*vqmin)*multip_step) FACTOR(+v2_o[ks]);
+			v2 = u_i[w_i] MULTIP(+ (uq_i[w_i]-*vqmin)*multip_step) FACTOR(+v2_o[ks]); // Drift alone only affects first order
 		} else {
 			v2 = v2_o[ks] MULTIP(+ (vq2_o[ks]-*vqmin)*multip_step);
 		}

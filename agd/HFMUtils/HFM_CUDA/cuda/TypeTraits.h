@@ -39,7 +39,7 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 
 #if multiprecision_macro
 #define MULTIP(...) __VA_ARGS__
-#define NOMULTIP(...)
+#define NOMULTIP(...) 
 #else
 #define MULTIP(...) 
 #define NOMULTIP(...) __VA_ARGS__
@@ -53,8 +53,30 @@ the finite differences computation, a expansion of the solution near the source.
 
 #if factor_macro
 #define FACTOR(...) __VA_ARGS__
+#define NOFACTOR(...) 
 #else
 #define FACTOR(...) 
+#define NOFACTOR(...) __VA_ARGS__
+#endif
+
+/** A drift can be introduced in some schemes */
+#ifndef drift_macro
+#define drift_macro 0
+#endif
+
+#if drift_macro
+#define DRIFT(...) __VA_ARGS__
+#else
+#define DRIFT(...) 
+#endif
+
+/** factorization and drift act similarly, by introducing a shift in the finite differences*/
+#define shift_macro (factor_macro+drift_macro)
+
+#if shift_macro
+#define SHIFT(...) __VA_ARGS__
+#else
+#define SHIFT(...) 
 #endif
 
 /** The second order scheme allows to improve accuracy*/
@@ -67,3 +89,4 @@ the finite differences computation, a expansion of the solution near the source.
 #else
 #define ORDER2(...) 
 #endif
+
