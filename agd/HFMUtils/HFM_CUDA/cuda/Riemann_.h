@@ -1,5 +1,14 @@
 #pragma once
 
+// ndim_macro must be defined
+#if (ndim_macro == 2)
+#include "Geometry2.h"
+#elif (ndim_macro == 3)
+#include "Geometry3.h"
+#else
+// Not supported presently
+#endif
+
 const Int nsym = symdim; // Number of symmetric offsets
 const Int nfwd = 0; // Number of forward offsets
 const Int metric_size = symdim;
