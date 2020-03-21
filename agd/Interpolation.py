@@ -355,7 +355,7 @@ class UniformGridInterpolation:
 		
 		# Spline coefficients, taking care of out of domain 
 		ys_ = ys.copy()
-		out = np.full_like(x[0],False,dtype=bool)
+		out = np.full_like(ad.remove_ad(x[0]),False,dtype=bool)
 		for i,(d,per) in enumerate(zip(self.shape,self.periodic)):
 			if per: 
 				ys_[i] = ys_[i]%d
