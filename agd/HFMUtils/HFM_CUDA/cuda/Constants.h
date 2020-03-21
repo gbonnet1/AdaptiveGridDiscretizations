@@ -83,7 +83,8 @@ ORDER2(
 __constant__ Scalar order2_threshold;
 )
 
-#if curvature_macro // Get the parameters for curvature penalized models
+// Get the parameters for curvature penalized models
+#if curvature_macro 
 
 const Int metric_size = 1 + xi_var_macro + kappa_var_macro + theta_var_macro;
 __constant__ Scalar relax; // Small relaxation parameter 
@@ -95,6 +96,8 @@ __constant__ Scalar xi;
 #if kappa_var_macro==0
 __constant__ Scalar kappa;
 #endif
+
+const bool periodic[3]={false,false,true};
 
 #define GET_SPEED_XI_KAPPA_THETA(params,x) { \
 Int k_=0;

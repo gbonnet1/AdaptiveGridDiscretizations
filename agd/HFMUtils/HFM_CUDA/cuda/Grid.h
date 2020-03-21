@@ -2,6 +2,34 @@
 /** This file implements common facilities for bounds checking and array access.*/
 namespace Grid {
 
+bool InRange_tot(const Int x[ndim]){
+	for(int k=0; k<ndim; ++k){
+		PERIODIC(if(periodic[k]){continue;})
+		if(x[k]<0 || x[k]>=shape_tot[k]){
+			return false;
+		}
+	}
+	return true;
+}
+
+Int Index_tot(const Int x[ndim]){
+	// Get the index of a point in the full array.
+	// No bounds check 
+	Int n_o=0,n_i=0;
+	for(Int k=0; k<ndim; ++k){
+		Int xk=x[k];
+		PERIODIC(if(periodic[k]){xk = (xk+shape_tot[k])%shape_tot[k];})
+		const Int 
+		s_i = shape_i[k],
+		x_o= xk/s_i,
+		x_i= xk%s_i;
+		if(k>0) {n_o*=shape_o[k]; n_i*=s_i;}
+		n_o+=x_o; n_i+=x_i; 
+	}
+	const Int n=n_o*size_i+n_i;
+	return n;
+}
+
 bool InRange(const Int x[ndim], const Int shape_[ndim]){
 	for(int k=0; k<ndim; ++k){
 		if(x[k]<0 || x[k]>=shape_[k]){
@@ -9,23 +37,6 @@ bool InRange(const Int x[ndim], const Int shape_[ndim]){
 		}
 	}
 	return true;
-}
-
-Int Index(const Int x[ndim], const Int shape_i[ndim], const Int shape_o[ndim]){
-	// Get the index of a point in the full array.
-	// No bounds check 
-	Int n_o=0,n_i=0;
-	for(Int k=0; k<ndim; ++k){
-		const Int 
-		s_i = shape_i[k],
-		x_o= x[k]/s_i,
-		x_i= x[k]%s_i;
-		if(k>0) {n_o*=shape_o[k]; n_i*=s_i;}
-		n_o+=x_o; n_i+=x_i; 
-	}
-
-	const Int n=n_o*size_i+n_i;
-	return n;
 }
 
 Int Index(const Int x[ndim], const Int shape_[ndim]){

@@ -39,7 +39,7 @@ void Selling_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdi
 	}
 }
 
-// TODO. Based on previous, with some reorienting of offsets, and pruning of weights
-void Selling_v(const Scalar v[ndim], const Scalar eps, Scalar weights[symdim], Int offsets[symdim][ndim]){
+// TODO. Based on previous, with some relaxation, reorienting of offsets, and pruning of weights
+void Selling_v(const Scalar v[ndim], Scalar weights[symdim], Int offsets[symdim][ndim]){
 	
 }

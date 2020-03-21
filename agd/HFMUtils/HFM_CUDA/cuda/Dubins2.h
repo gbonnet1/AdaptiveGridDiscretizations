@@ -6,7 +6,6 @@ const bool mix_is_min = true;
 #endif
 
 #define curvature_macro 1
-
 #include "Geometry3.h"
 
 const Int nsym = 0; // Number of symmetric offsets
@@ -21,8 +20,8 @@ void scheme(const Scalar params[metric_size],  Int x[ndim],
 	vL[ndim]={c,s,kappa+1./xi},
 	vR[ndim]={c,s,kappa-1./xi};
 		
-	Selling_v(vL,eps,  weights,        offsets);
-	Selling_v(vR,eps, &weights[nfwd], &offsets[nfwd]);
+	Selling_v(vL,  weights,        offsets);
+	Selling_v(vR, &weights[nfwd], &offsets[nfwd]);
 
 	const Scalar speed2 = speed*speed;
 	for(Int k=0; k<nmix*nfwd; ++k){

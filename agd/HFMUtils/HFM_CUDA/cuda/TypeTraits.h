@@ -101,13 +101,27 @@ the finite differences computation, a expansion of the solution near the source.
 #define MIX(...) 
 #endif
 
+/** Curvature penalized models have share a few specific features : 
+relaxation parameter, periodic boundary condition, xi and kappa constants, 
+position dependent metric. */
 #ifndef curvature_macro
 #define curvature_macro 0
 #endif
 
 #if curvature_macro
 #define CURVATURE(...) __VA_ARGS__
+#define periodic_macro 1
 #else
 #define CURVATURE(...) 
 #endif
 
+/** Apply periodic boundary conditions on some of the axes.*/
+#ifndef periodic_macro
+#define periodic_macro 0
+#endif
+
+#if periodic_macro
+#define PERIODIC(...) __VA_ARGS__
+#else
+#define PERIODIC(...) 
+#endif
