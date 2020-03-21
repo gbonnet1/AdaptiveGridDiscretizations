@@ -29,7 +29,7 @@ def default_traits(interface):
 	'multiprecision_macro':0,
 	}
 
-	ndim = len(interface.shape)	
+	ndim = interface.ndim
 
 	if ndim==2:
 		traits.update({

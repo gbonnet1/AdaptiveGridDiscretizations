@@ -104,6 +104,7 @@ class Interface(object):
 		# Domain shape and grid scale
 		self.shape = self.GetValue('dims',
 			help="dimensions (shape) of the computational domain").astype(int)
+		self.ndim = len(self.shape)
 		self.periodic = self.GetValue('periodic',default=None,
 			help="Apply periodic boundary conditions on some axes")
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
@@ -114,6 +115,8 @@ class Interface(object):
 		else:
 			self.h = self.GetValue('gridScales', default=None,
 				help="Axis independent scales of the computational grid")
+		if self.isCurvature: self.h_per = 2.*np.pi / self.shape[2] # Gridscale for periodic dimension
+
 		self.drift = self.GetValue('drift', default=None, verbosity=3,
 			help="Drift introduced in the eikonal equation, becoming F(grad u - drift)=1")
 
@@ -150,6 +153,12 @@ class Interface(object):
 		# Rescale 
 		if self.metric is not None: self.metric.rescale(1/self.h)
 		if self.dualMetric: is not None: self.dualMetric.rescale(self.h)
+		if self.drift is not None:
+			is np.isscalar(self.h): 
+				self.drift *= self.h
+			else: 
+				h = self.xp.array((self.h,self.h,self.h_per) if self.isCurvature else self.h)
+				self.drift *= h.reshape((self.ndim,)+(1,)*self.ndim)
 
 		if self.isCurvature:
 			if self.metric is None: self.metric = self.dualMetric.dual()
@@ -160,7 +169,6 @@ class Interface(object):
 			self.theta = self.GetValue('theta',default=0.,verbosity=3,
 				help="Deviation from horizontality, for the curvature penalized models")
 
-			self.h_per = 2.*np.pi / self.shape[2] # Gridscale for periodic dimension
 			self.xi *= self.h_per
 			self.kappa /= self.h_per
 
@@ -178,7 +186,9 @@ class Interface(object):
 			elif self.model.startswith('Rander'):
 				if self.metric is None: self.metric = self.dualMetric.dual()
 				self.geom = Metrics.Riemann(self.metric.m).dual().flatten()
-				self.drift = self.metric.w
+				if self.drift is None: self.drift = self.metric.w
+				else: self.drift += self.metric.w
+
 
 			# TODO : remove. No need to create this grid for our interpolation
 			grid = self.xp.meshgrid(*(range(s) for s in self.shape), 
