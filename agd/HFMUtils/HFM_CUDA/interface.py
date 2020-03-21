@@ -36,11 +36,19 @@ class Interface(object):
 		self.verbosity = 1
 		self.verbosity = self.GetValue('verbosity',default=1,
 			help="Choose the amount of detail displayed on the run")
-		self.model = self.GetValue('model',help='Minimal path model to be solved')
+		
+		self.model = self.GetValue('model',help='Minimal path model to be solved.')
+		# Unified treatment of standard and extended curvature models
+		if self.model.endswith("Ext2"): self.model=self.model[:-4]+"2"
+		
 		self.returns=None
 		self.xp = ad.cupy_generic.get_array_module(**hfmIn)
 		
-	def GetValue(self,key,default=None,verbosity=2,help=None):
+	def HasValue(self,key):
+		self.hfmOut['key visited'].append(key)
+		return key in self.hfmIn
+
+	def GetValue(self,key,default="_None",verbosity=2,help=None):
 		"""
 		Get a value from a dictionnary, printing some help if requested.
 		"""
@@ -57,7 +65,7 @@ class Interface(object):
 		if key in self.hfmIn:
 			self.hfmOut['key used'].append(key)
 			return self.hfmIn[key]
-		elif default is not None:
+		elif default != "_None":
 			self.hfmOut['key defaulted'].append((key,default))
 			if verbosity>=self.verbosity:
 				print(f"key {key} defaults to {default}")
@@ -82,6 +90,14 @@ class Interface(object):
 
 		return self.hfmOut
 
+	@property
+	def isCurvature(self):
+		if any(self.model.startswith(e) for e in ('Isotropic','Riemann','Rander')):
+			return True
+		if self.model in ['ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2']:
+			return False
+		raise ValueError("Unreconized model")
+
 	def SetKernelTraits(self):
 		if self.verbosity>=1: print("Setting the kernel traits.")
 		if self.verbosity>=2: print("(Scalar,Int,shape_i,niter_i,...)")	
@@ -104,6 +120,9 @@ class Interface(object):
 		if order==2: traits['order2_macro']=1
 		self.order=order
 
+		if not self.isCurvature:
+			traits['ndim_macro'] = int(self.model[-1])
+
 		self.traits = traits
 		self.in_raw['traits']=traits
 
@@ -111,33 +130,86 @@ class Interface(object):
 		self.int_t   = np.dtype(traits['Int']   ).type
 		self.shape_i = traits['shape_i']
 
-
 	def SetGeometry(self):
 		if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
+
+		# Domain shape and grid scale
 		self.shape = self.GetValue('dims',
 			help="dimensions (shape) of the computational domain").astype(int)
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
-		self.h = self.GetValue('gridScale', help="Scale of the computational grid")
 
-		if self.model.startswith('Isotropic'):
-			cost = self.GetValue('cost',help="Cost function for the minimal paths")
-			self.metric = Metrics.Isotropic(cost)
-			assert cost.dtype == self.float_t
+		if self.HasValue('gridScale'):
+			self.h = self.GetValue('gridScale', default=None,
+				help="Scale of the computational grid")
+		else:
+			self.h = self.GetValue('gridScales', default=None,
+				help="Axis independent scales of the computational grid")
+		self.drift = self.GetValue('drift', default=None, verbosity=3,
+			help="Drift introduced in the eikonal equation, becoming F(grad u - drift)=1")
 
-		if not self.GetValue("overwriteMetric",default=False,
-			help="Allow overwriting the metric"):
+		# Get the metric or cost function
+		if self.model.startswith('Isotropic') or self.isCurvature:
+			self.metric = self.GetValue('cost',None,verbosity=3,
+				help="Cost function for the minimal paths")
+			self.dualMetric = self.GetValue('speed',None,verbosity=3,
+				help="Speed function for the minimal paths")
+		else:
+			self.metric = self.GetValue('metric',default=None,verbosity=3,
+				help="Metric of the minimal path model")
+			self.dualMetric = self.GetValue('dualMetric',default=None,verbosity=3,
+				help="Dual metric of the minimal path model")
+
+		# Import from HFM format, and make copy, if needed
+		if self.model.startswith('Isotropic') or self.isCurvature: 
+			metricClass = Metrics.Isotropic
+		elif self.model.startswith('Riemann'): metricClass = Metrics.Riemann
+		elif self.model.startswith('Rander') : metricClass = Metrics.Rander
+
+		overwriteMetric = self.GetValue("overwriteMetric",default=False,
+				help="Allow overwriting the metric or dualMetric")
+
+		if ad.cupy_generic.isndarray(self.metric): 
+			self.metric = metricClass.from_HFM(self.metric)
+		elif not overwriteMetric:
 			self.metric = copy.deepcopy(self.metric)
+		if ad.cupy_generic.isndarray(self.dualMetric): 
+			self.dualMetric = metricClass.from_HFM(self.dualMetric)
+		elif not overwriteMetric:
+			self.dualMetric = copy.deepcopy(self.dualMetric)
 
-		self.metric.rescale(self.h)
-		self.blo
+		# Rescale 
+		if self.metric is not None: self.metric.rescale(1/self.h)
+		if self.dualMetric: is not None: self.dualMetric.rescale(self.h)
 
-		self.grid = self.xp.array(self.hfmIn.Grid(),dtype=self.float_t)
-		self.metric.set_interpolation(self.grid) # First order interpolation
+		if self.isCurvature:
+			if self.metric is None: self.metric = self.dualMetric.dual()
+			self.xi = self.GetValue('xi',
+				help="Cost of rotation for the curvature penalized models")
+			self.kappa = self.GetValue('kappa',default=0.,
+				help="Rotation bias for the curvature penalized models")
+			self.theta = self.GetValue('theta',default=0.,verbosity=3,
+				help="Deviation from horizontality, for the curvature penalized models")
 
+			self.geom = ad.array([e for e in (self.metric,self.xi,self.kappa,self.theta)
+				if not np.isscalar(e)])
 
-		self.block['metric'] = misc.block_expand(cost*self.h,self.shape_i,
+		else: # not self.isCurvature
+			if self.model.startswith('Isotropic'):
+				if self.metric is None: self.metric = self.dualMetric.dual()
+				self.geom = self.metric.cost
+			elif self.model.startswith('Riemann'):
+				if self.dualMetric is None: self.dualMetric = self.metric.dual()
+				self.geom = self.dualMetric.flatten()
+			elif self.model.startswith('Rander'):
+				if self.metric is None: self.metric = self.dualMetric.dual()
+				self.geom = Metrics.Riemann(self.metric.m).dual().flatten()
+				self.drift = self.metric.w
+
+			self.grid = self.xp.array(self.hfmIn.Grid(),dtype=self.float_t)
+			self.metric.set_interpolation(self.grid) # First order interpolation
+
+		self.block['geom'] = misc.block_expand(self.geom,self.shape_i,
 			mode='constant',constant_values=self.xp.inf)
-
 
 	def SetValuesArray(self):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
@@ -145,6 +217,7 @@ class Interface(object):
 		values = xp.full(self.shape,xp.inf,dtype=self.float_t)
 		self.seeds = xp.array(self.GetValue('seeds', 
 			help="Points from where the front propagation starts") )
+		self.seeds = self.hfmIn.PointFromIndex(seeds,to=True) # Adimensionize seed position
 		if len(self.seeds)==1: self.seed=self.seeds[0]
 		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
 		seedValues = xp.array(self.GetValue('seedValues',default=seedValues,
@@ -153,7 +226,7 @@ class Interface(object):
 			help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
 		if seedRadius==0.:
-			seedIndices,_ = self.hfmIn.IndexFromPoint(self.seeds)
+			seedIndices = np.round(self.seeds).astype(int)
 			values[tuple(seedIndices.T)] = seedValues
 		else:
 			neigh = self.hfmIn.GridNeighbors(self.seed,seedRadius) # Geometry last
@@ -234,6 +307,10 @@ class Interface(object):
 				"beyond which the second order scheme deactivates")
 			self.SetModuleConstant('order2_threshold',order2_threshold,float_t)
 		
+		if self.isCurvature:
+			is np.isscalar(self.xi): self.SetModuleConstant('xi',self.xi,float_t)
+			if np.isscalar(self.kappa): self.SetModuleConstant('kappa',self.kappa,float_t)
+
 		in_raw.update({
 			'tol':tol,
 			'shape_o':self.shape_o,
@@ -242,8 +319,10 @@ class Interface(object):
 			})
 
 	def Metric(self,x):
+		if self.isCurvature: 
+			raise ValueError("No metric available for curvature penalized models")
 		if hasattr(self,'metric'): return self.metric.at(x)
-		else: return self.dual_metric.at(x).dual()
+		else: return self.dualMetric.at(x).dual()
 
 	def SetModuleConstant(self,key,value,dtype):
 		"""Sets a global constant in the cupy cuda module"""

@@ -30,22 +30,24 @@ def block_expand(arr,shape_i,**kwargs):
 	 - original shape
 	"""
 	ndim = len(shape_i)
-	shape=np.array(arr.shape)
+	shape_pre = arr.shape[:-ndim]
+	ndim_pre = len(shape_pre)
+	shape_tot=np.array(arr.shape[-ndim:])
 	shape_i = np.array(shape_i)
 
 	# Extend data
-	shape_o = round_up(shape,shape_i)
-	shape_pad = shape_o*shape_i - shape
+	shape_o = round_up(shape_tot,shape_i)
+	shape_pad = (0,)*ndim_pre + tuple(shape_o*shape_i - shape_tot)
 	arr = np.pad(arr, tuple( (0,s) for s in shape_pad), **kwargs) 
 
 	# Reshape
-	shape_interleaved = np.stack( (shape_o,shape_i), axis=1).flatten()
-	arr = arr.reshape(shape_interleaved)
+	shape_interleaved = tuple(np.stack( (shape_o,shape_i), axis=1).flatten())
+	arr = arr.reshape(shape_pre + shape_interleaved)
 
 	# Move axes
 	rg = np.arange(ndim)
-	axes_interleaved = 1+2*rg
-	axes_split = ndim+rg
+	axes_interleaved = ndim_pre + 1+2*rg
+	axes_split = ndim_pre + ndim+rg
 	arr = np.moveaxis(arr,axes_interleaved,axes_split)
 
 	xp = get_array_module(arr)
