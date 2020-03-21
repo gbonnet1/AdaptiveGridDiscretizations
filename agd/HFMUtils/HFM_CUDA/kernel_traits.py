@@ -46,11 +46,14 @@ def default_traits(interface):
 
 	return traits
 
-def kernel_source(model,traits):
+def kernel_source(interface):
 	"""
 	Returns the source (mostly a preamble) for the gpu kernel code 
 	for the given traits and model.
 	"""
+	model = interface.model
+	traits = interface.traits
+
 	source = ""
 	for key in list(traits.keys()):
 		if 'macro' in key:
@@ -89,5 +92,7 @@ def kernel_source(model,traits):
 	for key,value in traits.items():
 		source += f"const int {key}={value};\n"
 
-	source += f'#include "{model}.h"\n'
+	if interface.isCurvature: source += f'#include "{model}.h"\n'
+	else: source += f'#include "{model[:-1]}_.h"\n' # Dimension generic
+
 	return source

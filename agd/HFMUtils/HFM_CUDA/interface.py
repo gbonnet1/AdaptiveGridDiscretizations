@@ -40,6 +40,8 @@ class Interface(object):
 		self.model = self.GetValue('model',help='Minimal path model to be solved.')
 		# Unified treatment of standard and extended curvature models
 		if self.model.endswith("Ext2"): self.model=self.model[:-4]+"2"
+
+		self.ndim = len(hfmIn['dims'])
 		
 		self.returns=None
 		self.xp = ad.cupy_generic.get_array_module(**hfmIn)
@@ -81,9 +83,9 @@ class Interface(object):
 		self.in_raw = {'block':self.block}
 		self.out_raw = {}
 
+		self.SetKernelTraits()
 		self.SetGeometry()
 		self.SetValuesArray()
-		self.SetKernelTraits()
 		self.SetKernel()
 		self.SetSolver()
 		self.PostProcess()
@@ -93,10 +95,42 @@ class Interface(object):
 	@property
 	def isCurvature(self):
 		if any(self.model.startswith(e) for e in ('Isotropic','Riemann','Rander')):
-			return True
-		if self.model in ['ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2']:
 			return False
+		if self.model in ['ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2']:
+			return True
 		raise ValueError("Unreconized model")
+
+	def SetKernelTraits(self):
+		if self.verbosity>=1: print("Setting the kernel traits.")
+		if self.verbosity>=2: print("(Scalar,Int,shape_i,niter_i,...)")	
+		traits = kernel_traits.default_traits(self)
+		traits.update(self.GetValue('traits',default=tuple(),
+			help="Optional trait parameters passed to kernel"))
+
+		self.multiprecision = (self.GetValue('multiprecision',default=False,
+			help="Use multiprecision arithmetic, to tmprove accuracy") or 
+			self.GetValue('values_float64',default=False) )
+		if self.multiprecision: traits['multiprecision_macro']=1
+
+		self.factoringRadius = self.GetValue('factoringRadius',default=0,
+			help="Use source factorization, to improve accuracy")
+		if self.factoringRadius: traits['factor_macro']=1
+
+		order = self.GetValue('order',default=1,
+			help="Use second order scheme to improve accuracy")
+		if order not in {1,2}: raise ValueError(f"Unsupported scheme order {order}")
+		if order==2: traits['order2_macro']=1
+		self.order=order
+
+		if not self.isCurvature: # Dimension generic models
+			traits['ndim_macro'] = int(self.model[-1])
+
+		self.traits = traits
+		self.in_raw['traits']=traits
+
+		self.float_t = np.dtype(traits['Scalar']).type
+		self.int_t   = np.dtype(traits['Int']   ).type
+		self.shape_i = traits['shape_i']
 
 	def SetGeometry(self):
 		if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
@@ -104,7 +138,6 @@ class Interface(object):
 		# Domain shape and grid scale
 		self.shape = self.GetValue('dims',
 			help="dimensions (shape) of the computational domain").astype(int)
-		self.ndim = len(self.shape)
 		self.periodic = self.GetValue('periodic',default=None,
 			help="Apply periodic boundary conditions on some axes")
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
@@ -152,9 +185,9 @@ class Interface(object):
 
 		# Rescale 
 		if self.metric is not None: self.metric.rescale(1/self.h)
-		if self.dualMetric: is not None: self.dualMetric.rescale(self.h)
+		if self.dualMetric is not None: self.dualMetric.rescale(self.h)
 		if self.drift is not None:
-			is np.isscalar(self.h): 
+			if np.isscalar(self.h): 
 				self.drift *= self.h
 			else: 
 				h = self.xp.array((self.h,self.h,self.h_per) if self.isCurvature else self.h)
@@ -254,50 +287,22 @@ class Interface(object):
 			block_valuesq = xp.zeros(block_values.shape,dtype=self.int_t)
 			self.block.update({'valuesq':block_valuesq})
 
-	def SetKernelTraits(self):
-		if self.verbosity>=1: print("Setting the kernel traits.")
-		if self.verbosity>=2: print("(Scalar,Int,shape_i,niter_i,...)")	
-		traits = kernel_traits.default_traits(self)
-		traits.update(self.GetValue('traits',default=tuple(),
-			help="Optional trait parameters passed to kernel"))
-
-		self.multiprecision = (self.GetValue('multiprecision',default=False,
-			help="Use multiprecision arithmetic, to tmprove accuracy") or 
-			self.GetValue('values_float64',default=False) )
-		if self.multiprecision: traits['multiprecision_macro']=1
-
-		self.factoringRadius = self.GetValue('factoringRadius',default=0,
-			help="Use source factorization, to improve accuracy")
-		if self.factoringRadius: traits['factor_macro']=1
-
-		order = self.GetValue('order',default=1,
-			help="Use second order scheme to improve accuracy")
-		if order not in {1,2}: raise ValueError(f"Unsupported scheme order {order}")
-		if order==2: traits['order2_macro']=1
-		self.order=order
-
-		if not self.isCurvature:
-			traits['ndim_macro'] = int(self.model[-1])
-			traits['xi_var_macro'] = int(not np.isscalar(self.xi))
-			traits['kappa_var_macro'] = int(not np.isscalar(self.kappa))
-			traits['theta_var_macro'] = int(not np.isscalar(self.theta))
-
-		if self.periodic is not None:
-			traits['periodic_macro']=1
-			traits['periodic']=periodic
-
-		self.traits = traits
-		self.in_raw['traits']=traits
-
-		self.float_t = np.dtype(traits['Scalar']).type
-		self.int_t   = np.dtype(traits['Int']   ).type
-		self.shape_i = traits['shape_i']
-
 	def SetKernel(self):
 		if self.verbosity>=1: print("Preparing the GPU kernel")
 		if self.GetValue('dummy_kernel',default=False): return
 		in_raw = self.in_raw
-		self.source = kernel_traits.kernel_source(self.model,self.traits)
+
+		# Set a few last traits
+		traits = self.traits
+		if self.isCurvature:
+			traits['xi_var_macro'] = int(not np.isscalar(self.xi))
+			traits['kappa_var_macro'] = int(not np.isscalar(self.kappa))
+			traits['theta_var_macro'] = int(not np.isscalar(self.theta))
+		if self.periodic is not None:
+			traits['periodic_macro']=1
+			traits['periodic']=periodic
+
+		self.source = kernel_traits.kernel_source(self)
 
 		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 		date_modified = max(os.path.getmtime(os.path.join(cuda_path,file)) 
@@ -350,7 +355,7 @@ class Interface(object):
 			self.SetModuleConstant('order2_threshold',order2_threshold,float_t)
 		
 		if self.isCurvature:
-			is np.isscalar(self.xi): self.SetModuleConstant('xi',self.xi,float_t)
+			if np.isscalar(self.xi): self.SetModuleConstant('xi',self.xi,float_t)
 			if np.isscalar(self.kappa): self.SetModuleConstant('kappa',self.kappa,float_t)
 
 		in_raw.update({
