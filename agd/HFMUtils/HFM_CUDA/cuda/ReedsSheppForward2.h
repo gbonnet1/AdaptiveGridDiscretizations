@@ -6,7 +6,7 @@
 const Int nsym = 1; // Number of symmetric offsets
 const Int nfwd = symdim; // Number of forward offsets
 
-void scheme(const Scalar params[metric_size],  Int x[ndim],
+void scheme(const Scalar params[geom_size],  Int x[ndim],
 	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
 	GET_SPEED_XI_KAPPA_THETA(params,x)
 

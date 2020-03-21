@@ -60,11 +60,12 @@ __constant__ Int shape_tot[ndim]; // shape_i * shape_o
 __constant__ Int size_tot; // product(shape_tot)
 
 #if isotropic_macro
-const Int metric_size = 1;
+const Int geom_size = 1;
 #endif
 
 #if factor_macro
-__constant__ Scalar factor_metric[metric_size];
+// geom_size == metric_size for all cases of interest
+__constant__ Scalar factor_metric[geom_size]; 
 __constant__ Scalar factor_origin[ndim];
 __constant__ Scalar factor_radius2;
 
@@ -86,7 +87,7 @@ __constant__ Scalar order2_threshold;
 // Get the parameters for curvature penalized models
 #if curvature_macro 
 
-const Int metric_size = 1 + xi_var_macro + kappa_var_macro + theta_var_macro;
+const Int geom_size = 1 + xi_var_macro + kappa_var_macro + theta_var_macro;
 
 #if xi_var_macro==0
 __constant__ Scalar xi;

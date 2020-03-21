@@ -19,7 +19,7 @@ const Scalar wFejer[nFejer]={0.0527366, 0.179189, 0.264037, 0.330845, 0.346384, 
 const Int nsym = 0; // Number of symmetric offsets
 const Int nfwd = nFejer*symdim; // Number of forward offsets
 
-void scheme(const Scalar params[metric_size],  Int x[ndim],
+void scheme(const Scalar params[geom_size],  Int x[ndim],
 	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
 	GET_SPEED_XI_KAPPA_THETA(params,x)
 	const Scalar cT = cos(theta), sT = sin(theta);

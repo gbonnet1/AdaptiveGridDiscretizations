@@ -11,9 +11,9 @@
 
 const Int nsym = symdim; // Number of symmetric offsets
 const Int nfwd = 0; // Number of forward offsets
-const Int metric_size = symdim;
+const Int geom_size = symdim;
 
-void scheme(const Scalar dual_metric[metric_size], Scalar weights[nsym], Int offsets[nsym][ndim]){
+void scheme(const Scalar dual_metric[symdim], Scalar weights[nsym], Int offsets[nsym][ndim]){
 	Selling_decomp(dual_metric,weights,offsets);}
 
 FACTOR(

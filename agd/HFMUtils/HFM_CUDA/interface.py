@@ -81,9 +81,9 @@ class Interface(object):
 		self.in_raw = {'block':self.block}
 		self.out_raw = {}
 
-		self.SetKernelTraits()
 		self.SetGeometry()
 		self.SetValuesArray()
+		self.SetKernelTraits()
 		self.SetKernel()
 		self.SetSolver()
 		self.PostProcess()
@@ -98,50 +98,14 @@ class Interface(object):
 			return False
 		raise ValueError("Unreconized model")
 
-	def SetKernelTraits(self):
-		if self.verbosity>=1: print("Setting the kernel traits.")
-		if self.verbosity>=2: print("(Scalar,Int,shape_i,niter_i,...)")	
-		traits = kernel_traits.default_traits(self.model)
-		traits.update(self.GetValue('traits',default=tuple(),
-			help="Optional trait parameters passed to kernel"))
-
-		self.multiprecision = (self.GetValue('multiprecision',default=False,
-			help="Use multiprecision arithmetic, to tmprove accuracy") or 
-			self.GetValue('values_float64',default=False) )
-		if self.multiprecision: traits['multiprecision_macro']=1
-
-		self.factoringRadius = self.GetValue('factoringRadius',default=0,
-			help="Use source factorization, to improve accuracy")
-		if self.factoringRadius: traits['factor_macro']=1
-
-		order = self.GetValue('order',default=1,
-			help="Use second order scheme to improve accuracy")
-		if order not in {1,2}: raise ValueError(f"Unsupported scheme order {order}")
-		if order==2: traits['order2_macro']=1
-		self.order=order
-
-		if not self.isCurvature:
-			traits['ndim_macro'] = int(self.model[-1])
-
-		self.periodic = self.GetValue('periodic',default=None,
-			help="Apply periodic boundary conditions on some axes")
-		if self.periodic is not None:
-			traits['periodic_macro']=1
-			traits['periodic']=periodic
-
-		self.traits = traits
-		self.in_raw['traits']=traits
-
-		self.float_t = np.dtype(traits['Scalar']).type
-		self.int_t   = np.dtype(traits['Int']   ).type
-		self.shape_i = traits['shape_i']
-
 	def SetGeometry(self):
 		if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
 
 		# Domain shape and grid scale
 		self.shape = self.GetValue('dims',
 			help="dimensions (shape) of the computational domain").astype(int)
+		self.periodic = self.GetValue('periodic',default=None,
+			help="Apply periodic boundary conditions on some axes")
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
 
 		if self.HasValue('gridScale'):
@@ -279,6 +243,45 @@ class Interface(object):
 		if self.multiprecision:
 			block_valuesq = xp.zeros(block_values.shape,dtype=self.int_t)
 			self.block.update({'valuesq':block_valuesq})
+
+	def SetKernelTraits(self):
+		if self.verbosity>=1: print("Setting the kernel traits.")
+		if self.verbosity>=2: print("(Scalar,Int,shape_i,niter_i,...)")	
+		traits = kernel_traits.default_traits(self)
+		traits.update(self.GetValue('traits',default=tuple(),
+			help="Optional trait parameters passed to kernel"))
+
+		self.multiprecision = (self.GetValue('multiprecision',default=False,
+			help="Use multiprecision arithmetic, to tmprove accuracy") or 
+			self.GetValue('values_float64',default=False) )
+		if self.multiprecision: traits['multiprecision_macro']=1
+
+		self.factoringRadius = self.GetValue('factoringRadius',default=0,
+			help="Use source factorization, to improve accuracy")
+		if self.factoringRadius: traits['factor_macro']=1
+
+		order = self.GetValue('order',default=1,
+			help="Use second order scheme to improve accuracy")
+		if order not in {1,2}: raise ValueError(f"Unsupported scheme order {order}")
+		if order==2: traits['order2_macro']=1
+		self.order=order
+
+		if not self.isCurvature:
+			traits['ndim_macro'] = int(self.model[-1])
+			traits['xi_var_macro'] = int(not np.isscalar(self.xi))
+			traits['kappa_var_macro'] = int(not np.isscalar(self.kappa))
+			traits['theta_var_macro'] = int(not np.isscalar(self.theta))
+
+		if self.periodic is not None:
+			traits['periodic_macro']=1
+			traits['periodic']=periodic
+
+		self.traits = traits
+		self.in_raw['traits']=traits
+
+		self.float_t = np.dtype(traits['Scalar']).type
+		self.int_t   = np.dtype(traits['Int']   ).type
+		self.shape_i = traits['shape_i']
 
 	def SetKernel(self):
 		if self.verbosity>=1: print("Preparing the GPU kernel")

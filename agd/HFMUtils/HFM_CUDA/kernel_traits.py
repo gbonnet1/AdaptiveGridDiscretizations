@@ -19,7 +19,7 @@ def dtype(arg,data_t):
 	else:
 		return arg.dtype
 
-def default_traits(model):
+def default_traits(interface):
 	"""
 	Default traits of the GPU implementation of an HFM model.
 	"""
@@ -29,12 +29,14 @@ def default_traits(model):
 	'multiprecision_macro':0,
 	}
 
-	if model=='Isotropic2':
+	ndim = len(interface.shape)	
+
+	if ndim==2:
 		traits.update({
 		'shape_i':(24,24),
 		'niter_i':48,
 		})
-	elif model=='Isotropic3':
+	elif ndim:
 		traits.update({
 		'shape_i':(4,4,4),
 		'niter_i':12,

@@ -5,7 +5,7 @@ extern "C" {
 
 __global__ void Update(
 	Scalar * u, MULTIP(Int * uq,)
-	const Scalar * metric, DRIFT(const Scalar * drift,) const BoolPack * seeds, 
+	const Scalar * geom, DRIFT(const Scalar * drift,) const BoolPack * seeds, 
 	const Int * updateList_o, BoolAtom * updateNext_o){ // Used as simple booleans
 
 //	__shared__ Int shape_o[ndim];
@@ -30,13 +30,13 @@ __global__ void Update(
 	const bool isSeed = Grid::GetBool(seeds,n);
 
 	Scalar weights[nactx_];
-	ISO(weights[0] = metric[n];) // Offsets are constant.
+	ISO(weights[0] = geom[n];) // Offsets are constant.
 	ANISO(
-		Scalar metric_[metric_size];
+		Scalar geom_[geom_size];
 		Int offsets[nactx][ndim];
-		for(Int k=0; k<metric_size; ++k){
-			metric_[k] = metric[n+size_tot*k];}
-		scheme(metric_, CURVATURE(x,) weights,offsets);
+		for(Int k=0; k<geom_size; ++k){
+			geom_[k] = geom[n+size_tot*k];}
+		scheme(geom_, CURVATURE(x,) weights,offsets);
 	)
 	DRIFT(
 		Scalar drift_[ndim];
