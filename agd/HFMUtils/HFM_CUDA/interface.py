@@ -2,6 +2,7 @@ import numpy as np
 import os
 import time
 from packaging.version import Version
+import copy
 
 from . import kernel_traits
 from . import solvers
@@ -37,6 +38,7 @@ class Interface(object):
 			help="Choose the amount of detail displayed on the run")
 		self.model = self.GetValue('model',help='Minimal path model to be solved')
 		self.returns=None
+		self.xp = ad.cupy_generic.get_array_module(**hfmIn)
 		
 	def GetValue(self,key,default=None,verbosity=2,help=None):
 		"""
@@ -116,12 +118,23 @@ class Interface(object):
 			help="dimensions (shape) of the computational domain").astype(int)
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
 		self.h = self.GetValue('gridScale', help="Scale of the computational grid")
-		cost = self.GetValue('cost',help="Cost function for the minimal paths")
-		self.xp = ad.cupy_generic.get_array_module(cost)
-		self.metric = Metrics.Isotropic(cost)
+
+		if self.model.startswith('Isotropic'):
+			cost = self.GetValue('cost',help="Cost function for the minimal paths")
+			self.metric = Metrics.Isotropic(cost)
+			assert cost.dtype == self.float_t
+
+		if not self.GetValue("overwriteMetric",default=False,
+			help="Allow overwriting the metric"):
+			self.metric = copy.deepcopy(self.metric)
+
+		self.metric.rescale(self.h)
+		self.blo
+
 		self.grid = self.xp.array(self.hfmIn.Grid(),dtype=self.float_t)
 		self.metric.set_interpolation(self.grid) # First order interpolation
-		assert cost.dtype == self.float_t
+
+
 		self.block['metric'] = misc.block_expand(cost*self.h,self.shape_i,
 			mode='constant',constant_values=self.xp.inf)
 
