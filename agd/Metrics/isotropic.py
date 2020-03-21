@@ -48,16 +48,19 @@ class Isotropic(Base):
 	@property
 	def shape(self): return self.cost.shape
 	
-	def rotate(self,a):
-		return self
+	def rotate(self,a):     return self
+	def rescale(self,h):	
+		if not np.isscalar(h): 
+			raise ValueError("Isotropic metrics can only be rescaled isotropically")
+		return Isotropic(self.cost/h)
 
-	def flatten(self):		return self.cost
+	def flatten(self):      return self.cost
 	@classmethod
-	def expand(cls,arr):	return cls(arr)
+	def expand(cls,arr):    return cls(arr)
 
-	def to_HFM(self):		return self.cost
+	def to_HFM(self):       return self.cost
 	@classmethod
-	def from_HFM(cls,arr):	return cls(arr)
+	def from_HFM(cls,arr):  return cls(arr)
 
 	def model_HFM(self):
 		return "Isotropic"+str(self.vdim)

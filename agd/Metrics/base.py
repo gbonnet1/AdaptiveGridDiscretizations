@@ -130,6 +130,9 @@ class Base:
 		"""
 		return self.rotate(lp.rotation(*args,**kwargs))
 
+	def rescale(self,h):
+		raise ValueError("Rescale not implemented") # TODO
+
 # ---- Import and export ----
 
 	def flatten(self):
