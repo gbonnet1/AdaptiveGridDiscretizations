@@ -39,7 +39,25 @@ void Selling_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdi
 	}
 }
 
-// TODO. Based on previous, with some relaxation, reorienting of offsets, and pruning of weights
+
+CURVATURE(
+__constant__ Scalar Selling_v_relax; // Relaxation parameter for Selling_v. Typical = 0.01
+__constant__ Scalar Selling_v_cosmin2; // Relaxation parameter for Selling_v. Typical = 2./3
+
+// Based on selling decomposition, with some relaxation, reorienting of offsets, and pruning of weights
 void Selling_v(const Scalar v[ndim], Scalar weights[symdim], Int offsets[symdim][ndim]){
-	
+
+	// Build and decompose the relaxed self outer product of v
+	Scalar m[symdim];
+	self_outer_relax_v(v,Selling_v_relax,m);	
+	Selling_m(m,weights,offsets);
+
+	// Redirect offsets in the direction of v, and eliminate those which deviate too much.
+	for(Int k=0; k<symdim; ++k){
+		const Int * e = offsets[k]; // e[ndim]
+		const Scalar ve = scal_vv(v,e), ee = scal_vv(e,e);
+		if(ve*ve < vv*ee*Selling_v_cosmin2){weights[k]=0; continue;}
+		if(ve>0){neg_v(e,e);} // Note : we want ve<0.
+	}
 }
+)

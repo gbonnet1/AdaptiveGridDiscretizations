@@ -29,7 +29,8 @@ void perp_v(const VC x[2], VC out[2]){
 }
 
 /// Cross product, in dimension three. Caution : assumes out is dstinct from x and y.
-void cross_vv(const VC x[3], const VC y[3], VC out[3]){
+template<typename Tx, typename Ty, typename Tout=Tx>
+void cross_vv(const Tx x[3], const Ty y[3], Tout out[3]){
 	for(Int i=0; i<3; ++i){
 		const Int j=(i+1)%3, k=(i+2)%3;
 		out[i]=x[j]*y[k]-x[k]*y[j];
@@ -58,6 +59,29 @@ Scalar scal_vmv(const Tx x[ndim], const MC m[symdim], const Ty y[ndim]){
 	}
 	return result;
 }
+
+void self_outer_v(const Scalar x[ndim], Scalar m[ndim]){
+	Int k=0; 
+	for(Int i=0; i<ndim; ++i){
+		for(Int j=0; j<=i; ++j){
+			m[k] = x[i]*x[j]; 
+			++k;
+		}
+	}
+}
+
+void self_outer_relax_v(const Scalar x[ndim], const Scalar relax, Scalar m[ndim]){
+	const Scalar eps = scal_vv(x,x)*relax;
+	Int k=0;
+	for(Int i=0; i<ndim; ++i){
+		for(Int j=0; j<=i; ++j){
+			m[k] = x[i]*x[j]*(1-eps) + (i==j)*eps; 
+			++k;
+		}
+	}
+}
+
+
 
 void canonicalsuperbase(VC sb[ndim+1][ndim]){
 	for(Int i=0; i<ndim; ++i){

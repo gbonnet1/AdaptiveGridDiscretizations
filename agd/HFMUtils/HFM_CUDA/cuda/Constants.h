@@ -87,7 +87,6 @@ __constant__ Scalar order2_threshold;
 #if curvature_macro 
 
 const Int metric_size = 1 + xi_var_macro + kappa_var_macro + theta_var_macro;
-__constant__ Scalar relax; // Small relaxation parameter 
 
 #if xi_var_macro==0
 __constant__ Scalar xi;
