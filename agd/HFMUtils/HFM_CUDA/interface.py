@@ -123,6 +123,12 @@ class Interface(object):
 		if not self.isCurvature:
 			traits['ndim_macro'] = int(self.model[-1])
 
+		self.periodic = self.GetValue('periodic',default=None,
+			help="Apply periodic boundary conditions on some axes")
+		if self.periodic is not None:
+			traits['periodic_macro']=1
+			traits['periodic']=periodic
+
 		self.traits = traits
 		self.in_raw['traits']=traits
 
@@ -190,8 +196,13 @@ class Interface(object):
 			self.theta = self.GetValue('theta',default=0.,verbosity=3,
 				help="Deviation from horizontality, for the curvature penalized models")
 
+			self.h_per = 2.*np.pi / self.shape[2] # Gridscale for periodic dimension
+			self.xi *= self.h_per
+			self.kappa /= self.h_per
+
 			self.geom = ad.array([e for e in (self.metric,self.xi,self.kappa,self.theta)
 				if not np.isscalar(e)])
+			self.periodic = (False,False,True)
 
 		else: # not self.isCurvature
 			if self.model.startswith('Isotropic'):
@@ -205,11 +216,16 @@ class Interface(object):
 				self.geom = Metrics.Riemann(self.metric.m).dual().flatten()
 				self.drift = self.metric.w
 
-			self.grid = self.xp.array(self.hfmIn.Grid(),dtype=self.float_t)
-			self.metric.set_interpolation(self.grid) # First order interpolation
+			# TODO : remove. No need to create this grid for our interpolation
+			grid = self.xp.meshgrid(*(range(s) for s in self.shape), 
+				indexing='ij',dtype=self.float_t) # Adimensionized coordinates
+			self.metric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
 
 		self.block['geom'] = misc.block_expand(self.geom,self.shape_i,
 			mode='constant',constant_values=self.xp.inf)
+		if self.drift is not None:
+			self.block['drift'] = misc.block_expand(self.drift,self.shape_i,
+				mode='constant',constant_values=self.xp.nan)
 
 	def SetValuesArray(self):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
@@ -230,11 +246,25 @@ class Interface(object):
 			values[tuple(seedIndices.T)] = seedValues
 		else:
 			neigh = self.hfmIn.GridNeighbors(self.seed,seedRadius) # Geometry last
+			r = seedRadius 
+			aX = [range(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
+			neigh =  ad.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
+			neigh = neigh_index.reshape(-1,neigh_index.shape[-1])
+
+			# Select neighbors which are close enough
+			neigh = neigh[ad.Optimization.norm(neigh-self.seed,axis=-1) < r]
+
+			# Periodize, and select neighbors which are in the domain
+			nper = np.logical_not(self.periodic)
+			inRange = np.all(np.logical_and(-0.5<=neigh[:,nper],
+				neigh[:,nper]<self.shape[nper]-0.5),axis=-1)
+			neigh = neigh[:,inRange]
+			
 			diff = (neigh - self.seed).T # Geometry first
-			neighIndices,_ = self.hfmIn.IndexFromPoint(neigh)
+#			neigh[:,self.periodic] = neigh[:,self.periodic] % self.shape[self.periodic]
 			metric0 = self.Metric(self.seed)
 			metric1 = self.Metric(neigh.T)
-			values[tuple(neighIndices.T)] = 0.5*(metric0.norm(diff) + metric1.norm(diff))
+			values[tuple(neigh.T)] = 0.5*(metric0.norm(diff) + metric1.norm(diff))
 
 		block_values = misc.block_expand(values,self.shape_i,mode='constant',constant_values=xp.nan)
 
@@ -281,10 +311,9 @@ class Interface(object):
 		self.SetModuleConstant('shape_o',self.shape_o,int_t)
 		self.SetModuleConstant('size_o', self.size_o, int_t)
 
-		shape_tot = np.array(self.shape_o)*np.array(self.shape_i)
-		size_tot = np.prod(shape_tot)
-		self.SetModuleConstant('shape_tot',shape_tot,int_t)
-		self.SetModuleConstant('size_tot', size_tot, int_t)
+		size_tot = self.size_o * np.prod(self.shape_i)
+		self.SetModuleConstant('shape_tot',self.shape,int_t) # Used for periodicity
+		self.SetModuleConstant('size_tot', size_tot, int_t) # Used for geom indexing
 
 		if self.multiprecision:
 			# Choose power of two, significantly less than h
@@ -347,8 +376,9 @@ class Interface(object):
 
 		if self.returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
 
-		kernel_argnames = ['values','metric','seedTags']
+		kernel_argnames = ['values','geom','seedTags']
 		if self.multiprecision:  kernel_argnames.insert(1,'valuesq')
+		if self.drift is not None: kernel_argnames.insert(-1,'drift')
 		kernel_args = tuple(self.block[key] for key in kernel_argnames)
 
 		solver_start_time = time.time()
