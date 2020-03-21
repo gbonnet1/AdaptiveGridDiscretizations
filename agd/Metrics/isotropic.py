@@ -1,3 +1,4 @@
+import numpy as np
 from .base import Base
 from .. import AutomaticDifferentiation as ad
 

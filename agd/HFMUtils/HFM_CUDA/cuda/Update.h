@@ -96,8 +96,8 @@ __global__ void Update(
 				SHIFT(v_o[kv] = fact[s];)
 			} else {
 				v_i[kv] = -1;
-				if(Grid::InRange(y,shape_tot)) {
-					const Int ny = Grid::Index(y,shape_i,shape_o);
+				if(Grid::InRange_tot(y)) {
+					const Int ny = Grid::Index_tot(y);
 					v_o[kv] = u[ny] SHIFT(+fact[s]);
 					MULTIP(vq_o[kv] = uq[ny];)
 				} else {
@@ -117,8 +117,8 @@ __global__ void Update(
 				SHIFT(v2_o[kv] = fact2[s];)
 			} else {
 				v2_i[kv] = -1;
-				if(Grid::InRange(y,shape_tot)) {
-					const Int ny = Grid::Index(y,shape_i,shape_o);
+				if(Grid::InRange_tot(y)) {
+					const Int ny = Grid::Index_tot(y);
 					v2_o[kv] = u[ny] SHIFT(+fact2[s]);
 					MULTIP(vq2_o[kv] = uq[ny];)
 				} else {

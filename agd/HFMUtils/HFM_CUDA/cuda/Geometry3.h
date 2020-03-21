@@ -2,7 +2,7 @@
 
 #include "TypeTraits.h"
 const Int ndim=3;
-#include "Geometry.h"
+#include "Geometry_.h"
 
 // the first two elements of these permutations range among all possible pairs
 const Int Selling_permutations[iterReducedMax][ndim+1] = { 

@@ -2,6 +2,9 @@
 
 #define isotropic_macro 1
 
+const Int nsym = ndim_macro; // Number of symmetric offsets
+const Int nfwd = 0; // Number of forward offsets
+
 // ndim_macro must be defined
 #if (ndim_macro == 2)
 #include "Geometry2.h"
@@ -14,9 +17,6 @@ const Int offsets[ndim][ndim] = {{1,0,0},{0,1,0},{0,0,1}};
 #else
 // Not supported presently
 #endif
-
-const Int nsym = ndim; // Number of symmetric offsets
-const Int nfwd = 0; // Number of forward offsets
 
 FACTOR(
 /** Returns the perturbations involved in the factored fast marching method.

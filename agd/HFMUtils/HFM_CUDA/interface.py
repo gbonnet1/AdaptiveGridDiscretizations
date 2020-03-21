@@ -67,13 +67,13 @@ class Interface(object):
 		if key in self.hfmIn:
 			self.hfmOut['key used'].append(key)
 			return self.hfmIn[key]
-		elif default != "_None":
+		elif isinstance(default,str) and default == "_None":
+			raise ValueError(f"Missing value for key {key}")
+		else:
 			self.hfmOut['key defaulted'].append((key,default))
 			if verbosity>=self.verbosity:
 				print(f"key {key} defaults to {default}")
 			return default
-		else:
-			raise ValueError(f"Missing value for key {key}")
 
 
 	def Run(self,returns='out'):
@@ -224,8 +224,8 @@ class Interface(object):
 
 
 			# TODO : remove. No need to create this grid for our interpolation
-			grid = self.xp.meshgrid(*(range(s) for s in self.shape), 
-				indexing='ij',dtype=self.float_t) # Adimensionized coordinates
+			grid = self.xp.array(self.xp.meshgrid(*(self.xp.arange(s) for s in self.shape), 
+				indexing='ij'),dtype=self.float_t) # Adimensionized coordinates
 			self.metric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
 
 		self.block['geom'] = misc.block_expand(self.geom,self.shape_i,
@@ -240,7 +240,7 @@ class Interface(object):
 		values = xp.full(self.shape,xp.inf,dtype=self.float_t)
 		self.seeds = xp.array(self.GetValue('seeds', 
 			help="Points from where the front propagation starts") )
-		self.seeds = self.hfmIn.PointFromIndex(seeds,to=True) # Adimensionize seed position
+		self.seeds = self.hfmIn.PointFromIndex(self.seeds,to=True) # Adimensionize seed position
 		if len(self.seeds)==1: self.seed=self.seeds[0]
 		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
 		seedValues = xp.array(self.GetValue('seedValues',default=seedValues,
@@ -361,7 +361,7 @@ class Interface(object):
 		in_raw.update({
 			'tol':tol,
 			'shape_o':self.shape_o,
-			'shape_tot':shape_tot,
+			'shape_tot':self.shape,
 			'source':self.source,
 			})
 
