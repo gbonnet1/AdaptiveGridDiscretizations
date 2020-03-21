@@ -2,7 +2,7 @@
 
 #include "TypeTraits.h"
 const Int ndim=2;
-#include "Geometry.h"
+#include "Geometry_.h"
 
 void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 	canonicalsuperbase(sb);
@@ -21,7 +21,7 @@ void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 
 void Selling_decomp(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
 	Int sb[ndim+1][ndim];
-	Selling(m,sb);
+	obtusesuperbase(m,sb);
 	for(Int r=0; r<symdim; ++r){
 		const Int i=r, j = (r+1)%3, k=(r+2)%3;
 		weights[r] = max(0., - scal_vmv(sb[i],m,sb[j]));

@@ -195,7 +195,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) ){
 
-	if(strict_iter_i || nmix>1){
+	if(strict_iter_i_macro || nmix>1){
 
 	Scalar u_i_new; MULTIP(Int uq_i_new;)
 	for(int i=0; i<niter_i; ++i){
