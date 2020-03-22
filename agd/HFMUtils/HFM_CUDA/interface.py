@@ -224,8 +224,9 @@ class Interface(object):
 
 
 			# TODO : remove. No need to create this grid for our interpolation
-			grid = self.xp.array(self.xp.meshgrid(*(self.xp.arange(s) for s in self.shape), 
-				indexing='ij'),dtype=self.float_t) # Adimensionized coordinates
+			grid = np.meshgrid(*(self.xp.arange(s) for s in self.shape), 
+				indexing='ij') # Adimensionized coordinates
+			grid = self.xp.array(ad.array(grid),dtype=self.float_t)
 			self.metric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
 
 		self.block['geom'] = misc.block_expand(self.geom,self.shape_i,

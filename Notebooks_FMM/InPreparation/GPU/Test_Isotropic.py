@@ -7,6 +7,20 @@ import numpy as np
 import time
 from agd.AutomaticDifferentiation.Optimization import norm_infinity
 from packaging import version
+from agd import AutomaticDifferentiation as ad
+
+"""
+shape=(4000,4000)
+print('making grid')
+grid = np.meshgrid(*(xp.arange(s) for s in shape), 
+				indexing='ij')
+print('done grid')
+grid = ad.array(grid)
+print('put together')
+grid = xp.array(grid,dtype='float32')
+print('converted')
+raise
+"""
 
 
 np.set_printoptions(edgeitems=30, linewidth=100000, 
@@ -30,8 +44,8 @@ hfmIn = HFMUtils.dictIn({
 	'dims':np.array((4000,4000)),
 	'origin':[-0.5,-0.5],
 	'gridScale':1,
-	'order':2,
-	'order2_threshold':0.3,
+#	'order':2,
+#	'order2_threshold':0.3,
 #	'factoringRadius':10000,
 #	'seedRadius':2,
 	'returns':'in_raw',
