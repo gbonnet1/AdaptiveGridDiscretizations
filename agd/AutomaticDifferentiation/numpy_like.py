@@ -45,10 +45,6 @@ def sort(array,axis=-1,*varargs,**kwargs):
 	else:
 		return np.sort(array,axis=axis,*varargs,**kwargs)
 
-def stack(elems,axis=0):
-	for e in elems:
-		if is_ad(e): return type(e).stack(elems,axis)
-	return np.stack(elems,axis)
 
 def concatenate(elems,axis=0):
 	for e in elems:
