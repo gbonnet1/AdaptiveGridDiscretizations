@@ -1,5 +1,5 @@
-from . import cupy_generic
 from . import misc
+from . import cupy_generic
 from . import Dense
 from . import Sparse
 from . import Reverse

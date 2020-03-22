@@ -114,7 +114,7 @@ def apply_linear_operator(op,rhs,flatten_ndim=0):
 
 class pair(object):
 	"""
-	A to element iterable. 
+	A two element iterable. 
 	Introduced as an alternative of tuple, to avoid confusion in map_iterables
 	"""
 	def __init__(self,first,second):
@@ -135,7 +135,9 @@ def from_generator(iterable_type):
 	return getattr(iterable_type,'from_generator',iterable_type)
 
 def map_iterables(f,a,iterables,split=False): 
-	"""Apply f to variable 'a' exploring recursively certain iterables"""
+	"""
+	Apply f to variable 'a' exploring recursively certain iterables
+	"""
 	if isinstance(a,iterables):
 		type_a = type(a)
 		if issubclass(type(a),dict):
@@ -150,7 +152,9 @@ def map_iterables(f,a,iterables,split=False):
 	return f(a)
 
 def map_iterables2(f,a,b,iterables):
-	"""Apply f to variable 'a' and 'b' zipped, exploring recursively certain iterables"""
+	"""
+	Apply f to variable 'a' and 'b' zipped, exploring recursively certain iterables
+	"""
 	for type_iterable in iterables:
 		if isinstance(a,type_iterable):
 			if issubclass(type_iterable,dict):
