@@ -222,11 +222,9 @@ class Interface(object):
 				if self.drift is None: self.drift = self.metric.w
 				else: self.drift += self.metric.w
 
-
 			# TODO : remove. No need to create this grid for our interpolation
-			grid = np.meshgrid(*(self.xp.arange(s) for s in self.shape), 
-				indexing='ij') # Adimensionized coordinates
-			grid = self.xp.array(ad.array(grid),dtype=self.float_t)
+			grid = ad.array(np.meshgrid(*(self.xp.arange(s,dtype=self.float_t) 
+				for s in self.shape), indexing='ij')) # Adimensionized coordinates
 			self.metric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
 
 		self.block['geom'] = misc.block_expand(self.geom,self.shape_i,
