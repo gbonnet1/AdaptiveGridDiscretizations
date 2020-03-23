@@ -1,12 +1,12 @@
 import numpy as np
 import os
 import time
-from packaging.version import Version
 import copy
 
 from . import kernel_traits
 from . import solvers
 from . import misc
+from .cupy_module_helper import GetModule,SetModuleConstant,getmtime_max
 from ... import HFMUtils
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
@@ -302,60 +302,53 @@ class Interface(object):
 			traits['periodic']=periodic
 
 		self.source = kernel_traits.kernel_source(self)
-
 		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
-		date_modified = max(os.path.getmtime(os.path.join(cuda_path,file)) 
-			for file in os.listdir(cuda_path))
+		date_modified = getmtime_max(cuda_path)
 		self.source += f"// Date cuda code last modified : {date_modified}\n"
 		cuoptions = ("-default-device", f"-I {cuda_path}"
 			) + self.GetValue('cuoptions',default=tuple(),
 			help="Options passed via cupy.RawKernel to the cuda compiler")
 
-		import cupy
-		self.cupy_old = True # or Version(cupy.__version__) < Version("8") # Untested
-		if self.cupy_old:
-			self.module = cupy.core.core.compile_with_cache(self.source, 
-				options=cuoptions, prepend_cupy_headers=False)
-		else:
-			self.module = cupy.RawModule(source,options=cuoptions)
+		self.module = GetModule(self.source,cuoptions)
+		mod = self.module
 
 		float_t,int_t = self.float_t,self.int_t
 		tol = self.float_t(self.GetValue('tol',1e-8,
 			help="Convergence tolerance for the fixed point solver"))
-		self.SetModuleConstant('tol',tol,float_t)
+		SetModuleConstant(mod,'tol',tol,float_t)
 
 		self.size_o = np.prod(self.shape_o)
-		self.SetModuleConstant('shape_o',self.shape_o,int_t)
-		self.SetModuleConstant('size_o', self.size_o, int_t)
+		SetModuleConstant(mod,'shape_o',self.shape_o,int_t)
+		SetModuleConstant(mod,'size_o', self.size_o, int_t)
 
 		size_tot = self.size_o * np.prod(self.shape_i)
-		self.SetModuleConstant('shape_tot',self.shape,int_t) # Used for periodicity
-		self.SetModuleConstant('size_tot', size_tot, int_t) # Used for geom indexing
+		SetModuleConstant(mod,'shape_tot',self.shape,int_t) # Used for periodicity
+		SetModuleConstant(mod,'size_tot', size_tot, int_t) # Used for geom indexing
 
 		if self.multiprecision:
 			# Choose power of two, significantly less than h
 			multip_step = 2.**np.floor(np.log2(self.h/50)) 
-			self.SetModuleConstant('multip_step',multip_step, float_t)
+			SetModuleConstant(mod,'multip_step',multip_step, float_t)
 			multip_max = np.iinfo(self.int_t).max*multip_step/2
-			self.SetModuleConstant('multip_max',multip_max, float_t)
+			SetModuleConstant(mod,'multip_max',multip_max, float_t)
 
 			self.multip_step=multip_step
 			in_raw.update({'multip_step':multip_step,'multip_max':multip_max})
 
 		if self.factoringRadius:
-			self.SetModuleConstant('factor_radius2',self.factoringRadius**2,float_t)
-			self.SetModuleConstant('factor_origin',self.seed,float_t) # Single seed only
-			self.SetModuleConstant('factor_metric',self.Metric(self.seed).to_HFM(),float_t)
+			SetModuleConstant(mod,'factor_radius2',self.factoringRadius**2,float_t)
+			SetModuleConstant(mod,'factor_origin',self.seed,float_t) # Single seed only
+			SetModuleConstant(mod,'factor_metric',self.Metric(self.seed).to_HFM(),float_t)
 
 		if self.order==2:
 			order2_threshold = self.GetValue('order2_threshold',0.2,
 				help="Relative threshold on second order differences / first order difference,"
 				"beyond which the second order scheme deactivates")
-			self.SetModuleConstant('order2_threshold',order2_threshold,float_t)
+			SetModuleConstant(mod,'order2_threshold',order2_threshold,float_t)
 		
 		if self.isCurvature:
-			if np.isscalar(self.xi): self.SetModuleConstant('xi',self.xi,float_t)
-			if np.isscalar(self.kappa): self.SetModuleConstant('kappa',self.kappa,float_t)
+			if np.isscalar(self.xi): SetModuleConstant(mod,'xi',self.xi,float_t)
+			if np.isscalar(self.kappa): SetModuleConstant(mod,'kappa',self.kappa,float_t)
 
 		in_raw.update({
 			'tol':tol,
@@ -369,21 +362,6 @@ class Interface(object):
 			raise ValueError("No metric available for curvature penalized models")
 		if hasattr(self,'metric'): return self.metric.at(x)
 		else: return self.dualMetric.at(x).dual()
-
-	def SetModuleConstant(self,key,value,dtype):
-		"""Sets a global constant in the cupy cuda module"""
-		xp = self.xp
-		value=xp.array(value,dtype=dtype)
-		if self.cupy_old:
-			#https://github.com/cupy/cupy/issues/1703
-			b = xp.core.core.memory_module.BaseMemory()
-			b.ptr = self.module.get_global_var(key)
-			memptr = xp.cuda.MemoryPointer(b,0)
-		else: 
-			memptr = self.kernel.get_global(key)
-		module_constant = xp.ndarray(value.shape, value.dtype, memptr)
-		module_constant[...] = value
-
 
 	def SetSolver(self):
 		if self.verbosity>=1: print("Setup and run the eikonal solver")

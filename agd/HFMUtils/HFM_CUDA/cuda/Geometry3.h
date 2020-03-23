@@ -41,8 +41,8 @@ void Selling_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdi
 
 
 CURVATURE(
-__constant__ Scalar Selling_v_relax; // Relaxation parameter for Selling_v. Typical = 0.01
-__constant__ Scalar Selling_v_cosmin2; // Relaxation parameter for Selling_v. Typical = 2./3
+__constant__ Scalar Selling_v_relax = 0.01; // Relaxation parameter for Selling_v. 
+__constant__ Scalar Selling_v_cosmin2 = 2./3.; // Relaxation parameter for Selling_v.
 
 // Based on selling decomposition, with some relaxation, reorienting of offsets, and pruning of weights
 void Selling_v(const Scalar v[ndim], Scalar weights[symdim], Int offsets[symdim][ndim]){

@@ -1,6 +1,7 @@
 import numpy as np
 import time
 from . import misc
+from . import nonzero_untidy
 
 """
 The solvers defined below are member functions of the "interface" class devoted to 
@@ -36,7 +37,7 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 	update_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
 	kernel = self.module.get_function("Update")
 
-	"""
+	"""#flatnonzero version
 	for niter_o in range(self.nitermax_o):
 		updateList_o = xp.array(xp.flatnonzero(update_o), dtype=self.int_t)
 		update_o.fill(0)
@@ -45,6 +46,7 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 	return self.nitermax_o
 	"""
 
+	# profiled version
 	time_flat = 0.
 	time_solve = 0.
 	s=0
@@ -59,6 +61,16 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 		kernel((updateList_o.size,),self.shape_i, kernel_args + (updateList_o,update_o))
 	return self.nitermax_o
 
+	# untidy nonzeros version
+	find_nonzeros = nonzero_untidy.nonzero(update_o,
+		interface.GetValue('find_nonzeros_kwargs',default={},
+			help="Keyword arguments for untidy nonzero lookup"))
 
+	for niter_o in range(self.nitermax_o):
+		updateList_o,updateList_o_size = find_nonzeros()
+		update_o.fill(0)
+		if len(updateList_o)==0: return niter_o
+		kernel((updateList_o_size,),self.shape_i, kernel_args + (updateList_o,update_o))
+	return self.nitermax_o
 
 
