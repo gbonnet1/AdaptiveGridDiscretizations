@@ -18,9 +18,10 @@ def getmtime_max(directory):
 
 def GetModule(source,cuoptions):
 	"""Returns a cupy raw module"""
-	cp,has_rawmodule = _get_cupy()
-	if has_rawmodule: return cp.RawModule(source,options=cuoptions)
-	else: return cupy.core.core.compile_with_cache(self.source, 
+	print("source : ",source)
+	cupy,has_rawmodule = _get_cupy()
+	if has_rawmodule: return cupy.RawModule(source,options=cuoptions)
+	else: return cupy.core.core.compile_with_cache(source, 
 		options=cuoptions, prepend_cupy_headers=False)
 
 
@@ -28,15 +29,15 @@ def SetModuleConstant(module,key,value,dtype):
 	"""
 	Sets a global constant in a cupy cuda module.
 	"""
-	cp,has_rawmodule = _get_cupy()
-	value=cp.array(value,dtype=dtype)
+	cupy,has_rawmodule = _get_cupy()
 	if has_rawmodule: 
 		memptr = module.get_global(key)
 	else: 
 		#https://github.com/cupy/cupy/issues/1703
-		b = xp.core.core.memory_module.BaseMemory()
-		b.ptr = self.module.get_global_var(key)
-		memptr = xp.cuda.MemoryPointer(b,0)
+		b = cupy.core.core.memory_module.BaseMemory()
+		b.ptr = module.get_global_var(key)
+		memptr = cupy.cuda.MemoryPointer(b,0)
 
-	module_constant = cp.ndarray(value.shape, value.dtype, memptr)
+	value=cupy.array(value,dtype=dtype)
+	module_constant = cupy.ndarray(value.shape, value.dtype, memptr)
 	module_constant[...] = value

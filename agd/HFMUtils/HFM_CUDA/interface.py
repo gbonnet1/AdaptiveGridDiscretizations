@@ -301,7 +301,10 @@ class Interface(object):
 			traits['periodic_macro']=1
 			traits['periodic']=periodic
 
-		self.source = kernel_traits.kernel_source(self)
+		self.source = kernel_traits.kernel_source(self.traits)
+		if self.isCurvature: self.source += f'#include "{self.model}.h"\n'
+		else: self.source += f'#include "{self.model[:-1]}_.h"\n' # Dimension generic
+
 		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 		date_modified = getmtime_max(cuda_path)
 		self.source += f"// Date cuda code last modified : {date_modified}\n"

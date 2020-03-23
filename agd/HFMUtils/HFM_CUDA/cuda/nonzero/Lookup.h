@@ -2,25 +2,42 @@
 This kernel is used to list the active nodes.
 */
 
-// ndim must be specified
+#ifndef BoolAtom_macro
+#define BoolAtom_macro
+typedef unsigned char BoolAtom;
+#endif
 
-typedef unsigned char BoolAtom
-typedef int Int
+#ifndef Int_macro
+#define Int_macro
+typedef int Int;
+#endif
+
+#ifndef ndim_macro
+#define ndim_macro
+const Int ndim=2;
+#endif
+
+#ifndef shape_i_macro
+#define shape_i_macro
+const Int shape_i[ndim] = {32,32};
+const Int size_i = 1024; // prod(shape_i)
+const Int log2_size_i = 10; // Upper bound on log2(size_i) 1+fls(size_i-1); ?
+#endif
 
 __constant__ Int shape_tot[ndim];
 __constant__ Int shape_o[ndim];
 __constant__ Int size_o; // prod(shape_o)
-__constant__ Int shape_i[ndim];
-__constant__ Int size_i; // prod(shape_i)
-__constant__ Int log2_size_i; // Upper bound on log2(size_i) 1+fls(size_i-1); ?
+
+// Definitions required to compile Grid.h, but otherwise unused.
+#define PERIODIC(...) 
+typedef unsigned char BoolPack;
 
 #include "../Grid.h"
-#include "../Geometry.h"
 #include "Accumulate.h"
 
 extern "C" {
 
-void Lookup(const BoolAtom * active, Int * index, Int * nindex){
+__global__ void Lookup(const BoolAtom * active, Int * index, Int * nindex){
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
 	Int x_i[ndim]; // = ThreadIdx

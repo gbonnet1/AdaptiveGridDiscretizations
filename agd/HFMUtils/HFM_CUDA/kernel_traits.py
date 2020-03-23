@@ -1,14 +1,15 @@
 import numpy as np
 import numbers
 
+"""
 def dtype(arg,data_t):
-	"""
+	"
 	For a numeric array, returns dtype.
 	Otherwise, returns one of the provided floating point 
 	or integer data type, depending on the argument data type.
 	Inputs:
 	 - data_t (tuple) : (float_t,int_t)
-	"""
+	"
 	float_t,int_t = data_t
 	if isinstance(arg,numbers.Real): 
 		return float_t
@@ -18,6 +19,7 @@ def dtype(arg,data_t):
 		return dtype(arg[0],data_t)
 	else:
 		return arg.dtype
+"""
 
 def default_traits(interface):
 	"""
@@ -46,14 +48,22 @@ def default_traits(interface):
 
 	return traits
 
-def kernel_source(interface):
+# cuda does not have int8_t, int32_t, etc
+np2cuda_dtype = {
+	np.int8:'char',
+	np.uint8:'unsigned char',
+	np.int16:'short',
+	np.int32:'int',
+	np.int64:'long long',
+	np.float32:'float',
+	np.float64:'double',
+	}
+
+def kernel_source(traits):
 	"""
 	Returns the source (mostly a preamble) for the gpu kernel code 
-	for the given traits and model.
+	for the given traits.
 	"""
-	model = interface.model
-	traits = interface.traits
-
 	source = ""
 	for key in list(traits.keys()):
 		if 'macro' in key:
@@ -62,8 +72,7 @@ def kernel_source(interface):
 		else:
 			source += f"#define {key}_macro\n"
 
-	traits = traits.copy()
-
+	"""
 	if 'shape_i' in traits:
 		shape_i = traits.pop('shape_i')
 		size_i = np.prod(shape_i)
@@ -73,6 +82,7 @@ def kernel_source(interface):
 			+ "{" +",".join(str(s) for s in shape_i)+ "};\n"
 			+ f"const int size_i = {size_i};\n"
 			+ f"const int log2_size_i = {log2_size_i};\n")
+
 
 	if 'Scalar' in traits:
 		Scalar = traits.pop('Scalar')
@@ -88,11 +98,26 @@ def kernel_source(interface):
 		else: raise ValueError(f"Unrecognized scalar type {Int}")
 		source += f"typedef {ctype} Int;\n"
 		source += f"const Int Int_MAX = {np.iinfo(Int).max};"
+"""
 
 	for key,value in traits.items():
-		source += f"const int {key}={value};\n"
+		if isinstance(value,numbers.Integral):
+			source += f"const int {key}={value};\n"
+		elif isinstance(value,type):
+			source += f"typedef {np2cuda_dtype[value]} {key};\n"
+		elif all(isinstance(v,numbers.Integral) for v in value):
+			source += f"const int {key}[{len(value)}] = "+"{"+",".join(str(s) for s in value)+ "};\n"
+		else: 
+			raise ValueError(f"Unsupported trait {key}:{value}")
 
-	if interface.isCurvature: source += f'#include "{model}.h"\n'
-	else: source += f'#include "{model[:-1]}_.h"\n' # Dimension generic
+	# Special treatment for some traits
+	if 'Int' in traits:
+		source += f"const Int Int_MAX = {np.iinfo(traits['Int']).max};\n"
+	if "shape_i" in traits:
+		size_i = np.prod(traits['shape_i'])
+		assert size_i%8 == 0
+		log2_size_i = int(np.ceil(np.log2(size_i)))
+		source += (f"const int size_i = {size_i};\n"
+			+ f"const int log2_size_i = {log2_size_i};\n")
 
 	return source
