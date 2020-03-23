@@ -51,7 +51,7 @@ hfmIn = HFMUtils.dictIn({
 	'returns':'in_raw',
 	'traits':{
 #	'niter_i':1,'shape_i':(8,8),
-#	'niter_i':16,'shape_i':(8,8),
+	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
 #	'niter_i':48,'shape_i':(24,24),
 #	'niter_i':64,'shape_i':(32,32),
