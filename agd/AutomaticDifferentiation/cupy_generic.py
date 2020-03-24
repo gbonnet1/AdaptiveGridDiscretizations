@@ -89,22 +89,31 @@ def samesize_int_t(float_t):
 
 # ----------- Retrieving data from a cupy array ------------
 
-def cupy_get(x):
+def cupy_get(x,dtype64=False,iterables=tuple()):
 	"""
 	If argument is a cupy ndarray, returns output of 'get' member function, 
 	which is a numpy ndarray. Returns unchanged argument otherwise.
+	- dtype64 : convert 32 bit floats and ints to their 64 bit counterparts
 	"""
-	return x.get() if from_cupy(x) and isndarray(x) else x
+	def caster(x):
+		if from_cupy(x) and isndarray(x):
+			x = x.get()
+			if dtype64 and x.dtype.type in (np.int32,np.float32):
+				dtype = np.int64 if x.dtype.type==np.int32 else np.float64
+				x = np.array(x,dtype=dtype)
+		return x
+	return misc.map_iterables(caster,x,iterables)
 
-def cupy_get_args(f):
+def cupy_get_args(f,*args,**kwargs):
 	"""
 	Decorator applying cupy_get to all arguments of the given function.
+	 - *args, **kwargs : passed to cupy_get
 	"""
 	@functools.wraps(f)
-	def wrapper(*args,**kwargs):
-		args = tuple(cupy_get(arg) for arg in args)
-		kwargs = {key:cupy_get(value) for key,value in kwargs.items()}
-		return f(*args,**kwargs)
+	def wrapper(*fargs,**fkwargs):
+		fargs = tuple(cupy_get(arg,*args,**kwargs) for arg in fargs)
+		fkwargs = {key:cupy_get(value,*args,**kwargs) for key,value in fkwargs.items()}
+		return f(*fargs,**fkwargs)
 	return wrapper
 
 # ----- Casting data to appropriate floating point and integer types ------
@@ -121,7 +130,7 @@ def get_float_t(*args,**kwargs):
 	Returns float32 if found in any argument, else float64.
 	"""
 	args = itertools.chain(args,kwargs.values())
-	return np.float32 if has_dtype(args,np.float32) else float64
+	return np.float32 if has_dtype(args,np.float32) else np.float64
 
 def array_float_caster(*args,**kwargs):
 	"""

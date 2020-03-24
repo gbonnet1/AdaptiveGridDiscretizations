@@ -153,8 +153,21 @@ __global__ void Update(
 	}
 	__syncthreads(); // Get all values before reduction
 
+	if(debug_print && n_i==0 && n_o==size_o-1){
+		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
+		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
+	}
+
+
+
 	REDUCE_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
 	__syncthreads();  // Make u_i[0] accessible to all 
+
+	if(debug_print && n_i==0 && n_o==size_o-1){
+		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
+		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
+	}
+
 
 	// Tag neighbor blocks, and this particular block, for update
 	if(u_i[0]!=infinity() && n_i<=2*ndim){ 
@@ -170,10 +183,6 @@ __global__ void Update(
 			updateNext_o[Grid::Index(neigh_o,shape_o)]=1;}
 	}
 
-	if(debug_print && n==0){
-		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
-
-	}
 }
 
 } // Extern "C"

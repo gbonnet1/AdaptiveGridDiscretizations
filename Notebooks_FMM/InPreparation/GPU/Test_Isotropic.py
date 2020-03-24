@@ -26,34 +26,36 @@ raise
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
+n=21
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
-    'verbosity':1,
+#    'verbosity':1,
     'arrayOrdering':'RowMajor',
-    'seeds':[[0,0]],
+    'seeds':[[n-1,n-1]],
 #    'kernel':"dummy",
-    'solver':'AGSI', 
+#    'solver':'AGSI', 
 #    'solver':'global_iteration',
-    'raiseOnNonConvergence':False,
+#    'raiseOnNonConvergence':False,
 #    'nitermax_o':10,
-    'tol':1e-8,
-#    'multiprecision':True,
+#    'tol':1e-8,
+    'multiprecision':False,
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((4000,4000)),
+	'dims':np.array((n,n)),
 	'origin':[-0.5,-0.5],
-	'gridScale':1,
+	'gridScale':1.,
 #	'order':2,
 #	'order2_threshold':0.3,
 #	'factoringRadius':10000,
 #	'seedRadius':2,
-	'returns':'in_raw',
+#	'returns':'in_raw',
 	'traits':{
+	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),
 #	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
-	'niter_i':48,'shape_i':(24,24),
+#	'niter_i':48,'shape_i':(24,24),
 #	'niter_i':64,'shape_i':(32,32),
 #   'debug_print':1,
 #    'niter_i':1,
@@ -92,7 +94,7 @@ hfmOut = hfmIn.RunGPU()
 
 
 
-if len(hfmOut['values'])<20: print(hfmOut['values'])
+if len(hfmOut['values'])<22: print(hfmOut['values'])
 print(f"niter_o : {hfmOut['niter_o']}")
 
 #Comparison with CPU.

@@ -32,12 +32,16 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 
 	finite_o = xp.any(xp.isfinite(block_values).reshape( self.shape_o + (-1,) ),axis=-1)
 	seed_o = xp.any(block_seedTags,axis=-1)
-
 	update_o  = xp.array( xp.logical_and(finite_o,seed_o), dtype='uint8')
+	for k in range(self.ndim): # Take care of a rare bug where the seed is along in its block
+		for eps in (-1,1): 
+			update_o = np.logical_or(update_o,np.roll(update_o,axis=k,shift=eps))
+
 	kernel = self.module.get_function("Update")
 
 	for niter_o in range(self.nitermax_o):
 		updateList_o = xp.array(xp.flatnonzero(update_o), dtype=self.int_t)
+		print(update_o.astype(int))
 		update_o.fill(0)
 		if updateList_o.size==0: return niter_o
 		kernel((updateList_o.size,),self.shape_i, kernel_args + (updateList_o,update_o))

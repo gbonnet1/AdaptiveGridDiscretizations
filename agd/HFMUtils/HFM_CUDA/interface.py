@@ -71,7 +71,7 @@ class Interface(object):
 			raise ValueError(f"Missing value for key {key}")
 		else:
 			self.hfmOut['key defaulted'].append((key,default))
-			if verbosity>=self.verbosity:
+			if verbosity<=self.verbosity:
 				print(f"key {key} defaults to {default}")
 			return default
 
@@ -107,7 +107,7 @@ class Interface(object):
 		traits.update(self.GetValue('traits',default=tuple(),
 			help="Optional trait parameters passed to kernel"))
 
-		self.multiprecision = (self.GetValue('multiprecision',default=False,
+		self.multiprecision = (self.GetValue('multiprecision',default=True,
 			help="Use multiprecision arithmetic, to tmprove accuracy") or 
 			self.GetValue('values_float64',default=False) )
 		if self.multiprecision: traits['multiprecision_macro']=1
@@ -184,8 +184,8 @@ class Interface(object):
 			self.dualMetric = copy.deepcopy(self.dualMetric)
 
 		# Rescale 
-		if self.metric is not None: self.metric.rescale(1/self.h)
-		if self.dualMetric is not None: self.dualMetric.rescale(self.h)
+		if self.metric is not None: 	self.metric =     self.metric.rescale(1/self.h)
+		if self.dualMetric is not None: self.dualMetric = self.dualMetric.rescale(self.h)
 		if self.drift is not None:
 			if np.isscalar(self.h): 
 				self.drift *= self.h
@@ -277,8 +277,9 @@ class Interface(object):
 		# Tag the seeds
 		if np.prod(self.shape_i)%8!=0:
 			raise ValueError('Product of shape_i must be a multiple of 8')
-		block_seedTags = xp.isfinite(block_values).reshape( self.shape_o + (-1,) )
+		block_seedTags = xp.isfinite(block_values)
 		block_seedTags = misc.packbits(block_seedTags,bitorder='little')
+		block_seedTags = block_seedTags.reshape( self.shape_o + (-1,) )
 		block_values[xp.isnan(block_values)] = xp.inf
 
 		self.block.update({'values':block_values,'seedTags':block_seedTags})
@@ -287,6 +288,9 @@ class Interface(object):
 		if self.multiprecision:
 			block_valuesq = xp.zeros(block_values.shape,dtype=self.int_t)
 			self.block.update({'valuesq':block_valuesq})
+		for key,value in self.block.items():
+			if value.dtype.type not in (self.float_t,self.int_t,np.uint8):
+				raise ValueError(f"Inconsistent type {value.dtype.type} for key {key}")
 
 	def SetKernel(self):
 		if self.verbosity>=1: print("Preparing the GPU kernel")
@@ -318,7 +322,7 @@ class Interface(object):
 		mod = self.module
 
 		float_t,int_t = self.float_t,self.int_t
-		tol = self.float_t(self.GetValue('tol',1e-8,
+		tol = self.float_t(self.GetValue('tol',default=1e-8,
 			help="Convergence tolerance for the fixed point solver"))
 		SetModuleConstant(mod,'tol',tol,float_t)
 
@@ -332,7 +336,7 @@ class Interface(object):
 
 		if self.multiprecision:
 			# Choose power of two, significantly less than h
-			multip_step = 2.**np.floor(np.log2(self.h/50)) 
+			multip_step = 2.**np.floor(np.log2(self.h/10)) 
 			SetModuleConstant(mod,'multip_step',multip_step, float_t)
 			multip_max = np.iinfo(self.int_t).max*multip_step/2
 			SetModuleConstant(mod,'multip_max',multip_max, float_t)
@@ -370,7 +374,7 @@ class Interface(object):
 
 	def SetSolver(self):
 		if self.verbosity>=1: print("Setup and run the eikonal solver")
-		solver = self.GetValue('solver',help="Choice of fixed point solver")
+		solver = self.GetValue('solver',default='AGSI',help="Choice of fixed point solver")
 		self.nitermax_o = self.GetValue('nitermax_o',default=2000,
 			help="Maximum number of iterations of the solver")
 
@@ -404,12 +408,12 @@ class Interface(object):
 			else:
 				print("---- Warning ----\n",nonconv_msg,"\n-----------------\n")
 
-		if self.verbosity>=1: print(f"GPU solve took {solverGPUTime} seconds")
+		if self.verbosity>=1: print(f"GPU solve took {solverGPUTime} seconds,"
+			f" in {niter_o} iterations.")
 
 	def PostProcess(self):
 		if self.verbosity>=1: print("Post-Processing")
 		if self.returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
-		print(self.shape,self.block['values'].shape)
 		values = misc.block_squeeze(self.block['values'],self.shape)
 		if self.multiprecision:
 			valuesq = misc.block_squeeze(self.block['valuesq'],self.shape)
