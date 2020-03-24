@@ -3,7 +3,8 @@ This file implements a gpu accelerated variant of the 'nonzero' functions of cup
 We return the indices of all non-zero entries in the flattened array.
 The implementation is untidy, in that an unspecified number of "-1", which can be safely
 ignored, might be inserted in between the valid indices. 
-This inconvenience is counterbalanced by a significant improvement in computation speed.
+This inconvenience is counterbalanced by a significant improvement in computation speed ???
+(Removed : ineffective)
 """
 import numpy as np
 from .cupy_module_helper import GetModule,SetModuleConstant,getmtime_max
