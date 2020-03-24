@@ -1,24 +1,46 @@
 #include "Grid.h"
 #include "HFM.h"
 
+#if pruning_macro
+#define PRUNING(...) __VA_ARGS__
+#else
+#define PRUNING(...) __VA_ARGS__
+#endif
+
 extern "C" {
 
 __global__ void Update(
 	Scalar * u, MULTIP(Int * uq,)
 	const Scalar * geom, DRIFT(const Scalar * drift,) const BoolPack * seeds, 
-	const Int * updateList_o, BoolAtom * updateNext_o){ // Used as simple booleans
-
-//	__shared__ Int shape_o[ndim];
+	Int * updateList_o, PRUNING(const BoolAtom * updatePrev_o,) BoolAtom * updateNext_o ){ 
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
 
 	if(threadIdx.x==0 && threadIdx.y==0 && threadIdx.z==0){
 		n_o = updateList_o[blockIdx.x];
 		Grid::Position(n_o,shape_o,x_o);
+	
+	#if pruning_macro
+		Int ks = blockIdx.x % (2*ndim+1);
+		if(ks!=2*ndim){
+			k = ks/2; s = ks%2;
+			x_o[k]+=2*s-1;
+			if(Grid::InRange(x_o,shape_o)){
+				n_o = Grid::Index(x_o,shape_o);
+				if((ks+1) != updatePrev_o[n_o]) {n_o=-1;}
+			} else {n_o=-1;}
+		}
+	#endif
 	}
 
 	__syncthreads(); // __shared__ x_o, n_o
-	if(n_o==-1) return;
+	#if pruning_macro
+	if(n_o==-1) {
+		if(threadIdx.x==0 && threadIdx.y==0 && threadIdx.z==0){
+			updateList_o[blockIdx.x]=-1;}
+		return;
+	}
+	#endif
 
 	Int x_i[ndim], x[ndim];
 	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[ndim-1]=threadIdx.z;
@@ -180,9 +202,13 @@ __global__ void Update(
 		for(Int l=0; l<ndim; ++l) {neigh_o[l]=x_o[l];}
 		neigh_o[k]+=eps;
 		if(Grid::InRange(neigh_o,shape_o)) {
-			updateNext_o[Grid::Index(neigh_o,shape_o)]=1;}
+			updateNext_o[Grid::Index(neigh_o,shape_o)]=1 PRUNING(+n_i);}
 	}
 
+#if pruning_macro
+	if(n_i==size_i-1){
+		updateList_o[blockIdx.x] = u_i[0]!=infinity() ? n_o : -1;}
+#endif
 }
 
 } // Extern "C"

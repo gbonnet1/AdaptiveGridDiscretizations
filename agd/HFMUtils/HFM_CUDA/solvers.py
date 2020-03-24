@@ -46,3 +46,13 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 		if updateList_o.size==0: return niter_o
 		kernel((updateList_o.size,),self.shape_i, kernel_args + (updateList_o,update_o))
 	return self.nitermax_o
+
+
+	updateList_o = xp.array(xp.flatnonzero(update_o), dtype=self.int_t)
+	updatePrev_o = np.full_like(update_o,2*self.ndim)
+	for niter_o in range(self.nitermax_o):
+		updateList_o = np.repeat(updateList_o[updateList_o!=-1],2*self.ndim+1)
+		if updateList_o.size==0: return niter_o
+		kernel((updateList_o.size,),self.shape_i, kernel_args + (updateList_o,updatePrev_o,update_o))
+		updatePrev_o,update_o = update_o,updatePrev_o
+	return self.nitermax_o
