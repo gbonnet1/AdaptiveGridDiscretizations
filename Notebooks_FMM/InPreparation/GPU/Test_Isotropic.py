@@ -51,17 +51,15 @@ hfmIn = HFMUtils.dictIn({
 	'returns':'in_raw',
 	'traits':{
 #	'niter_i':1,'shape_i':(8,8),
-	'niter_i':16,'shape_i':(8,8),
+#	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
-#	'niter_i':48,'shape_i':(24,24),
+	'niter_i':48,'shape_i':(24,24),
 #	'niter_i':64,'shape_i':(32,32),
 #   'debug_print':1,
 #    'niter_i':1,
 #    'strict_iter_i':1,
-	'propagate_macro':1
     },
 #    'nonzero_untidy_kwargs':{'log2_size_i':8,'size2_i':256},
-	'AGSI_variant':'saving',#'propagate',#'flatnonzero',#
 })
 
 if False:
@@ -88,11 +86,6 @@ hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
 hfmOut = hfmIn.RunGPU()
-if hfmIn['AGSI_variant']=='saving':
-	hfmIn.update({'AGSI_variant':'using','updates':hfmOut['updates']})
-	print(type(hfmOut['updates'][-1]))
-	print(len(hfmOut['updates']))
-	hfmOut = hfmIn.RunGPU()
 
 #print(hfmOut['values'].shape)
 #print(hfmOut)
