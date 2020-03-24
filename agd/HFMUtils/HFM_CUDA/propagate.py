@@ -5,6 +5,7 @@ to its relevant neighbors.
 
 import numpy as np
 from ... import AutomaticDifferentiation as ad
+from .cupy_module_helper import GetModule,SetModuleConstant,traits_header
 class propagate:
 
 	def __init__(self,minChg,
@@ -23,7 +24,7 @@ class propagate:
 		assert boundChg==np.inf
 
 		self.int_t = int_t
-		self.tags = np.zeros_like(minChg,dtype=self.int_t)
+		self.tags = self.xp.full(minChg.shape,-1,dtype=self.int_t)
 
 		self.blockSize=blockSize
 		self._set_modules()
@@ -34,13 +35,16 @@ class propagate:
 			os.path.dirname(os.path.realpath(__file__)),"cuda/propagate")
 		date_modified = getmtime_max(cuda_path)
 		
-		TagNeigh_source = (f"const int ndim = {self.ndim};\n"
-			'#include "TagNeigh.h"'
-			f"// Date last modified {date_modified}")
-		TagNeigh_mod = GetModule(TagNeigh_source,cuoptions)
-		
+		common_source = (traits_header({'ndim':self.ndim,'shape':self.shape}) +
+			f"// Date last modified {date_modified}\n")
 
+		TagNeigh_source = common_source + '#include "TagNeigh.h"\n'
+		self.TagNeigh_mod = GetModule(TagNeigh_source,cuoptions)
+		self.TagNeigh_ker = self.TagNeigh_mod.get_function("TagNeigh")
 
+		ReadNeigh_source = common_source + '#include "ReadNeigh.h"\n'
+		self.ReadNeigh_mod = GetModule(ReadNeigh_source,cuoptions)
+		self.ReadNeigh_ker = self.ReadNeigh_mod.get_function("ReadNeigh")
 
 	def __call__(self,updateNow):
 		assert updateNow.dtype.type==self.int_t
@@ -54,4 +58,6 @@ class propagate:
 		self.TagNeigh_ker((size_o,),(size_i,),(self.minChg,updateNow,self.tags))
 		self.ReadNeigh_ker((size_o,),(size_i,),(updateNow,self.tags,updateNext))
 
-		return updateNext[updateNext!=-1]
+		updateNext[updateNext!=-1]
+		self.tags.reshape(-1)[updateNext] = -1 # Cleaner bub in fact useless 
+		return updateNext
