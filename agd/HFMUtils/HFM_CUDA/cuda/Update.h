@@ -4,7 +4,7 @@
 #if pruning_macro
 #define PRUNING(...) __VA_ARGS__
 #else
-#define PRUNING(...) __VA_ARGS__
+#define PRUNING(...) 
 #endif
 
 extern "C" {
@@ -23,7 +23,7 @@ __global__ void Update(
 	#if pruning_macro
 		Int ks = blockIdx.x % (2*ndim+1);
 		if(ks!=2*ndim){
-			k = ks/2; s = ks%2;
+			const Int k = ks/2, s = ks%2;
 			x_o[k]+=2*s-1;
 			if(Grid::InRange(x_o,shape_o)){
 				n_o = Grid::Index(x_o,shape_o);

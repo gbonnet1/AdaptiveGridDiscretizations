@@ -60,14 +60,13 @@ def traits_header(traits):
 	for the given traits.
 	"""
 	source = ""
-	for key in list(traits.keys()):
-		if 'macro' in key:
+	for key,value in traits.items():
+		if key.endswith('macro'):
 			source += f"#define {key} {traits[key]}\n"
-			traits.pop(key)
+			continue
 		else:
 			source += f"#define {key}_macro\n"
 
-	for key,value in traits.items():
 		if isinstance(value,numbers.Integral):
 			source += f"const int {key}={value};\n"
 		elif isinstance(value,type):

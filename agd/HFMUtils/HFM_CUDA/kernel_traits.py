@@ -28,6 +28,7 @@ def default_traits(interface):
 	'Scalar':np.float32,
 	'Int':   np.int32,
 	'multiprecision_macro':0,
+	'pruning_macro':0,
 	}
 
 	ndim = interface.ndim
