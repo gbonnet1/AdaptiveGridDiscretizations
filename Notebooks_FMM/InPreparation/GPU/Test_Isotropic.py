@@ -58,9 +58,10 @@ hfmIn = HFMUtils.dictIn({
 #   'debug_print':1,
 #    'niter_i':1,
 #    'strict_iter_i':1,
+	'propagate_macro':1
     },
 #    'nonzero_untidy_kwargs':{'log2_size_i':8,'size2_i':256},
-	'AGSI_variant':'saving' #'flatnonzero',
+	'AGSI_variant':'flatnonzero',#'propagate'
 })
 
 if False:

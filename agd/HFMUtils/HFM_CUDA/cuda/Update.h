@@ -156,6 +156,7 @@ __global__ void Update(
 	REDUCE_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
 	__syncthreads();  // Make u_i[0] accessible to all 
 
+	#if propagate_macro
 	// Tag neighbor blocks, and this particular block, for update
 	if(u_i[0]!=infinity() && n_i<=2*ndim){ 
 		Int k = n_i/2;
@@ -169,6 +170,11 @@ __global__ void Update(
 		if(Grid::InRange(neigh_o,shape_o)) {
 			updateNext_o[Grid::Index(neigh_o,shape_o)]=1;}
 	}
+	#else
+	if(u_i[0]!=infinity() && n_i==0){
+		updateNext_o[n_o]==1;
+	}
+	#endif
 
 	if(debug_print && n==0){
 		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);

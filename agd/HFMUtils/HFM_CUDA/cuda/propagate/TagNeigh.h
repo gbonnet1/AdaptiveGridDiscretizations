@@ -1,5 +1,9 @@
-
+#if dummy_minChg
+typedef unsigned char Scalar
+#else
 typedef float Scalar;
+__constant__ Scalar minChg_max;
+#endif
 typedef int Int;
 
 /* // The followind constants must be defined.
@@ -17,6 +21,14 @@ void TagNeigh(const Scalar * minChg, const Int * index, Int * tags){
 	if(tid>=index_size) return;
 	
 	const Int n = index[tid];
+	#if dummy_minChg
+	const bool needsUpdate = minChg[n];
+	#else
+	const bool needsUpdate = minChg[n] < minChg_max;
+	#endif
+	
+	if(!needsUpdate) return;
+
 	tags[n]=n;
 
 	// Diamond connectivity

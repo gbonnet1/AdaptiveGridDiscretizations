@@ -2,6 +2,7 @@ import numpy as np
 import time
 from . import misc
 from . import nonzero_untidy
+from . import propagate
 
 """
 The solvers defined below are member functions of the "interface" class devoted to 
@@ -134,6 +135,16 @@ def adaptive_gauss_siedel_iteration(self,kernel_args):
 			kernel((updateList_o.size,),self.shape_i, kernel_args + (updateList_o,update_o))
 		return self.nitermax_o
 
+
+	if variant=='propagate':
+		find_next = propagate.propagate(update_o)
+		updateList_o = xp.array(xp.flatnonzero(update_o), dtype=self.int_t)
+		for niter_o in range(self.nitermax_o):
+			updated_tot+=updateList_o.size
+			if updateList_o.size==0: print("up tot(flat) ",updated_tot); return niter_o
+			kernel((updateList_o.size,),self.shape_i, kernel_args + (updateList_o,update_o))
+			updateList_o = propagate(updateList_o)
+		return self.nitermax_o
 
 
 
