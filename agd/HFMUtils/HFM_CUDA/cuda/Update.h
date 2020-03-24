@@ -172,7 +172,7 @@ __global__ void Update(
 	}
 	#else
 	if(u_i[0]!=infinity() && n_i==0){
-		updateNext_o[n_o]==1;
+		updateNext_o[n_o]=1;
 	}
 	#endif
 

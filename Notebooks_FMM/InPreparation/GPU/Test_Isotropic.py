@@ -35,7 +35,7 @@ hfmIn = HFMUtils.dictIn({
     'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-#    'nitermax_o':1,
+#    'nitermax_o':10,
     'tol':1e-8,
 #    'multiprecision':True,
 #    'values_float64':True,
@@ -61,7 +61,7 @@ hfmIn = HFMUtils.dictIn({
 	'propagate_macro':1
     },
 #    'nonzero_untidy_kwargs':{'log2_size_i':8,'size2_i':256},
-	'AGSI_variant':'flatnonzero',#'propagate'
+	'AGSI_variant':'saving',#'propagate',#'flatnonzero',#
 })
 
 if False:
