@@ -59,7 +59,8 @@ hfmIn = HFMUtils.dictIn({
 #    'niter_i':1,
 #    'strict_iter_i':1,
     },
-
+#    'nonzero_untidy_kwargs':{'log2_size_i':8,'size2_i':256},
+	'AGSI_variant':'saving' #'flatnonzero',
 })
 
 if False:
@@ -86,8 +87,15 @@ hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
 hfmOut = hfmIn.RunGPU()
+if hfmIn['AGSI_variant']=='saving':
+	hfmIn.update({'AGSI_variant':'using','updates':hfmOut['updates']})
+	print(type(hfmOut['updates'][-1]))
+	print(len(hfmOut['updates']))
+	hfmOut = hfmIn.RunGPU()
+
 #print(hfmOut['values'].shape)
 #print(hfmOut)
+
 
 
 if len(hfmOut['values'])<20: print(hfmOut['values'])
@@ -105,7 +113,7 @@ hfmInCPU.update({
 #	'factoringPointChoice':'Key',
 })
 
-if True: #Isotopic code
+if False: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))

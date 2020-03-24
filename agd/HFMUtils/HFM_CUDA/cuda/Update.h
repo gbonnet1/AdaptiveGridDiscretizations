@@ -18,6 +18,7 @@ __global__ void Update(
 	}
 
 	__syncthreads(); // __shared__ x_o, n_o
+	if(n_o==-1) return;
 
 	Int x_i[ndim], x[ndim];
 	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[ndim-1]=threadIdx.z;

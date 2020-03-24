@@ -6,7 +6,7 @@ import copy
 from . import kernel_traits
 from . import solvers
 from . import misc
-from .cupy_module_helper import GetModule,SetModuleConstant,getmtime_max
+from .cupy_module_helper import GetModule,SetModuleConstant,getmtime_max,traits_header
 from ... import HFMUtils
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
@@ -275,6 +275,8 @@ class Interface(object):
 		block_values = misc.block_expand(values,self.shape_i,mode='constant',constant_values=xp.nan)
 
 		# Tag the seeds
+		if np.prod(self.shape_i)%8!=0:
+			raise ValueError('Product of shape_i must be a multiple of 8')
 		block_seedTags = xp.isfinite(block_values).reshape( self.shape_o + (-1,) )
 		block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 		block_values[xp.isnan(block_values)] = xp.inf
@@ -301,7 +303,7 @@ class Interface(object):
 			traits['periodic_macro']=1
 			traits['periodic']=periodic
 
-		self.source = kernel_traits.kernel_source(self.traits)
+		self.source = traits_header(self.traits)
 		if self.isCurvature: self.source += f'#include "{self.model}.h"\n'
 		else: self.source += f'#include "{self.model[:-1]}_.h"\n' # Dimension generic
 

@@ -69,7 +69,7 @@ __global__ void Lookup(const BoolAtom * active, Int * index, Int * nindex){
 		nindex[n_o] = active_acc_i[size_i-1];}
 
 	if(isActive){
-		const Int pos = active_acc_i[n_i]*size_o + n_o;
+		const Int pos = (active_acc_i[n_i]-1)*size_o + n_o;
 		index[pos] = n;}
 }
 
