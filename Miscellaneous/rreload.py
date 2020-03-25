@@ -66,7 +66,7 @@ def _rreload(obj,noreload,reloaded,reloading,verbose):
 	if filename in reloaded:
 		return reloaded[filename]
 	if filename in reloading:
-		raise ValueError("Circular dependency in modules")
+		raise ValueError(f"Circular dependency in modules : {filename} in {reloading}")
 	reloading.append(filename)
 
 	if verbose: print(" "*len(reloading),f"reloading module {obj.__name__}")

@@ -16,7 +16,7 @@ some of it with PhD student Guillaume Bonnet, in co-direction with Frederic Bonn
 
 Copyright Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 """
-	elif volume=='FMM':
+	elif volume in ['FMM','GPU']:
 		return """
 This Python&reg; notebook is intended as documentation and testing for the [HamiltonFastMarching (HFM) library](https://github.com/mirebeau/HamiltonFastMarching), which also has interfaces to the Matlab&reg; and Mathematica&reg; languages. 
 More information on the HFM library in the manuscript:
@@ -30,7 +30,8 @@ VolumeTitle = {
 'NonDiv':"Non-Divergence form PDEs",
 'Div':"Divergence form PDEs",
 'Algo':"Algorithmic tools",
-'Repro':"Reproducible research"
+'Repro':"Reproducible research",
+'GPU':"GPU accelerated methods",
 }
 
 
@@ -49,11 +50,14 @@ VolumeFilenames = {
 	"MongeAmpere","EikonalEulerian"
 ],
 'Div':["Time1D_Div","Elliptic","EllipticAsymmetric","VaradhanGeodesics"],
-'Algo':["TensorSelling","TensorVoronoi",
+'Algo':[
+"TensorSelling","TensorVoronoi",
 "SternBrocot","VoronoiVectors",
 "Dense","Sparse","Reverse","ADBugs",
-"SubsetRd","FiniteDifferences"],
-'Repro':[],
+"SubsetRd","FiniteDifferences"
+],
+"Repro":["PucciMongeAmpere"],
+"GPU":["Isotropic_Repro"],
 }
 
 RepositoryDescription = """**Github repository** to run and modify the examples on your computer.

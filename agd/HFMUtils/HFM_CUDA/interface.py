@@ -7,7 +7,7 @@ from . import kernel_traits
 from . import solvers
 from . import misc
 from .cupy_module_helper import GetModule,SetModuleConstant,getmtime_max,traits_header
-from ... import HFMUtils
+from .. import Grid
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
 from ... import Metrics
@@ -19,14 +19,14 @@ class Interface(object):
 	"""
 	def __init__(self,hfmIn):
 
-		self.hfmIn = HFMUtils.dictIn(hfmIn)
+		self.hfmIn = hfmIn
 		if hfmIn['arrayOrdering'] != 'RowMajor':
 			raise ValueError("Only RowMajor indexing supported")
 
 		# Needed for GetValue
 		self.help = hfmIn.get('help',[])
 		self.hfmOut = {
-		'key used':[],
+		'key used':['exportValues','origin','arrayOrdering'],
 		'key defaulted':[],
 		'key visited':[],
 		'help content':{},
@@ -107,7 +107,7 @@ class Interface(object):
 		traits.update(self.GetValue('traits',default=tuple(),
 			help="Optional trait parameters passed to kernel"))
 
-		self.multiprecision = (self.GetValue('multiprecision',default=True,
+		self.multiprecision = (self.GetValue('multiprecision',default=False,
 			help="Use multiprecision arithmetic, to tmprove accuracy") or 
 			self.GetValue('values_float64',default=False) )
 		if self.multiprecision: 
@@ -141,9 +141,9 @@ class Interface(object):
 		if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
 
 		# Domain shape and grid scale
-		self.shape = self.GetValue('dims',
-			help="dimensions (shape) of the computational domain").astype(int)
-		self.periodic = self.GetValue('periodic',default=None,
+		self.shape = tuple(self.GetValue('dims',
+			help="dimensions (shape) of the computational domain").astype(int))
+		self.periodic = self.GetValue('periodic',default=(False,)*self.ndim,
 			help="Apply periodic boundary conditions on some axes")
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
 
@@ -179,11 +179,11 @@ class Interface(object):
 		overwriteMetric = self.GetValue("overwriteMetric",default=False,
 				help="Allow overwriting the metric or dualMetric")
 
-		if ad.cupy_generic.isndarray(self.metric): 
+		if ad.cupy_generic.isndarray(self.metric) or np.isscalar(self.metric): 
 			self.metric = metricClass.from_HFM(self.metric)
 		elif not overwriteMetric:
 			self.metric = copy.deepcopy(self.metric)
-		if ad.cupy_generic.isndarray(self.dualMetric): 
+		if ad.cupy_generic.isndarray(self.dualMetric) or np.isscalar(self.dualMetric): 
 			self.dualMetric = metricClass.from_HFM(self.dualMetric)
 		elif not overwriteMetric:
 			self.dualMetric = copy.deepcopy(self.dualMetric)
@@ -232,11 +232,12 @@ class Interface(object):
 				for s in self.shape), indexing='ij')) # Adimensionized coordinates
 			self.metric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
 
-		self.block['geom'] = misc.block_expand(self.geom,self.shape_i,
-			mode='constant',constant_values=self.xp.inf)
+
+		self.block['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
+			self.shape_i,mode='constant',constant_values=self.xp.inf)
 		if self.drift is not None:
-			self.block['drift'] = misc.block_expand(self.drift,self.shape_i,
-				mode='constant',constant_values=self.xp.nan)
+			self.block['drift'] = misc.block_expand(fd.as_field(self.drift,self.shape),
+				self.shape_i,mode='constant',constant_values=self.xp.nan)
 
 	def SetValuesArray(self):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
@@ -244,7 +245,7 @@ class Interface(object):
 		values = xp.full(self.shape,xp.inf,dtype=self.float_t)
 		self.seeds = xp.array(self.GetValue('seeds', 
 			help="Points from where the front propagation starts") )
-		self.seeds = self.hfmIn.PointFromIndex(self.seeds,to=True) # Adimensionize seed position
+		self.seeds = Grid.PointFromIndex(self.hfmIn,self.seeds,to=True) # Adimensionize seed position
 		if len(self.seeds)==1: self.seed=self.seeds[0]
 		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
 		seedValues = xp.array(self.GetValue('seedValues',default=seedValues,
@@ -256,20 +257,22 @@ class Interface(object):
 			seedIndices = np.round(self.seeds).astype(int)
 			values[tuple(seedIndices.T)] = seedValues
 		else:
-			neigh = self.hfmIn.GridNeighbors(self.seed,seedRadius) # Geometry last
+			neigh = Grid.GridNeighbors(self.hfmIn,self.seed,seedRadius) # Geometry last
 			r = seedRadius 
-			aX = [range(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
+			aX = [xp.arange(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
 			neigh =  ad.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
-			neigh = neigh_index.reshape(-1,neigh_index.shape[-1])
+			neigh = neigh.reshape(-1,neigh.shape[-1])
 
 			# Select neighbors which are close enough
 			neigh = neigh[ad.Optimization.norm(neigh-self.seed,axis=-1) < r]
 
 			# Periodize, and select neighbors which are in the domain
 			nper = np.logical_not(self.periodic)
+			test = np.logical_and(-0.5<=neigh[:,nper],
+				neigh[:,nper]<xp.array(self.shape)[nper]-0.5)
 			inRange = np.all(np.logical_and(-0.5<=neigh[:,nper],
-				neigh[:,nper]<self.shape[nper]-0.5),axis=-1)
-			neigh = neigh[:,inRange]
+				neigh[:,nper]<xp.array(self.shape)[nper]-0.5),axis=-1)
+			neigh = neigh[inRange,:]
 			
 			diff = (neigh - self.seed).T # Geometry first
 #			neigh[:,self.periodic] = neigh[:,self.periodic] % self.shape[self.periodic]
@@ -314,7 +317,7 @@ class Interface(object):
 			traits['xi_var_macro'] = int(not np.isscalar(self.xi))
 			traits['kappa_var_macro'] = int(not np.isscalar(self.kappa))
 			traits['theta_var_macro'] = int(not np.isscalar(self.theta))
-		if self.periodic is not None:
+		if self.periodic != (False,)*self.ndim:
 			traits['periodic_macro']=1
 			traits['periodic']=periodic
 
@@ -455,6 +458,10 @@ class Interface(object):
 					+ self.xp.array(valuesq,dtype=self.float_t)*self.multip_step)
 		else:
 			self.hfmOut['values'] = values
+
+		self.hfmOut['key unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['key used']))
+		if self.verbosity>=1 and self.hfmOut['key unused']:
+			print(f"Warning : unused keys from user : {self.hfmOut['key unused']}")
 		return self.hfmOut
 
 

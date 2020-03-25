@@ -188,10 +188,12 @@ class Base:
 			- grid (optional). Coordinate system (required on first call). 
 			- kwargs. Passed to UniformGridInterpolation (includes order)
 		"""
-		assert self.vdim == len(grid)
+		vdim = len(grid)
+		try: assert self.vdim == vdim
+		except ValueError: pass # Constant isotropic metrics have no dimension
 
 		def make_interp(value):
-			if hasattr(value,'shape') and value.shape[-self.vdim:]==grid.shape[1:]:
+			if hasattr(value,'shape') and value.shape[-vdim:]==grid.shape[1:]:
 				return Interpolation.UniformGridInterpolation(grid,value,**kwargs)
 			return value
 
