@@ -51,6 +51,11 @@ class dictIn(dict):
 	Usage: a number of the free functions of HFMUtils are provided as methods, for convenience.
 	"""
 
+	def __init__(self,*args,**kwargs):
+		super(dictIn,self).__init__(*args,**kwargs)
+		if 'arrayOrdering' not in self: 
+			self['arrayOrdering']='RowMajor'
+
 	# Coordinates related methods
 	@property
 	def Corners(self):
