@@ -146,9 +146,9 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		order);
 
 	if(debug_print && n_i==1){
-		printf("HFMUpdate ni : %i\n",n_i);
+/*		printf("HFMUpdate ni : %i\n",n_i);
 		printf("v : %f %f\n",v[0],v[1]);
-		printf("order : %i %i\n",order[0],order[1]);
+		printf("order : %i %i\n",order[0],order[1]);*/
 /*		printf("multip_step %f, multip_max %f\n",multip_step,multip_max);
 		printf("vq : %i %i\n",vq[0],vq[1]);*/
 	}
@@ -218,8 +218,10 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 		}
 		__syncthreads();
 		if(active){u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
+
+//		u_i[n_i]+=(uq_i[n_i]-n_i)*multip_step; uq_i[n_i]=n_i; //DEBUG
 		__syncthreads();
-	}
+	} // for niter_i
 
 	} else { // strict_iter_i
 	for(int i=0; i<niter_i; ++i){

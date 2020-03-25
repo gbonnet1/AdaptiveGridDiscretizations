@@ -110,7 +110,10 @@ class Interface(object):
 		self.multiprecision = (self.GetValue('multiprecision',default=True,
 			help="Use multiprecision arithmetic, to tmprove accuracy") or 
 			self.GetValue('values_float64',default=False) )
-		if self.multiprecision: traits['multiprecision_macro']=1
+		if self.multiprecision: 
+			traits['multiprecision_macro']=1
+			traits['strict_iter_o_macro']=1
+			traits['strict_iter_i_macro']=1
 
 		self.factoringRadius = self.GetValue('factoringRadius',default=0,
 			help="Use source factorization, to improve accuracy")
@@ -124,6 +127,8 @@ class Interface(object):
 
 		if not self.isCurvature: # Dimension generic models
 			traits['ndim_macro'] = int(self.model[-1])
+
+		self.strict_iter_o = traits.get('strict_iter_o_macro',0)
 
 		self.traits = traits
 		self.in_raw['traits']=traits
@@ -288,6 +293,12 @@ class Interface(object):
 		if self.multiprecision:
 			block_valuesq = xp.zeros(block_values.shape,dtype=self.int_t)
 			self.block.update({'valuesq':block_valuesq})
+
+		if self.strict_iter_o:
+			self.block['valuesNext']=block_values.copy()
+			if self.multiprecision:
+				self.block['valuesqNext']=block_valuesq.copy()
+
 		for key,value in self.block.items():
 			if value.dtype.type not in (self.float_t,self.int_t,np.uint8):
 				raise ValueError(f"Inconsistent type {value.dtype.type} for key {key}")
@@ -372,6 +383,18 @@ class Interface(object):
 		if hasattr(self,'metric'): return self.metric.at(x)
 		else: return self.dualMetric.at(x).dual()
 
+	def KernelArgs(self):
+		kernel_args = tuple(self.block[key] for key in self.kernel_argnames)
+
+		if self.strict_iter_o:
+			self.block['values'],self.block['valuesNext'] \
+				=self.block['valuesNext'],self.block['values']
+			if self.multiprecision:
+				self.block['valuesq'],self.block['valuesqNext'] \
+					=self.block['valuesqNext'],self.block['valuesq']
+
+		return kernel_args
+
 	def SetSolver(self):
 		if self.verbosity>=1: print("Setup and run the eikonal solver")
 		solver = self.GetValue('solver',default='AGSI',help="Choice of fixed point solver")
@@ -380,17 +403,22 @@ class Interface(object):
 
 		if self.returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
 
-		kernel_argnames = ['values','geom','seedTags']
-		if self.multiprecision:  kernel_argnames.insert(1,'valuesq')
-		if self.drift is not None: kernel_argnames.insert(-1,'drift')
-		kernel_args = tuple(self.block[key] for key in kernel_argnames)
+		kernel_argnames = ['values'] #,'geom','seedTags']
+		if self.multiprecision: kernel_argnames.append('valuesq')
+		if self.strict_iter_o: 
+			kernel_argnames.append('valuesNext')
+			if self.multiprecision: kernel_argnames.append('valuesqNext')
+		kernel_argnames.append('geom')
+		kernel_argnames.append('seedTags')
+		if self.drift is not None: kernel_argnames.append('drift')
+		self.kernel_argnames = kernel_argnames
 
 		solver_start_time = time.time()
 
 		if solver=='global_iteration':
-			niter_o = solvers.global_iteration(self,kernel_args)
+			niter_o = solvers.global_iteration(self)
 		elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
-			niter_o = solvers.adaptive_gauss_siedel_iteration(self,kernel_args)
+			niter_o = solvers.adaptive_gauss_siedel_iteration(self)
 		else:
 			raise ValueError(f"Unrecognized solver : {solver}")
 

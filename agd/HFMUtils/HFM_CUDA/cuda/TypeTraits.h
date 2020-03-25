@@ -27,7 +27,7 @@ const Int debug_print = 0;
 within a block to be stored separately and synced at the end of 
 each iteration*/
 #ifndef strict_iter_i_macro
-#define strict_iter_i_macro 0
+#define strict_iter_i_macro 1
 #endif
 
 /** In multi-precision, we address float roundoff errors 

@@ -10,7 +10,10 @@
 extern "C" {
 
 __global__ void Update(
-	Scalar * u, MULTIP(Int * uq,)
+	Scalar * u, MULTIP(Int * uq,) 
+	#if strict_iter_o_macro
+	Scalar * uNext, MULTIP(Int * uqNext,) 
+	#endif
 	const Scalar * geom, DRIFT(const Scalar * drift,) const BoolPack * seeds, 
 	Int * updateList_o, PRUNING(const BoolAtom * updatePrev_o,) BoolAtom * updateNext_o ){ 
 	__shared__ Int x_o[ndim];
@@ -25,11 +28,9 @@ __global__ void Update(
 		if(ks!=2*ndim){
 			const Int k = ks/2, s = ks%2;
 			x_o[k]+=2*s-1;
-			if(Grid::InRange(x_o,shape_o)){
-				n_o = Grid::Index(x_o,shape_o);
-				if((ks+1) != updatePrev_o[n_o]) {n_o=-1;}
-			} else {n_o=-1;}
+			n_o = Grid::InRange(x_o,shape_o) ? Grid::Index(x_o,shape_o) : -1;
 		}
+		if(n_o!=-1 && (ks+1) != updatePrev_o[n_o]) {n_o=-1;}
 	#endif
 	}
 
@@ -76,6 +77,8 @@ __global__ void Update(
 	__shared__ Int uq_i[size_i];
 	uq_i[n_i] = uq_old;
 	)
+
+
 
 	FACTOR(
 	Scalar x_rel[ndim]; // Relative position wrt the seed.
@@ -156,6 +159,7 @@ __global__ void Update(
 	} // for kact
 	} // for kmix
 
+	
 	__syncthreads(); // __shared__ u_i
 
 	// Compute and save the values
@@ -163,8 +167,15 @@ __global__ void Update(
 		v_o MULTIP(,vq_o), v_i, 
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 		u_i MULTIP(,uq_i) );
+
+	#if strict_iter_o_macro
+	uNext[n] = u_i[n_i];
+	MULTIP(uqNext[n] = uq_i[n_i];)
+	#else
 	u[n] = u_i[n_i];
 	MULTIP(uq[n] = uq_i[n_i];)
+	#endif
+
 	
 	// Find the smallest value which was changed.
 	const Scalar u_diff = abs(u_old - u_i[n_i] MULTIP( + (uq_old - uq_i[n_i]) * multip_step ) );
@@ -181,14 +192,14 @@ __global__ void Update(
 	}
 
 
-
 	REDUCE_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
 	__syncthreads();  // Make u_i[0] accessible to all 
 
+/*
 	if(debug_print && n_i==0 && n_o==size_o-1){
 		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
 		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
-	}
+	}*/
 
 
 	// Tag neighbor blocks, and this particular block, for update
