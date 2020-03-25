@@ -117,7 +117,7 @@ __global__ void Update(
 				y_i[l] = x_i[l] + eps*e[l];
 			}
 
-			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y,shape_tot))  {
+			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y,shape_tot)) )  {
 				v_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v_o[kv] = fact[s];)
 			} else {
@@ -139,7 +139,7 @@ __global__ void Update(
 				y_i[l] +=  eps*e[l];
 			}
 
-			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y,shape_tot))  {
+			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y,shape_tot)) ) {
 				v2_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v2_o[kv] = fact2[s];)
 			} else {
@@ -214,8 +214,10 @@ __global__ void Update(
 		Int neigh_o[ndim];
 		for(Int l=0; l<ndim; ++l) {neigh_o[l]=x_o[l];}
 		neigh_o[k]+=eps;
-		if(Grid::InRange(neigh_o,shape_o)) {
-			updateNext_o[Grid::Index(neigh_o,shape_o)]=1 PRUNING(+n_i);}
+		if(APERIODIC(Grid::InRange(neigh_o,shape_o))
+			PERIODIC(Grid::InRange_per(neigh_o,shape_o)) ) {
+			updateNext_o[APERIODIC(Grid::Index(neigh_o,shape_o))
+				PERIODIC(Grid::Index_per(neigh_o,shape_o))]=1 PRUNING(+n_i);}
 	}
 
 #if pruning_macro

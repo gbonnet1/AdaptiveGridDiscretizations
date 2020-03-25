@@ -330,7 +330,6 @@ class Interface(object):
 			traits['periodic_axes']=self.periodic
 
 		self.source = traits_header(self.traits)
-		print(self.source)
 
 		if self.isCurvature: self.source += f'#include "{self.model}.h"\n'
 		else: self.source += f'#include "{self.model[:-1]}_.h"\n' # Dimension generic
