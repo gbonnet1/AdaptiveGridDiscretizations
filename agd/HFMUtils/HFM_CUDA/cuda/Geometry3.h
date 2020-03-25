@@ -4,6 +4,7 @@
 const Int ndim=3;
 #include "Geometry_.h"
 
+const Int Selling_maxiter=100;
 // the first two elements of these permutations range among all possible pairs
 const Int iterReducedMax = 6;
 const Int Selling_permutations[iterReducedMax][ndim+1] = { 

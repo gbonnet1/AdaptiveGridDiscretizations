@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Constants.h"
+const Int symdim = (ndim*(ndim+1))/2; // Dimension of the space of symmetric matrices.
 typedef Int VC; // Vector component
 typedef Scalar MC; // Symmetric matrix component
 

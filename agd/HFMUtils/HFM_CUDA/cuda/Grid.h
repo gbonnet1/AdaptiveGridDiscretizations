@@ -1,4 +1,6 @@
 #pragma once
+#include "Constants.h"
+
 /** This file implements common facilities for bounds checking and array access.*/
 namespace Grid {
 

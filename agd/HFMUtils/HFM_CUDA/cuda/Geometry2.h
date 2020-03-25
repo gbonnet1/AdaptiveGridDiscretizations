@@ -4,6 +4,7 @@
 const Int ndim=2;
 #include "Geometry_.h"
 
+const Int Selling_maxiter=50;
 void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 	canonicalsuperbase(sb);
 	const Int iterReducedMax = 3;

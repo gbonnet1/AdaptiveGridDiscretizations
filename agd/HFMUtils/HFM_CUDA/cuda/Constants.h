@@ -14,9 +14,6 @@ const bool mix_is_min = true; // dummy value
 const Int nactx = nmix * nact;
 const Int ntotx = nmix * ntot;  
 
-const Int symdim = (ndim*(ndim+1))/2; // Dimension of the space of symmetric matrices.
-const Int Selling_maxiter = ndim==2 ? 50 : 100;
-
 #ifndef isotropic_macro
 #define isotropic_macro 0
 #endif

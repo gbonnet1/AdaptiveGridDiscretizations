@@ -160,7 +160,7 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 	if(vmin==infinity()){*u_out = vmin; MULTIP(*uq_out=0;) return;}
 	
 	const Scalar rhs = ISO(weights[0]) ANISO(1.);
-	Scalar w = ISO(1.) ANISO(*weights[k]); 
+	Scalar w = ISO(1.) ANISO(weights[k]); 
 	ORDER2(if(order2[k]) w*=9./4.;)
 
 	Scalar value = rhs/sqrt(w);
@@ -170,7 +170,7 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		const Int k = order[k_];
 		const Scalar t = v[k] - vmin;
 		if(value<=t){break;}
-		Scalar w = ISO(1.) ANISO(*weights[k]); 
+		Scalar w = ISO(1.) ANISO(weights[k]); 
 		ORDER2(if(order2[k]) w*=9./4.;)
 		a+=w;
 		b+=w*t;
