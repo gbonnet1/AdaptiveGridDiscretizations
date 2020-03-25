@@ -97,7 +97,7 @@ __constant__ Scalar xi;
 __constant__ Scalar kappa;
 #endif
 
-const bool periodic[3]={false,false,true};
+const bool periodic_axes[3]={false,false,true};
 
 #define GET_SPEED_XI_KAPPA_THETA(params,x) { \
 Int k_=0;

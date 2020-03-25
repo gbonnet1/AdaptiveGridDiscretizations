@@ -122,6 +122,8 @@ position dependent metric. */
 
 #if periodic_macro
 #define PERIODIC(...) __VA_ARGS__
+#define APERIODIC(...) 
 #else
 #define PERIODIC(...) 
+#define APERIODIC(...) __VA_ARGS__
 #endif

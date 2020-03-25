@@ -117,12 +117,13 @@ __global__ void Update(
 				y_i[l] = x_i[l] + eps*e[l];
 			}
 
-			if(Grid::InRange(y_i,shape_i))  {
+			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y,shape_tot))  {
 				v_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v_o[kv] = fact[s];)
 			} else {
 				v_i[kv] = -1;
-				if(Grid::InRange_tot(y)) {
+				if(APERIODIC(Grid::InRange(y,shape_tot)) 
+					PERIODIC(Grid::InRange_per(y,shape_tot)) ) {
 					const Int ny = Grid::Index_tot(y);
 					v_o[kv] = u[ny] SHIFT(+fact[s]);
 					MULTIP(vq_o[kv] = uq[ny];)
@@ -138,12 +139,13 @@ __global__ void Update(
 				y_i[l] +=  eps*e[l];
 			}
 
-			if(Grid::InRange(y_i,shape_i))  {
+			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y,shape_tot))  {
 				v2_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v2_o[kv] = fact2[s];)
 			} else {
 				v2_i[kv] = -1;
-				if(Grid::InRange_tot(y)) {
+				if(APERIODIC(Grid::InRange(y,shape_tot)) 
+					PERIODIC(Grid::InRange_per(y,shape_tot)) ) {
 					const Int ny = Grid::Index_tot(y);
 					v2_o[kv] = u[ny] SHIFT(+fact2[s]);
 					MULTIP(vq2_o[kv] = uq[ny];)

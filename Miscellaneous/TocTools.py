@@ -16,11 +16,19 @@ some of it with PhD student Guillaume Bonnet, in co-direction with Frederic Bonn
 
 Copyright Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 """
-	elif volume in ['FMM','GPU']:
+	elif volume == 'FMM':
 		return """
 This Python&reg; notebook is intended as documentation and testing for the [HamiltonFastMarching (HFM) library](https://github.com/mirebeau/HamiltonFastMarching), which also has interfaces to the Matlab&reg; and Mathematica&reg; languages. 
 More information on the HFM library in the manuscript:
 * Jean-Marie Mirebeau, Jorg Portegies, "Hamiltonian Fast Marching: A numerical solver for anisotropic and non-holonomic eikonal PDEs", 2019 [(link)](https://hal.archives-ouvertes.fr/hal-01778322)
+
+Copyright Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
+"""
+	elif volume == 'GPU':
+		return """
+**Acknowledgement.** The experiments presented in these notebooks are part of ongoing research.
+The author would like to acknowledge fruitful informal discussions with L. Gayraud on the 
+topic of GPU coding and optimization.
 
 Copyright Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 """

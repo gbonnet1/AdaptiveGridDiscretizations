@@ -2,6 +2,7 @@ import numpy as np
 import os
 import time
 import copy
+from collections import OrderedDict
 
 from . import kernel_traits
 from . import solvers
@@ -25,17 +26,19 @@ class Interface(object):
 
 		# Needed for GetValue
 		self.help = hfmIn.get('help',[])
-		self.hfmOut = {
-		'key used':['exportValues','origin','arrayOrdering'],
-		'key defaulted':[],
-		'key visited':[],
-		'help content':{},
-		}
-		self.help_content = self.hfmOut['help content']
-
+		self.hfmOut = {'keys':{
+		'used':['exportValues','origin','arrayOrdering'],
+		'defaulted':OrderedDict(),
+		'visited':[],
+		'help':OrderedDict()
+		} }
+		self.help_content = self.hfmOut['keys']['help']
 		self.verbosity = 1
+
 		self.verbosity = self.GetValue('verbosity',default=1,
 			help="Choose the amount of detail displayed on the run")
+		self.help = self.GetValue('help',default=[], # help on help...
+			help="List of keys for which to display help")
 		
 		self.model = self.GetValue('model',help='Minimal path model to be solved.')
 		# Unified treatment of standard and extended curvature models
@@ -47,7 +50,7 @@ class Interface(object):
 		self.xp = ad.cupy_generic.get_array_module(**hfmIn)
 		
 	def HasValue(self,key):
-		self.hfmOut['key visited'].append(key)
+		self.hfmOut['keys']['visited'].append(key)
 		return key in self.hfmIn
 
 	def GetValue(self,key,default="_None",verbosity=2,help=None):
@@ -62,15 +65,18 @@ class Interface(object):
 				else:
 					print(f"---- Help for key {key} ----")
 					print(help)
+					if not (isinstance(default,str) and default=="_None"): 
+						print("default value :",default)
 					print("-----------------------------")
 
 		if key in self.hfmIn:
-			self.hfmOut['key used'].append(key)
+			self.hfmOut['keys']['used'].append(key)
 			return self.hfmIn[key]
 		elif isinstance(default,str) and default == "_None":
 			raise ValueError(f"Missing value for key {key}")
 		else:
-			self.hfmOut['key defaulted'].append((key,default))
+			assert key not in self.hfmOut['keys']['defaulted']
+			self.hfmOut['keys']['defaulted'][key] = default
 			if verbosity<=self.verbosity:
 				print(f"key {key} defaults to {default}")
 			return default
@@ -104,11 +110,11 @@ class Interface(object):
 		if self.verbosity>=1: print("Setting the kernel traits.")
 		if self.verbosity>=2: print("(Scalar,Int,shape_i,niter_i,...)")	
 		traits = kernel_traits.default_traits(self)
-		traits.update(self.GetValue('traits',default=tuple(),
-			help="Optional trait parameters passed to kernel"))
+		traits.update(self.GetValue('traits',default=traits,
+			help="Optional trait parameters passed to kernel."))
 
 		self.multiprecision = (self.GetValue('multiprecision',default=False,
-			help="Use multiprecision arithmetic, to tmprove accuracy") or 
+			help="Use multiprecision arithmetic, to improve accuracy") or 
 			self.GetValue('values_float64',default=False) )
 		if self.multiprecision: 
 			traits['multiprecision_macro']=1
@@ -143,7 +149,9 @@ class Interface(object):
 		# Domain shape and grid scale
 		self.shape = tuple(self.GetValue('dims',
 			help="dimensions (shape) of the computational domain").astype(int))
-		self.periodic = self.GetValue('periodic',default=(False,)*self.ndim,
+
+		self.periodic_default = (False,False,True) if self.isCurvature else (False,)*self.ndim
+		self.periodic = self.GetValue('periodic',default=self.periodic_default,
 			help="Apply periodic boundary conditions on some axes")
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
 
@@ -161,9 +169,9 @@ class Interface(object):
 		# Get the metric or cost function
 		if self.model.startswith('Isotropic') or self.isCurvature:
 			self.metric = self.GetValue('cost',None,verbosity=3,
-				help="Cost function for the minimal paths")
+				help="Cost function for the minimal paths. cost = 1/speed.")
 			self.dualMetric = self.GetValue('speed',None,verbosity=3,
-				help="Speed function for the minimal paths")
+				help="Speed function for the minimal paths. speed = 1/cost.")
 		else:
 			self.metric = self.GetValue('metric',default=None,verbosity=3,
 				help="Metric of the minimal path model")
@@ -212,7 +220,6 @@ class Interface(object):
 
 			self.geom = ad.array([e for e in (self.metric,self.xi,self.kappa,self.theta)
 				if not np.isscalar(e)])
-			self.periodic = (False,False,True)
 
 		else: # not self.isCurvature
 			if self.model.startswith('Isotropic'):
@@ -244,7 +251,8 @@ class Interface(object):
 		xp = self.xp
 		values = xp.full(self.shape,xp.inf,dtype=self.float_t)
 		self.seeds = xp.array(self.GetValue('seeds', 
-			help="Points from where the front propagation starts") )
+			help="Points from where the front propagation starts"),dtype=self.float_t)
+		assert self.seeds.ndim==2 and self.seeds.shape[1]==self.ndim
 		self.seeds = Grid.PointFromIndex(self.hfmIn,self.seeds,to=True) # Adimensionize seed position
 		if len(self.seeds)==1: self.seed=self.seeds[0]
 		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
@@ -317,14 +325,15 @@ class Interface(object):
 			traits['xi_var_macro'] = int(not np.isscalar(self.xi))
 			traits['kappa_var_macro'] = int(not np.isscalar(self.kappa))
 			traits['theta_var_macro'] = int(not np.isscalar(self.theta))
-		if self.periodic != (False,)*self.ndim:
+		if self.periodic != self.periodic_default:
 			traits['periodic_macro']=1
-			traits['periodic']=periodic
+			traits['periodic_axes']=self.periodic
 
 		self.source = traits_header(self.traits)
+		print(self.source)
+
 		if self.isCurvature: self.source += f'#include "{self.model}.h"\n'
 		else: self.source += f'#include "{self.model[:-1]}_.h"\n' # Dimension generic
-
 		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 		date_modified = getmtime_max(cuda_path)
 		self.source += f"// Date cuda code last modified : {date_modified}\n"
@@ -364,7 +373,7 @@ class Interface(object):
 			SetModuleConstant(mod,'factor_metric',self.Metric(self.seed).to_HFM(),float_t)
 
 		if self.order==2:
-			order2_threshold = self.GetValue('order2_threshold',0.2,
+			order2_threshold = self.GetValue('order2_threshold',0.3,
 				help="Relative threshold on second order differences / first order difference,"
 				"beyond which the second order scheme deactivates")
 			SetModuleConstant(mod,'order2_threshold',order2_threshold,float_t)
@@ -459,9 +468,9 @@ class Interface(object):
 		else:
 			self.hfmOut['values'] = values
 
-		self.hfmOut['key unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['key used']))
-		if self.verbosity>=1 and self.hfmOut['key unused']:
-			print(f"Warning : unused keys from user : {self.hfmOut['key unused']}")
+		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['keys']['used']))
+		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
+			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
 		return self.hfmOut
 
 

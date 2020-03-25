@@ -72,7 +72,8 @@ def traits_header(traits):
 		elif isinstance(value,type):
 			source += f"typedef {np2cuda_dtype[value]} {key};\n"
 		elif all(isinstance(v,numbers.Integral) for v in value):
-			source += f"const int {key}[{len(value)}] = "+"{"+",".join(str(s) for s in value)+ "};\n"
+			source += (f"const int {key}[{len(value)}] = "
+				+"{"+",".join(str(s).lower() for s in value)+ "};\n")
 		else: 
 			raise ValueError(f"Unsupported trait {key}:{value}")
 
