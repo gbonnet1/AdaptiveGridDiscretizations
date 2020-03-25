@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_NonDiv/MongeAmpere.ipynb
+# Code automatically exported from notebook Notebooks_NonDiv\MongeAmpere.ipynb
 # Do not modify
 import sys; sys.path.append("../..") # Path to import agd
 
