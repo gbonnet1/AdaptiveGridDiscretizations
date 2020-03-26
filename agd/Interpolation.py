@@ -341,9 +341,17 @@ class UniformGridInterpolation:
 			result = ad.zeros_like(x,shape = result_shape)
 			y = (ad.remove_ad(x) - origin)/scale
 			interior_x = self.spline.interior(y)
-			result[...,interior_x] = self(x[:,interior_x],True)
 			boundary_x = np.logical_not(interior_x)
-			result[...,boundary_x] = self(x[:,boundary_x],False)
+			interior_result = self(x[:,interior_x],True)
+			boundary_result = self(x[:,boundary_x],False)
+			try:
+				result[...,interior_x] = interior_result
+				result[...,boundary_x] = boundary_result
+			except ValueError:
+				# Some old cupy versions do not handle Ellipsis correctly
+				ellipsis = (slice(None),)*len(self.oshape)
+				result.__setitem__((*ellipsis,interior_x),interior_result)
+				result.__setitem__((*ellipsis,boundary_x),boundary_result)
 
 		# Rescale the coordinates in reference rectangle
 		y = np.expand_dims((x - origin)/scale,axis=1)
