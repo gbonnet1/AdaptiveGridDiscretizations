@@ -63,15 +63,18 @@ def from_module(x,module_name):
 def from_cupy(x): 
 	return from_module(x,'cupy')
 
-def get_array_module(*args,**kwargs):
+def get_array_module(arg,iterables=(tuple,)):
 	"""Returns the module (numpy or cupy) of an array"""
-	for arg in itertools.chain(args,kwargs.values()):
-		if from_module(arg,'cupy'): 
-			return sys.modules['cupy']
-	return sys.modules['numpy']
+	module = sys.modules['numpy']
+	def gam(x): 
+		if from_cupy(x): 
+			nonlocal module
+			module=sys.modules['cupy']
+	misc.map_iterables(gam,arg,iterables=iterables)
+	return module
 
 #	import cupy # Alternative implementation requiring cupy import
-#	return cupy.get_array_module(*args)
+#	return cupy.get_array_module(*arg)
 
 def isndarray(x):
 	return isinstance(x,get_array_module(x).ndarray)
@@ -118,27 +121,32 @@ def cupy_get_args(f,*args,**kwargs):
 
 # ----- Casting data to appropriate floating point and integer types ------
 
-def has_dtype(args,dtype):
+def has_dtype(arg,dtype="dtype",iterables=(tuple)):
 	"""
 	Wether one member of args is an ndarray with the provided dtype.
 	"""
 	dtype = np.dtype(dtype)
-	return any(arg.dtype==dtype for arg in args if isndarray(arg))
-
-def get_float_t(*args,**kwargs):
+	has_dtype_ = False
+	def find_dtype(x):
+		nonlocal has_dtype_
+		has_dtype_ = has_dtype_ or (isndarray(x) and x.dtype==dtype)
+	misc.map_iterables(find_dtype,arg,iterables=iterables)
+	return has_dtype_
+			
+def get_float_t(arg,**kwargs):
 	"""
 	Returns float32 if found in any argument, else float64.
+	- kwargs : passed to has_dtype
 	"""
-	args = itertools.chain(args,kwargs.values())
-	return np.float32 if has_dtype(args,np.float32) else np.float64
+	return np.float32 if has_dtype(arg,dtype=np.float32) else np.float64
 
-def array_float_caster(*args,**kwargs):
+def array_float_caster(arg,**kwargs):
 	"""
 	returns lambda arr : xp.array(arr,dtype=float_t) 
 	where xp and float_t are in consistency with the arguments.
 	"""
-	xp = get_array_module(*args,**kwargs)
-	float_t = get_float_t(*args,**kwargs)
+	xp = get_array_module(arg,**kwargs)
+	float_t = get_float_t(arg,**kwargs)
 	return lambda arr:xp.array(arr,dtype=float_t)
 
 @decorator_with_arguments

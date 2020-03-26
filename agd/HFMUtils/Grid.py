@@ -1,7 +1,8 @@
 import numpy as np
 from collections import namedtuple
 from .. import AutomaticDifferentiation as ad
-array_float_caster = ad.cupy_generic.array_float_caster
+from .. import Metrics
+array_float_caster = lambda arg: ad.cupy_generic.array_float_caster(arg,iterables=(dict,Metrics.Base))
 
 SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
 'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','DubinsExt2',
@@ -17,7 +18,7 @@ def GetCorners(params):
 		hTheta = 2*np.pi/dims[-1]
 		h[-1]=hTheta; origin[-1]=-hTheta/2;
 		if dim==5: h[-2]=hTheta; origin[-2]=-hTheta/2;
-	caster = array_float_caster(**params)
+	caster = array_float_caster(params)
 	return caster(origin),caster(origin+h*dims)
 
 def CenteredLinspace(a,b,n):
@@ -34,7 +35,7 @@ def CenteredLinspace(a,b,n):
 def GetAxes(params,dims=None):
 	bottom,top = GetCorners(params)
 	if dims is None: dims=params['dims']
-	caster = array_float_caster(**params)
+	caster = array_float_caster(params)
 	return [caster(CenteredLinspace(b,t,d)) for b,t,d in zip(bottom,top,dims)]
 
 def GetGrid(params,dims=None):
@@ -98,7 +99,7 @@ def GetGridSpec(params):
 	"""
 	Returns the bottom point, scale and dimensions of the grid.
 	"""
-	caster = array_float_caster(**params)
+	caster = array_float_caster(params)
 	bottom,top = GetCorners(params)
 	dims=caster(params['dims'])
 	scale = (top-bottom)/dims

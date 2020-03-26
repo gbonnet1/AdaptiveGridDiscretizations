@@ -47,7 +47,7 @@ class Interface(object):
 		self.ndim = len(hfmIn['dims'])
 		
 		self.returns=None
-		self.xp = ad.cupy_generic.get_array_module(**hfmIn)
+		self.xp = ad.cupy_generic.get_array_module(hfmIn,iterables=(dict,Metrics.Base))
 		
 	def HasValue(self,key):
 		self.hfmOut['keys']['visited'].append(key)
