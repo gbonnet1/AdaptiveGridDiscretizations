@@ -44,7 +44,6 @@ def GetGrid(params,dims=None):
 	axes = GetAxes(params,dims);
 	ordering = params['arrayOrdering']
 	caster = array_float_caster(params)
-	print('hi')
 	if ordering=='RowMajor':
 		return caster(np.meshgrid(*axes,indexing='ij'))
 	elif ordering=='YXZ_RowMajor':

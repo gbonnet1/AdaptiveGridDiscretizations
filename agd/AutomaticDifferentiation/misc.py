@@ -110,7 +110,18 @@ def apply_linear_operator(op,rhs,flatten_ndim=0):
 	return op_output.reshape((op_output.shape[0],)+shape_tail)
 
 
-# -------- For Reverse and Reverse2 -------
+# -------- Functional iteration, mainly for Reverse and Reverse2 -------
+
+def rec_iter(x,iterables):
+	"""
+	Iterate recursively over x. 
+	In the case of dictionnaries, if specified among the iterables, one iterates over values.
+	"""
+	if isinstance(x,iterables):
+		if isinstance(x,dict): x=x.values()
+		for y in x: 
+			for z in rec_iter(y,iterables): yield z
+	else: yield x
 
 class pair(object):
 	"""

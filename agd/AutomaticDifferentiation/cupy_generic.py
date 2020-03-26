@@ -130,7 +130,7 @@ def has_dtype(arg,dtype="dtype",iterables=(tuple)):
 	def find_dtype(x):
 		nonlocal has_dtype_
 		has_dtype_ = has_dtype_ or (isndarray(x) and x.dtype==dtype)
-	misc.map_iterables(find_dtype,arg,iterables=iterables)
+	for x in misc.rec_iter(arg,iterables=iterables): find_dtype(x)
 	return has_dtype_
 			
 def get_float_t(arg,**kwargs):
