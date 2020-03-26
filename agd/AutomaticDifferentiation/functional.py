@@ -77,3 +77,50 @@ def recurse(step,niter=1):
 			rhs=step(rhs)
 		return rhs
 	return operator
+
+def decorator_with_arguments(decorator):
+	"""
+	Decorator intended to simplify writing decorators with arguments. 
+	(In addition to the decorated function itself.)
+	"""
+	@functools.wraps(decorator)
+	def wrapper(f=None,*args,**kwargs):
+		if f is None: return lambda f: decorator(f,*args,**kwargs)
+		else: return decorator(f,*args,**kwargs)
+	return wrapper
+
+
+def decorate_module_functions(module,decorator,
+	copy_module=True,fct_names=None,ret_decorated=False):
+	"""
+	Decorate the functions of a module.
+	Inputs : 
+	 - module : whose functions must be decorated
+	 - decorator : to be applied
+	 - copy_module : create a shallow copy of the module
+	 - fct_names (optional) : list of functions to be decorated.
+	  If unspecified, all functions, builtin functions, and builtin methods, are decorated.
+	"""
+	if copy_module: #Create a shallow module copy
+		new_module = type(module)(module.__name__, module.__doc__)
+		new_module.__dict__.update(module.__dict__)
+		module = new_module
+
+	decorated = []
+
+	for key,value in module.__dict__.items():
+		if fct_names is None: 
+			if not isinstance(value,(types.FunctionType,types.BuiltinFunctionType,
+				types.BuiltinMethodType)):
+				continue
+		elif key not in fct_names:
+			continue
+		decorated.append(key)
+		module.__dict__[key] = decorator(value)
+	return (module,decorated) if ret_decorated else module
+
+# --- identifying data source ---
+
+def from_module(x,module_name):
+	_module_name = type(x).__module__
+	return module_name == _module_name or _module_name.startswith(module_name+'.')
