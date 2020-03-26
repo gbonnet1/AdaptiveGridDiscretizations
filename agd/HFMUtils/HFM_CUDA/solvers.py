@@ -66,9 +66,10 @@ def adaptive_gauss_siedel_iteration(self):
 #			print(update_o.astype(int)); print()
 			update_o.fill(0)
 			if updateList_o.size==0: return niter_o
-			for key,value in self.block.items(): print(key,type(value))
+#			for key,value in self.block.items(): print(key,type(value))
 			kernel((updateList_o.size,),self.shape_i, 
 				self.KernelArgs() + (updateList_o,update_o))
+#			print(self.block['values'])
 #			print(self.block['values'],self.block['valuesNext'],self.block['values'] is self.block['valuesNext'])
 
 

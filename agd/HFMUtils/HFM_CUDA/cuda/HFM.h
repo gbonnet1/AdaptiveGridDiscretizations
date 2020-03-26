@@ -171,11 +171,13 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		const Scalar t = v[k] - vmin;
 		if(value<=t){break;}
 		Scalar w = ISO(1.) ANISO(weights[k]); 
+		ANISO(if(w==0) continue;) // Avoids NaNs in the form 0*infinity
 		ORDER2(if(order2[k]) w*=9./4.;)
 		a+=w;
 		b+=w*t;
 		c+=w*t*t;
-		const Scalar delta = b*b-a*c;
+		// Delta is expected to be non-negative by Cauchy-Schwartz inequality
+		const Scalar delta = b*b-a*c; 
 		const Scalar sdelta = sqrt(delta);
 		value = (b+sdelta)/a;
 	}

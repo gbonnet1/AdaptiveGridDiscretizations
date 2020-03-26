@@ -138,7 +138,7 @@ def get_float_t(arg,**kwargs):
 	Returns float32 if found in any argument, else float64.
 	- kwargs : passed to has_dtype
 	"""
-	return np.float32 if has_dtype(arg,dtype=np.float32) else np.float64
+	return np.float32 if has_dtype(arg,dtype=np.float32,**kwargs) else np.float64
 
 def array_float_caster(arg,**kwargs):
 	"""

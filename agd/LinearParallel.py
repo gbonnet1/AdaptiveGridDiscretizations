@@ -107,6 +107,9 @@ def trace(a):
 
 def det(a):
 	a=ad.array(a)
+	if not (ad.is_ad(a) or a.dtype==np.dtype('object')):
+		return np.linalg.det(np.moveaxis(a,(0,1),(-2,-1)))
+
 	dim = a.shape[0]
 	if a.shape[1]!=dim:
 		raise ValueError("inverse error : incompatible dimensions")
@@ -122,6 +125,10 @@ def det(a):
 
 def inverse(a):
 	a=ad.array(a)
+	if not (ad.is_ad(a) or a.dtype==np.dtype('object')):
+		try: return np.moveaxis(np.linalg.inv(np.moveaxis(a,(0,1),(-2,-1))),(-2,-1),(0,1))
+		except np.linalg.LinAlgError: pass # Old cupy versions do not support arrays of dimension>2
+
 	if isinstance(a,ad.Dense.denseAD):
 		b = inverse(a.value)
 		b_ = fd.as_field(b,(a.size_ad,),conditional=False) #np.expand_dims(b,axis=-1)
@@ -144,17 +151,13 @@ def inverse(a):
 	elif ad.is_ad(a):
 		d=len(a)
 		return ad.apply(inverse,a,shape_bound=a.shape[2:])
-	elif a.dtype==np.dtype('object'):
-		if   a.shape[:2] == (2,2):
-			return ad.array([[a[1,1],-a[0,1]],[-a[1,0],a[0,0]]])/det(a)
-		elif a.shape[:2] == (3,3):
-			return ad.array([[
-				a[(i+1)%3,(j+1)%3]*a[(i+2)%3,(j+2)%3]-a[(i+1)%3,(j+2)%3]*a[(i+2)%3,(j+1)%3]
-				for i in range(3)] for j in range(3)])/det(a)
-		else: 
-			raise ValueError(f"inverse error (dtype=object) : unsupported dimension {a.shape}")
-	else:
-		return np.moveaxis(np.linalg.inv(np.moveaxis(a,(0,1),(-2,-1))),(-2,-1),(0,1))
+	elif a.shape[:2] == (2,2):
+		return ad.array([[a[1,1],-a[0,1]],[-a[1,0],a[0,0]]])/det(a)
+	elif a.shape[:2] == (3,3):
+		return ad.array([[
+			a[(i+1)%3,(j+1)%3]*a[(i+2)%3,(j+2)%3]-a[(i+1)%3,(j+2)%3]*a[(i+2)%3,(j+1)%3]
+			for i in range(3)] for j in range(3)])/det(a)
+	raise ValueError(f"Unsupported inverse for {type(a)} with dtype {a.dtype} and dimensions {a.shape}")
 
 def solve_AV(a,v):
 	a=ad.array(a)

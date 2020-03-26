@@ -29,6 +29,16 @@ def stack(elems,axis=0):
 def is_adtype(t):
 	return t in (Sparse.spAD, Dense.denseAD, Sparse2.spAD2, Dense2.denseAD2)
 
+def rec_iter(x,iterables=tuple()):
+	"""
+	Iterate recursively over x. 
+	In the case of dictionnaries, if specified among the iterables, one iterates over values.
+	"""
+	if isinstance(x,iterables):
+		if isinstance(x,dict): x=x.values()
+		for y in x: rec_iter(y,iterables)
+	yield x
+
 def is_ad(data,iterables=tuple()):
 	"""
 	Returns None if no ad variable found, 
