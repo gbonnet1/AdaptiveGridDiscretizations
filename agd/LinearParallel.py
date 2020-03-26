@@ -107,8 +107,6 @@ def trace(a):
 
 def det(a):
 	a=ad.array(a)
-	if not (ad.is_ad(a) or a.dtype==np.dtype('object')):
-		return np.linalg.det(np.moveaxis(a,(0,1),(-2,-1)))
 
 	dim = a.shape[0]
 	if a.shape[1]!=dim:
@@ -122,6 +120,11 @@ def det(a):
 		- a[0,2]*a[1,1]*a[2,0] - a[1,2]*a[2,1]*a[0,0]- a[2,2]*a[0,1]*a[1,0]
 	else:
 		raise ValueError("det error : unsupported dimension") 
+
+# Suppressed due to extreme slowness, at least in cupy 6
+#	if not (ad.is_ad(a) or a.dtype==np.dtype('object')): 
+#		return np.linalg.det(np.moveaxis(a,(0,1),(-2,-1)))
+
 
 def inverse(a):
 	a=ad.array(a)

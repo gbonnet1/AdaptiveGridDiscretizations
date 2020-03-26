@@ -43,11 +43,10 @@ def GetGrid(params,dims=None):
 	Calls np.meshgrid, converts to ndarray"""
 	axes = GetAxes(params,dims);
 	ordering = params['arrayOrdering']
-	caster = array_float_caster(params)
 	if ordering=='RowMajor':
-		return caster(np.meshgrid(*axes,indexing='ij'))
+		return ad.array(np.meshgrid(*axes,indexing='ij'))
 	elif ordering=='YXZ_RowMajor':
-		return caster(np.meshgrid(*axes))
+		return ad.array(np.meshgrid(*axes))
 	else: 
 		raise ValueError('Unsupported arrayOrdering : '+ordering)
 

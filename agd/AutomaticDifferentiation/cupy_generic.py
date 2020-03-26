@@ -65,16 +65,9 @@ def from_cupy(x):
 
 def get_array_module(arg,iterables=(tuple,)):
 	"""Returns the module (numpy or cupy) of an array"""
-	module = sys.modules['numpy']
-	def gam(x): 
-		if from_cupy(x): 
-			nonlocal module
-			module=sys.modules['cupy']
-	misc.map_iterables(gam,arg,iterables=iterables)
-	return module
-
-#	import cupy # Alternative implementation requiring cupy import
-#	return cupy.get_array_module(*arg)
+	for x in misc.rec_iter(arg,iterables):
+		if from_cupy(x): return sys.modules['cupy']
+	return sys.modules['numpy']
 
 def isndarray(x):
 	return isinstance(x,get_array_module(x).ndarray)
