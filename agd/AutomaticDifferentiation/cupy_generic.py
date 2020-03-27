@@ -9,6 +9,11 @@ import sys
 import functools
 from . import functional
 
+# ----- Getting the cupy module, if needed -----
+def cupy_module():
+	import cupy
+	return cupy
+
 # -------- Identifying data source -------
 
 def from_cupy(x): 
@@ -17,6 +22,7 @@ def from_cupy(x):
 def get_array_module(arg,iterables=(tuple,)):
 	"""Returns the module (numpy or cupy) of an array"""
 	for x in functional.rec_iter(arg,iterables):
+		if functional.is_ad(x): x = x.value
 		if from_cupy(x): return sys.modules['cupy']
 	return sys.modules['numpy']
 
@@ -116,8 +122,19 @@ def set_output_dtype32(f,silent=False,iterables=(tuple,)):
 
 	return wrapper
 
+# ------ inheriting from cupy.ndarray -----
 
+def cupy_init_kwargs(x):
+	"""
+	Returns the parameters necessary to generate a copy of x.
+	"""
+	x = get_array_module(x).ascontiguousarray(x)
+	return {'shape':x.shape,'dtype':x.dtype,
+		'memptr':x.data,'strides':x.strides,'order':'C'}
 
-
-
+def cupy_rebase(cls):
+	"""
+	Rebase a class on cupy.ndarray.
+	"""
+	return functional.class_rebase(cls,(cupy_module().ndarray,),cls.__name__+'_cupy')
 

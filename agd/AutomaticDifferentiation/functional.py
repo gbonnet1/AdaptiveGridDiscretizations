@@ -126,5 +126,39 @@ def decorate_module_functions(module,decorator,
 # --- identifying data source ---
 
 def from_module(x,module_name):
-	_module_name = type(x).__module__
+	if not hasattr(x,'__module__'): x=type(x)
+	_module_name = x.__module__
 	return module_name == _module_name or _module_name.startswith(module_name+'.')
+
+def is_adtype(t):
+	return (t.__module__.startswith('agd.AutomaticDifferentiation.') 
+		and t.__name__ in ('denseAD','denseAD2','spAD','spAD2'))
+# The following code looks more natural but induces cyclid module dependencies
+#	return t in (Sparse.spAD, Dense.denseAD, Sparse2.spAD2, Dense2.denseAD2)
+
+def is_ad(data,iterables=tuple()):
+	"""
+	Returns None if no ad variable found, or the adtype if one is found.
+	Also checks consistency of the ad types.
+	"""
+	adtype=None
+	def check(t):
+		nonlocal adtype
+		if is_adtype(t):
+			if adtype is None: adtype = t
+			elif adtype!=t: raise ValueError("Incompatible adtypes found")
+
+	for value in rec_iter(data,iterables): check(type(value))
+	return adtype
+
+# ------ CRTP ------
+
+def class_rebase(cls,bases,rebased_name):
+	if not isinstance(bases,tuple): bases = (bases,)
+	if cls.__bases__ == bases: return cls
+	key = (cls,bases)
+	if key not in class_rebase.generated:
+		class_rebase.generated[key]=type(rebased_name,bases,dict(cls.__dict__))
+	return class_rebase.generated[key]
+
+class_rebase.generated = {}

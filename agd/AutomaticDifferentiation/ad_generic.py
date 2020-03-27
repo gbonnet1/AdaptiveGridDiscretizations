@@ -1,32 +1,13 @@
-from . import functional
-from . import cupy_generic
 import itertools
 import numpy as np
+
+from . import functional
+from .functional import is_ad
+from . import cupy_generic
 
 """
 This file implements functions which apply indifferently to several AD types.
 """
-
-
-def is_adtype(t):
-	return (t.__module__.startswith('agd.AutomaticDifferentiation.') 
-		and t.__name__ in ('denseAD','denseAD2','spAD','spAD2'))
-#	return t in (Sparse.spAD, Dense.denseAD, Sparse2.spAD2, Dense2.denseAD2)
-
-def is_ad(data,iterables=tuple()):
-	"""
-	Returns None if no ad variable found, or the adtype if one is found.
-	Also checks consistency of the ad types.
-	"""
-	adtype=None
-	def check(t):
-		nonlocal adtype
-		if is_adtype(t):
-			if adtype is None: adtype = t
-			elif adtype!=t: raise ValueError("Incompatible adtypes found")
-
-	for value in functional.rec_iter(data,iterables): check(type(value))
-	return adtype
 
 def stack(elems,axis=0):
 	for e in elems:

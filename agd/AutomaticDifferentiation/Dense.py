@@ -1,8 +1,11 @@
+#import numpy as np
 import numpy as np
 from . import functional
 from . import ad_generic
+from .cupy_generic import from_cupy,cupy_init_kwargs,cupy_rebase
 from . import numpy_like
 from . import misc
+
 
 _add_dim = misc._add_dim; _add_coef=misc._add_coef
 
@@ -14,26 +17,45 @@ class denseAD(np.ndarray):
 	# Construction
 	# See : https://docs.scipy.org/doc/numpy-1.13.0/user/basics.subclassing.html
 	def __new__(cls,value,coef=None,broadcast_ad=False):
+		value = ad_generic.asarray(value)
 		if isinstance(value,denseAD):
 			assert coef is None
 			return value
-		value = np.asarray(value)
-		obj = value.view(denseAD)
+		if ad_generic.is_ad(value):
+			raise ValueError("Attempting to cast between different AD types")
+		if from_cupy(value):
+			denseAD_cupy = cupy_rebase(denseAD)
+			obj = super(denseAD_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
+		else: 
+			obj = value.view(denseAD)
 		shape = obj.shape
 		shape2 = shape+(0,)
 		obj.coef  = (numpy_like.zeros_like(value,shape=shape2) if coef is None 
 			else misc._test_or_broadcast_ad(coef,shape,broadcast_ad) )
 		return obj
 
+	def __init__(self,value,*args,**kwargs):
+		if self.cupy_based():
+			denseAD_cupy = cupy_rebase(denseAD)
+			super(denseAD_cupy,self).__init__(**cupy_init_kwargs(value))
+
+	@classmethod
+	def cupy_based(cls):
+		return cls.__bases__[0] is not np.ndarray
+	
 #	def __array_finalize__(self,obj): pass
 
+	@classmethod
+	def new(cls,*args,**kwargs):
+		return cls(*args,**kwargs)
+
 	def copy(self,order='C'):
-		return denseAD(self.value.copy(order=order),self.coef.copy(order=order))
+		return self.new(self.value.copy(order=order),self.coef.copy(order=order))
 
 	# Representation 
 	def __iter__(self):
 		for value,coef in zip(self.value,self.coef):
-			yield denseAD(value,coef)
+			yield self.new(value,coef)
 
 	def __str__(self):
 		return "denseAD("+str(self.value)+","+misc._prep_nl(str(self.coef))+")"
@@ -115,7 +137,9 @@ class denseAD(np.ndarray):
 
 	#Indexing
 	@property
-	def value(self): return self.view(np.ndarray)
+	def value(self): 
+		if from_cupy(type(self).__bases__[0]): return self.view()
+		return self.view(np.ndarray)
 	@property
 	def size_ad(self):  return self.coef.shape[-1]
 
