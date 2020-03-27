@@ -1,4 +1,6 @@
 import functools
+import types
+
 
 """
 This file collects functional like methods used throughout the AD library.
