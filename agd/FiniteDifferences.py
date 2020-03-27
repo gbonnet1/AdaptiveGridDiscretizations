@@ -10,7 +10,7 @@ def as_field(u,shape,conditional=True):
 	If not, u is extended with these additional dimensions.
 	conditional : if False, reshaping is always done
 	"""
-	u=ad.array(u)
+	u=ad.asarray(u)
 	ndim = len(shape)
 	if conditional and u.ndim>=ndim and u.shape[-ndim:]==shape: return u
 	else: return ad.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)
@@ -100,7 +100,7 @@ def TakeAtOffset(u,offset, padding=np.nan, **kwargs):
 
 def AlignedSum(u,offset,multiples,weights,**kwargs):
 	"""Returns sum along the direction offset, with specified multiples and weights"""
-	return sum(TakeAtOffset(u,mult*np.array(offset),**kwargs)*weight 
+	return sum(TakeAtOffset(u,mult*np.asarray(offset),**kwargs)*weight 
 		for mult,weight in zip(multiples,weights))
 
 
@@ -234,4 +234,4 @@ def AxesOrderingBounds(grid):
 		return np.argmax(np.abs(di-lbounds))
 	axes = tuple(active(i) for i in range(dim))
 
-	return axes,lbounds,ubounds #lbounds[np.array(axes)],ubounds[np.array(axes)]
+	return axes,lbounds,ubounds 

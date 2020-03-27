@@ -28,24 +28,25 @@ def is_ad(data,iterables=tuple()):
 	for value in functional.rec_iter(data,iterables): check(type(value))
 	return adtype
 
-def array(a):
-	"""
-	Similar to np.array, but does not cast AD subclasses of np.ndarray to the base class.
-	Turns a list or tuple of arrays with the same dimensions. 
-	Turns a scalar into an array scalar.
-	"""
-	if isinstance(a,(list,tuple)): return stack([array(e) for e in a],axis=0)
-	elif cupy_generic.isndarray(a): return a
-	else: return np.array(a)
-
 def stack(elems,axis=0):
 	for e in elems:
 		if is_ad(e): return type(e).stack(elems,axis)
 	return np.stack(elems,axis)
 
+def array(a,copy=True):
+	"""
+	Similar to np.array, but does not cast AD subclasses of np.ndarray to the base class.
+	Turns a list or tuple of arrays with the same dimensions. 
+	Turns a scalar into an array scalar.
+	"""
+	if isinstance(a,(list,tuple)): return stack([asarray(e) for e in a],axis=0)
+	elif cupy_generic.isndarray(a): return a.copy() if copy else a
+	else: return np.array(a,copy=copy)
+
+def asarray(a): return array(a,copy=False)
+
 def remove_ad(data,iterables=tuple()):
-	def f(a):
-		return a.value if is_ad(a) else a
+	def f(a): return a.value if is_ad(a) else a
 	return functional.map_iterables(f,data,iterables)
 
 def common_cast(*args):

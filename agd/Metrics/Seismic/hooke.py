@@ -82,7 +82,7 @@ class Hooke(ImplicitBase):
 		Voigt,Voigti = self._Voigt,self._Voigti
 		d = self.vdim
 		lo = ad.left_operand
-		m = ad.array([[
+		m = ad.asarray([[
 			sum(lo(v[j]*v[l]) * hooke[Voigt[i,j],Voigt[k,l]]
 				for j in range(d) for l in range(d))
 			for i in range(d)] for k in range(d)])
@@ -99,7 +99,7 @@ class Hooke(ImplicitBase):
 		"""
 		assert(self.vdim==3)
 		h=self.hooke
-		return Hooke(ad.array([ 
+		return Hooke(ad.asarray([ 
 			[h[0,0], h[0,2], h[0,4] ],
 			[h[2,0], h[2,2], h[2,4] ],
 			[h[4,0], h[4,2], h[4,4] ]
@@ -116,7 +116,7 @@ class Hooke(ImplicitBase):
 		c11=c33*(1+2*eps)
 		c13=-c44+np.sqrt( (c33-c44)**2+2*delta*c33*(c33-c44) )
 		zero = 0.*Vs
-		return cls(ad.array( [ [c11,c13,zero], [c13,c33,zero], [zero,zero,c44] ] ))
+		return cls(ad.asarray( [ [c11,c13,zero], [c13,c33,zero], [zero,zero,c44] ] ))
 
 	@classmethod
 	def from_Ellipse(cls,m):
@@ -127,7 +127,7 @@ class Hooke(ImplicitBase):
 		"""
 		assert(len(m)==2)
 		a,b,c=m[0,0],m[1,1],m[0,1]
-		return Hooke(ad.array( [ [a*a, a*b,a*c], [a*b, b*b, b*c], [a*c, b*c, c*c] ] ))
+		return Hooke(ad.asarray( [ [a*a, a*b,a*c], [a*b, b*b, b*c], [a*c, b*c, c*c] ] ))
 
 	@classmethod
 	def from_cast(cls,metric): 
@@ -320,7 +320,7 @@ class Hooke(ImplicitBase):
 		Turns a symmetric matrix into a vector, based on Voigt convention.
 		"""
 		assert(self.inverse_transformation is None)
-		m=ad.array(m)
+		m=ad.asarray(m)
 		vdim = self.vdim
 		assert(m.shape[:2]==(vdim,vdim))
 		if vdim==1:

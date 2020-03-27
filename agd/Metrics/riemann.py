@@ -63,7 +63,7 @@ class Riemann(Base):
 		Optional argument:
 		- ret_u : wether to return the (normalized) vector u
 		"""
-		u,cost_parallel,cost_orthogonal = (ad.array(e) for e in (u,cost_parallel,cost_orthogonal))
+		u,cost_parallel,cost_orthogonal = (ad.asarray(e) for e in (u,cost_parallel,cost_orthogonal))
 		u,cost_parallel,cost_orthogonal = fd.common_field((u.copy(),cost_parallel,cost_orthogonal),(1,0,0))
 		
 		# Eigenvector normalization
@@ -79,10 +79,10 @@ class Riemann(Base):
 
 	@classmethod
 	def from_diagonal(cls,*args):
-		args = ad.array(args)
+		args = ad.asarray(args)
 		z = np.zeros(args[0].shape)
 		vdim = len(args)
-		arr = ad.array([[z if i!=j else args[i] for i in range(vdim)] for j in range(vdim)])
+		arr = ad.asarray([[z if i!=j else args[i] for i in range(vdim)] for j in range(vdim)])
 		return cls(arr)
 
 	@classmethod
@@ -109,7 +109,7 @@ class Riemann(Base):
 		eVal,eVec = np.moveaxis(eVal_,-1,0),np.moveaxis(eVec_,(-2,-1),(0,1))
 
 		# Apply provided mapping and construct new matrix
-		mVal = ad.array(mapping(eVal))
+		mVal = ad.asarray(mapping(eVal))
 		m = lp.outer(eVec,mVal*eVec).sum(axis=2)
 		return cls(m)
 

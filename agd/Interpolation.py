@@ -36,8 +36,8 @@ class _spline_univariate:
 		"""
 		Weight at absolute position xa, of of spline centered at xs.
 		"""
-		xa=ad.array(xa)
-		xs=ad.array(xs)
+		xa=ad.asarray(xa)
+		xs=ad.asarray(xs)
 		if   self.order==1: return self._call1(xa,xs)
 		elif self.order==2: return self._call2(xa,xs)
 		elif self.order==3: return self._call3(xa,xs)
@@ -74,7 +74,7 @@ class _spline_univariate:
 		"""
 		x=xa-xs
 		result = ad.zeros_like(x)
-		seg=ad.array(np.floor(x+1))
+		seg=ad.asarray(np.floor(x+1))
 		
 		# relative interval [-1,0[
 		pos = seg==0
@@ -93,12 +93,12 @@ class _spline_univariate:
 		"""
 		A piecewise quadratic spline function, defined over [-1,2]
 		"""
-		x=ad.array(xa-xs)
+		x=ad.asarray(xa-xs)
 		result = ad.zeros_like(x)
 
 
 		# Which spline segment to use
-		seg = ad.array(np.floor(x+1))
+		seg = ad.asarray(np.floor(x+1))
 
 		if not self.periodic:
 			# Implements the not-a-knot boundary condition
@@ -126,12 +126,12 @@ class _spline_univariate:
 		"""
 		A piecewise cubic spline function, defined over [-2,2]
 		"""
-		x=ad.array(xa-xs)
+		x=ad.asarray(xa-xs)
 		result = ad.zeros_like(x)
 		s=self.shape-1
 
 		# Which spline segment to use
-		seg = ad.array(np.floor(x+2))
+		seg = ad.asarray(np.floor(x+2))
 		if not self.periodic:
 			# Implements the not-a-knot boundary condition
 			pos = np.logical_and(xa<=1,xs<=3)
@@ -245,7 +245,7 @@ class _spline_tensor:
 		"""
 		Weight at absolute position xa, of of spline centered at xs.
 		"""
-		return np.prod( ad.array(tuple(spline(xai,xsi) 
+		return np.prod( ad.asarray(tuple(spline(xai,xsi) 
 			for (xai,xsi,spline) in zip(xa,xs,self.splines))), axis=0)
 
 	def nodes(self,interior):
@@ -254,13 +254,13 @@ class _spline_tensor:
 		on the union of x+node+[0,1]**vdim
 		"""
 		_nodes = tuple(spline.nodes(interior) for spline in self.splines)
-		return np.array(tuple(itertools.product(*_nodes))).T
+		return np.asarray(tuple(itertools.product(*_nodes))).T
 
 	def interior(self,x):
 		"""
 		Wether the interior nodes can be used.
 		"""
-		return ad.array(tuple(spline.interior(xi) 
+		return ad.asarray(tuple(spline.interior(xi) 
 			for (spline,xi) in zip(self.splines,x))).all(axis=0)
 #		return np.logical_and.reduce(tuple(spline.interior(xi) # cupy has no reduce
 #			for (spline,xi) in zip(self.splines,x)))
@@ -292,7 +292,7 @@ class UniformGridInterpolation:
 		- order (int, tuple of ints) : spline interpolation order (<=3), along each axis.
 		- periodic (bool, tuple of bool) : wether periodic interpolation, along each axis.
 		"""
-		grid = ad.array(grid)
+		grid = ad.asarray(grid)
 		self.shape = grid.shape[1:]
 		self.origin = grid.__getitem__((slice(None),)+(0,)*self.vdim)
 		self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
@@ -330,7 +330,7 @@ class UniformGridInterpolation:
 		"""
 		Interpolates the data at the position x.
 		"""
-		x=ad.array(x)
+		x=ad.asarray(x)
 		assert len(x)==self.vdim
 		pdim = x.ndim-1 # Number of dimensions of position
 		origin,scale = (_append_dims(e,pdim) for e in (self.origin,self.scale))
@@ -391,7 +391,7 @@ class UniformGridInterpolation:
 		self.coef = self.make_coefs(values)
 
 	def make_coefs(self,values,overwrite_values=False):
-		values = ad.array(values)
+		values = ad.asarray(values)
 		xp = ad.cupy_generic.get_array_module(values)
 		self.interior_nodes = xp.array(self.interior_nodes)
 		self.boundary_nodes = xp.array(self.boundary_nodes)
@@ -406,7 +406,7 @@ class UniformGridInterpolation:
 	def _grid(self):
 		xp = ad.cupy_generic.get_array_module(self.origin)
 		dtype = self.origin.dtype
-		return ad.array(np.meshgrid(*(o+h*xp.arange(s+0.,dtype=dtype) 
+		return ad.asarray(np.meshgrid(*(o+h*xp.arange(s+0.,dtype=dtype) 
 			for (o,h,s) in zip(self.origin,self.scale,self.shape)), indexing='ij'))
 
 

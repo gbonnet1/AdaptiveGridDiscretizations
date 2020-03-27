@@ -47,7 +47,7 @@ def cupy_get(x,dtype64=False,iterables=tuple()):
 			x = x.get()
 			if dtype64 and x.dtype.type in (np.int32,np.float32):
 				dtype = np.int64 if x.dtype.type==np.int32 else np.float64
-				x = np.array(x,dtype=dtype)
+				return x.astype(dtype)
 		return x
 	return functional.map_iterables(caster,x,iterables)
 
@@ -86,12 +86,12 @@ def get_float_t(arg,**kwargs):
 
 def array_float_caster(arg,**kwargs):
 	"""
-	returns lambda arr : xp.array(arr,dtype=float_t) 
+	returns lambda arr : xp.asarray(arr,dtype=float_t) 
 	where xp and float_t are in consistency with the arguments.
 	"""
 	xp = get_array_module(arg,**kwargs)
 	float_t = get_float_t(arg,**kwargs)
-	return lambda arr:xp.array(arr,dtype=float_t)
+	return lambda arr:xp.asarray(arr,dtype=float_t)
 
 @functional.decorator_with_arguments
 def set_output_dtype32(f,silent=False,iterables=(tuple,)):

@@ -18,11 +18,11 @@ class ImplicitBase(Base):
 		self.relax_sqp = relax_sqp
 
 	def norm(self,v):
-		v=ad.array(v)
+		v=ad.asarray(v)
 		return lp.dot_VV(v,self.gradient(v))
 
 	def gradient(self,v):
-		v=ad.array(v)
+		v=ad.asarray(v)
 		a=self.inverse_transformation
 		if a is None:
 			return self._gradient(v)
@@ -50,7 +50,7 @@ class ImplicitBase(Base):
 		if topographic is None: topographic = self.is_topographic(a)
 		d=self.vdim
 		if topographic:
-			return ad.array([a[i,-1] in range(d-1)] + [a[d-1,d-1]-1])
+			return ad.asarray([a[i,-1] in range(d-1)] + [a[d-1,d-1]-1])
 		else:
 			return a.reshape((d*d,)+a.shape[2:])
 
@@ -59,7 +59,7 @@ class ImplicitBase(Base):
 		Gradient, ignoring self.a
 		Note : modifies v where null
 		"""
-		v=ad.array(v)
+		v=ad.asarray(v)
 		zeros = np.all(v==0.,axis=0)
 		v[:,zeros]=np.nan
 		grad = sequential_quadratic(v,self._dual_level,params=self._dual_params(v.shape[1:]),

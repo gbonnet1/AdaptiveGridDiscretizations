@@ -282,7 +282,7 @@ class spAD(np.ndarray):
 		Solves the system x + A*delta = 0, assuming compatible shapes.
 		"""
 		mat = self.triplets()
-		rhs = -np.array(self).flatten()
+		rhs = -self.value.flatten()
 		return (mat,rhs) if raw else misc.spsolve(mat,rhs).reshape(self.shape)
 
 	"""

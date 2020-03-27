@@ -17,7 +17,7 @@ def round_up(num,den):
 	Returns the least multiple of den after num.
 	num and den must be integers. 
 	"""
-	num,den = np.array(num),np.array(den)
+	num,den = np.asarray(num),np.asarray(den)
 	return (num+den-1)//den
 
 def block_expand(arr,shape_i,**kwargs):

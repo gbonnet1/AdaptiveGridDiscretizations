@@ -20,9 +20,9 @@ class Reduced(ImplicitBase):
 
 	def __init__(self,linear,quadratic=None,cubic=None,*args,**kwargs):
 		super(Reduced,self).__init__(*args,**kwargs)
-		self.linear=ad.array(linear)
-		self.quadratic=None if quadratic is None else ad.array(quadratic)
-		self.cubic=None if cubic is None else ad.array(cubic)
+		self.linear=ad.asarray(linear)
+		self.quadratic=None if quadratic is None else ad.asarray(quadratic)
+		self.cubic=None if cubic is None else ad.asarray(cubic)
 		assert cubic is None or self.vdim==3
 		self._to_common_field()
 

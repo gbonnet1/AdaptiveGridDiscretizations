@@ -8,7 +8,7 @@ class Isotropic(Base):
 	"""
 
 	def __init__(self,cost,vdim=None):
-		self.cost = ad.array(cost)
+		self.cost = ad.asarray(cost)
 		if vdim is not None:
 			self.vdim = vdim
 

@@ -4,6 +4,7 @@ import numpy as np
 import copy
 from . import Dense
 from . import Sparse
+from .ad_generic import remove_ad
 
 def norm(arr,ord=2,axis=None,keepdims=False,averaged=False):
 	"""
@@ -76,7 +77,7 @@ class stop_default:
 
 
 	def __call__(self,residue,niter):
-		residue_norm = norm_infinity(np.array(residue))
+		residue_norm = norm_infinity(remove_ad(residue))
 		self.residue_norms.append(residue_norm)
 
 		def print_state():
@@ -175,11 +176,11 @@ def newton_root(func,x0,params=None,stop="Default",
 	for niter in itertools.count():
 		residue = func(x,*params)
 		if stop(residue,niter):
-			return np.array(x)
+			return remove_ad(x)
 
 		direction = descent_direction(residue)
 
-		step = 1. if damping is None else damping(np.array(x),direction,*params)
+		step = 1. if damping is None else damping(remove_ad(x),direction,*params)
 		x += step*direction
 
 

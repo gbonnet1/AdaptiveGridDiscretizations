@@ -59,11 +59,11 @@ def Rect(sides,sampleBoundary=False,gridScale=None,gridScales=None,dimx=None,dim
 	- gridScale, gridScales : side h>0 of each pixel (alt : axis dependent)
 	- dimx, dims : number of points along the first axis (alt : along all axes)
 	"""
-	corner0,corner1 = np.array(sides,dtype=float).T
+	corner0,corner1 = np.asarray(sides,dtype=float).T
 	dim = len(corner0)
 	sb=float(sampleBoundary)
 	result=dict()
-	width = np.array(corner1)-np.array(corner0)
+	width = np.asarray(corner1)-np.asarray(corner0)
 	if gridScale is not None:
 		gridScales=[gridScale]*dim; result['gridScale']=gridScale
 	elif gridScales is not None:
@@ -71,7 +71,7 @@ def Rect(sides,sampleBoundary=False,gridScale=None,gridScales=None,dimx=None,dim
 	elif dimx is not None:
 		gridScale=width[0]/(dimx-sb); gridScales=[gridScale]*dim; result['gridScale']=gridScale
 	elif dims is not None:
-		gridScales=width/(np.array(dims)-sb); result['gridScales']=gridScales
+		gridScales=width/(np.asarray(dims)-sb); result['gridScales']=gridScales
 	else: 
 		raise ValueError('Missing argument gridScale, gridScales, dimx, or dims')
 
@@ -80,7 +80,7 @@ def Rect(sides,sampleBoundary=False,gridScale=None,gridScales=None,dimx=None,dim
 	dims = [round(r) for r in ratios]
 	assert(np.min(dims)>0)
 	origin = [c+(r-d-sb)*delta/2 for c,r,d,delta in zip(corner0,ratios,dims,h)]
-	result.update({'dims':np.array(dims),'origin':np.array(origin)});
+	result.update({'dims':np.asarray(dims),'origin':np.asarray(origin)});
 	return result
 
 

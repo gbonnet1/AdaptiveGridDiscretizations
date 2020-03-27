@@ -113,7 +113,7 @@ def RunSmart(hfmIn,returns="out",co_output=None,cache=None):
 		[co_hfmOut,co_value],_ = co_output
 		assert hfmIn.get('extractValues',False) and co_hfmOut is None
 		indices = np.nonzero(co_value)
-		positions = PointFromIndex(hfmIn_raw,np.array(indices).T)
+		positions = PointFromIndex(hfmIn_raw,np.asarray(indices).T)
 		weights = co_value[indices]
 		setkey_safe(hfmIn_raw,'inspectSensitivity',positions)
 		setkey_safe(hfmIn_raw,'inspectSensitivityWeights',weights)
@@ -204,22 +204,20 @@ def PreProcess(key,value,refined_in,raw_out,cache):
 		if isinstance(value,ad.Dense.denseAD):
 			setkey_safe(raw_out,'costVariation',
 				value.coef if key=='cost' else (1/value).coef)
-			value = np.array(value)
+			value = ad.remove_ad(value)
 		setkey_safe(raw_out,key,value)
 	elif key in ('metric','dualMetric'):
 		if isinstance(value,Metrics.Base): 
 			if ad.is_ad(value,iterables=(Metrics.Base,)):
 				metric_ad = value if key=='metric' else value.dual()
 				setkey_safe(raw_out,'costVariation',flow_variation(cache.geodesicFlow(refined_in),metric_ad))
-			value = value.to_HFM()
-			if ad.is_ad(value):
-				value = np.array(value)
+			value = ad.remove_ad(value.to_HFM())
 		setkey_safe(raw_out,key,value)
 
 	elif key=='seedValues':
 		if ad.is_ad(value):
 			setkey_safe(raw_out,'seedValueVariation',value.gradient())
-			value=np.array(value)
+			value=ad.remove_ad(value)
 		setkey_safe(raw_out,key,value)
 
 	elif key=='extractValues':

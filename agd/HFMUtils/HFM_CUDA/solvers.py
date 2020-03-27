@@ -14,7 +14,7 @@ def global_iteration(self):
 	xp=self.xp
 	updateNow_o  = xp.ones(	self.shape_o,   dtype='uint8')
 	updateNext_o = xp.zeros(self.shape_o,   dtype='uint8')
-	updateList_o = xp.array(xp.flatnonzero(updateNow_o),dtype=self.int_t)
+	updateList_o = xp.ascontiguousarray(xp.flatnonzero(updateNow_o),dtype=self.int_t)
 	kernel = self.module.get_function("Update")
 
 	for niter_o in range(self.nitermax_o):
@@ -37,7 +37,7 @@ def adaptive_gauss_siedel_iteration(self):
 	for k in range(self.ndim): # Take care of a rare bug where the seed is along in its block
 		for eps in (-1,1): 
 			update_o = np.logical_or(update_o,np.roll(update_o,axis=k,shift=eps))
-	update_o = xp.array(update_o, dtype='uint8')
+	update_o = xp.ascontiguousarray(update_o, dtype='uint8')
 
 	kernel = self.module.get_function("Update")
 
@@ -46,7 +46,7 @@ def adaptive_gauss_siedel_iteration(self):
 	constant related with the block size. However it has no effect on performance, or a slight
 	negative effect, due to the smallness of eps."""
 	if self.traits['pruning_macro']: 
-		updateList_o = xp.array(xp.flatnonzero(update_o), dtype=self.int_t)
+		updateList_o = xp.ascontiguousarray(xp.flatnonzero(update_o), dtype=self.int_t)
 		updatePrev_o = np.full_like(update_o,2*self.ndim+1)
 		for niter_o in range(self.nitermax_o):
 			"""
@@ -62,7 +62,7 @@ def adaptive_gauss_siedel_iteration(self):
 			updatePrev_o,update_o = update_o,updatePrev_o
 	else:
 		for niter_o in range(self.nitermax_o):
-			updateList_o = xp.array(xp.flatnonzero(update_o), dtype=self.int_t)
+			updateList_o = xp.ascontiguousarray(xp.flatnonzero(update_o), dtype=self.int_t)
 #			print(update_o.astype(int)); print()
 			update_o.fill(0)
 			if updateList_o.size==0: return niter_o

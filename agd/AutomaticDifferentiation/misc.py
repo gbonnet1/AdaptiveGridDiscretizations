@@ -4,7 +4,7 @@ import functools
 import operator
 from .functional import map_iterables,map_iterables2,pair
 from .cupy_generic import isndarray
-from .ad_generic import is_ad
+from .ad_generic import is_ad,remove_ad
 from . import numpy_like
 
 # ------- Ugly utilities -------
@@ -45,7 +45,7 @@ def _set_shape_constant(shape=None,constant=None):
 		constant = np.full(shape,0.)
 	else:
 		if not isndarray(constant):
-			constant = numpy_like.array(constant)
+			constant = numpy_like.asarray(constant)
 		if shape is not None and shape!=constant.shape: 
 			raise ValueError("Error : incompatible shape and constant")
 		else:
@@ -140,7 +140,7 @@ def _apply_input_helper(args,kwargs,cls,iterables):
 		nonlocal corresp
 		if is_ad(a):
 			assert isinstance(a,cls)
-			a_value = np.array(a)
+			a_value = remove_ad(a)
 			corresp.append((a,a_value))
 			return a_value
 		else:

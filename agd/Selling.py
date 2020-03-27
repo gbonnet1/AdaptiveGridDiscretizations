@@ -189,8 +189,6 @@ def SuperbasesForConditioning2(cond):
 
 
     return np.array(superbases).transpose((2,1,0))
-    #np.array( [(e,-f,f-e) for e,f in zip(m,m[1:]+[np.array((-1,0))] )] ).transpose((2,1,0))
-
 
 # ------- Three dimensional variant -------
 

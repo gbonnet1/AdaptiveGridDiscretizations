@@ -64,7 +64,7 @@ class Domain:
 		if vdim is None: vdim = self.vdim
 		if vdim is None: raise ValueError("Unspecified dimension")
 		aX = list(range(-r,r+1))
-		X = np.array(np.meshgrid(*(aX,)*vdim,indexing='ij')).reshape(vdim,-1)
+		X = np.asarray(np.meshgrid(*(aX,)*vdim,indexing='ij')).reshape(vdim,-1)
 		nX = np.sqrt((X**2).sum(axis=0))
 		pos = nX>0
 		return X[:,pos]/nX[pos]	
@@ -93,7 +93,7 @@ class Ball(Domain):
 
 	def __init__(self,center=(0.,0.),radius=1.):
 		super(Ball,self).__init__()
-		self.center = ad.array(center)
+		self.center = ad.asarray(center)
 		self.radius = radius
 
 	@property
@@ -138,7 +138,7 @@ class Box(Domain):
 
 	def __init__(self,sides = ((0.,1.),(0.,1.)) ):
 		super(Box,self).__init__()
-		if not isinstance(sides,np.ndarray): sides=np.array(sides)
+		sides = ad.asarray(sides)
 		self._sides = sides
 		self._center = sides.sum(axis=1)/2.
 		self._hlen = (sides[:,1]-sides[:,0])/2.
@@ -189,7 +189,7 @@ class Box(Domain):
 
 		a,b = np.minimum(a,b),np.maximum(a,b)
 		a,b = a.max(axis=0),b.min(axis=0)
-		a,b = (ad.array(e) for e in (a,b)) 
+		a,b = (ad.asarray(e) for e in (a,b)) 
 
 		# Normalize empty intervals
 		pos = a>b
@@ -274,7 +274,7 @@ class Intersection(Domain):
 			# Find the next beginning
 			unchanged=0
 			for it,(beg,end) in cycle(enumerate(zip(begs,ends))):
-				ind=ad.array(inds[it])
+				ind=ad.asarray(inds[it])
 				valid = ind<len(end)
 				pos = np.full(shape,False)
 				endiv = tax(end,ind,valid)
@@ -308,7 +308,7 @@ class Intersection(Domain):
 
 			endr.append(val.copy())
 
-		return np.array(begr),np.array(endr)
+		return np.asarray(begr),np.asarray(endr)
 	
 def Complement(dom1,dom2):
 	"""
@@ -330,7 +330,7 @@ class Band(Domain):
 
 	def __init__(self,direction,bounds):
 		super(Band,self).__init__()
-		self.direction,self.bounds = (ad.array(e) for e in (direction,bounds))
+		self.direction,self.bounds = (ad.asarray(e) for e in (direction,bounds))
 		norm = ad.Optimization.norm(self.direction,ord=2)
 		if norm!=0.:
 			self.direction/=norm
@@ -373,10 +373,11 @@ def ConvexPolygon(pts):
 	"""
 	def params(p,q):
 		pq = q-p
-		direction = np.array([pq[1],-pq[0]])
+		direction = np.asarray([pq[1],-pq[0]])
 		lower_bound = np.dot(direction,p)
 		return direction,[lower_bound,np.inf]
-	pts = ad.array(pts)
+
+	pts = ad.asarray(pts)
 	assert len(pts)==2
 	return Intersection(*[Band(*params(p,q)) for p,q in zip(pts.T,np.roll(pts,1,axis=1).T)])
 
@@ -393,18 +394,18 @@ class AffineTransform(Domain):
 	def __init__(self,dom,mult=None,shift=None,center=None):
 		super(AffineTransform,self).__init__()
 		self.dom=dom
-		if mult is not None: mult = ad.array(mult)
+		if mult is not None: mult = ad.asarray(mult)
 		self._mult = mult
 
-		if shift is not None: shift = ad.array(shift)
+		if shift is not None: shift = ad.asarray(shift)
 		if center is not None:
-			center=ad.array(center)
+			center=ad.asarray(center)
 			shift2=center-self.forward(center,linear=True)
 			shift = shift2 if shift is None else shift+shift2
 
 		self._shift = shift
 		self._mult_inv = (None if mult is None else 
-			(ad.array(1./mult) if mult.ndim==0 else np.linalg.inv(mult) ) )
+			(ad.asarray(1./mult) if mult.ndim==0 else np.linalg.inv(mult) ) )
 		self._mult_inv_norm = (1. if self._mult_inv is None 
 			else np.linalg.norm(self._mult_inv,ord=2) )
 
@@ -484,7 +485,7 @@ class Dirichlet:
 		else:
 			self.value = value
 
-		self.grid = ad.array(grid)
+		self.grid = ad.asarray(grid)
 		self.gridscale = self._gridscale(self.grid)
 
 		if interior is not None:
@@ -579,7 +580,7 @@ class Dirichlet:
 		grid=self.grid
 		du = fd.DiffUpwind(u+self._ExteriorNaNs,offsets,self.gridscale)
 		mask = self._BoundaryLayer(u,du)
-		offsets = fd.as_field(np.array(offsets),u.shape)
+		offsets = fd.as_field(np.asarray(offsets),u.shape)
 		um = ad.broadcast_to(u,offsets.shape[1:])[mask]
 		om = offsets[:,mask]
 		gm = ad.broadcast_to(grid.reshape( 
@@ -615,7 +616,7 @@ class Dirichlet:
 		but only first order accurate at the boundary.
 		"""
 		du0,h0 = self.DiffUpwind(u, offsets,		  reth=True)
-		du1,h1 = self.DiffUpwind(u,-np.array(offsets),reth=True)
+		du1,h1 = self.DiffUpwind(u,-np.asarray(offsets),reth=True)
 
 		return (du0+du1)*(2./(h0+h1))
 

@@ -18,16 +18,16 @@ def rotation(theta,axis=None):
 	"""
 	if axis is None:
 		c,s=np.cos(theta),np.sin(theta)
-		return ad.array([[c,-s],[s,c]])
+		return ad.asarray([[c,-s],[s,c]])
 	else:
-		theta,axis = (ad.array(e) for e in (theta,axis))
+		theta,axis = (ad.asarray(e) for e in (theta,axis))
 		axis = axis / np.linalg.norm(axis,axis=0)
 		theta,axis=fd.common_field((theta,axis),(0,1))
 		a = np.cos(theta / 2.0)
 		b, c, d = -axis * np.sin(theta / 2.0)
 		aa, bb, cc, dd = a * a, b * b, c * c, d * d
 		bc, ad_, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-		return ad.array([
+		return ad.asarray([
 			[aa + bb - cc - dd, 2 * (bc + ad_), 2 * (bd - ac)],
 			[2 * (bc - ad_), aa + cc - bb - dd, 2 * (cd + ab)],
 			[2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
@@ -35,7 +35,7 @@ def rotation(theta,axis=None):
 
 # Dot product (vector-vector, matrix-vector and matrix-matrix) in parallel
 def dot_VV(v,w):
-	v=ad.array(v); w=ad.array(w)
+	v=ad.asarray(v); w=ad.asarray(w)
 	if v.shape[0]!=w.shape[0]: raise ValueError('dot_VV : Incompatible shapes')
 	return (v*w).sum(0)
 
@@ -75,12 +75,12 @@ def mult(k,x):
 def perp(v):
 	if v.shape[0]!=2:
 		raise ValueError("perp error : Incompatible dimension")		
-	return ad.array( (-v[1],v[0]) )
+	return ad.asarray( (-v[1],v[0]) )
 	
 def cross(v,w):
 	if v.shape[0]!=3 or v.shape!=w.shape:
 		raise ValueError("cross error : Incompatible dimensions")
-	return ad.array( (v[1]*w[2]-v[2]*w[1], \
+	return ad.asarray( (v[1]*w[2]-v[2]*w[1], \
 	v[2]*w[0]-v[0]*w[2], v[0]*w[1]-v[1]*w[0]) )
 	
 def outer(v,w):
@@ -91,7 +91,7 @@ def outer(v,w):
 	return v.reshape((m,1)+bounds)*w.reshape((1,n)+bounds)
 
 def outer_self(v):
-	v=ad.array(v)
+	v=ad.asarray(v)
 	return outer(v,v)
 
 def transpose(a):
@@ -106,7 +106,7 @@ def trace(a):
 # Low dimensional special cases
 
 def det(a):
-	a=ad.array(a)
+	a=ad.asarray(a)
 
 	dim = a.shape[0]
 	if a.shape[1]!=dim:
@@ -127,7 +127,7 @@ def det(a):
 
 
 def inverse(a):
-	a=ad.array(a)
+	a=ad.asarray(a)
 	if not (ad.is_ad(a) or a.dtype==np.dtype('object')):
 		try: return np.moveaxis(np.linalg.inv(np.moveaxis(a,(0,1),(-2,-1))),(-2,-1),(0,1))
 		except np.linalg.LinAlgError: pass # Old cupy versions do not support arrays of dimension>2
@@ -155,15 +155,15 @@ def inverse(a):
 		d=len(a)
 		return ad.apply(inverse,a,shape_bound=a.shape[2:])
 	elif a.shape[:2] == (2,2):
-		return ad.array([[a[1,1],-a[0,1]],[-a[1,0],a[0,0]]])/det(a)
+		return ad.asarray([[a[1,1],-a[0,1]],[-a[1,0],a[0,0]]])/det(a)
 	elif a.shape[:2] == (3,3):
-		return ad.array([[
+		return ad.asarray([[
 			a[(i+1)%3,(j+1)%3]*a[(i+2)%3,(j+2)%3]-a[(i+1)%3,(j+2)%3]*a[(i+2)%3,(j+1)%3]
 			for i in range(3)] for j in range(3)])/det(a)
 	raise ValueError(f"Unsupported inverse for {type(a)} with dtype {a.dtype} and dimensions {a.shape}")
 
 def solve_AV(a,v):
-	a=ad.array(a)
+	a=ad.asarray(a)
 	if ad.is_ad(v) or a.dtype==np.dtype('object'): return dot_AV(inverse(a),v) # Inefficient, but compatible with ndarray subclasses
 	return np.moveaxis(np.linalg.solve(np.moveaxis(a,(0,1),(-2,-1)),np.moveaxis(v,0,-1)),-1,0)			
 

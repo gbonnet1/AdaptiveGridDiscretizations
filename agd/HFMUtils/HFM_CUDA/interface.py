@@ -250,13 +250,13 @@ class Interface(object):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
 		xp = self.xp
 		values = xp.full(self.shape,xp.inf,dtype=self.float_t)
-		self.seeds = xp.array(self.GetValue('seeds', 
+		self.seeds = xp.asarray(self.GetValue('seeds', 
 			help="Points from where the front propagation starts"),dtype=self.float_t)
 		assert self.seeds.ndim==2 and self.seeds.shape[1]==self.ndim
 		self.seeds = Grid.PointFromIndex(self.hfmIn,self.seeds,to=True) # Adimensionize seed position
 		if len(self.seeds)==1: self.seed=self.seeds[0]
 		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
-		seedValues = xp.array(self.GetValue('seedValues',default=seedValues,
+		seedValues = xp.asarray(self.GetValue('seedValues',default=seedValues,
 			help="Initial value for the front propagation"))
 		seedRadius = self.GetValue('seedRadius',default=0.,
 			help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
@@ -459,11 +459,10 @@ class Interface(object):
 			if self.GetValue('values_float64',default=False,
 				help="Export values using the float64 data type"):
 				float64_t = np.dtype('float64').type
-				self.hfmOut['values'] = (self.xp.array(values,dtype=float64_t) 
+				self.hfmOut['values'] = (values.astype(float64_t) 
 					+ float64_t(self.multip_step) * valuesq)
 			else:
-				self.hfmOut['values'] = (values 
-					+ self.xp.array(valuesq,dtype=self.float_t)*self.multip_step)
+				self.hfmOut['values'] = (values + valuesq.astype(self.float_t)*self.multip_step)
 		else:
 			self.hfmOut['values'] = values
 
