@@ -28,7 +28,7 @@ class denseAD(np.ndarray):
 			obj = super(denseAD_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
 		else: 
 			obj = value.view(denseAD)
-		shape = obj.shape
+		shape = value.shape
 		shape2 = shape+(0,)
 		obj.coef  = (numpy_like.zeros_like(value,shape=shape2) if coef is None 
 			else misc._test_or_broadcast_ad(coef,shape,broadcast_ad) )
@@ -42,13 +42,9 @@ class denseAD(np.ndarray):
 	@classmethod
 	def cupy_based(cls):
 		return cls.__bases__[0] is not np.ndarray
-	
-#	def __array_finalize__(self,obj): pass
-
 	@classmethod
 	def new(cls,*args,**kwargs):
 		return cls(*args,**kwargs)
-
 	def copy(self,order='C'):
 		return self.new(self.value.copy(order=order),self.coef.copy(order=order))
 
@@ -56,25 +52,27 @@ class denseAD(np.ndarray):
 	def __iter__(self):
 		for value,coef in zip(self.value,self.coef):
 			yield self.new(value,coef)
-
 	def __str__(self):
 		return "denseAD("+str(self.value)+","+misc._prep_nl(str(self.coef))+")"
-#		return "denseAD"+str((self.value,self.coef))
 	def __repr__(self):
 		return "denseAD("+repr(self.value)+","+misc._prep_nl(repr(self.coef))+")"
-#		return "denseAD"+repr((self.value,self.coef))	
 
 	# Operators
+	@classmethod
+	def _isinstance(cls,a): return isinstance(a,cls)
+	@classmethod
+	def _is_constant(cls,a): return cls._isinstance(a) and a.size_ad==0
+
 	def __add__(self,other):
-		if _is_constant(other): return self.__add__(other.view(np.ndarray))
-		if isinstance(other,denseAD):
-			return denseAD(self.value+other.value, _add_coef(self.coef,other.coef))
+		if self._is_constant(other): return self.__add__(other.value)
+		if self._isinstance(other):
+			return self.new(self.value+other.value, _add_coef(self.coef,other.coef))
 		else:
-			return denseAD(self.value+other, self.coef, broadcast_ad=True)
+			return self.new(self.value+other, self.coef, broadcast_ad=True)
 
 	def __sub__(self,other):
-		if _is_constant(other): return self.__sub__(other.view(np.ndarray))
-		if isinstance(other,denseAD):
+		if self._is_constant(other): return self.__sub__(other.value)
+		if self._isinstance(other,denseAD):
 			return denseAD(self.value-other.value, _add_coef(self.coef,-other.coef))
 		else:
 			return denseAD(self.value-other, self.coef, broadcast_ad=True)
@@ -305,11 +303,7 @@ class denseAD(np.ndarray):
 
 # -------- End of class denseAD -------
 
-# -------- Some utility functions, for internal use -------
-
-def _is_constant(a):	return isinstance(a,denseAD) and a.size_ad==0
-
-# -------- Factory method -----
+# -------- Factory methods -----
 
 def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,0)):
 	"""
@@ -329,7 +323,8 @@ def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,
 	coef1 = coef1.reshape(shape_elem+(1,)*len(shape_bound)+(size_ad,))
 	if coef1.shape[:-1]!=constant.shape: 
 		coef1 = np.broadcast_to(coef1,shape+(size_ad,))
-	return denseAD(constant,coef1)
+	cls = cupy_rebase(denseAD) if from_cupy(constant) else denseAD
+	return cls(constant,coef1)
 
 def register(inputs,iterables=None,shape_bound=None,shift=(0,0),ident=identity,considered=None):
 	"""
