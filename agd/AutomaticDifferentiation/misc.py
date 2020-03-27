@@ -3,12 +3,14 @@ import numbers
 import functools
 import operator
 from .functional import map_iterables,map_iterables2,pair
+from .cupy_generic import isndarray
 from .ad_generic import is_ad
+from . import numpy_like
 
 # ------- Ugly utilities -------
 def _tuple_first(a): 	return a[0] if isinstance(a,tuple) else a
 def _getitem(a,where):
-	return a if (where is True and not isinstance(a,np.ndarray)) else a[where]
+	return a if (where is True and not isndarray(a)) else a[where]
 def _add_dim(a):		return np.expand_dims(a,axis=-1)	
 def _add_dim2(a):		return _add_dim(_add_dim(a))
 
@@ -36,14 +38,14 @@ def _concatenate(a,b,shape=None):
 	return np.concatenate((a,b),axis=-1)
 
 def _set_shape_constant(shape=None,constant=None):
-	if isinstance(shape,np.ndarray): shape=tuple(shape)
+	if isndarray(shape): shape=tuple(shape)
 	if constant is None:
 		if shape is None:
 			raise ValueError("Error : unspecified shape or constant")
 		constant = np.full(shape,0.)
 	else:
-		if not isinstance(constant,np.ndarray):
-			constant = np.array(constant)
+		if not isndarray(constant):
+			constant = numpy_like.array(constant)
 		if shape is not None and shape!=constant.shape: 
 			raise ValueError("Error : incompatible shape and constant")
 		else:
@@ -87,7 +89,7 @@ def ready_ad(a):
 		raise ValueError("Variable a already contains AD information")
 	elif isinstance(a,numbers.Real) and not isinstance(a,numbers.Integral):
 		return np.array(a),True
-	elif isinstance(a,np.ndarray) and not issubclass(a.dtype.type,numbers.Integral):
+	elif isndarray(a) and not issubclass(a.dtype.type,numbers.Integral):
 		return a,True
 	else:
 		return a,False
@@ -182,7 +184,7 @@ def recurse(step,niter=1):
 # ------- Common functions -------
 
 def flatten(a):
-	return a.flatten() if isinstance(a,np.ndarray) else np.array([a])
+	return a.flatten() if isndarray(a) else np.array([a])
 
 def spsolve(mat,rhs):
 	"""
