@@ -1,4 +1,7 @@
 import numpy as np
+from . import functional
+from . import cupy_generic
+from . import numpy_like
 from . import misc
 from . import Dense
 
@@ -15,14 +18,15 @@ class spAD(np.ndarray):
 		if isinstance(value,spAD):
 			assert coef is None and index is None
 			return value
-		obj = np.asarray(value).view(spAD)
+		value = np.asarray(value)
+		obj = value.view(spAD)
 		shape = obj.shape
 		shape2 = shape+(0,)
 		assert ((coef is None) and (index is None)) or (coef.shape==index.shape)
-		obj.coef  = (np.full(shape2,0.) if coef is None 
+		obj.coef  = (numpy_like.zeros_like(value,shape=shape2) if coef is None 
 			else misc._test_or_broadcast_ad(coef,shape,broadcast_ad) ) 
-		obj.index = (np.full(shape2,0)  if index is None 
-			else misc._test_or_broadcast_ad(index,shape,broadcast_ad) )
+		obj.index = (numpy_like.zeros_like(value,shape=shape2,dtype=cupy_generic.samesize_int_t(value.dtype))  
+			if index is None else misc._test_or_broadcast_ad(index,shape,broadcast_ad) )
 		return obj
 
 #	def __array_finalize__(self,obj): pass
@@ -362,8 +366,8 @@ class spAD(np.ndarray):
 		self.coef = np.take_along_axis(self.coef,ordering,axis=-1)
 		self.index = np.take_along_axis(self.index,ordering,axis=-1)
 
-		cum_coef = np.full(self.shape,0.)
-		indices = np.full(self.shape,0)
+		cum_coef = numpy_like.zeros_like(self.value)
+		indices = numpy_like.zeros_like(self.index,shape=self.shape)
 		size_ad = self.size_ad
 		self.coef = np.moveaxis(self.coef,-1,0)
 		self.index = np.moveaxis(self.index,-1,0)
@@ -419,7 +423,9 @@ class spAD(np.ndarray):
 def identity(shape=None,constant=None,shift=0):
 	shape,constant = misc._set_shape_constant(shape,constant)
 	shape2 = shape+(1,)
-	return spAD(constant,np.full(shape2,1.),np.arange(shift,shift+np.prod(shape,dtype=int)).reshape(shape2))
+	xp = cupy_generic.get_array_module(constant)
+	return spAD(constant,numpy_like.ones_like(constant,shape=shape2),
+		xp.arange(shift,shift+np.prod(shape,dtype=int)).reshape(shape2))
 
 def register(inputs,iterables=None,shift=0,ident=identity):
 	if iterables is None:
@@ -433,5 +439,5 @@ def register(inputs,iterables=None,shift=0,ident=identity):
 			return result
 		else:
 			return a
-	return misc.map_iterables(reg,inputs,iterables)
+	return functional.map_iterables(reg,inputs,iterables)
 

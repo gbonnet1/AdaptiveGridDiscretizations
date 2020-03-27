@@ -2,11 +2,8 @@ import numpy as np
 import numbers
 import functools
 import operator
-
-# We cannot directly import is_ad due to interdependency of packages
-def is_ad(a):
-	from . import is_ad as _is_ad
-	return _is_ad(a)
+from .functional import map_iterables,map_iterables2,pair
+from .ad_generic import is_ad
 
 # ------- Ugly utilities -------
 def _tuple_first(a): 	return a[0] if isinstance(a,tuple) else a
@@ -38,23 +35,6 @@ def _concatenate(a,b,shape=None):
 		if b.shape[:-1]!=shape: b = np.broadcast_to(b,shape+b.shape[-1:])
 	return np.concatenate((a,b),axis=-1)
 
-def _set_shape_free_bound(shape,shape_free,shape_bound):
-	if shape_free is not None:
-		assert shape_free==shape[0:len(shape_free)]
-		if shape_bound is None: 
-			shape_bound=shape[len(shape_free):]
-		else: 
-			assert shape_bound==shape[len(shape_free):]
-	if shape_bound is None: 
-		shape_bound = tuple()
-	assert len(shape_bound)==0 or shape_bound==shape[-len(shape_bound):]
-	if shape_free is None:
-		if len(shape_bound)==0:
-			shape_free = shape
-		else:
-			shape_free = shape[:len(shape)-len(shape_bound)]
-	return shape_free,shape_bound
-
 def _set_shape_constant(shape=None,constant=None):
 	if isinstance(shape,np.ndarray): shape=tuple(shape)
 	if constant is None:
@@ -80,29 +60,15 @@ def _test_or_broadcast_ad(array,shape,broadcast,ad_depth=1):
 		assert array.shape[:-ad_depth]==shape
 		return array
 
-def squeeze_shape(shape,axis):
-	if axis is None:
-		return shape
-	assert shape[axis]==1
-	if axis==-1:
-		return shape[:-1]
-	else:
-		return shape[:axis]+shape[(axis+1):]
 
-def expand_shape(shape,axis):
-	if axis is None:
-		return shape
-	if axis==-1:
-		return shape+(1,)
-	if axis<0:
-		axis+=1
-	return shape[:axis]+(1,)+shape[axis:]
 
 # -------- For Dense and Dense2 -----
 
 def apply_linear_operator(op,rhs,flatten_ndim=0):
-	"""Applies a linear operator to an array with more than two dimensions,
-	by flattening the last dimensions"""
+	"""
+	Applies a linear operator to an array with more than two dimensions,
+	by flattening the last dimensions
+	"""
 	assert (rhs.ndim-flatten_ndim) in [1,2]
 	shape_tail = rhs.shape[1:]
 	op_input = rhs.reshape((rhs.shape[0],np.prod(shape_tail,dtype=int)))

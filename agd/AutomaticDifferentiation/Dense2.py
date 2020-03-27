@@ -1,4 +1,6 @@
 import numpy as np
+from . import ad_generic
+from . import numpy_like
 from . import misc
 from . import Dense
 
@@ -267,8 +269,10 @@ class denseAD2(np.ndarray):
 		assert all((e.size_ad==size_ad or e.size_ad==0) for e in elems2)
 		return denseAD2( 
 		np.concatenate(tuple(e.value for e in elems2), axis=axis), 
-		np.concatenate(tuple(e.coef1 if e.size_ad==size_ad else np.zeros(e.shape+(size_ad,)) for e in elems2),axis=axis1),
-		np.concatenate(tuple(e.coef2 if e.size_ad==size_ad else np.zeros(e.shape+(size_ad,size_ad)) for e in elems2),axis=axis2))
+		np.concatenate(tuple(e.coef1 if e.size_ad==size_ad else 
+			numpy_like.zeros_like(e.coef1,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1),
+		np.concatenate(tuple(e.coef2 if e.size_ad==size_ad else 
+			numpy_like.zeros_like(e.coef2,shape=e.shape+(size_ad,size_ad)) for e in elems2),axis=axis2))
 
 	def apply_linear_operator(self,op):
 		return denseAD2(op(self.value),
@@ -283,7 +287,8 @@ class denseAD2(np.ndarray):
 
 def identity(*args,**kwargs):
 	arr = Dense.identity(*args,**kwargs)
-	return denseAD2(arr.value,arr.coef,np.zeros(arr.shape+(arr.size_ad,arr.size_ad)))
+	return denseAD2(arr.value,arr.coef,
+		numpy_like.zeros_like(arr.value,shape=arr.shape+(arr.size_ad,arr.size_ad)))
 
 def register(*args,**kwargs):
 	return Dense.register(*args,**kwargs,ident=identity)

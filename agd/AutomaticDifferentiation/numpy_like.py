@@ -1,26 +1,22 @@
 import numpy as np
-from .ad_generic import is_ad
+from .ad_generic import is_ad,array,stack
 """
 This file implements functions which have similarly named numpy counterparts, when
 the latter behave badly in cunjunction with AD types.
 (A typical issue with the numpy variants is downcasting to the numpy.ndarray type).
 """
 
-from .ad_generic import array,stack
-
 
 def _full_like(arr,*args,**kwargs):
 	try: 
 		return np.full_like(arr,*args,**kwargs)
-	except TypeError: # Some old versions lack the shape argument
+	except TypeError: # Some old versions of cupy lack the shape argument
 		arr = np.broadcast_to(arr.flatten()[0], kwargs.pop('shape'))
 		return np.full_like(arr,*args,**kwargs)
 
 def full_like(a,*args,**kwargs):
-	if is_ad(a):
-		return type(a)(_full_like(a.value,*args,**kwargs))
-	else:
-		return _full_like(a,*args,**kwargs)
+	if is_ad(a): return type(a)(_full_like(a.value,*args,**kwargs))
+	else: return _full_like(a,*args,**kwargs)
 
 def zeros_like(a,*args,**kwargs): return full_like(a,0.,*args,**kwargs)
 def ones_like(a,*args,**kwargs):  return full_like(a,1.,*args,**kwargs)

@@ -1,4 +1,7 @@
 import numpy as np
+from . import functional
+from . import ad_generic
+from . import numpy_like
 from . import misc
 
 _add_dim = misc._add_dim; _add_coef=misc._add_coef
@@ -14,10 +17,11 @@ class denseAD(np.ndarray):
 		if isinstance(value,denseAD):
 			assert coef is None
 			return value
-		obj = np.asarray(value).view(denseAD)
+		value = np.asarray(value)
+		obj = value.view(denseAD)
 		shape = obj.shape
 		shape2 = shape+(0,)
-		obj.coef  = (np.full(shape2,0.) if coef is None 
+		obj.coef  = (numpy_like.zeros_like(value,shape=shape2) if coef is None 
 			else misc._test_or_broadcast_ad(coef,shape,broadcast_ad) )
 		return obj
 
@@ -127,7 +131,8 @@ class denseAD(np.ndarray):
 		ekey = misc.key_expand(key)
 		if isinstance(other,denseAD):
 			if other.size_ad==0: return self.__setitem__(key,other.view(np.ndarray))
-			elif self.size_ad==0: self.coef=np.zeros(self.coef.shape[:-1]+(other.size_ad,))
+			elif self.size_ad==0: 
+				self.coef=numpy_like.zeros_like(self.value,shape=self.shape+(other.size_ad,))
 			self.value[key] = other.value
 			self.coef[ekey] =  other.coef
 		else:
@@ -229,7 +234,7 @@ class denseAD(np.ndarray):
 
 	# Numerical 
 	def solve(self,shape_free=None,shape_bound=None):
-		shape_free,shape_bound = misc._set_shape_free_bound(self.shape,shape_free,shape_bound)
+		shape_free,shape_bound = ad_generic._set_shape_free_bound(self.shape,shape_free,shape_bound)
 		assert np.prod(shape_free)==self.size_ad
 		v = np.moveaxis(np.reshape(self.value,(self.size_ad,)+shape_bound),0,-1)
 		a = np.moveaxis(np.reshape(self.coef,(self.size_ad,)+shape_bound+(self.size_ad,)),0,-2)
@@ -259,7 +264,8 @@ class denseAD(np.ndarray):
 		assert all((e.size_ad==size_ad or e.size_ad==0) for e in elems2)
 		return denseAD( 
 		np.concatenate(tuple(e.value for e in elems2), axis=axis), 
-		np.concatenate(tuple(e.coef if e.size_ad==size_ad else np.zeros(e.shape+(size_ad,)) for e in elems2),axis=axis1))
+		np.concatenate(tuple(e.coef if e.size_ad==size_ad else 
+			numpy_like.zeros_like(e.value,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1))
 
 	def associate(self,squeeze_free_dims=-1,squeeze_bound_dims=-1):
 		from . import associate
@@ -287,13 +293,13 @@ def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,
 	(unless some are tied together as specified by shape_free and shape_bound)
 	"""
 	shape,constant = misc._set_shape_constant(shape,constant)
-	shape_free,shape_bound = misc._set_shape_free_bound(shape,shape_free,shape_bound)
+	shape_free,shape_bound = ad_generic._set_shape_free_bound(shape,shape_free,shape_bound)
 
 	ndim_elem = len(shape)-len(shape_bound)
 	shape_elem = shape[:ndim_elem]
 	size_elem = int(np.prod(shape_elem))
 	size_ad = shift[0]+size_elem+shift[1]
-	coef1 = np.full((size_elem,size_ad),0.)
+	coef1 = numpy_like.zeros_like(constant,shape=(size_elem,size_ad))
 	for i in range(size_elem):
 		coef1[i,shift[0]+i]=1.
 	coef1 = coef1.reshape(shape_elem+(1,)*len(shape_bound)+(size_ad,))
@@ -324,7 +330,7 @@ def register(inputs,iterables=None,shape_bound=None,shift=(0,0),ident=identity,c
 				return a
 		starts.append(None)
 		return a
-	inputs = misc.map_iterables(setstart,inputs,iterables)
+	inputs = functional.map_iterables(setstart,inputs,iterables)
 
 	end = start+shift[1]
 
@@ -336,5 +342,5 @@ def register(inputs,iterables=None,shape_bound=None,shift=(0,0),ident=identity,c
 		else:
 			return ident(constant=a,shift=(start,end-start-a.size//boundsize),
 				shape_bound=shape_bound)
-	return misc.map_iterables(setad,inputs,iterables)
+	return functional.map_iterables(setad,inputs,iterables)
 

@@ -8,64 +8,16 @@ import numpy as np
 import sys
 import functools
 import types
-from . import misc
-
-# ----- General methods -----
-
-def decorator_with_arguments(decorator):
-	"""
-	Decorator intended to simplify writing decorators with arguments. 
-	(In addition to the decorated function itself.)
-	"""
-	@functools.wraps(decorator)
-	def wrapper(f=None,*args,**kwargs):
-		if f is None: return lambda f: decorator(f,*args,**kwargs)
-		else: return decorator(f,*args,**kwargs)
-	return wrapper
-
-
-def decorate_module_functions(module,decorator,
-	copy_module=True,fct_names=None,ret_decorated=False):
-	"""
-	Decorate the functions of a module.
-	Inputs : 
-	 - module : whose functions must be decorated
-	 - decorator : to be applied
-	 - copy_module : create a shallow copy of the module
-	 - fct_names (optional) : list of functions to be decorated.
-	  If unspecified, all functions, builtin functions, and builtin methods, are decorated.
-	"""
-	if copy_module: #Create a shallow module copy
-		new_module = type(module)(module.__name__, module.__doc__)
-		new_module.__dict__.update(module.__dict__)
-		module = new_module
-
-	decorated = []
-
-	for key,value in module.__dict__.items():
-		if fct_names is None: 
-			if not isinstance(value,(types.FunctionType,types.BuiltinFunctionType,
-				types.BuiltinMethodType)):
-				continue
-		elif key not in fct_names:
-			continue
-		decorated.append(key)
-		module.__dict__[key] = decorator(value)
-	return (module,decorated) if ret_decorated else module
-
-
-def from_module(x,module_name):
-	_module_name = type(x).__module__
-	return module_name == _module_name or _module_name.startswith(module_name+'.')
+from . import functional
 
 # -------- Identifying data source -------
 
 def from_cupy(x): 
-	return from_module(x,'cupy')
+	return functional.from_module(x,'cupy')
 
 def get_array_module(arg,iterables=(tuple,)):
 	"""Returns the module (numpy or cupy) of an array"""
-	for x in misc.rec_iter(arg,iterables):
+	for x in functional.rec_iter(arg,iterables):
 		if from_cupy(x): return sys.modules['cupy']
 	return sys.modules['numpy']
 
@@ -98,7 +50,7 @@ def cupy_get(x,dtype64=False,iterables=tuple()):
 				dtype = np.int64 if x.dtype.type==np.int32 else np.float64
 				x = np.array(x,dtype=dtype)
 		return x
-	return misc.map_iterables(caster,x,iterables)
+	return functional.map_iterables(caster,x,iterables)
 
 def cupy_get_args(f,*args,**kwargs):
 	"""
@@ -123,7 +75,7 @@ def has_dtype(arg,dtype="dtype",iterables=(tuple)):
 	def find_dtype(x):
 		nonlocal has_dtype_
 		has_dtype_ = has_dtype_ or (isndarray(x) and x.dtype==dtype)
-	for x in misc.rec_iter(arg,iterables=iterables): find_dtype(x)
+	for x in functional.rec_iter(arg,iterables=iterables): find_dtype(x)
 	return has_dtype_
 			
 def get_float_t(arg,**kwargs):
@@ -142,7 +94,7 @@ def array_float_caster(arg,**kwargs):
 	float_t = get_float_t(arg,**kwargs)
 	return lambda arr:xp.array(arr,dtype=float_t)
 
-@decorator_with_arguments
+@functional.decorator_with_arguments
 def set_output_dtype32(f,silent=False,iterables=(tuple,)):
 	"""
 	If the output of the given funtion contains ndarrays with 64bit dtype,
@@ -161,7 +113,7 @@ def set_output_dtype32(f,silent=False,iterables=(tuple,)):
 	@functools.wraps(f)
 	def wrapper(*args,**kwargs):
 		output = f(*args,**kwargs)
-		return misc.map_iterables(caster,output,iterables=iterables)
+		return functional.map_iterables(caster,output,iterables=iterables)
 
 	return wrapper
 

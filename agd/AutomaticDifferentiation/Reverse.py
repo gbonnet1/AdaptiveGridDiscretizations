@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+from . import functional
 from . import misc
 from . import Sparse
 
@@ -39,7 +40,7 @@ class reverseAD(object):
 	def identity(self,*args,**kwargs):
 		"""Creates and register a new AD variable"""
 		result = Sparse.identity(*args,**kwargs,shift=self.size_ad)
-		self._shapes_ad += (misc.pair(self.size_ad,result.shape),)
+		self._shapes_ad += (functional.pair(self.size_ad,result.shape),)
 		self._size_ad += result.size
 		return result
 
@@ -127,7 +128,7 @@ class reverseAD(object):
 			co_output_value = misc._to_shapes(coef[self.size_ad:],outputshapes,self.output_iterables)
 			_args,_kwargs,corresp = misc._apply_input_helper(args,kwargs,Sparse.spAD,self.input_iterables)
 			co_arg_request = [a for _,a in corresp]
-			co_args = func(*_args,**_kwargs,co_output=misc.pair(co_output_value,co_arg_request))
+			co_args = func(*_args,**_kwargs,co_output=functional.pair(co_output_value,co_arg_request))
 			for a_sparse,a_value2 in corresp:
 				found=False
 				for a_value,a_adjoint in co_args:

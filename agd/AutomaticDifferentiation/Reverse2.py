@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+from . import functional
 from . import misc
 from . import Dense
 from . import Sparse
@@ -37,7 +38,7 @@ class reverseAD2(object):
 		"""Creates and registers a new AD variable"""
 		assert (self.operator_data is None) or kwargs.pop("operator_initialization",False)
 		result = Sparse2.identity(*args,**kwargs,shift=self.size_ad)
-		self._shapes_ad += (misc.pair(self.size_ad,result.shape),)
+		self._shapes_ad += (functional.pair(self.size_ad,result.shape),)
 		self._size_ad += result.size
 		return result
 
@@ -88,7 +89,7 @@ class reverseAD2(object):
 			co_output_value = misc._to_shapes(coef[self.size_ad:],outputshapes,self.output_iterables)
 			_args,_kwargs,corresp = misc._apply_input_helper(args,kwargs,Sparse2.spAD2,self.input_iterables)
 			co_arg_request = [a for _,a in corresp]
-			co_args = func(*_args,**_kwargs,co_output=misc.pair(co_output_value,co_arg_request))
+			co_args = func(*_args,**_kwargs,co_output=functional.pair(co_output_value,co_arg_request))
 			for a_sparse,a_value2 in corresp:
 				found = False
 				for a_value,a_adjoint in co_args:
@@ -168,7 +169,7 @@ class reverseAD2(object):
 				co_output_value1 = misc._to_shapes(coef1[self.size_ad:],outputshapes,self.output_iterables)
 				co_output_value2 = misc._to_shapes(coef2[self.size_ad:],outputshapes,self.output_iterables)
 				co_arg_request = [a for _,a in corresp]
-				co_args = func(*_args,**_kwargs,co_output=misc.pair(misc.pair(co_output_value1,co_output_value2),co_arg_request))
+				co_args = func(*_args,**_kwargs,co_output=functional.pair(functional.pair(co_output_value1,co_output_value2),co_arg_request))
 				for a_value,a_adjoint1,a_adjoint2 in co_args:
 					for a_sparse,a_value2 in corresp:
 						if a_value is a_value2:
