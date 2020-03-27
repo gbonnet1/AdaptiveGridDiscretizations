@@ -17,17 +17,23 @@ class denseAD(np.ndarray):
 	# Construction
 	# See : https://docs.scipy.org/doc/numpy-1.13.0/user/basics.subclassing.html
 	def __new__(cls,value,coef=None,broadcast_ad=False):
-		value = ad_generic.asarray(value)
-		if isinstance(value,denseAD):
+		# Case where new is use to cast
+		if cls.is_ad(value):
 			assert coef is None
-			return value
+			if cls.cupy_based(): value,coef = value.value,value.coef
+			else: return value
 		if ad_generic.is_ad(value):
 			raise ValueError("Attempting to cast between different AD types")
-		if from_cupy(value):
+
+		# Create instance 
+		value = ad_generic.asarray(value)
+		if cls.cupy_based():
 			denseAD_cupy = cupy_rebase(denseAD)
 			obj = super(denseAD_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
 		else: 
 			obj = value.view(denseAD)
+
+		# Add attributes
 		shape = value.shape
 		shape2 = shape+(0,)
 		obj.coef  = (numpy_like.zeros_like(value,shape=shape2) if coef is None 
@@ -36,12 +42,22 @@ class denseAD(np.ndarray):
 
 	def __init__(self,value,*args,**kwargs):
 		if self.cupy_based():
+			if self.is_ad(value): value = value.value
 			denseAD_cupy = cupy_rebase(denseAD)
 			super(denseAD_cupy,self).__init__(**cupy_init_kwargs(value))
 
 	@classmethod
+	def ndarray(cls):
+		"""Returns the ndarray base class (numpy or cupy ndarray)""" 
+		return cls.__bases__[0]
+	@classmethod
 	def cupy_based(cls):
-		return cls.__bases__[0] is not np.ndarray
+		return cls.ndarray() is not np.ndarray
+	@classmethod
+	def isndarray(cls,other): return isinstance(other,cls.ndarray())
+	@classmethod
+	def is_ad(cls,other): return isinstance(other,cls)
+
 	@classmethod
 	def new(cls,*args,**kwargs):
 		return cls(*args,**kwargs)
@@ -58,55 +74,49 @@ class denseAD(np.ndarray):
 		return "denseAD("+repr(self.value)+","+misc._prep_nl(repr(self.coef))+")"
 
 	# Operators
-	@classmethod
-	def _isinstance(cls,a): return isinstance(a,cls)
-	@classmethod
-	def _is_constant(cls,a): return cls._isinstance(a) and a.size_ad==0
-
 	def __add__(self,other):
-		if self._is_constant(other): return self.__add__(other.value)
-		if self._isinstance(other):
+		if self.is_ad(other):
 			return self.new(self.value+other.value, _add_coef(self.coef,other.coef))
 		else:
 			return self.new(self.value+other, self.coef, broadcast_ad=True)
 
 	def __sub__(self,other):
-		if self._is_constant(other): return self.__sub__(other.value)
-		if self._isinstance(other,denseAD):
-			return denseAD(self.value-other.value, _add_coef(self.coef,-other.coef))
+		if self.is_ad(other):
+			return self.new(self.value-other.value, _add_coef(self.coef,-other.coef))
 		else:
-			return denseAD(self.value-other, self.coef, broadcast_ad=True)
+			return self.new(self.value-other, self.coef, broadcast_ad=True)
 
 	def __mul__(self,other):
-		if _is_constant(other): return self.__mul__(other.view(np.ndarray))
-		if isinstance(other,denseAD):
-			return denseAD(self.value*other.value,_add_coef(_add_dim(other.value)*self.coef,_add_dim(self.value)*other.coef))
-		elif isinstance(other,np.ndarray):
-			return denseAD(self.value*other,_add_dim(other)*self.coef)
+		if self.is_ad(other):
+			return self.new(self.value*other.value,_add_coef(_add_dim(other.value)*self.coef,
+				_add_dim(self.value)*other.coef))
+		elif self.isndarray(other):
+			return self.new(self.value*other,_add_dim(other)*self.coef)
 		else:
-			return denseAD(self.value*other,other*self.coef)
+			return self.new(self.value*other,other*self.coef)
 
-	def __truediv__(self,other):		
-		if _is_constant(other): return self.__truediv__(other.view(np.ndarray))
-		if isinstance(other,denseAD):
-			return denseAD(self.value/other.value,
-				_add_coef(_add_dim(1/other.value)*self.coef,_add_dim(-self.value/other.value**2)*other.coef))
-		elif isinstance(other,np.ndarray):
-			return denseAD(self.value/other,_add_dim(1./other)*self.coef)
+	def __truediv__(self,other):
+		if self.is_ad(other):
+			return self.new(self.value/other.value,
+				_add_coef(_add_dim(1/other.value)*self.coef,
+					_add_dim(-self.value/other.value**2)*other.coef))
+		elif self.isndarray(other):
+			return self.new(self.value/other,_add_dim(1./other)*self.coef)
 		else:
-			return denseAD(self.value/other,(1./other)*self.coef) 
+			return self.new(self.value/other,(1./other)*self.coef) 
 
 	__rmul__ = __mul__
 	__radd__ = __add__
-	def __rsub__(self,other): 		return -(self-other)
-	def __rtruediv__(self,other): 	return denseAD(other/self.value,_add_dim(-other/self.value**2)*self.coef)
+	def __rsub__(self,other):     return -(self-other)
+	def __rtruediv__(self,other): return self.new(other/self.value,
+		_add_dim(-other/self.value**2)*self.coef)
 
-	def __neg__(self):		return denseAD(-self.value,-self.coef)
+	def __neg__(self): return self.new(-self.value,-self.coef)
 
 	# Math functions
 	def _math_helper(self,deriv):
 		a,b=deriv
-		return denseAD(a,_add_dim(b)*self.coef)
+		return self.new(a,_add_dim(b)*self.coef)
 
 	def sqrt(self):			return self**0.5
 	def __pow__(self,n):	return self._math_helper(misc.pow1(self.value,n))
@@ -126,18 +136,18 @@ class denseAD(np.ndarray):
 	def arccosh(self):		return self._math_helper(misc.arccosh1(self.value))
 	def arctanh(self):		return self._math_helper(misc._arctanh1(self.value))
 
-	@staticmethod
-	def compose(a,t):
-		assert isinstance(a,denseAD) and all(isinstance(b,denseAD) for b in t)
-		b = np.moveaxis(denseAD.concatenate(t,axis=0),0,-1)
+	@classmethod
+	def compose(cls,a,t):
+		cls.is_ad(a) and all(cls.is_ad(b) for b in t)
+		b = np.moveaxis(cls.concatenate(t,axis=0),0,-1)
 		coef = (_add_dim(a.coef)*b.coef).sum(axis=-2)
-		return denseAD(a.value,coef)
+		return cls(a.value,coef)
 
 	#Indexing
 	@property
 	def value(self): 
-		if from_cupy(type(self).__bases__[0]): return self.view()
-		return self.view(np.ndarray)
+		if self.cupy_based(): return self.view()
+		else: return self.view(np.ndarray)
 	@property
 	def size_ad(self):  return self.coef.shape[-1]
 
@@ -147,12 +157,12 @@ class denseAD(np.ndarray):
 
 	def __getitem__(self,key):
 		ekey = misc.key_expand(key)
-		return denseAD(self.value[key], self.coef[ekey])
+		return self.new(self.value[key], self.coef[ekey])
 
 	def __setitem__(self,key,other):
 		ekey = misc.key_expand(key)
-		if isinstance(other,denseAD):
-			if other.size_ad==0: return self.__setitem__(key,other.view(np.ndarray))
+		if self.is_ad(other):
+			if other.size_ad==0: return self.__setitem__(key,other.value)
 			elif self.size_ad==0: 
 				self.coef=numpy_like.zeros_like(self.value,shape=self.shape+(other.size_ad,))
 			self.value[key] = other.value
@@ -164,14 +174,14 @@ class denseAD(np.ndarray):
 	def reshape(self,shape,order='C'):
 		shape = misc._to_tuple(shape)
 		shape2 = shape+(self.size_ad,)
-		return denseAD(self.value.reshape(shape,order=order),self.coef.reshape(shape2,order=order))
+		return self.new(self.value.reshape(shape,order=order),self.coef.reshape(shape2,order=order))
 
 	def flatten(self):	return self.reshape( (self.size,) )
 	def squeeze(self,axis=None): return self.reshape(self.value.squeeze(axis).shape)
 
 	def broadcast_to(self,shape):
 		shape2 = shape+(self.size_ad,)
-		return denseAD(np.broadcast_to(self.value,shape), np.broadcast_to(self.coef,shape2) )
+		return self.new(np.broadcast_to(self.value,shape), np.broadcast_to(self.coef,shape2) )
 
 	@property
 	def T(self):	return self if self.ndim<2 else self.transpose()
@@ -179,12 +189,12 @@ class denseAD(np.ndarray):
 	def transpose(self,axes=None):
 		if axes is None: axes = tuple(reversed(range(self.ndim)))
 		axes2 = tuple(axes) +(self.ndim,)
-		return denseAD(self.value.transpose(axes),self.coef.transpose(axes2))
+		return self.new(self.value.transpose(axes),self.coef.transpose(axes2))
 
 	# Reductions
 	def sum(self,axis=None,out=None,**kwargs):
 		if axis is None: return self.flatten().sum(axis=0,out=out,**kwargs)
-		out = denseAD(self.value.sum(axis,**kwargs), self.coef.sum(axis,**kwargs))
+		out = self.new(self.value.sum(axis,**kwargs), self.coef.sum(axis,**kwargs))
 		return out
 
 	prod = misc.prod
@@ -201,8 +211,7 @@ class denseAD(np.ndarray):
 
 	# See https://docs.scipy.org/doc/numpy/reference/ufuncs.html
 	def __array_ufunc__(self,ufunc,method,*inputs,**kwargs):
-
-		# Return an np.ndarray for piecewise constant functions
+		# Return an ndarray for piecewise constant functions
 		if ufunc in [
 		# Comparison functions
 		np.greater,np.greater_equal,
@@ -217,7 +226,7 @@ class denseAD(np.ndarray):
 		np.signbit,np.floor,np.ceil,np.trunc
 		]:
 			inputs_ = (a.value if isinstance(a,denseAD) else a for a in inputs)
-			return super(denseAD,self).__array_ufunc__(ufunc,method,*inputs_,**kwargs)
+			return self.value.__array_ufunc__(ufunc,method,*inputs_,**kwargs)
 
 
 		if method=="__call__":
@@ -274,17 +283,17 @@ class denseAD(np.ndarray):
 	@staticmethod
 	def true_divide(*args,**kwargs): return misc.true_divide(*args,**kwargs)
 
-	@staticmethod
-	def stack(elems,axis=0):
-		return denseAD.concatenate(tuple(np.expand_dims(e,axis=axis) for e in elems),axis)
+	@classmethod
+	def stack(cls,elems,axis=0):
+		return cls.concatenate(tuple(np.expand_dims(e,axis=axis) for e in elems),axis)
 
-	@staticmethod
-	def concatenate(elems,axis=0):
+	@classmethod
+	def concatenate(cls,elems,axis=0):
 		axis1 = axis if axis>=0 else axis-1
-		elems2 = tuple(denseAD(e) for e in elems)
+		elems2 = tuple(cls(e) for e in elems)
 		size_ad = max(e.size_ad for e in elems2)
 		assert all((e.size_ad==size_ad or e.size_ad==0) for e in elems2)
-		return denseAD( 
+		return cls( 
 		np.concatenate(tuple(e.value for e in elems2), axis=axis), 
 		np.concatenate(tuple(e.coef if e.size_ad==size_ad else 
 			numpy_like.zeros_like(e.value,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1))
@@ -296,10 +305,10 @@ class denseAD(np.ndarray):
 		value = associate(self.value,sq_free, squeeze_bound_dims)
 		coef  = associate(self.coef, sq_free1,squeeze_bound_dims)
 		coef = np.moveaxis(coef,self.ndim if sq_free is None else (self.ndim-1),-1)
-		return denseAD(value,coef)
+		return self.new(value,coef)
 
 	def apply_linear_operator(self,op):
-		return denseAD(op(self.value),misc.apply_linear_operator(op,self.coef,flatten_ndim=1))
+		return self.new(op(self.value),misc.apply_linear_operator(op,self.coef,flatten_ndim=1))
 
 # -------- End of class denseAD -------
 
