@@ -1,7 +1,8 @@
 from . import functional
 from . import cupy_generic
 from . import ad_generic
-from .numpy_like import array,full_like,zeros_like,ones_like,broadcast_to,where,sort,stack,concatenate
+from .numpy_like import array,asarray,full_like,zeros_like,ones_like,broadcast_to, \
+	where,sort,stack,concatenate
 from . import misc
 from . import Dense
 from . import Sparse

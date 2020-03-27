@@ -106,7 +106,7 @@ def set_output_dtype32(f,silent=False,iterables=(tuple,)):
 			if not silent: print(
 				f"Casting output of function {f.__name__} " 
 				f"from {a.dtype} to {np.dtype(dtype)}")
-			return xp.array(a,dtype=dtype)
+			return xp.asarray(a,dtype=dtype)
 		return a
 
 	@functools.wraps(f)

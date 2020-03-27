@@ -1,5 +1,5 @@
 import numpy as np
-from .ad_generic import is_ad,array,stack
+from .ad_generic import is_ad,array,asarray,stack
 """
 This file implements functions which have similarly named numpy counterparts, when
 the latter behave badly in cunjunction with AD types.
