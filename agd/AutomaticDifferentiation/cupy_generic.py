@@ -7,7 +7,6 @@ import itertools
 import numpy as np
 import sys
 import functools
-import types
 from . import functional
 
 # -------- Identifying data source -------
