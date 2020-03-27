@@ -17,7 +17,7 @@ class denseAD(np.ndarray):
 	# Construction
 	# See : https://docs.scipy.org/doc/numpy-1.13.0/user/basics.subclassing.html
 	def __new__(cls,value,coef=None,broadcast_ad=False):
-		# Case where new is use to cast
+		# Case where one should just reproduce value
 		if cls.is_ad(value):
 			assert coef is None
 			if cls.cupy_based(): value,coef = value.value,value.coef
@@ -47,20 +47,25 @@ class denseAD(np.ndarray):
 			super(denseAD_cupy,self).__init__(**cupy_init_kwargs(value))
 
 	@classmethod
-	def ndarray(cls):
-		"""Returns the ndarray base class (numpy or cupy ndarray)""" 
+	def _ndarray(cls):
 		return cls.__bases__[0]
 	@classmethod
 	def cupy_based(cls):
-		return cls.ndarray() is not np.ndarray
+		return cls._ndarray() is not np.ndarray
 	@classmethod
-	def isndarray(cls,other): return isinstance(other,cls.ndarray())
+	def isndarray(cls,other): 
+		"""Wether argument is an ndarray from a compatible module (numpy or cupy)"""
+		return isinstance(other,cls._ndarray())
 	@classmethod
 	def is_ad(cls,other): return isinstance(other,cls)
-
 	@classmethod
 	def new(cls,*args,**kwargs):
 		return cls(*args,**kwargs)
+	@property
+	def value(self): 
+		"""Returns the base ndarray, without AD information"""
+		if self.cupy_based(): return self.view()
+		else: return self.view(np.ndarray)
 	def copy(self,order='C'):
 		return self.new(self.value.copy(order=order),self.coef.copy(order=order))
 
@@ -138,16 +143,12 @@ class denseAD(np.ndarray):
 
 	@classmethod
 	def compose(cls,a,t):
-		cls.is_ad(a) and all(cls.is_ad(b) for b in t)
+		assert cls.is_ad(a) and all(cls.is_ad(b) for b in t)
 		b = np.moveaxis(cls.concatenate(t,axis=0),0,-1)
 		coef = (_add_dim(a.coef)*b.coef).sum(axis=-2)
 		return cls(a.value,coef)
 
 	#Indexing
-	@property
-	def value(self): 
-		if self.cupy_based(): return self.view()
-		else: return self.view(np.ndarray)
 	@property
 	def size_ad(self):  return self.coef.shape[-1]
 
@@ -194,6 +195,7 @@ class denseAD(np.ndarray):
 	# Reductions
 	def sum(self,axis=None,out=None,**kwargs):
 		if axis is None: return self.flatten().sum(axis=0,out=out,**kwargs)
+		if axis<0: axis=self.ndim+axis
 		out = self.new(self.value.sum(axis,**kwargs), self.coef.sum(axis,**kwargs))
 		return out
 
