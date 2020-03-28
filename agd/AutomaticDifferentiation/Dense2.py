@@ -1,6 +1,6 @@
 import numpy as np
-from . import ad_generic
 from .cupy_generic import cupy_init_kwargs,cupy_rebase
+from . import ad_generic
 from . import numpy_like
 from . import misc
 from . import Dense
