@@ -1,6 +1,8 @@
 import numpy as np
 from . import functional
+from . import ad_generic
 from . import cupy_generic
+from .cupy_generic import cupy_init_kwargs,cupy_rebase
 from . import numpy_like
 from . import misc
 from . import Dense
@@ -15,32 +17,75 @@ class spAD(np.ndarray):
 	# Construction
 	# See : https://docs.scipy.org/doc/numpy-1.13.0/user/basics.subclassing.html
 	def __new__(cls,value,coef=None,index=None,broadcast_ad=False):
-		if isinstance(value,spAD):
+		# Case where one should just reproduce value
+		if cls.is_ad(value):
 			assert coef is None and index is None
-			return value
-		value = np.asarray(value)
-		obj = value.view(spAD)
-		shape = obj.shape
+			if cls.cupy_based(): value,coef = value.value,value.coef
+			else: return value
+		if ad_generic.is_ad(value):
+			raise ValueError("Attempting to cast between different AD types")
+
+		# Create instance 
+		value = numpy_like.asarray(value)
+		if cls.cupy_based():
+			spAD_cupy = cupy_rebase(spAD)
+			obj = super(spAD_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
+		else: 
+			obj = value.view(spAD)
+
+		# Add attributes
+		shape = value.shape
 		shape2 = shape+(0,)
 		assert ((coef is None) and (index is None)) or (coef.shape==index.shape)
 		obj.coef  = (numpy_like.zeros_like(value,shape=shape2) if coef is None 
 			else misc._test_or_broadcast_ad(coef,shape,broadcast_ad) ) 
-		obj.index = (numpy_like.zeros_like(value,shape=shape2,dtype=cupy_generic.samesize_int_t(value.dtype))  
+		obj.index = (numpy_like.zeros_like(value,shape=shape2,
+			dtype=cupy_generic.samesize_int_t(value.dtype))  
 			if index is None else misc._test_or_broadcast_ad(index,shape,broadcast_ad) )
 		return obj
 
-#	def __array_finalize__(self,obj): pass
+	def __init__(self,value,*args,**kwargs):
+		if self.cupy_based():
+			if self.is_ad(value): value = value.value
+			spAD_cupy = cupy_rebase(spAD)
+			super(spAD_cupy,self).__init__(**cupy_init_kwargs(value))
+
+	@classmethod
+	def _ndarray(cls):
+		return cls.__bases__[0]
+	@classmethod
+	def cupy_based(cls):
+		return cls._ndarray() is not np.ndarray
+	@classmethod
+	def isndarray(cls,other): 
+		"""Wether argument is an ndarray from a compatible module (numpy or cupy)"""
+		return isinstance(other,cls._ndarray())
+	@classmethod
+	def is_ad(cls,other): return isinstance(other,cls)
+	@classmethod
+	def new(cls,*args,**kwargs):
+		return cls(*args,**kwargs)
+	@property
+	def value(self): 
+		"""Returns the base ndarray, without AD information"""
+		if self.cupy_based(): return self.view()
+		else: return self.view(np.ndarray)
+	@classmethod
+	def _denseAD(cls):
+		return cupy_rebase(Dense.denseAD) if cls.cupy_based() else Dense.denseAD
 
 	def copy(self,order='C'):
-		return spAD(self.value.copy(order=order),self.coef.copy(order=order),self.index.copy(order=order))
+		return self.new(self.value.copy(order=order),
+			self.coef.copy(order=order),self.index.copy(order=order))
 	def __copy__(self): return self.copy(order='K')
 	def __deepcopy__(self,*args): 
-		return spAD(self.value.__deepcopy__(*args),self.coef.__deepcopy__(*args),self.index.__deepcopy__(*args))
+		return self.new(self.value.__deepcopy__(*args),
+			self.coef.__deepcopy__(*args),self.index.__deepcopy__(*args))
 
 	# Representation 
 	def __iter__(self):
 		for value,coef,index in zip(self.value,self.coef,self.index):
-			yield spAD(value,coef,index)
+			yield self.new(value,coef,index)
 
 	def __str__(self):
 		return "spAD"+str((self.value,self.coef,self.index))
@@ -49,42 +94,43 @@ class spAD(np.ndarray):
 
 	# Operators
 	def __add__(self,other):
-		if isinstance(other,spAD):
+		if self.is_ad(other):
 			value = self.value+other.value
-			return spAD(value, _concatenate(self.coef,other.coef,value.shape), _concatenate(self.index,other.index,value.shape))
+			return self.new(value, _concatenate(self.coef,other.coef,value.shape), 
+				_concatenate(self.index,other.index,value.shape))
 		else:
-			return spAD(self.value+other, self.coef, self.index, broadcast_ad=True)
+			return self.new(self.value+other, self.coef, self.index, broadcast_ad=True)
 
 	def __sub__(self,other):
-		if isinstance(other,spAD):
+		if self.is_ad(other):
 			value = self.value-other.value
-			return spAD(self.value-other.value, _concatenate(self.coef,-other.coef,value.shape), _concatenate(self.index,other.index,value.shape))
+			return self.new(self.value-other.value, _concatenate(self.coef,-other.coef,value.shape), _concatenate(self.index,other.index,value.shape))
 		else:
-			return spAD(self.value-other, self.coef, self.index, broadcast_ad=True)
+			return self.new(self.value-other, self.coef, self.index, broadcast_ad=True)
 
 	def __mul__(self,other):
-		if isinstance(other,spAD):
+		if self.is_ad(other):
 			value = self.value*other.value
 			coef1,coef2 = _add_dim(other.value)*self.coef,_add_dim(self.value)*other.coef
 			index1,index2 = np.broadcast_to(self.index,coef1.shape),np.broadcast_to(other.index,coef2.shape)
-			return spAD(value,_concatenate(coef1,coef2),_concatenate(index1,index2))
-		elif isinstance(other,np.ndarray):
+			return self.new(value,_concatenate(coef1,coef2),_concatenate(index1,index2))
+		elif self.isndarray(other):
 			value = self.value*other
 			coef = _add_dim(other)*self.coef
 			index = np.broadcast_to(self.index,coef.shape)
-			return spAD(value,coef,index)
+			return self.new(value,coef,index)
 		else:
-			return spAD(self.value*other,other*self.coef,self.index)
+			return self.new(self.value*other,other*self.coef,self.index)
 
 	def __truediv__(self,other):
-		if isinstance(other,spAD):
-			return spAD(self.value/other.value,
+		if self.is_ad(other):
+			return self.new(self.value/other.value,
 				_concatenate(self.coef*_add_dim(1/other.value),other.coef*_add_dim(-self.value/other.value**2)),
 				_concatenate(self.index,other.index))
-		elif isinstance(other,np.ndarray):
-			return spAD(self.value/other,self.coef*_add_dim(1./other),self.index)
+		elif self.isndarray(other):
+			return self.new(self.value/other,self.coef*_add_dim(1./other),self.index)
 		else:
-			return spAD(self.value/other,self.coef/other,self.index)
+			return self.new(self.value/other,self.coef/other,self.index)
 
 	__rmul__ = __mul__
 	__radd__ = __add__
@@ -93,14 +139,14 @@ class spAD(np.ndarray):
 		value = other/self.value
 		coef = self.coef*_add_dim(-other/self.value**2)
 		index = np.broadcast_to(self.index,coef.shape)
-		return spAD(value,coef,index)
+		return self.new(value,coef,index)
 
-	def __neg__(self):		return spAD(-self.value,-self.coef,self.index)
+	def __neg__(self):		return self.new(-self.value,-self.coef,self.index)
 
 	# Math functions
 	def _math_helper(self,deriv):
 		a,b=deriv
-		return spAD(a,_add_dim(b)*self.coef,self.index)
+		return self.new(a,_add_dim(b)*self.coef,self.index)
 
 	def sqrt(self):			return self**0.5
 	def __pow__(self,n):	return self._math_helper(misc.pow1(self.value,n))
@@ -120,9 +166,9 @@ class spAD(np.ndarray):
 	def arccosh(self):		return self._math_helper(misc.arccosh1(self.value))
 	def arctanh(self):		return self._math_helper(misc._arctanh1(self.value))
 
-	@staticmethod
-	def compose(a,t):
-		assert isinstance(a,Dense.denseAD) and all(isinstance(b,spAD) for b in t)
+	@classmethod
+	def compose(cls,a,t):
+		assert cls._denseAD().is_ad(a) and all(cls.is_ad(b) for b in t)
 		lens = tuple(len(b) for b in t)
 		assert a.size_ad == sum(lens)
 		t = tuple(np.moveaxis(b,0,-1) for b in t)
@@ -130,22 +176,21 @@ class spAD(np.ndarray):
 		def FlattenLast2(arr): return arr.reshape(arr.shape[:-2]+(np.prod(arr.shape[-2:],dtype=int),))
 		coef = tuple(_add_dim(c)*b.coef for c,b in zip(a_coefs,t) )
 		coef = np.concatenate( tuple(FlattenLast2(c) for c in coef), axis=-1)
-		index = np.broadcast_to(np.concatenate( tuple(FlattenLast2(b.index) for b in t), axis=-1),coef.shape)
-		return spAD(a.value,coef,index)
+		index = np.broadcast_to(np.concatenate( tuple(FlattenLast2(b.index) 
+			for b in t), axis=-1),coef.shape)
+		return cls.new(a.value,coef,index)
 
 	#Indexing
-	@property
-	def value(self): return self.view(np.ndarray)
 	@property
 	def size_ad(self):  return self.coef.shape[-1]
 
 	def __getitem__(self,key):
 		ekey = misc.key_expand(key)
-		return spAD(self.value[key], self.coef[ekey], self.index[ekey])
+		return self.new(self.value[key], self.coef[ekey], self.index[ekey])
 
 	def __setitem__(self,key,other):
 		ekey = misc.key_expand(key)
-		if isinstance(other,spAD):
+		if self.is_ad(other):
 			self.value[key] = other.value
 			pad_size = max(self.coef.shape[-1],other.coef.shape[-1])
 			if pad_size>self.coef.shape[-1]:
@@ -160,14 +205,16 @@ class spAD(np.ndarray):
 	def reshape(self,shape,order='C'):
 		shape = misc._to_tuple(shape)
 		shape2 = shape+(self.size_ad,)
-		return spAD(self.value.reshape(shape,order=order),self.coef.reshape(shape2,order=order), self.index.reshape(shape2,order=order))
+		return self.new(self.value.reshape(shape,order=order),
+			self.coef.reshape(shape2,order=order), self.index.reshape(shape2,order=order))
 
 	def flatten(self):	return self.reshape( (self.size,) )
 	def squeeze(self,axis=None): return self.reshape(self.value.squeeze(axis).shape)
 
 	def broadcast_to(self,shape):
 		shape2 = shape+(self.size_ad,)
-		return spAD(np.broadcast_to(self.value,shape), np.broadcast_to(self.coef,shape2), np.broadcast_to(self.index,shape2))
+		return self.new(np.broadcast_to(self.value,shape), 
+			np.broadcast_to(self.coef,shape2), np.broadcast_to(self.index,shape2))
 
 	@property
 	def T(self):	return self if self.ndim<2 else self.transpose()
@@ -175,7 +222,8 @@ class spAD(np.ndarray):
 	def transpose(self,axes=None):
 		if axes is None: axes = tuple(reversed(range(self.ndim)))
 		axes2 = tuple(axes) +(self.ndim,)
-		return spAD(self.value.transpose(axes),self.coef.transpose(axes2),self.index.transpose(axes2))
+		return self.new(self.value.transpose(axes),
+			self.coef.transpose(axes2),self.index.transpose(axes2))
 
 	# Reductions
 	def sum(self,axis=None,out=None,**kwargs):
@@ -184,7 +232,7 @@ class spAD(np.ndarray):
 		shape = value.shape +(self.size_ad * self.shape[axis],)
 		coef = np.moveaxis(self.coef, axis,-1).reshape(shape)
 		index = np.moveaxis(self.index, axis,-1).reshape(shape)
-		out = spAD(value,coef,index)
+		out = self.new(value,coef,index)
 		return out
 
 	prod = misc.prod
@@ -216,8 +264,8 @@ class spAD(np.ndarray):
 		np.isfinite,np.isinf,np.isnan,np.isnat,
 		np.signbit,np.floor,np.ceil,np.trunc
 		]:
-			inputs_ = (a.value if isinstance(a,spAD) else a for a in inputs)
-			return super(spAD,self).__array_ufunc__(ufunc,method,*inputs_,**kwargs)
+			inputs_ = (a.value if self.is_ad(a) else a for a in inputs)
+			return self.value.__array_ufunc__(ufunc,method,*inputs_,**kwargs)
 
 
 		if method=="__call__":
@@ -264,7 +312,7 @@ class spAD(np.ndarray):
 		for c,i in zip(mvax(self.coef),mvax(self.index)):
 			coef_new = _add_dim(c)+np.take_along_axis(coef,_add_dim(i),axis=-1)
 			np.put_along_axis(coef,_add_dim(i),coef_new,axis=-1)
-		return Dense.denseAD(self.value,coef)
+		return self._denseAD()(self.value,coef)
 
 	#Linear algebra
 	def triplets(self):
@@ -284,20 +332,6 @@ class spAD(np.ndarray):
 		mat = self.triplets()
 		rhs = -self.value.flatten()
 		return (mat,rhs) if raw else misc.spsolve(mat,rhs).reshape(self.shape)
-
-	"""
-	def diagonal(self,identity_var=None):
-		coef = np.moveaxis(self.coef,-1,0)
-		index = np.moveaxis(self.index,-1,0)
-		diag = np.zeros(self.shape)
-		rg = (np.arange(self.size).reshape(self.shape)
-			if identity_var is None else 
-			np.squeeze(identity_var.index,axis=-1))
-		for c,i in zip(coef,index):
-			pos = i==rg
-			diag[pos]+=c[pos]
-		return diag
-	"""
 
 	def is_elliptic(self,tol=None,identity_var=None):
 		"""
@@ -339,12 +373,12 @@ class spAD(np.ndarray):
 	def stack(elems,axis=0):
 		return spAD.concatenate(tuple(np.expand_dims(e,axis=axis) for e in elems),axis)
 
-	@staticmethod
-	def concatenate(elems,axis=0):
+	@classmethod
+	def concatenate(cls,elems,axis=0):
 		axis1 = axis if axis>=0 else axis-1
-		elems2 = tuple(spAD(e) for e in elems)
+		elems2 = tuple(cls(e) for e in elems)
 		size_ad = max(e.size_ad for e in elems2)
-		return spAD( 
+		return cls( 
 		np.concatenate(tuple(e.value for e in elems2), axis=axis), 
 		np.concatenate(tuple(_pad_last(e.coef,size_ad)  for e in elems2),axis=axis1),
 		np.concatenate(tuple(_pad_last(e.index,size_ad) for e in elems2),axis=axis1))
@@ -424,8 +458,10 @@ def identity(shape=None,constant=None,shift=0):
 	shape,constant = misc._set_shape_constant(shape,constant)
 	shape2 = shape+(1,)
 	xp = cupy_generic.get_array_module(constant)
-	return spAD(constant,numpy_like.ones_like(constant,shape=shape2),
-		xp.arange(shift,shift+np.prod(shape,dtype=int)).reshape(shape2))
+	cls = spAD if xp is np else cupy_rebase(spAD)
+	int_t=cupy_generic.samesize_int_t(constant.dtype)
+	return cls(constant,numpy_like.ones_like(constant,shape=shape2),
+		xp.arange(shift,shift+np.prod(shape,dtype=int),dtype=int_t).reshape(shape2))
 
 def register(inputs,iterables=None,shift=0,ident=identity):
 	if iterables is None:
