@@ -1,5 +1,6 @@
 import numpy as np
 from . import cupy_generic
+from .cupy_generic import cupy_init_kwargs,cupy_rebase
 from . import ad_generic
 from . import numpy_like
 from . import misc
@@ -28,7 +29,7 @@ class spAD2(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = np.asarray(value)
+		value = numpy_like.asarray(value)
 		if cls.cupy_based():
 			spAD2_cupy = cupy_rebase(spAD2)
 			obj = super(spAD2_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
@@ -380,7 +381,8 @@ class spAD2(np.ndarray):
 
 	# Conversion
 	def bound_ad(self):
-		return 1+np.max((np.max(self.index,initial=-1),np.max(self.index_row,initial=-1),np.max(self.index_col,initial=-1)))
+		def maxi(a): return int(numpy_like.max(a,initial=-1))
+		return 1+np.max((maxi(self.index),maxi(self.index_row),maxi(self.index_col)))
 	def to_dense(self,dense_size_ad=None):
 		def mvax(arr): return np.moveaxis(arr,-1,0)
 		dsad = self.bound_ad() if dense_size_ad is None else dense_size_ad

@@ -24,7 +24,7 @@ class denseAD2(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = ad_generic.asarray(value)
+		value = numpy_like.asarray(value)
 		if cls.cupy_based():
 			denseAD2_cupy = cupy_rebase(denseAD2)
 			obj = super(denseAD2_cupy,cls).__new__(cls,**cupy_init_kwargs(value))

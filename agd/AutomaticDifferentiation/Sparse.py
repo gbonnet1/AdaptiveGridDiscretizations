@@ -304,7 +304,7 @@ class spAD(np.ndarray):
 
 	# Conversion
 	def bound_ad(self):
-		return 1+np.max(self.index,initial=-1)
+		return 1+int(numpy_like.max(self.index,initial=-1))
 	def to_dense(self,dense_size_ad=None):
 		def mvax(arr): return np.moveaxis(arr,-1,0)
 		if dense_size_ad is None: dense_size_ad = self.bound_ad()
