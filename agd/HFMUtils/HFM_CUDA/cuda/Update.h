@@ -78,6 +78,18 @@ __global__ void Update(
 	uq_i[n_i] = uq_old;
 	)
 
+/*	if(debug_print && n_i==0 && n_o==size_o-1){
+//		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
+//		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
+		printf("ntotx %i, ntot %i, nsym %i, nactx_ %i, geom_size %\n",ntotx,ntot,nsym,nactx_);
+		for(int k=0; k<nactx; ++k){
+			printf("k=%i, offset=(%i,%i), weight=%f\n",k,offsets[k][0],offsets[k][1],weights[k]);
+		}
+		printf("geom : %f,%f,%f\n",geom_[0],geom_[1],geom_[2]);
+		printf("size_tot : %i\n",size_tot);
+		printf("scal : %f\n",scal_vmv(offsets[1],geom_,offsets[2]) );
+	}*/
+
 
 
 	FACTOR(
@@ -112,7 +124,7 @@ __global__ void Update(
 			Int y[ndim], y_i[ndim]; // Position of neighbor. 
 			const Int eps=2*s-1;
 
-			for(int l=0; l<ndim; ++l){
+			for(Int l=0; l<ndim; ++l){
 				y[l]   = x[l]   + eps*e[l]; 
 				y_i[l] = x_i[l] + eps*e[l];
 			}
@@ -189,8 +201,10 @@ __global__ void Update(
 	__syncthreads(); // Get all values before reduction
 
 	if(debug_print && n_i==0 && n_o==size_o-1){
+		/*
 		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
 		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
+		*/
 	}
 
 
@@ -199,10 +213,17 @@ __global__ void Update(
 
 /*
 	if(debug_print && n_i==0 && n_o==size_o-1){
-		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
-		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
-	}*/
-
+//		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
+//		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
+		printf("ntotx %i, ntot %i, nsym %i\n",ntotx,ntot,nsym);
+		for(int k=0; k<nactx; ++k){
+			printf("k=%i, offset=(%i,%i), weight=%f\n",k,offsets[k][0],offsets[k][1],weights[k]);
+		}
+		printf("geom : %f,%f,%f\n",geom_[0],geom_[1],geom_[2]);
+		printf("size_tot : %i\n",size_tot);
+		printf("scal : %f\n",scal_vmv(offsets[1],geom_,offsets[2]) );
+	}
+*/
 
 	// Tag neighbor blocks, and this particular block, for update
 	if(u_i[0]!=infinity() && n_i<=2*ndim){ 

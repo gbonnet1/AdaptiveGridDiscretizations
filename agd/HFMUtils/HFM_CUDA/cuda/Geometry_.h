@@ -49,16 +49,18 @@ Tout scal_vv(const Tx x[ndim], const Ty y[ndim]){
 /// Scalar product associated with a symmetric matrix
 template<typename Tx,typename Ty>
 Scalar scal_vmv(const Tx x[ndim], const MC m[symdim], const Ty y[ndim]){
-	Scalar result=0;
+	Scalar result=0.;
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
 		for(Int j=0; j<=i; ++j){
-			result += (i==j ? 1 : 2)*x[i]*y[j]*m[k]; 
+			result += (i==j ? x[i]*y[i] : (x[i]*y[j]+x[j]*y[i]))*m[k]; 
 			++k;
 		}
 	}
 	return result;
 }
+
+
 
 void self_outer_v(const Scalar x[ndim], Scalar m[ndim]){
 	Int k=0; 

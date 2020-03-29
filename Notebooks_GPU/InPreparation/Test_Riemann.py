@@ -13,19 +13,20 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
     formatter=dict(float=lambda x: "%5.3g" % x))
 
 
-n=6
+n=100
 hfmIn = HFMUtils.dictIn({
     'model':'Riemann2',
 #    'verbosity':1,
     'arrayOrdering':'RowMajor',
-    'seeds':[[3,3]],
+    'seeds':[[0,0]],
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
-#    'raiseOnNonConvergence':False,
-    'nitermax_o':10,
+    'raiseOnNonConvergence':False,
+    'nitermax_o':200,
 #    'tol':1e-8,
-#    'multiprecision':True,
+    'multiprecision':True,
 #    'values_float64':True,
+	'exportValues':True,
 
 #    'help':['nitermax_o','traits'],
 	'dims':np.array((n,n)),
@@ -37,13 +38,13 @@ hfmIn = HFMUtils.dictIn({
 #	'seedRadius':2,
 #	'returns':'in_raw',
 	'traits':{
-	'niter_i':1,'shape_i':(4,4),
+	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),
 #	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
 #	'niter_i':48,'shape_i':(24,24),
 #	'niter_i':64,'shape_i':(32,32),
-#   'debug_print':1,
+   'debug_print':1,
 #    'niter_i':1,
     'strict_iter_i_macro':1,
 	'pruning_macro':0,
@@ -53,7 +54,15 @@ hfmIn = HFMUtils.dictIn({
 })
 
 
-hfmIn['metric'] = Metrics.Riemann(cp.eye(2,dtype=np.float32))
+hfmIn['metric'] = cp.array([1.,0.5,1.],dtype=np.float32) #Metrics.Riemann(cp.eye(2,dtype=np.float32))
 hfmOut = hfmIn.RunGPU()
-print(hfmOut['values'])
+if n<=20: print(hfmOut['values'])
 
+cpuIn = hfmIn.copy()
+cpuIn.pop('traits')
+cpuIn['metric'] = np.array(cpuIn['metric'].get(),dtype=np.float64)
+cpuOut = cpuIn.Run()
+
+diff = cpuOut['values']-hfmOut['values'].get()
+print("LInf error: ",np.max(np.abs(diff)))
+if n<=20: print(diff)
