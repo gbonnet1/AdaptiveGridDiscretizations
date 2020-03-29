@@ -37,6 +37,7 @@ class Riemann(Base):
 		return Riemann(lp.dot_AA(lp.transpose(a),lp.dot_AA(self.m,a)))
 	def rescale(self,h):
 		if np.ndim(h)==0: return Riemann(self.m/h**2)
+		else: raise NotImplemented #"TODO"
 
 	def flatten(self):
 		return misc.flatten_symmetric_matrix(self.m)

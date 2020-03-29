@@ -50,6 +50,10 @@ class Rander(Base):
 
 	def inv_transform(self,a):
 		return Rander(Riemann(self.m).inv_transform(a),lp.dot_VA(w,a))
+	def rescale(self,h):
+		if np.ndim(h)==0: return Rander(self.m/h**2,self.w/h)
+		else: raise NotImplemented #"TODO"
+
 
 	def flatten(self):
 		return ad.concatenate((misc.flatten_symmetric_matrix(self.m),self.w),axis=0)

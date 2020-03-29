@@ -177,7 +177,7 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		b+=w*t;
 		c+=w*t*t;
 		// Delta is expected to be non-negative by Cauchy-Schwartz inequality
-		const Scalar delta = b*b-a*c; 
+		const Scalar delta = max(0.,b*b-a*c); 
 		const Scalar sdelta = sqrt(delta);
 		value = (b+sdelta)/a;
 	}

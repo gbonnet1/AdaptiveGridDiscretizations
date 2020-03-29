@@ -82,12 +82,8 @@ class Interface(object):
 			return default
 
 
-	def Run(self,returns='out'):
-		assert returns in ('in_raw','out_raw','out')
-		self.returns=returns
+	def Run(self):
 		self.block={}
-		self.in_raw = {'block':self.block}
-		self.out_raw = {}
 
 		self.SetKernelTraits()
 		self.SetGeometry()
@@ -135,10 +131,7 @@ class Interface(object):
 			traits['ndim_macro'] = int(self.model[-1])
 
 		self.strict_iter_o = traits.get('strict_iter_o_macro',0)
-
 		self.traits = traits
-		self.in_raw['traits']=traits
-
 		self.float_t = np.dtype(traits['Scalar']).type
 		self.int_t   = np.dtype(traits['Int']   ).type
 		self.shape_i = traits['shape_i']
@@ -253,7 +246,7 @@ class Interface(object):
 			resolution = np.finfo(self.float_t).resolution
 			cost_magnitude_bound = 10. # TODO : more reasonable implem
 			tol = resolution*cost_magnitude_bound*self.h
-			if not self.multiprecision: tol*=np.max(self.shape)
+			if not self.multiprecision: tol*=np.sum(self.shape);
 			tol = self.GetValue('tol',default=tol,help=tol_msg)
 		self.tol = self.float_t(tol)
 
@@ -328,8 +321,6 @@ class Interface(object):
 	def SetKernel(self):
 		if self.verbosity>=1: print("Preparing the GPU kernel")
 		if self.GetValue('dummy_kernel',default=False): return
-		in_raw = self.in_raw
-
 		# Set a few last traits
 		traits = self.traits
 		if self.isCurvature:
@@ -342,8 +333,13 @@ class Interface(object):
 
 		self.source = traits_header(self.traits)
 
-		if self.isCurvature: self.source += f'#include "{self.model}.h"\n'
-		else: self.source += f'#include "{self.model[:-1]}_.h"\n' # Dimension generic
+		if self.isCurvature: 
+			self.source += f'#include "{self.model}.h"\n'
+		else: 
+			model = self.model[:-1]+'_' # Dimension generic
+			if model == 'Rander_': model = 'Riemann_' # Rander = Riemann + drift
+			self.source += f'#include "{model}.h"\n' 
+
 		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 		date_modified = getmtime_max(cuda_path)
 		self.source += f"// Date cuda code last modified : {date_modified}\n"
@@ -367,13 +363,10 @@ class Interface(object):
 
 		if self.multiprecision:
 			# Choose power of two, significantly less than h
-			multip_step = 2.**np.floor(np.log2(self.h/10)) 
-			SetModuleConstant(mod,'multip_step',multip_step, float_t)
-			multip_max = np.iinfo(self.int_t).max*multip_step/2
-			SetModuleConstant(mod,'multip_max',multip_max, float_t)
-
-			self.multip_step=multip_step
-			in_raw.update({'multip_step':multip_step,'multip_max':multip_max})
+			self.multip_step = 2.**np.floor(np.log2(self.h/10)) 
+			SetModuleConstant(mod,'multip_step',self.multip_step, float_t)
+			self.multip_max = np.iinfo(self.int_t).max*self.multip_step/2
+			SetModuleConstant(mod,'multip_max',self.multip_max, float_t)
 
 		if self.factoringRadius:
 			SetModuleConstant(mod,'factor_radius2',self.factoringRadius**2,float_t)
@@ -389,13 +382,6 @@ class Interface(object):
 		if self.isCurvature:
 			if np.isscalar(self.xi): SetModuleConstant(mod,'xi',self.xi,float_t)
 			if np.isscalar(self.kappa): SetModuleConstant(mod,'kappa',self.kappa,float_t)
-
-		in_raw.update({
-			'tol':self.tol,
-			'shape_o':self.shape_o,
-			'shape_tot':self.shape,
-			'source':self.source,
-			})
 
 	def Metric(self,x):
 		if self.isCurvature: 
@@ -421,7 +407,10 @@ class Interface(object):
 		self.nitermax_o = self.GetValue('nitermax_o',default=2000,
 			help="Maximum number of iterations of the solver")
 
-		if self.returns=='in_raw': return {'in_raw':in_raw,'hfmOut':hfmOut}
+		print(self.drift.shape)
+		print(np.max(self.drift)*self.h)
+		print(self.block['geom'][:,0,0,0,0])
+		print(self.block['drift'][:,0,0,0,0])
 
 		kernel_argnames = ['values'] #,'geom','seedTags']
 		if self.multiprecision: kernel_argnames.append('valuesq')
@@ -429,12 +418,11 @@ class Interface(object):
 			kernel_argnames.append('valuesNext')
 			if self.multiprecision: kernel_argnames.append('valuesqNext')
 		kernel_argnames.append('geom')
-		kernel_argnames.append('seedTags')
 		if self.drift is not None: kernel_argnames.append('drift')
+		kernel_argnames.append('seedTags')
 		self.kernel_argnames = kernel_argnames
 
 		solver_start_time = time.time()
-
 		if solver=='global_iteration':
 			niter_o = solvers.global_iteration(self)
 		elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
@@ -448,10 +436,11 @@ class Interface(object):
 			'solverGPUTime':solverGPUTime,
 		})
 
+		self.raiseOnNonConvergence = self.GetValue('raiseOnNonConvergence',default=True)
 		if niter_o>=self.nitermax_o:
 			nonconv_msg = (f"Solver {solver} did not reach convergence after "
 				f"maximum allowed number {niter_o} of iterations")
-			if self.GetValue('raiseOnNonConvergence',default=True):
+			if self.raiseOnNonConvergence:
 				raise ValueError(nonconv_msg)
 			else:
 				print("---- Warning ----\n",nonconv_msg,"\n-----------------\n")
@@ -461,7 +450,6 @@ class Interface(object):
 
 	def PostProcess(self):
 		if self.verbosity>=1: print("Post-Processing")
-		if self.returns=='out_raw': return {'out_raw':out_raw,'in_raw':in_raw,'hfmOut':hfmOut}
 		values = misc.block_squeeze(self.block['values'],self.shape)
 		if self.multiprecision:
 			valuesq = misc.block_squeeze(self.block['valuesq'],self.shape)
