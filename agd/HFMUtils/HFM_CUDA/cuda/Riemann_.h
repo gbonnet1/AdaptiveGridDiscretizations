@@ -16,7 +16,7 @@ const Int geom_size = symdim;
 #include "Constants.h"
 
 void scheme(const Scalar dual_metric[symdim], Scalar weights[nsym], Int offsets[nsym][ndim]){
-	Selling_decomp(dual_metric,weights,offsets);}
+	Selling_m(dual_metric,weights,offsets);}
 
 FACTOR(
 /** Returns the perturbations involved in the factored fast marching method.

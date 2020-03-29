@@ -13,7 +13,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
     formatter=dict(float=lambda x: "%5.3g" % x))
 
 
-n=100
+n=200
 hfmIn = HFMUtils.dictIn({
     'model':'Riemann2',
 #    'verbosity':1,
@@ -23,7 +23,7 @@ hfmIn = HFMUtils.dictIn({
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
     'nitermax_o':200,
-#    'tol':1e-8,
+    'tol':5*1e-7,
     'multiprecision':True,
 #    'values_float64':True,
 	'exportValues':True,

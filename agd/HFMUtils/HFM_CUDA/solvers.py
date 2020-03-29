@@ -49,12 +49,14 @@ def adaptive_gauss_siedel_iteration(self):
 		updateList_o = xp.ascontiguousarray(xp.flatnonzero(update_o), dtype=self.int_t)
 		updatePrev_o = np.full_like(update_o,2*self.ndim+1)
 		for niter_o in range(self.nitermax_o):
+			
 			"""
 			l = updateList_o[updateList_o!=-1]
 			show = np.zeros_like(update_o)
 			show.reshape(-1)[l]=1
 			print(show); #print(np.max(self.block['valuesq']))
 			"""
+
 			updateList_o = np.repeat(updateList_o[updateList_o!=-1],2*self.ndim+1)
 			if updateList_o.size==0: return niter_o
 			kernel((updateList_o.size,),self.shape_i, 

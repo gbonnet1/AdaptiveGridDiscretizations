@@ -246,6 +246,17 @@ class Interface(object):
 			self.block['drift'] = misc.block_expand(fd.as_field(self.drift,self.shape),
 				self.shape_i,mode='constant',constant_values=self.xp.nan)
 
+		tol_msg = "Convergence tolerance for the fixed point solver"
+		if self.HasValue('tol'):
+			tol = self.GetValue('tol',help=tol_msg)
+		else:
+			resolution = np.finfo(self.float_t).resolution
+			cost_magnitude_bound = 10. # TODO : more reasonable implem
+			tol = resolution*cost_magnitude_bound*self.h
+			if not self.multiprecision: tol*=np.max(self.shape)
+			tol = self.GetValue('tol',default=tol,help=tol_msg)
+		self.tol = self.float_t(tol)
+
 	def SetValuesArray(self):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
 		xp = self.xp
@@ -344,9 +355,7 @@ class Interface(object):
 		mod = self.module
 
 		float_t,int_t = self.float_t,self.int_t
-		tol = self.float_t(self.GetValue('tol',default=1e-8,
-			help="Convergence tolerance for the fixed point solver"))
-		SetModuleConstant(mod,'tol',tol,float_t)
+		SetModuleConstant(mod,'tol',self.tol,float_t)
 
 		self.size_o = np.prod(self.shape_o)
 		SetModuleConstant(mod,'shape_o',self.shape_o,int_t)
@@ -382,7 +391,7 @@ class Interface(object):
 			if np.isscalar(self.kappa): SetModuleConstant(mod,'kappa',self.kappa,float_t)
 
 		in_raw.update({
-			'tol':tol,
+			'tol':self.tol,
 			'shape_o':self.shape_o,
 			'shape_tot':self.shape,
 			'source':self.source,

@@ -21,7 +21,7 @@ void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 }
 
 // Note : 3=symdim=ndim+1=nsym=nact=nactx
-void Selling_decomp(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
+void Selling_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
 	Int sb[ndim+1][ndim];
 	obtusesuperbase(m,sb);
 	for(Int r=0; r<symdim; ++r){
