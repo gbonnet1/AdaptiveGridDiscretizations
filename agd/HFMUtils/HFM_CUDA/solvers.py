@@ -52,12 +52,13 @@ def adaptive_gauss_siedel_iteration(self):
 		flat(updatePrev_o)[updateList_o] = 2*self.ndim+1 # Seeds cause their own initial update
 		for niter_o in range(self.nitermax_o):
 						
+			"""
 			show = np.zeros_like(update_o)
 			l=updateList_o
-			flat(show)[ l[l<self.size_o] ]=1
-			flat(show)[ l[l>=self.size_o]-self.size_o ]=2 
+			flat(show)[ l[l<self.size_o] ]=1 # Active
+			flat(show)[ l[l>=self.size_o]-self.size_o ]=2 # Frozen
 			print(show); #print(np.max(self.block['valuesq']))
-			
+			"""
 			#print(updatePrev_o)
 
 			updateList_o = np.repeat(updateList_o,2*self.ndim+1)
