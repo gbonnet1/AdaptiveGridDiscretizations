@@ -155,7 +155,7 @@ class Interface(object):
 			help="Apply periodic boundary conditions on some axes")
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
 		if self.bound_active_blocks is True: 
-			self.bound_active_blocks = 6*np.prod(self.shape_o) / np.max(self.shape_o)
+			self.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
 		
 		if self.HasValue('gridScale'):
 			self.h = self.GetValue('gridScale', default=None,
