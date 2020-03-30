@@ -57,11 +57,13 @@ def adaptive_gauss_siedel_iteration(self):
 			print(show); #print(np.max(self.block['valuesq']))
 			"""
 
-			updateList_o = np.repeat(updateList_o[updateList_o!=-1],2*self.ndim+1)
+			updateList_o = np.repeat(updateList_o,2*self.ndim+1)
 			if updateList_o.size==0: return niter_o
 			kernel((updateList_o.size,),self.shape_i, 
 				self.KernelArgs() + (updateList_o,updatePrev_o,update_o))
 			updatePrev_o,update_o = update_o,updatePrev_o
+			updateList_o[updateList_o!=-1]
+			if self.bound_active_blocks: set_minChg_threshold(self,updateList_o)
 	else:
 		for niter_o in range(self.nitermax_o):
 			updateList_o = xp.ascontiguousarray(xp.flatnonzero(update_o), dtype=self.int_t)
@@ -76,3 +78,23 @@ def adaptive_gauss_siedel_iteration(self):
 
 
 	return self.nitermax_o
+
+def set_minChg_thres(self,updateList_o):
+	nConsideredBlocks = len(updateList_o)
+	minChgPrev_thres,self.minChgPrev_thres = self.minChgPrev_thres,self.minChgNext_thres
+	if nConsideredBlocks<self.bound_active_blocks:
+		self.minChgNext_thres=np.inf
+	else:
+		activePos = updateList_o<self.size_o
+		nActiveBlocks = np.sum(activePos)
+		minChgPrev_delta = self.minChgNext_thres - minChgPrev_thres
+		if not np.isfinite(minChgPrev_delta):
+			activeList = updateList_o[activePos]
+			activeMinChg = self.block['minChgNext_o'].flat[activeList]
+			minChgPrev_delta = np.max(activeMinChg)-np.min(activeMinChg)
+		self.minChgNext_thres += minChgPrev_delta * self.bound_active_blocks/nActiveBlocks
+
+	mod = self.module
+	SetModuleConstant(mod,'minChgPrev_thres',self.minChgPrev_thres,self.float_t)
+	SetModuleConstant(mod,'minChgNext_thres',self.minChgNext_thres,self.float_t)
+

@@ -130,6 +130,13 @@ class Interface(object):
 		if not self.isCurvature: # Dimension generic models
 			traits['ndim_macro'] = int(self.model[-1])
 
+		self.bound_active_blocks = self.GetValue('bound_active_blocks',default=False,
+			help="Limit the number of active blocks in the front. " 
+			"Admissible values : (False,True, or positive integer)")
+		if self.bound_active_blocks: 
+			traits['minChg_freeze_macro']=1
+			traits['pruning_macro']=1
+
 		self.strict_iter_o = traits.get('strict_iter_o_macro',0)
 		self.traits = traits
 		self.float_t = np.dtype(traits['Scalar']).type
@@ -147,7 +154,9 @@ class Interface(object):
 		self.periodic = self.GetValue('periodic',default=self.periodic_default,
 			help="Apply periodic boundary conditions on some axes")
 		self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
-
+		if self.bound_active_blocks is True: 
+			self.bound_active_blocks = 6*np.prod(self.shape_o) / np.max(self.shape_o)
+		
 		if self.HasValue('gridScale'):
 			self.h = self.GetValue('gridScale', default=None,
 				help="Scale of the computational grid")
@@ -251,7 +260,6 @@ class Interface(object):
 			tol = resolution*cost_magnitude_bound*self.h
 			if not self.multiprecision: tol*=np.sum(self.shape); 
 			tol = self.GetValue('tol',default=tol,help=tol_msg)
-			print(tol)
 		self.tol = self.float_t(tol)
 
 	def SetValuesArray(self):
@@ -317,6 +325,11 @@ class Interface(object):
 			self.block['valuesNext']=block_values.copy()
 			if self.multiprecision:
 				self.block['valuesqNext']=block_valuesq.copy()
+
+		if self.bound_active_blocks:
+			minChg = xp.full(shape_o,np.inf,dtype=float_t)
+			self.block['minChgPrev_o'] = minChg
+			self.block['minChgNext_o'] = minChg.copy()
 
 		for key,value in self.block.items():
 			if value.dtype.type not in (self.float_t,self.int_t,np.uint8):
@@ -387,6 +400,12 @@ class Interface(object):
 			if np.isscalar(self.xi): SetModuleConstant(mod,'xi',self.xi,float_t)
 			if np.isscalar(self.kappa): SetModuleConstant(mod,'kappa',self.kappa,float_t)
 
+		if self.bound_active_blocks:
+			self.minChgPrev_thres = np.inf
+			self.minChgNext_thres = np.inf
+			SetModuleConstant(mod,'minChgPrev_thres',self.minChgPrev_thres,float_t)
+			SetModuleConstant(mod,'minChgNext_thres',self.minChgNext_thres,float_t)
+
 	def Metric(self,x):
 		if self.isCurvature: 
 			raise ValueError("No metric available for curvature penalized models")
@@ -394,6 +413,11 @@ class Interface(object):
 		else: return self.dualMetric.at(x).dual()
 
 	def KernelArgs(self):
+
+		if self.bound_active_blocks:
+			self.block['minChgPrev_o'],self.block['minChgNext_o'] \
+				=self.block['minChgNext_o'],self.block['minChgPrev_o']
+
 		kernel_args = tuple(self.block[key] for key in self.kernel_argnames)
 
 		if self.strict_iter_o:
@@ -417,7 +441,7 @@ class Interface(object):
 			print(self.block['geom'][:,0,0,0,0])
 			print(self.block['drift'][:,0,0,0,0])
 
-		kernel_argnames = ['values'] #,'geom','seedTags']
+		kernel_argnames = ['values'] 
 		if self.multiprecision: kernel_argnames.append('valuesq')
 		if self.strict_iter_o: 
 			kernel_argnames.append('valuesNext')
@@ -425,6 +449,10 @@ class Interface(object):
 		kernel_argnames.append('geom')
 		if self.drift is not None: kernel_argnames.append('drift')
 		kernel_argnames.append('seedTags')
+		if self.bound_active_blocks:
+			kernel_argnames.append('minChgPrev_o')
+			kernel_argnames.append('minChgNext_o')
+
 		self.kernel_argnames = kernel_argnames
 
 		solver_start_time = time.time()

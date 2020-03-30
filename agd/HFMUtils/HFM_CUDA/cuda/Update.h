@@ -8,7 +8,7 @@ __constant__ Scalar minChgPrev_thres, minChgNext_thres; // Previous and next thr
 )
 
 // Tag the neighbors for update
-void propagate(const Int n_i, const Int x_o[ndim]){
+void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * updateNext_o){
 	if(n_i>2*ndim) return;
 
 	Int k = n_i/2;
@@ -48,28 +48,24 @@ __global__ void Update(
 			|| updatePrev_o[n_o]!=0 // Someone else is working on the block
 			){n_o=-1; break;} 
 
-			const Scalar minChgPrev = minChg_Prev_o[n_o];
-			if(minChgPrev < minChgPrev_thres){ // Propagation already done
-			n_o=-1; break;
-			} else if(minChgPrev >= minChgNext_thres){ // Not yet ready for unfreezing
-				updateList_o[blockIdx.x] = n_o+size_o; n_o=-2;
-			} else { // Unfreeze : tag neighbors for next update. 
+			const Scalar minChgPrev = minChgPrev_o[n_o];
+			minChgNext_o[n_o] = minChgPrev;
+			if(minChgPrev < minChg_thres){ // Unfreeze : tag neighbors for next update. 
 				updateList_o[blockIdx.x] = n_o; n_o=-3;
-			} 
-
-			if(){ // Nobody else is working on that block
-				minChgNext_o[n_o] = minChgPrev;}
+			} else { // Stay frozen 
+				updateList_o[blockIdx.x] = n_o+size_o; n_o=-2;
+			}
 			break;
 		}
 	#endif
-
+		// Non frozen case
 		// Get the position of the block to be updated
 		if(ks!=2*ndim){
 			const Int k = ks/2, s = ks%2;
 			x_o[k]+=2*s-1;
-
+			PERIODIC(if(periodic_axes[k]){x_o[k] = (x_o[k]+shape_o[k])%shape_o[k];})
 			// Check that the block is in range
-			if(Grid::InRange_per(x_o,shape_o)) {n_o=Grid::Index_per(x_o,shape_o);}
+			if(Grid::InRange(x_o,shape_o)) {n_o=Grid::Index(x_o,shape_o);}
 			else {n_o=-1; break;}
 		}
 
@@ -90,7 +86,7 @@ __global__ void Update(
 		x[k] = x_o[k]*shape_i[k]+x_i[k];}
 
 	const Int n_i = Grid::Index(x_i,shape_i);
-	MINCHG_FREEZE(if(n_o==-3){propagate(n_i,x_o); return;})
+	MINCHG_FREEZE(if(n_o==-3){TagNeighborsForUpdate(n_i,x_o,updateNext_o); return;})
 
 	const Int n = n_o*size_i + n_i;
 	const bool isSeed = Grid::GetBool(seeds,n);
@@ -251,8 +247,12 @@ __global__ void Update(
 
 
 	REDUCE_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
+
+	MINCHG_FREEZE(__shared__ Scalar minChgPrev; if(n_i==0){minChgPrev = minChgPrev_o[n_o];})
+
 	__syncthreads();  // Make u_i[0] accessible to all 
-	const Scalar minChg = u_i[0];
+	Scalar minChg = u_i[0];
+
 /*
 	if(debug_print && n_i==0 && n_o==size_o-1){
 //		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
@@ -270,35 +270,19 @@ __global__ void Update(
 
 	// Tag neighbor blocks, and this particular block, for update
 
-#if pruning_macro
-#if minChg_freeze_macro
-	const Scalar minChgPrev = minChgPrev_o[n_o];
-	const bool frozen_exists = minChgPrev>=minChgPrev_thres && minChgPrev!=infinity();
-	if(frozen_exists){
-		if(minChgPrev<minChgNext_thres){ // frozen block propagates
-			if(n_i==size_i-1){minChgList_o[n_o]=-1;}
-			if(n_i==size_i-2){minChgNext_o[n_o]=minChg;}
-		} else if(minChg<minChgNext_thres) { // This block propagates
-			if(n_i==size_i-1){minChgList_o[n_o]=n_o;}
-			if(n_i==size_i-2){minChgNext_o[n_o]=minChg;}
-		} else { // No one propagates
-			if(n_i==size_i-1){minChgList_o[n_o]=-1;}
-			if(n_i==size_i-2){minChgNext_o[n_o]=minChg;}
-		}
-	} else {
-
-	}
-
-	
-#else // Simple pruning
+#if minChg_freeze_macro // Propagate if change is small enough
+	const bool frozenPrev = minChgPrev>=minChgPrev_thres && minChgPrev!=infinity();
+	if(frozenPrev){minChg = min(minChg,minChgPrev);}
+	const bool propagate = minChg < minChgNext_thres;
+	const bool freeze = !propagate && minChg!=infinity();
+	if(n_i==size_i-2) {minChgNext_o[n_o] = minChg;}
+#else // Propagate as soon as something changed
 	const bool propagate = minChg != infinity();
-	if(propagate){TagNeighborsForUpdate(n_i,x_o);}
-	if(n_i==size_i-1){updateList_o[blockIdx.x] = propagate ? n_o : -1;}
-#endif
-#endif
-#if minChg_freeze_macro
 #endif
 
+	if(propagate){TagNeighborsForUpdate(n_i,x_o,updateNext_o);}
+	PRUNING(if(n_i==size_i-1){updateList_o[blockIdx.x] 
+		= propagate ? n_o : MINCHG_FREEZE(freeze ? (n_o+size_o) :) -1;})
 }
 
 } // Extern "C"
