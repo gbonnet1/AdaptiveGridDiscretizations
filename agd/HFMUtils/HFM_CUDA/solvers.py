@@ -1,7 +1,8 @@
 import numpy as np
 import time
 from . import misc
-
+from ...AutomaticDifferentiation.numpy_like import flat
+from .cupy_module_helper import SetModuleConstant
 """
 The solvers defined below are member functions of the "interface" class devoted to 
 running the gpu eikonal solver.
@@ -47,23 +48,25 @@ def adaptive_gauss_siedel_iteration(self):
 	negative effect, due to the smallness of eps."""
 	if self.traits['pruning_macro']: 
 		updateList_o = xp.ascontiguousarray(xp.flatnonzero(update_o), dtype=self.int_t)
-		updatePrev_o = np.full_like(update_o,2*self.ndim+1)
+		updatePrev_o = np.full_like(update_o,0)
+		flat(updatePrev_o)[updateList_o] = 2*self.ndim+1 # Seeds cause their own initial update
 		for niter_o in range(self.nitermax_o):
-			
-			"""
-			l = updateList_o[updateList_o!=-1]
+						
 			show = np.zeros_like(update_o)
-			show.reshape(-1)[l]=1
+			l=updateList_o
+			flat(show)[ l[l<self.size_o] ]=1
+			flat(show)[ l[l>=self.size_o]-self.size_o ]=2 
 			print(show); #print(np.max(self.block['valuesq']))
-			"""
+			
+			#print(updatePrev_o)
 
 			updateList_o = np.repeat(updateList_o,2*self.ndim+1)
 			if updateList_o.size==0: return niter_o
 			kernel((updateList_o.size,),self.shape_i, 
 				self.KernelArgs() + (updateList_o,updatePrev_o,update_o))
 			updatePrev_o,update_o = update_o,updatePrev_o
-			updateList_o[updateList_o!=-1]
-			if self.bound_active_blocks: set_minChg_threshold(self,updateList_o)
+			updateList_o = updateList_o[updateList_o!=-1]
+			if self.bound_active_blocks: set_minChg_thres(self,updateList_o)
 	else:
 		for niter_o in range(self.nitermax_o):
 			updateList_o = xp.ascontiguousarray(xp.flatnonzero(update_o), dtype=self.int_t)
@@ -80,20 +83,34 @@ def adaptive_gauss_siedel_iteration(self):
 	return self.nitermax_o
 
 def set_minChg_thres(self,updateList_o):
+	"""
+	Set the threshold for the AGSI variant limiting the number of active blocks, based
+	on causality.
+	"""
+#	print(f"Entering set_minChg_thres. prev : {self.minChgPrev_thres}, next {self.minChgNext_thres}")
 	nConsideredBlocks = len(updateList_o)
 	minChgPrev_thres,self.minChgPrev_thres = self.minChgPrev_thres,self.minChgNext_thres
 	if nConsideredBlocks<self.bound_active_blocks:
 		self.minChgNext_thres=np.inf
 	else:
 		activePos = updateList_o<self.size_o
-		nActiveBlocks = np.sum(activePos)
+		nActiveBlocks = max(1,int(np.sum(activePos)))
 		minChgPrev_delta = self.minChgNext_thres - minChgPrev_thres
-		if not np.isfinite(minChgPrev_delta):
+		if not np.isfinite(minChgPrev_delta): #nActiveBlocks==nConsideredBlocks: #:
 			activeList = updateList_o[activePos]
-			activeMinChg = self.block['minChgNext_o'].flat[activeList]
-			minChgPrev_delta = np.max(activeMinChg)-np.min(activeMinChg)
-		self.minChgNext_thres += minChgPrev_delta * self.bound_active_blocks/nActiveBlocks
-
+			activeMinChg = flat(self.block['minChgNext_o'])[activeList]
+#			print(f"{np.min(activeMinChg)},{type(np.min(activeMinChg))}")
+			minChgPrev_thres = float(np.min(activeMinChg))
+			self.minChgNext_thres = float(np.max(activeMinChg))
+#			print("recomputed")
+			minChgPrev_delta = self.minChgNext_thres - minChgPrev_thres
+#		print("hi, attempting to bound active blocs")
+#		print(f"prev : {minChgPrev_thres}, next : {self.minChgNext_thres}, delta {minChgPrev_delta}")
+		minChgNext_delta = minChgPrev_delta * self.bound_active_blocks/nActiveBlocks
+#		print(f"active {nActiveBlocks}, bound {self.bound_active_blocks}, next delta {minChgNext_delta}")
+		self.minChgNext_thres += minChgNext_delta
+	
+#	print(f"Leaving set_minChg_thres. prev : {self.minChgPrev_thres}, next {self.minChgNext_thres}")
 	mod = self.module
 	SetModuleConstant(mod,'minChgPrev_thres',self.minChgPrev_thres,self.float_t)
 	SetModuleConstant(mod,'minChgNext_thres',self.minChgNext_thres,self.float_t)

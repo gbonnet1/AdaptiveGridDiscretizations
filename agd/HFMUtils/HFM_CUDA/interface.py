@@ -327,7 +327,7 @@ class Interface(object):
 				self.block['valuesqNext']=block_valuesq.copy()
 
 		if self.bound_active_blocks:
-			minChg = xp.full(shape_o,np.inf,dtype=float_t)
+			minChg = xp.full(self.shape_o,np.inf,dtype=self.float_t)
 			self.block['minChgPrev_o'] = minChg
 			self.block['minChgNext_o'] = minChg.copy()
 

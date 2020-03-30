@@ -26,19 +26,18 @@ raise
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
-n=10
+n=80
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
 #    'verbosity':1,
-    'arrayOrdering':'RowMajor',
-    'seeds':[[2,2]],
+    'seeds':[[0,0]],
 #    'kernel':"dummy",
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
 #    'raiseOnNonConvergence':False,
-#    'nitermax_o':1,
+    'nitermax_o':100,
 #    'tol':1e-8,
-    'multiprecision':True,
+#    'multiprecision':True,
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
@@ -50,6 +49,7 @@ hfmIn = HFMUtils.dictIn({
 #	'factoringRadius':10000,
 #	'seedRadius':2,
 #	'returns':'in_raw',
+	'bound_active_blocks':10,
 	'traits':{
 	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),

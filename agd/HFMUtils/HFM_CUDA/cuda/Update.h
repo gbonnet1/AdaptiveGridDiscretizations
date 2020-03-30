@@ -30,7 +30,7 @@ __global__ void Update(
 	Scalar * u, MULTIP(Int * uq,) STRICT_ITER_O(Scalar * uNext, MULTIP(Int * uqNext,) )
 	const Scalar * geom, DRIFT(const Scalar * drift,) const BoolPack * seeds, 
 	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
-	Int * updateList_o, PRUNING(const BoolAtom * updatePrev_o,) BoolAtom * updateNext_o ){ 
+	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o ){ 
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
 
@@ -50,7 +50,7 @@ __global__ void Update(
 
 			const Scalar minChgPrev = minChgPrev_o[n_o];
 			minChgNext_o[n_o] = minChgPrev;
-			if(minChgPrev < minChg_thres){ // Unfreeze : tag neighbors for next update. 
+			if(minChgPrev < minChgNext_thres){ // Unfreeze : tag neighbors for next update. 
 				updateList_o[blockIdx.x] = n_o; n_o=-3;
 			} else { // Stay frozen 
 				updateList_o[blockIdx.x] = n_o+size_o; n_o=-2;
@@ -86,7 +86,10 @@ __global__ void Update(
 		x[k] = x_o[k]*shape_i[k]+x_i[k];}
 
 	const Int n_i = Grid::Index(x_i,shape_i);
-	MINCHG_FREEZE(if(n_o==-3){TagNeighborsForUpdate(n_i,x_o,updateNext_o); return;})
+	MINCHG_FREEZE(
+		if(n_o==-3){TagNeighborsForUpdate(n_i,x_o,updateNext_o); return;}
+		if(n_i==0){updatePrev_o[n_o]=0;} // Cleanup required for MINCHG
+		)
 
 	const Int n = n_o*size_i + n_i;
 	const bool isSeed = Grid::GetBool(seeds,n);

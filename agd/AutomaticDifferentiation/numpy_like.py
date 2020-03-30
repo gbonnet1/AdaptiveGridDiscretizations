@@ -47,8 +47,16 @@ def concatenate(elems,axis=0):
 		if is_ad(e): return type(e).concatenate(elems,axis)
 	return np.concatenate(elems,axis)
 
+# ------- Old cupy compatibility --------
+
 def max(a,*args,**kwargs):
+	"""Reimplemeted to support cupy"""
 	try: return np.max(a,*args,**kwargs)
-	except TypeError: # Old cupy versions do not support initial
+	except TypeError: # cupy (old version ?) does not accept initial argument
 		initial = kwargs.pop('initial')
 		return np.maximum(initial,np.max(a,*args,**kwargs))
+
+def flat(a):
+	"""Reimplemented to support cupy"""
+	try: return a.flat
+	except AttributeError: return a.reshape(-1) # cupy (old version ?) does not have flat
