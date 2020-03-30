@@ -197,9 +197,9 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) ){
 
-	if(strict_iter_i_macro || nmix>1){
 
 	Scalar u_i_new; MULTIP(Int uq_i_new;)
+	if(strict_iter_i_macro || nmix>1){
 	for(int i=0; i<niter_i; ++i){
 		if(active) {
 			MIX(u_i_mix=mix_neutral(); MULTIP(uq_i_mix=0;) )
@@ -219,9 +219,9 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 			MIX(u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;))
 		}
 		__syncthreads();
-		if(active){u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
-
-//		u_i[n_i]+=(uq_i[n_i]-n_i)*multip_step; uq_i[n_i]=n_i; //DEBUG
+		if(active DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
+										u_i_new  MULTIP(,uq_i_new)))) {
+			u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
 		__syncthreads();
 	} // for niter_i
 
@@ -235,6 +235,9 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 				u_i MULTIP(,uq_i),
 				&u_i[n_i] MULTIP(,&uq_i[n_i]) 
 				);
+			if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
+										  u_i_new  MULTIP(,uq_i_new)))) {
+				u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
 		}
 		__syncthreads();
 	}

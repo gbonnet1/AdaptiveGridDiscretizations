@@ -79,17 +79,6 @@ the finite differences computation, a expansion of the solution near the source.
 #define SHIFT(...) 
 #endif
 
-/** The second order scheme allows to improve accuracy*/
-#ifndef order2_macro
-#define order2_macro 0
-#endif
-
-#if order2_macro
-#define ORDER2(...) __VA_ARGS__
-#else
-#define ORDER2(...) 
-#endif
-
 /** Min or Max of a family of schemes*/
 #ifndef mix_macro
 #define mix_macro 0
@@ -99,6 +88,17 @@ the finite differences computation, a expansion of the solution near the source.
 #define MIX(...) __VA_ARGS__
 #else
 #define MIX(...) 
+#endif
+
+/** The second order scheme allows to improve accuracy*/
+#ifndef order2_macro
+#define order2_macro 0
+#endif
+
+#if order2_macro
+#define ORDER2(...) __VA_ARGS__
+#else
+#define ORDER2(...) 
 #endif
 
 /** Curvature penalized models have share a few specific features : 
@@ -126,4 +126,19 @@ position dependent metric. */
 #else
 #define PERIODIC(...) 
 #define APERIODIC(...) __VA_ARGS__
+#endif
+
+/** Since the schemes are monotone (except with the second-order enhancement), and we start 
+from a super-solution, the solution values should be decreasing as the iterations proceed. 
+We can take advantage of this property to achieve better robustness of the solver. 
+(Otherwise, floating point roundoff errors often cause multiple useless additional iterations)
+*/
+#ifndef decreasing_macro
+#define decreasing_macro 1
+#endif
+
+#if decreasing_macro
+#define DECREASING(...) __VA_ARGS__
+#else 
+#define DECREASING(...) 
 #endif

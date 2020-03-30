@@ -244,10 +244,14 @@ class Interface(object):
 			tol = self.GetValue('tol',help=tol_msg)
 		else:
 			resolution = np.finfo(self.float_t).resolution
-			cost_magnitude_bound = 10. # TODO : more reasonable implem
+			cost_magnitude_bound = self.GetValue('cost_magnitude_bound',default=10,
+				help='Upper bound on the magnitude of the cost function, or equivalent '
+				"quantity for a metric, used to set the 'tol' parameter of the eikonal solver")
+			cost_magnitude_bound = 10. # TODO : more reasonable implem ?
 			tol = resolution*cost_magnitude_bound*self.h
-			if not self.multiprecision: tol*=np.sum(self.shape);
+			if not self.multiprecision: tol*=np.sum(self.shape); 
 			tol = self.GetValue('tol',default=tol,help=tol_msg)
+			print(tol)
 		self.tol = self.float_t(tol)
 
 	def SetValuesArray(self):
@@ -407,10 +411,11 @@ class Interface(object):
 		self.nitermax_o = self.GetValue('nitermax_o',default=2000,
 			help="Maximum number of iterations of the solver")
 
-		print(self.drift.shape)
-		print(np.max(self.drift)*self.h)
-		print(self.block['geom'][:,0,0,0,0])
-		print(self.block['drift'][:,0,0,0,0])
+		if self.drift is not None:
+			print(self.drift.shape)
+			print(np.max(self.drift)*self.h)
+			print(self.block['geom'][:,0,0,0,0])
+			print(self.block['drift'][:,0,0,0,0])
 
 		kernel_argnames = ['values'] #,'geom','seedTags']
 		if self.multiprecision: kernel_argnames.append('valuesq')
