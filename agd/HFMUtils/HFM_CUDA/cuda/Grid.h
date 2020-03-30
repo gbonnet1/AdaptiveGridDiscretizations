@@ -40,10 +40,9 @@ Int Index(const Int x[ndim], const Int shape_[ndim]){
 	return n;
 }
 
-PERIODIC(
 bool InRange_per(const Int x[ndim], const Int shape_[ndim]){
 for(int k=0; k<ndim; ++k){
-		if(periodic_axes[k]) continue;
+		PERIODIC(if(periodic_axes[k]) continue;)
 		if(x[k]<0 || x[k]>=shape_[k]){
 			return false;
 		}
@@ -55,11 +54,13 @@ Int Index_per(const Int x[ndim], const Int shape_[ndim]){
 	Int n=0; 
 	for(Int k=0; k<ndim; ++k){
 		if(k>0) {n*=shape_[k];}
-		n+=x[k];
+		Int xk=x[k];
+		PERIODIC(if(periodic_axes[k]){xk=(xk+shape_[k])%shape_[k];})
+		n+=xk;
 	}
 	return n;
 }
-)
+
 
 void Position(Int n, const Int shape_[ndim], Int x[ndim]){
 	for(Int k=ndim-1; k>=1; --k){

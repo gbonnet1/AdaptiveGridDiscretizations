@@ -1,5 +1,7 @@
 #pragma once
 
+#include "static_assert.h"
+
 #ifndef Scalar_macro
 typedef float Scalar;
 #endif
@@ -23,13 +25,6 @@ typedef unsigned char BoolAtom;
 const Int debug_print = 0;
 #endif
 
-/** strict_iter_i_macro = 1 causes the input and output values 
-within a block to be stored separately and synced at the end of 
-each iteration*/
-#ifndef strict_iter_i_macro
-#define strict_iter_i_macro 1
-#endif
-
 /** In multi-precision, we address float roundoff errors 
 by representing a real in the form u+uq*multip_step, where
 u is a float, uq is an integer, and multip_step is a constant.*/
@@ -44,6 +39,36 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 #define MULTIP(...) 
 #define NOMULTIP(...) __VA_ARGS__
 #endif
+
+/** Min or Max of a family of schemes*/
+#ifndef mix_macro
+#define mix_macro 0
+#endif
+
+#if mix_macro
+#define MIX(...) __VA_ARGS__
+#else
+#define MIX(...) 
+#endif
+
+/** strict_iter_i_macro = 1 causes the input and output values 
+within a block to be stored separately and synced at the end of 
+each iteration*/
+#ifndef strict_iter_i_macro
+#define strict_iter_i_macro (multiprecision_macro || mix_macro)
+#endif
+
+/** strict_iter_o_macro causes a similar behavior, but for the global iterations */ 
+#ifndef strict_iter_o_macro
+#define strict_iter_o_macro multiprecision_macro
+#endif
+
+#if strict_iter_o_macro
+#define STRICT_ITER_O(...) __VA_ARGS__
+#else 
+#define STRICT_ITER_O(...) 
+#endif
+
 
 /** Source factorization allows to improve the solution accuracy by subtracting, before 
 the finite differences computation, a expansion of the solution near the source.*/
@@ -77,17 +102,6 @@ the finite differences computation, a expansion of the solution near the source.
 #define SHIFT(...) __VA_ARGS__
 #else
 #define SHIFT(...) 
-#endif
-
-/** Min or Max of a family of schemes*/
-#ifndef mix_macro
-#define mix_macro 0
-#endif
-
-#if mix_macro
-#define MIX(...) __VA_ARGS__
-#else
-#define MIX(...) 
 #endif
 
 /** The second order scheme allows to improve accuracy*/
@@ -141,4 +155,37 @@ We can take advantage of this property to achieve better robustness of the solve
 #define DECREASING(...) __VA_ARGS__
 #else 
 #define DECREASING(...) 
+#endif
+
+/** The implemented schemes are causal except in the following cases:
+- second order enhancement (mild non-causality)
+- source factorization (mild non-causality)
+- drift (strong non-causality, but possibly not such an issue due to the large block size)
+We can take advantage of this property to improve computation time, by freezing computations
+in the far future until the past has suitably converged. For that purpose, a target number of 
+active blocks is specified. Blocks are then frozen, or not, depending on their minChg
+(minimal change) value.
+*/
+#ifndef minChg_freeze_macro
+#define minChg_freeze_macro 0
+#endif
+
+#if minChg_freeze_macro
+#define MINCHG_FREEZE(...) __VA_ARGS__
+#else
+#define MINCHG_FREEZE(...) 
+#endif
+
+/** The pruning macro maintains a list of the active nodes at any time.
+It is slightly more flexible than the default method, and needed for minChg_freeze_macro
+to take effect.
+*/
+#ifndef pruning_macro
+#define pruning_macro minChg_freeze_macro
+#endif
+
+#if pruning_macro
+#define PRUNING(...) __VA_ARGS__
+#else
+#define PRUNING(...) 
 #endif
