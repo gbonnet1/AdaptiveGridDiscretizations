@@ -259,10 +259,10 @@ class Interface(object):
 
 		tol = self.GetValue('tol',default="_Dummy",help=tol_msg)
 		if isinstance(tol,str) and tol=="_Dummy":
-			resolution = np.finfo(self.float_t).resolution
-			self.mean_cost_magnitude = self.GetValue('mean_cost_magnitude',default=10,
-				help=mean_cost_magnitude_msg)
-			tol = resolution*self.mean_cost_magnitude*self.h
+			if self.metric is None: self.metric=self.dualMetric.dual()
+			mean_cost_bound = float(np.mean(self.metric.cost_bound()))
+			float_resolution = np.finfo(self.float_t).resolution
+			tol = mean_cost_bound * float_resolution * 5.
 			if not self.multiprecision: tol*=np.sum(self.shape)
 			self.hfmOut['keys']['defaulted']['tol']=tol
 		self.tol = self.float_t(tol)

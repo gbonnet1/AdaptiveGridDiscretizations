@@ -98,10 +98,10 @@ def transpose(a):
 	return a.transpose( (1,0,)+tuple(range(2,a.ndim)) )
 	
 def trace(a):
-	dim = a.shape[0]
-	if a.shape[1]!=dim:
+	vdim = a.shape[0]
+	if a.shape[1]!=vdim:
 		raise ValueError("trace error : incompatible dimensions")
-	return a[(range(dim),range(dim))].sum(0)
+	return sum(a[i,i] for i in range(vdim))
 
 # Low dimensional special cases
 
