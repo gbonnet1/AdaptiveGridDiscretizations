@@ -48,10 +48,10 @@ class Rander(Base):
 		r = np.sqrt(lp.dot_VV(lp.solve_AV(self.m,self.w),self.w))
 		return ((1.+r)/(1.-r))*Riemann(self.m).anisotropy_bound()
 	def cost_bound(self):
-		return Riemann(self.m).cost_bound() + ad.Optimization.norm(w,ord=2,axis=0)
+		return Riemann(self.m).cost_bound() + ad.Optimization.norm(self.w,ord=2,axis=0)
 
 	def inv_transform(self,a):
-		return Rander(Riemann(self.m).inv_transform(a),lp.dot_VA(w,a))
+		return Rander(Riemann(self.m).inv_transform(a).m,lp.dot_VA(self.w,a))
 #	def rescale(self,h):
 #		if np.ndim(h)==0: return Rander(self.m/h**2,self.w/h)
 #		else: raise NotImplemented #"TODO"

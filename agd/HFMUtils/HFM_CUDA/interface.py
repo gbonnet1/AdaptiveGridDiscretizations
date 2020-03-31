@@ -445,6 +445,7 @@ class Interface(object):
 			help="Maximum number of iterations of the solver")
 
 		if self.drift is not None:
+			print("Setting solver drift")
 			print(self.drift.shape)
 			print(np.max(self.drift)*self.h)
 			print(self.block['geom'][:,0,0,0,0])
@@ -462,6 +463,7 @@ class Interface(object):
 			kernel_argnames.append('minChgPrev_o')
 			kernel_argnames.append('minChgNext_o')
 
+		print(kernel_argnames)
 		self.kernel_argnames = kernel_argnames
 
 		solver_start_time = time.time()
