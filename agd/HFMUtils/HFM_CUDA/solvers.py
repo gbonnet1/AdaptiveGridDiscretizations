@@ -95,7 +95,7 @@ def set_minChg_thres(self,updateList_o):
 		self.minChgNext_thres=np.inf
 	else:
 		activePos = updateList_o<self.size_o
-		nActiveBlocks = max(1,int(np.sum(activePos)))
+		nActiveBlocks = int(np.sum(activePos))
 		minChgPrev_delta = self.minChgNext_thres - minChgPrev_thres
 		if not np.isfinite(minChgPrev_delta): #nActiveBlocks==nConsideredBlocks: #:
 			activeList = updateList_o[activePos]
@@ -107,7 +107,8 @@ def set_minChg_thres(self,updateList_o):
 			minChgPrev_delta = self.minChgNext_thres - minChgPrev_thres
 #		print("hi, attempting to bound active blocs")
 #		print(f"prev : {minChgPrev_thres}, next : {self.minChgNext_thres}, delta {minChgPrev_delta}")
-		minChgNext_delta = minChgPrev_delta * self.bound_active_blocks/nActiveBlocks
+		mult = max(min(self.bound_active_blocks/max(1,nActiveBlocks),2.),0.7)
+		minChgNext_delta = max(minChgPrev_delta * mult, self.minChg_delta_min)
 #		print(f"active {nActiveBlocks}, bound {self.bound_active_blocks}, next delta {minChgNext_delta}")
 		self.minChgNext_thres += minChgNext_delta
 	

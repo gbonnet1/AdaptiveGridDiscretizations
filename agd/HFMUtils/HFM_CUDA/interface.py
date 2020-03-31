@@ -65,7 +65,11 @@ class Interface(object):
 				else:
 					print(f"---- Help for key {key} ----")
 					print(help)
-					if not (isinstance(default,str) and default=="_None"): 
+					if isinstance(default,str) and default=="_None": 
+						print("No default value")
+					elif isinstance(default,str) and default=="_Dummy":
+						print(f"see out['keys']['defaulted'][{key}] for default")
+					else:
 						print("default value :",default)
 					print("-----------------------------")
 
@@ -249,18 +253,23 @@ class Interface(object):
 				self.shape_i,mode='constant',constant_values=self.xp.nan)
 
 		tol_msg = "Convergence tolerance for the fixed point solver"
-		if self.HasValue('tol'):
-			tol = self.GetValue('tol',help=tol_msg)
-		else:
+		mean_cost_magnitude_msg = ("Upper bound on the magnitude of the cost function, "
+		"or equivalent quantity for a metric, used to set the 'tol' and 'minChg_delta_min' "
+		"parameters of the eikonal solver")
+
+		tol = self.GetValue('tol',default="_Dummy",help=tol_msg)
+		if isinstance(tol,str) and tol=="_Dummy":
 			resolution = np.finfo(self.float_t).resolution
-			cost_magnitude_bound = self.GetValue('cost_magnitude_bound',default=10,
-				help='Upper bound on the magnitude of the cost function, or equivalent '
-				"quantity for a metric, used to set the 'tol' parameter of the eikonal solver")
-			cost_magnitude_bound = 10. # TODO : more reasonable implem ?
-			tol = resolution*cost_magnitude_bound*self.h
-			if not self.multiprecision: tol*=np.sum(self.shape); 
-			tol = self.GetValue('tol',default=tol,help=tol_msg)
+			self.mean_cost_magnitude = self.GetValue('mean_cost_magnitude',default=10,
+				help=mean_cost_magnitude_msg)
+			tol = resolution*self.mean_cost_magnitude*self.h
+			if not self.multiprecision: tol*=np.sum(self.shape)
+			self.hfmOut['keys']['defaulted']['tol']=tol
 		self.tol = self.float_t(tol)
+
+		if self.bound_active_blocks:
+			self.minChg_delta_min = self.GetValue('minChg_delta_min',default=self.h/10.,
+				help="Minimal threshold increase for bound_active_blocks variants")
 
 	def SetValuesArray(self):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
