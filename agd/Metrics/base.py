@@ -14,7 +14,7 @@ class Base:
 		Norm defiend by the metric. 
 		Expected to be 1-homogeneous w.r.t. v
 		"""
-		raise ValueError("""Error : norm must be specialized in subclass""")
+		raise NotImplementedError("""Error : norm must be specialized in subclass""")
 
 	def gradient(self,v):
 		"""
@@ -29,14 +29,14 @@ class Base:
 		return np.moveaxis(self.norm(v_ad).coef,-1,0)
 	
 	def dual(self):
-		raise ValueError("dual is not implemented for this norm")
+		raise NotImplementedError("dual is not implemented for this norm")
 
 	@property
 	def vdim(self):
 		"""
 		Ambient vector space dimension
 		"""
-		raise ValueError("ndim is not implemented for this norm")
+		raise NotImplementedError("ndim is not implemented for this norm")
 
 	@property
 	def shape(self):
@@ -44,7 +44,7 @@ class Base:
 		Dimensions of the underlying domain.
 		Expected to be the empty tuple, or a tuple of length vdim.
 		"""
-		raise ValueError("Shape not implemented for this norm")
+		raise NotImplementedError("Shape not implemented for this norm")
 	
 	def disassociate(self):
 		def dis(x):
@@ -57,14 +57,14 @@ class Base:
 		"""
 		Wether norm(u)=0 implies u=0. 
 		"""
-		raise ValueError("is_definite is not implemented for this norm")
+		raise NotImplementedError("is_definite is not implemented for this norm")
 
 	def anisotropy(self):
 		"""
 		Sharp upper bound on norm(u)/norm(v), 
 		for any unit vectors u and v.
 		"""
-		raise ValueError("anisotropy is not implemented for this norm")
+		raise NotImplementedError("anisotropy is not implemented for this norm")
 
 	def anisotropy_bound(self):
 		"""
@@ -72,6 +72,12 @@ class Base:
 		for any unit vectors u and v.
 		"""
 		return self.anisotropy()
+	def cost_bound(self):
+		"""
+		Upper bound on norm(u), for any unit vector u.
+		"""
+		raise NotImplementedError("cost_bound is not implemented for this norm")
+
 # ---- Causality and acuteness related methods ----
 
 	def cos_asym(self,u,v):
@@ -108,7 +114,7 @@ class Base:
 		Affine transformation of the norm. 
 		The new unit ball is the inverse image of the previous one.
 		"""
-		raise ValueError("Affine transformation not implemented for this norm")
+		raise NotImplementedError("Affine transformation not implemented for this norm")
 
 	def transform(self,a):
 		"""
@@ -130,17 +136,34 @@ class Base:
 		"""
 		return self.rotate(lp.rotation(*args,**kwargs))
 
-	def rescale(self,h):
-		raise ValueError("Rescale not implemented") # TODO
+	def rescale(self,h,**kwargs):
+		"""
+		The unit ball is multiplied by the given scale h, which may be axis dependent.
+		Set broadcast=False for a point dependent (and possibly axis dependent) scale.
+		"""
+		h = self._rescale_helper(h,**kwargs)
+		z = ad.numpy_like.zeros_like(h[0])
+		a = ad.array([[1./h[i] if i==j else z 
+			for i in range(self.vdim)] for j in range(self.vdim)])
+		return self.inv_transform(a)
+
+	def _rescale_helper(self,h,broadcast=True):
+		"""
+		Returns a point dependent and axis dependent scale, with the correct array type.
+		"""
+		h = self.array_float_caster(h)
+		hshape = (self.vdim,)+self.shape # shape for axis and point dependent
+		if broadcast: return np.broadcast_to(h,hshape)
+		elif h.ndim==self.ndim: return np.broadcast_to(np.expand_dims(h,0),hshape)
 
 # ---- Import and export ----
 
 	def flatten(self):
-		raise ValueError("Flattening not implemented for this norm")
+		raise NotImplementedError("Flattening not implemented for this norm")
 
 	@classmethod
 	def expand(cls,arr):
-		raise ValueError("Expansion not implemented for this norm")
+		raise NotImplementedError("Expansion not implemented for this norm")
 
 	def to_HFM(self):
 		"""
@@ -151,18 +174,22 @@ class Base:
 		return np.moveaxis(self.flatten(),0,-1)
 
 	def model_HFM(self):
-		raise ValueError("HFM name is not specified for this norm")
+		raise NotImplementedError("HFM name is not specified for this norm")
 
 	@classmethod
 	def from_HFM(cls,arr):
 		return cls.expand(np.moveaxis(arr,-1,0))
 
 	def __iter__(self):
-		raise ValueError("__iter__ not implemented for this norm")
+		raise NotImplementedError("__iter__ not implemented for this norm")
 		
 	@classmethod
 	def from_generator(cls,gen):
 		return cls(*gen)
+
+	@property
+	def array_float_caster(self):
+		return ad.cupy_generic.array_float_caster(self,iterables=type(self))
 
 # ---- Related with Lagrandian and Hamiltonian interpretation ----
 

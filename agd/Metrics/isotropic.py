@@ -30,6 +30,9 @@ class Isotropic(Base):
 	def anisotropy(self):
 		return 1.
 
+	def cost_bound(self):
+		return self.cost
+
 	@property
 	def vdim(self): 
 		if self.cost.ndim>0:

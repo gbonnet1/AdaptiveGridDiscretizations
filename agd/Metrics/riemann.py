@@ -32,12 +32,14 @@ class Riemann(Base):
 	def anisotropy(self):
 		ev = self.eigvals()
 		return np.sqrt(ev.max(axis=0)/ev.min(axis=0))
+	def cost_bound(self):
+		return np.sqrt(lp.trace(self.m))
 
 	def inv_transform(self,a):
 		return Riemann(lp.dot_AA(lp.transpose(a),lp.dot_AA(self.m,a)))
-	def rescale(self,h):
-		if np.ndim(h)==0: return Riemann(self.m/h**2)
-		else: raise NotImplemented #"TODO"
+#	def rescale(self,h,**kwargs):
+#		if np.ndim(h)==0: return Riemann(self.m/h**2)
+#		else: raise NotImplemented #"TODO"
 
 	def flatten(self):
 		return misc.flatten_symmetric_matrix(self.m)

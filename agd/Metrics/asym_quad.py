@@ -37,6 +37,9 @@ class AsymQuad(Base):
 		eMin = Riemann(self.m).eigvals().min(axis=0)
 		return np.sqrt(eMax/eMin)
 
+	def cost_bound(self):
+		return Riemann(self.m).cost_bound() + ad.Optimization.norm(w,ord=2,axis=0)
+
 	def inv_transform(self,a):
 		return AsymQuad(Riemann(self.m).inv_transform(a),lp.dot_VA(self.w,a))
 
