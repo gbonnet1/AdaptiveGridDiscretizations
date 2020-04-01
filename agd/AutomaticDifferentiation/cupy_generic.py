@@ -1,3 +1,6 @@
+# Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
+# Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
+
 """
 This file implements functionalities needed to make the agd library generic to cupy/numpy usage.
 It does not import cupy, unless absolutely required.

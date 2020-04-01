@@ -1,24 +1,7 @@
-import numpy as np
+# Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
+# Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-"""
-def dtype(arg,data_t):
-	"
-	For a numeric array, returns dtype.
-	Otherwise, returns one of the provided floating point 
-	or integer data type, depending on the argument data type.
-	Inputs:
-	 - data_t (tuple) : (float_t,int_t)
-	"
-	float_t,int_t = data_t
-	if isinstance(arg,numbers.Real): 
-		return float_t
-	elif isinstance(arg,numbers.Integral):
-		return int_t
-	elif isinstance(arg,(tuple,list)):
-		return dtype(arg[0],data_t)
-	else:
-		return arg.dtype
-"""
+import numpy as np
 
 def default_traits(interface):
 	"""

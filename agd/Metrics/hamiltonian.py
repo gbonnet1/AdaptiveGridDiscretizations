@@ -1,3 +1,6 @@
+# Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
+# Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
+
 """
 This module implements some basic functionality for solving ODEs derived from a 
 Hamiltonian in a manner compatible with automatic differentiation.
