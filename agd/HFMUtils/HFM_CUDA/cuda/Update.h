@@ -236,12 +236,18 @@ __global__ void Update(
 		printf("isSeed %i\n",isSeed);
 	}
 
+	FLOW(
+	Scalar flow_weights[nact]; 
+	Int active_side[nsym];
+	Int kmix=0; 
+	) 
 
 	// Compute and save the values
 	HFMIter(!isSeed, n_i, weights,
 		v_o MULTIP(,vq_o), v_i, 
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
-		u_i MULTIP(,uq_i) );
+		u_i MULTIP(,uq_i) 
+		FLOW(, flow_weights, active_side MIX(, &kmix) ) );
 
 	#if strict_iter_o_macro
 	uNext_t[n_t] = u_i[n_i];
@@ -250,6 +256,25 @@ __global__ void Update(
 	u_t[n_t] = u_i[n_i];
 	MULTIP(uq_t[n_t] = uq_i[n_i];)
 	#endif
+
+	FLOW( // Extract and export the geodesic flow
+	FLOW_VECTOR(Scalar flow_vector[ndim]; 
+	for(Int l=0; l<ndim; ++l){flow_vector[l]=0.;})
+
+	for(Int k=0; k<nact; ++k){
+		FLOW_WEIGHTS(flow_weights_t[n_t+size_tot*k]=flow_weights[k];)
+		Int offset[ndim]; FLOW_INDICES(Int y_t[ndim];)
+		const Int eps = 2*active_side[l]-1;
+		for(Int l=0; l<ndim; ++l){
+			offset[l] = eps*offsets[kmix*nact+k][l];
+			FLOW_INDICES(y_t[l] = x_t[l]+offset[l];)
+			FLOW_OFFSETS(flow_offsets_t[n_t+size_tot*(k+nact*l)]=offset[l];)
+			FLOW_VECTOR(flow_vector[l]+=flow_weights[k]*offset[l];)
+		}
+		FLOW_INDICES(flow_indices_t[n_t+size_tot*k]=Grid::Index_per(y_t,shape_tot);) 
+	}
+	FLOW_VECTOR(for(Int l=0; l<ndim; ++l){flow_vector_t[n_t+size_tot*l]=flow_vector[l];})
+	) // FLOW 
 
 	if(debug_print && x_i[0]==2 && x_i[1]==1 && x_o[0]==1 && x_o[1]==1){
 		printf("n_i %i, n_o %o, u_i[n_i] %f\n",n_i,n_o,u_i[n_i]);

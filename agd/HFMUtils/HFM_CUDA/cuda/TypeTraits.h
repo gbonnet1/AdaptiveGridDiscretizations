@@ -50,8 +50,10 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 
 #if mix_macro
 #define MIX(...) __VA_ARGS__
+#define NOMIX(...) 
 #else
 #define MIX(...) 
+#define NOMIX(...) __VA_ARGS__
 #endif
 
 /** strict_iter_i_macro = 1 causes the input and output values 
@@ -194,17 +196,20 @@ to take effect.
 #endif
 
 
-/** The following macros are for extraction of the upwind geodesic flow. */
+/** The following macros are for the extraction of the upwind geodesic flow. */
 #ifndef flow_macro // Compute the upwind geodesic flow, in one form or another
 #define flow_macro 0
 #endif 
 
 #if flow_macro
 #define FLOW(...) __VA_ARGS__
+#define NOFLOW(...) 
 #else 
 #define FLOW(...)
+#define NOFLOW(...) __VA_ARGS__
 #endif
 
+// weights
 #ifndef flow_weights_macro 
 #define flow_weights_macro 0
 #endif
@@ -215,6 +220,7 @@ to take effect.
 #define FLOW_WEIGHTS(...) 
 #endif
 
+// offets
 #ifndef flow_offsets_macro
 #define flow_offsets_macro 0
 #endif
@@ -225,6 +231,7 @@ to take effect.
 #define FLOW_OFFSETS(...) 
 #endif
 
+// indices
 #ifndef flow_indices_macro
 #define flow_indices_macro 0
 #endif
@@ -235,12 +242,19 @@ to take effect.
 #define FLOW_INDICES(...) 
 #endif
 
+// vector
 #ifndef flow_vector_macro
 #define flow_vector_macro 0
 #endif
 
-#ifndef flow_vector_macro
+#if flow_vector_macro
 #define FLOW_VECTOR(...) __VA_ARGS__
 #else
 #define FLOW_VECTOR(...) 
+#endif
+
+#if order2_macro || flow_macro
+#define ORDER2_OR_FLOW(...) __VA_ARGS__
+#else
+#define ORDER2_OR_FLOW(...) 
 #endif

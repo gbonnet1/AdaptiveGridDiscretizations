@@ -29,12 +29,12 @@ void HFMNeighbors(const Int n_i,
 	ORDER2(const Scalar v2_o[ntot],   MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],)
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
 	Scalar v[nact], MULTIP(Int vqmin[1],) ORDER2(bool order2[nact],)
-	Int order[nact]){
+	Int order[nact] FLOW(, Int side[nsym] )){
 
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
 	MULTIP(Int vq[nact];)
-	ORDER2(Int side[nsym];)
+	ORDER2(NOFLOW(Int side[nsym];))
 	for(Int k=0; k<nsym; ++k){
 		for(Int s=0; s<=1; ++s){
 			const Int ks = 2*k+s;
@@ -49,9 +49,9 @@ void HFMNeighbors(const Int n_i,
 			}
 
 			if(s==0) { 
-				v[k] = v_; MULTIP(vq[k] = vq_;) ORDER2(side[k] = 0;)
+				v[k] = v_; MULTIP(vq[k] = vq_;) ORDER2_OR_FLOW(side[k] = 0;)
 			} else if( Greater(v[k] MULTIP(, vq[k]), v_ MULTIP(, vq_)) ){
-				v[k] = v_; MULTIP(vq[k] = vq_;) ORDER2(side[k] = 1;)
+				v[k] = v_; MULTIP(vq[k] = vq_;) ORDER2_OR_FLOW(side[k] = 1;)
 			}
 		}
 	}
@@ -133,7 +133,9 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 	const Scalar v_o[ntot], MULTIP(const Int vq_o[ntot],) const Int v_i[ntot],
 	ORDER2(const Scalar v2_o[ntot], MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],)
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
-	Scalar * u_out MULTIP(,Int * uq_out) ){
+	Scalar * u_out MULTIP(,Int * uq_out) 
+	FLOW(, Scalar flow_weights[nact], Int active_side[nsym] ) 
+	){
 
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
@@ -147,7 +149,7 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 		u_i MULTIP(,uq_i), 
 		v MULTIP(,vqmin) ORDER2(,order2),
-		order);
+		order FLOW(, active_side) );
 
 	if(debug_print && n_i==1){
 /*		printf("HFMUpdate ni : %i\n",n_i);
@@ -161,7 +163,11 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 	// Compute the update
 	const Int k=order[0];
 	const Scalar vmin = v[k]; 
-	if(vmin==infinity()){*u_out = vmin; MULTIP(*uq_out=0;) return;}
+	if(vmin==infinity()){
+		*u_out = vmin; MULTIP(*uq_out=0;) 
+		FLOW(for(Int k=0; k<nact; ++k){flow_weights[k]=0.;})
+		return;
+	}
 	
 	const Scalar rhs = ISO(weights[0]) ANISO(1.);
 	Scalar w = ISO(1.) ANISO(weights[k]); 
@@ -192,21 +198,41 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		printf("v_o %f,%f,%f, v_i %i,%i,%i,",v_o[0],v_o[1],v_o[2]);
 	}
 */
+	const Scalar val = vmin+value;
+	*u_out = val; MULTIP(*uq_out = vqmin[0]; Normalize(u_out,uq_out); )
 
-	*u_out = vmin+value; MULTIP(*uq_out = vqmin[0]; Normalize(u_out,uq_out); )
+	FLOW(
+	if(*u_out==infinity()){
+		for(Int k=0; k<nact; ++k){flow_weights[k]=0.;}
+		return;}
+	
+	ISO(const Scalar w = 1./(weights[0]*weights[0]);)
+	for(Int k=0; k<nact; ++k){
+		ANISO(const Scalar w = weights[k];)
+		const Scalar diff = max(0,val - v[k]);
+		flow_weights[k] = w*diff;
+		ORDER2(if(order2[k]) {flow_weights[k]*=3./2.;})
+	})
 }
 
 void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 	const Scalar v_o[ntotx], MULTIP(const Int vq_o[ntotx],) const Int v_i[ntotx], 
 	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
-	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) ){
+	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) 
+	FLOW(, Scalar flow_weights[nact], Int active_side[nsym] MIX(, Int * kmix_) ){
 
 
-	Scalar u_i_new; MULTIP(Int uq_i_new;)
+	Scalar u_i_new MIX(=mix_neutral()); MULTIP(Int uq_i_new MIX(=0);)
 	if(strict_iter_i_macro || nmix>1){
 	for(int i=0; i<niter_i; ++i){
 		if(active) {
-			MIX(u_i_mix=mix_neutral(); MULTIP(uq_i_mix=0;) )
+			
+			NOMIX(Scalar & u_i_mix = u_i_new; MULTIP(Int & uq_i_mix = uq_i_new;)
+				FLOW(Scalar * const flow_weights_mix = flow_weights; 
+					 Int * const active_side_mix = active_side;) )
+			MIX(Scalar u_i_mix; MULTIP(Int uq_i_mix;) 
+				FLOW(Scalar flow_weights_mix[nact]; Int active_side_mix[nsym];) )
+
 			for(Int kmix=0; kmix<nmix; ++kmix){
 				const Int s = kmix*ntot;
 				HFMUpdate(
@@ -214,13 +240,17 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 					v_o+s MULTIP(,vq_o+s), v_i+s,
 					ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
 					u_i MULTIP(,uq_i),
-					&u_i_new MULTIP(,&uq_i_new) 
+					&u_i_mix MULTIP(,&uq_i_mix) 
+					FLOW(, Scalar flow_weights_mix[nact], Int active_side_mix[nsym])
 					);
-				MIX(if(mix_is_min==Greater(u_i_mix MULTIP(,uq_i_mix), u_i_new MULTIP(,uq_i_new) ) ){
-					u_i_mix=u_i_new; MULTIP(uq_i_mix=uq_i_new;)
-				})
+
+				MIX(if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
+					u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
+					FLOW(kmix_=kmix; 
+						for(Int k=0; k<nact; ++k){flow_weights[k]=flow_weights_mix[k];}
+						for(Int k=0; k<nsym; ++k){active_side[k]=active_side_mix[k];})
+				}) // Mix and better update
 			}
-			MIX(u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;))
 		}
 		__syncthreads();
 		if(active DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
@@ -229,7 +259,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 		__syncthreads();
 	} // for niter_i
 
-	} else { // strict_iter_i
+	} else { // without strict_iter_i
 	for(int i=0; i<niter_i; ++i){
 		if(active) {
 			HFMUpdate(
@@ -238,6 +268,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 				u_i MULTIP(,uq_i),
 				&u_i[n_i] MULTIP(,&uq_i[n_i]) 
+				FLOW(, Scalar flow_weights[nact], Int active_side[nsym])
 				);
 			if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
 										  u_i_new  MULTIP(,uq_i_new)))) {
