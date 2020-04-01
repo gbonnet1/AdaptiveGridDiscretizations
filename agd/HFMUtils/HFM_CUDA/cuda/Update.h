@@ -27,13 +27,22 @@ void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * update
 }
 
 
+/* Array suffix convention : 
+ arr_t : shape_tot (Total domain shape)
+ arr_o : shape_o (Grid shape)
+ arr_i : shape_i (Block shape)
+ arr : thread level object
+*/
 extern "C" {
 
 __global__ void Update(
-	Scalar * u, MULTIP(Int * uq,) STRICT_ITER_O(Scalar * uNext, MULTIP(Int * uqNext,) )
-	const Scalar * geom, DRIFT(const Scalar * drift,) const BoolPack * seeds, 
+	Scalar * u_t, MULTIP(Int * uq_t,) STRICT_ITER_O(Scalar * uNext_t, MULTIP(Int * uqNext_t,) )
+	const Scalar * geom_t, DRIFT(const Scalar * drift_t,) const BoolPack * seeds_t, 
 	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
-	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o ){ 
+	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o 
+	FLOW_WEIGHTS(, Scalar * flow_weights_t) FLOW_OFFSETS(, char * flow_offsets_t) 
+	FLOW_INDICES(, Int* flow_indices_t) FLOW_VECTOR(, Scalar * flow_vector_t) ){ 
+
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
 
@@ -83,10 +92,10 @@ __global__ void Update(
 	__syncthreads(); // __shared__ x_o, n_o
 	PRUNING(if(n_o==-1 MINCHG_FREEZE(|| n_o==-2)) {return;})
 
-	Int x_i[ndim], x[ndim];
+	Int x_i[ndim], x_t[ndim];
 	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[ndim-1]=threadIdx.z;
 	for(int k=0; k<ndim; ++k){
-		x[k] = x_o[k]*shape_i[k]+x_i[k];}
+		x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
 
 	const Int n_i = Grid::Index(x_i,shape_i);
 	MINCHG_FREEZE(
@@ -94,30 +103,30 @@ __global__ void Update(
 		if(n_i==0){updatePrev_o[n_o]=0;} // Cleanup required for MINCHG
 		)
 
-	const Int n = n_o*size_i + n_i;
-	const bool isSeed = Grid::GetBool(seeds,n);
+	const Int n_t = n_o*size_i + n_i;
+	const bool isSeed = Grid::GetBool(seeds_t,n_t);
 
 	Scalar weights[nactx_];
-	ISO(weights[0] = geom[n];) // Offsets are constant.
+	ISO(weights[0] = geom_t[n_t];) // Offsets are constant.
 	ANISO(
-		Scalar geom_[geom_size];
+		Scalar geom[geom_size];
 		Int offsets[nactx][ndim];
 		for(Int k=0; k<geom_size; ++k){
-			geom_[k] = geom[n+size_tot*k];}
-		scheme(geom_, CURVATURE(x,) weights,offsets);
+			geom[k] = geom_t[n_t+size_tot*k];}
+		scheme(geom, CURVATURE(x_t,) weights,offsets);
 	)
 	DRIFT(
-		Scalar drift_[ndim];
+		Scalar drift[ndim];
 		for(Int k=0; k<ndim; ++k){
-			drift_[k] = drift[n+size_tot*k];}
+			drift[k] = drift_t[n_t+size_tot*k];}
 	)
 
-	const Scalar u_old = u[n]; 
+	const Scalar u_old = u_t[n_t]; 
 	__shared__ Scalar u_i[size_i]; // Shared block values
 	u_i[n_i] = u_old;
 
 	MULTIP(
-	const Int uq_old = uq[n];
+	const Int uq_old = uq_t[n_t];
 	__shared__ Int uq_i[size_i];
 	uq_i[n_i] = uq_old;
 	)
@@ -159,30 +168,29 @@ __global__ void Update(
 			Scalar fact[2]; ORDER2(Scalar fact2[2];)
 			FACTOR( factor_sym(x_rel,e,fact ORDER2(,fact2)) );
 			NOFACTOR( for(Int l=0; l<2; ++l){fact[l]=0; ORDER2(fact2[l]=0;)} )
-			DRIFT( const Scalar s = scal_vv(drift_,e); fact[0] +=s; fact[1]-=s; )
+			DRIFT( const Scalar s = scal_vv(drift,e); fact[0] +=s; fact[1]-=s; )
 			)
 
 		for(Int s=0; s<2; ++s){
 			if(s==0 && kact>=nsym) continue;
 
-			Int y[ndim], y_i[ndim]; // Position of neighbor. 
+			Int y_t[ndim], y_i[ndim]; // Position of neighbor. 
 			const Int eps=2*s-1;
 
 			for(Int l=0; l<ndim; ++l){
-				y[l]   = x[l]   + eps*e[l]; 
+				y_t[l] = x_t[l] + eps*e[l]; 
 				y_i[l] = x_i[l] + eps*e[l];
 			}
 
-			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y,shape_tot)) )  {
+			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) )  {
 				v_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v_o[kv] = fact[s];)
 			} else {
 				v_i[kv] = -1;
-				if(APERIODIC(Grid::InRange(y,shape_tot)) 
-					PERIODIC(Grid::InRange_per(y,shape_tot)) ) {
-					const Int ny = Grid::Index_tot(y);
-					v_o[kv] = u[ny] SHIFT(+fact[s]);
-					MULTIP(vq_o[kv] = uq[ny];)
+				if(Grid::InRange_per(y_t,shape_tot) ) {
+					const Int ny_t = Grid::Index_tot(y_t);
+					v_o[kv] = u_t[ny_t] SHIFT(+fact[s]);
+					MULTIP(vq_o[kv] = uq_t[ny_t];)
 				} else {
 					v_o[kv] = infinity();
 					MULTIP(vq_o[kv] = 0;)
@@ -191,20 +199,19 @@ __global__ void Update(
 
 			ORDER2(
 			for(int l=0; l<ndim; ++l){
-				y[l]   +=  eps*e[l]; 
+				y_t[l] +=  eps*e[l]; 
 				y_i[l] +=  eps*e[l];
 			}
 
-			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y,shape_tot)) ) {
+			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) ) {
 				v2_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v2_o[kv] = fact2[s];)
 			} else {
 				v2_i[kv] = -1;
-				if(APERIODIC(Grid::InRange(y,shape_tot)) 
-					PERIODIC(Grid::InRange_per(y,shape_tot)) ) {
-					const Int ny = Grid::Index_tot(y);
-					v2_o[kv] = u[ny] SHIFT(+fact2[s]);
-					MULTIP(vq2_o[kv] = uq[ny];)
+				if(Grid::InRange_per(y_t,shape_tot) ) {
+					const Int ny_t = Grid::Index_tot(y_t);
+					v2_o[kv] = u_t[ny_t] SHIFT(+fact2[s]);
+					MULTIP(vq2_o[kv] = uq_t[ny_t];)
 				} else {
 					v2_o[kv] = infinity();
 					MULTIP(vq2_o[kv] = 0;)
@@ -223,8 +230,8 @@ __global__ void Update(
 	if(debug_print && n_i==17 && n_o==3){
 		printf("hi there, before HFM\n");
 		printf("v_o %f,%f,%f, v_i %i,%i,%i,\n",v_o[0],v_o[1],v_o[2]);
-		DRIFT(printf("drift_ %f,%f\n", drift_[0],drift_[1]);)
-		printf("geom_ %f,%f,%f\n",geom_[0],geom_[1],geom_[2]);
+		DRIFT(printf("drift %f,%f\n", drift[0],drift[1]);)
+		printf("geom %f,%f,%f\n",geom[0],geom[1],geom[2]);
 		printf("weights %f,%f,%f\n",weights[0],weights[1],weights[2]);
 		printf("isSeed %i\n",isSeed);
 	}
@@ -237,11 +244,11 @@ __global__ void Update(
 		u_i MULTIP(,uq_i) );
 
 	#if strict_iter_o_macro
-	uNext[n] = u_i[n_i];
-	MULTIP(uqNext[n] = uq_i[n_i];)
+	uNext_t[n_t] = u_i[n_i];
+	MULTIP(uqNext_t[n_t] = uq_i[n_i];)
 	#else
-	u[n] = u_i[n_i];
-	MULTIP(uq[n] = uq_i[n_i];)
+	u_t[n_t] = u_i[n_i];
+	MULTIP(uq_t[n_t] = uq_i[n_i];)
 	#endif
 
 	if(debug_print && x_i[0]==2 && x_i[1]==1 && x_o[0]==1 && x_o[1]==1){
@@ -273,23 +280,9 @@ __global__ void Update(
 
 	if(debug_print && x_i==0){
 		printf("hello world\n");
-		printf("geom : %f,%f,%f\n",geom_[0],geom_[1],geom_[2]);
-		DRIFT(printf("drift : %f,%f\n",drift_[0],drift_[1]);)
+		printf("geom : %f,%f,%f\n",geom[0],geom[1],geom[2]);
+		DRIFT(printf("drift : %f,%f\n",drift[0],drift[1]);)
 	}
-
-/*
-	if(debug_print && n_i==0 && n_o==0){
-//		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
-//		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
-		printf("ntotx %i, ntot %i, nsym %i\n",ntotx,ntot,nsym);
-		for(int k=0; k<nactx; ++k){
-			printf("k=%i, offset=(%i,%i), weight=%f\n",k,offsets[k][0],offsets[k][1],weights[k]);
-		}
-		printf("geom : %f,%f,%f\n",geom_[0],geom_[1],geom_[2]);
-		printf("size_tot : %i\n",size_tot);
-		printf("scal : %f\n",scal_vmv(offsets[1],geom_,offsets[2]) );
-	}
-*/
 
 
 	// Tag neighbor blocks, and this particular block, for update

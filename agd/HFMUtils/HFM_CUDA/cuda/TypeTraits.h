@@ -192,3 +192,55 @@ to take effect.
 #else
 #define PRUNING(...) 
 #endif
+
+
+/** The following macros are for extraction of the upwind geodesic flow. */
+#ifndef flow_macro // Compute the upwind geodesic flow, in one form or another
+#define flow_macro 0
+#endif 
+
+#if flow_macro
+#define FLOW(...) __VA_ARGS__
+#else 
+#define FLOW(...)
+#endif
+
+#ifndef flow_weights_macro 
+#define flow_weights_macro 0
+#endif
+
+#if flow_weights_macro
+#define FLOW_WEIGHTS(...) __VA_ARGS__
+#else
+#define FLOW_WEIGHTS(...) 
+#endif
+
+#ifndef flow_offsets_macro
+#define flow_offsets_macro 0
+#endif
+
+#if flow_offsets_macro
+#define FLOW_OFFSETS(...) __VA_ARGS__
+#else
+#define FLOW_OFFSETS(...) 
+#endif
+
+#ifndef flow_indices_macro
+#define flow_indices_macro 0
+#endif
+
+#if flow_indices_macro
+#define FLOW_INDICES(...) __VA_ARGS__
+#else
+#define FLOW_INDICES(...) 
+#endif
+
+#ifndef flow_vector_macro
+#define flow_vector_macro 0
+#endif
+
+#ifndef flow_vector_macro
+#define FLOW_VECTOR(...) __VA_ARGS__
+#else
+#define FLOW_VECTOR(...) 
+#endif
