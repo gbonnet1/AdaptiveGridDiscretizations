@@ -3,9 +3,10 @@
 
 import numpy as np
 
-def default_traits(interface):
+def default_traits(self):
 	"""
 	Default traits of the GPU implementation of an HFM model.
+	(self is an instance of the class Interface from file interface.py)
 	"""
 	traits = {
 	'Scalar':np.float32,
@@ -14,14 +15,20 @@ def default_traits(interface):
 	'pruning_macro':0,
 	}
 
-	ndim = interface.ndim
+	ndim = self.ndim
+	model = self.model
 
-	if ndim==2:
+	if model=='Isotropic2':
 		traits.update({
 		'shape_i':(24,24),
 		'niter_i':48,
 		})
-	elif ndim:
+	elif ndim==2:
+		traits.update({
+		'shape_i':(8,8),
+		'niter_i':16,
+		})		
+	elif ndim==3:
 		traits.update({
 		'shape_i':(4,4,4),
 		'niter_i':12,
