@@ -91,7 +91,8 @@ void HFMNeighbors(const Int n_i,
 		const Int w_i=v2_i[ks];
 		Scalar v2;
 		if(w_i>=0){
-			v2 = u_i[w_i] MULTIP(+ (uq_i[w_i]-*vqmin)*multip_step) FACTOR(+v2_o[ks]); // Drift alone only affects first order
+			// Drift alone only affects first order
+			v2 = u_i[w_i] MULTIP(+ (uq_i[w_i]-*vqmin)*multip_step) FACTOR(+v2_o[ks]); 
 		} else {
 			v2 = v2_o[ks] MULTIP(+ (vq2_o[ks]-*vqmin)*multip_step);
 		}
@@ -182,12 +183,12 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		value = (b+sdelta)/a;
 	}
 
-/*	if(debug_print && n_i==1){
-		Scalar u_out = vmin+value; Int uq_out = vqmin;
-		printf("u_out %f, uq_out %i\n",u_out,uq_out);
-		Normalize(&u_out,&uq_out);
-		printf("u_out %f, uq_out %i\n",u_out,uq_out);
-	}*/
+/*
+	if(debug_print && n_i==17){
+		printf("value %f, vmin %f\n",value,vmin);
+		printf("v_o %f,%f,%f, v_i %i,%i,%i,",v_o[0],v_o[1],v_o[2]);
+	}
+*/
 
 	*u_out = vmin+value; MULTIP(*uq_out = vqmin[0]; Normalize(u_out,uq_out); )
 }

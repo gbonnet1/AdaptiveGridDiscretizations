@@ -217,6 +217,16 @@ __global__ void Update(
 	
 	__syncthreads(); // __shared__ u_i
 
+	if(debug_print && n_i==17 && n_o==3){
+		printf("hi there, before HFM\n");
+		printf("v_o %f,%f,%f, v_i %i,%i,%i,\n",v_o[0],v_o[1],v_o[2]);
+		DRIFT(printf("drift_ %f,%f\n", drift_[0],drift_[1]);)
+		printf("geom_ %f,%f,%f\n",geom_[0],geom_[1],geom_[2]);
+		printf("weights %f,%f,%f\n",weights[0],weights[1],weights[2]);
+		printf("isSeed %i\n",isSeed);
+	}
+
+
 	// Compute and save the values
 	HFMIter(!isSeed, n_i, weights,
 		v_o MULTIP(,vq_o), v_i, 
@@ -231,7 +241,15 @@ __global__ void Update(
 	MULTIP(uq[n] = uq_i[n_i];)
 	#endif
 
-	
+	if(debug_print && x_i[0]==2 && x_i[1]==1 && x_o[0]==1 && x_o[1]==1){
+		printf("n_i %i, n_o %o, u_i[n_i] %f\n",n_i,n_o,u_i[n_i]);
+		for(Int k=0; k<size_i; ++k){printf(" %f",u_i[k]);}
+		/*
+		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
+		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
+		*/
+	}
+
 	// Find the smallest value which was changed.
 	const Scalar u_diff = abs(u_old - u_i[n_i] MULTIP( + (uq_old - uq_i[n_i]) * multip_step ) );
 	if( !(u_diff>tol) ){// Equivalent to u_diff<=tol, but Ignores NaNs 
@@ -241,23 +259,23 @@ __global__ void Update(
 	}
 	__syncthreads(); // Get all values before reduction
 
-	if(debug_print && n_i==0 && n_o==size_o-1){
-		/*
-		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
-		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
-		*/
-	}
+	MINCHG_FREEZE(__shared__ Scalar minChgPrev; if(n_i==0){minChgPrev = minChgPrev_o[n_o];})
 
 
 	REDUCE_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
 
-	MINCHG_FREEZE(__shared__ Scalar minChgPrev; if(n_i==0){minChgPrev = minChgPrev_o[n_o];})
 
-	__syncthreads();  // Make u_i[0] accessible to all 
+	__syncthreads();  // Make u_i[0] accessible to all, also minChgPrev
 	Scalar minChg = u_i[0];
 
+	if(debug_print && x_i==0){
+		printf("hello world\n");
+		printf("geom : %f,%f,%f\n",geom_[0],geom_[1],geom_[2]);
+		DRIFT(printf("drift : %f,%f\n",drift_[0],drift_[1]);)
+	}
+
 /*
-	if(debug_print && n_i==0 && n_o==size_o-1){
+	if(debug_print && n_i==0 && n_o==0){
 //		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
 //		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
 		printf("ntotx %i, ntot %i, nsym %i\n",ntotx,ntot,nsym);

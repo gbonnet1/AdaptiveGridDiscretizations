@@ -133,6 +133,8 @@ class Interface(object):
 
 		if not self.isCurvature: # Dimension generic models
 			traits['ndim_macro'] = int(self.model[-1])
+		if self.HasValue('drift') or self.model.startswith('Rander'):
+			traits['drift_macro']=1
 
 		self.bound_active_blocks = self.GetValue('bound_active_blocks',default=False,
 			help="Limit the number of active blocks in the front. " 
@@ -318,7 +320,7 @@ class Interface(object):
 		# Tag the seeds
 		if np.prod(self.shape_i)%8!=0:
 			raise ValueError('Product of shape_i must be a multiple of 8')
-		block_seedTags = xp.isfinite(block_values)
+		block_seedTags = np.logical_or(xp.isfinite(block_values),xp.isnan(block_values))
 		block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 		block_seedTags = block_seedTags.reshape( self.shape_o + (-1,) )
 		block_values[xp.isnan(block_values)] = xp.inf
@@ -397,7 +399,10 @@ class Interface(object):
 		if self.factoringRadius:
 			SetModuleConstant(mod,'factor_radius2',self.factoringRadius**2,float_t)
 			SetModuleConstant(mod,'factor_origin',self.seed,float_t) # Single seed only
-			SetModuleConstant(mod,'factor_metric',self.Metric(self.seed).to_HFM(),float_t)
+			factor_metric = self.Metric(self.seed).to_HFM()
+			# The drift part of a Rander metric can be ignored for factorization purposes 
+			if self.model.startswith('Rander'): factor_metric = factor_metric[:-self.ndim]
+			SetModuleConstant(mod,'factor_metric',factor_metric,float_t)
 
 		if self.order==2:
 			order2_threshold = self.GetValue('order2_threshold',0.3,
@@ -443,14 +448,7 @@ class Interface(object):
 		solver = self.GetValue('solver',default='AGSI',help="Choice of fixed point solver")
 		self.nitermax_o = self.GetValue('nitermax_o',default=2000,
 			help="Maximum number of iterations of the solver")
-
-		if self.drift is not None:
-			print("Setting solver drift")
-			print(self.drift.shape)
-			print(np.max(self.drift)*self.h)
-			print(self.block['geom'][:,0,0,0,0])
-			print(self.block['drift'][:,0,0,0,0])
-
+		
 		kernel_argnames = ['values'] 
 		if self.multiprecision: kernel_argnames.append('valuesq')
 		if self.strict_iter_o: 
@@ -463,7 +461,6 @@ class Interface(object):
 			kernel_argnames.append('minChgPrev_o')
 			kernel_argnames.append('minChgNext_o')
 
-		print(kernel_argnames)
 		self.kernel_argnames = kernel_argnames
 
 		solver_start_time = time.time()
