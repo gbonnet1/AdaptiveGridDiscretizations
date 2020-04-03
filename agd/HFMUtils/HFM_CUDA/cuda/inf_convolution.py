@@ -2,9 +2,22 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import cupy_module_helper
+import numpy as np
+
+def dtype_sup(dtype):
+	dtype=np.dtype(dtype)
+	if dtype.kind=='i': return np.iinfo(dtype).max
+	elif dtype.kind=='f': return dtype(np.inf)
+	else: raise ValueError("Unsupported dtype")
+def dtype_inf(dtype):
+	dtype=np.dtype(dtype)
+	if dtype.kind=='i': return np.iinfo(dtype).min
+	elif dtype.kind=='f': return dtype(-np.inf)
+	else: raise ValueError("Unsupported dtype")
 
 def inf_convolution(arr,kernel,niter=1,periodic=None,
-	upper_saturation=None, lower_saturation=None):
+	upper_saturation=None, lower_saturation=None,
+	overwrite=False,block_size=1024):
 	"""
 	Perform an inf convolution of an input with a given kernel, on the GPU.
 	- arr : the input array
@@ -23,21 +36,42 @@ def inf_convolution(arr,kernel,niter=1,periodic=None,
 		'shape_c':kernel.shape,
 		}
 
-	if saturation: traits['saturation_macro']=1
+	if upper_saturation is None: upper_saturation = dtype_sup(conv_t)
+	else: traits['upper_saturation_macro']=1
+	traits['T_Sup']=upper_saturation
+	if lower_saturation is None: lower_saturation = dtype_inf(conv_t)
+	else traits['lower_saturation_macro']=1
+	traits['T_Inf']=lower_saturation
+
 	if periodic is not None: traits['periodic'] = periodic
 
-	source = cupy_module_helper.traits_header(traits,
-		integral_max=True,size_of_shape=True,dtype_sup=True)
+	source = cupy_module_helper.traits_header(traits,size_of_shape=True)
 
 	source += [
 	'#include "InfConvolution.h"',
 	f"// Date cuda code last modified : {date_modified}"]
 	cuoptions = ("-default-device", f"-I {cuda_path}") 
 
-	module = GetModule(source,cuoptions)
+	module = cupy_module_helper.GetModule(source,cuoptions)
 	SetModuleConstant(module,'kernel_c',kernel,conv_t)
 	SetModuleConstant(module,'shape_tot',arr.shape,int_t)
 	SetModuleConstant(module,'size_tot',arr.size,int_t)
+
+	cupy_kernel = module.get_function("InfConvolution")
+
+	if niter>=2 and not overwrite: arr=arr.copy()
+	arr = np.ascontiguousarray(arr)
+	out = np.empty_like(arr)
+	if out is None: out = np.empty_like(arr)
+	else: assert out.dtype==arr.dtype && out.size==arr.size && out.flags['C_CONTIGUOUS']
+
+	for i in range(niter):
+		cupy_kernel((arr.size,),(block_size,),(arr,out))
+		arr,out = out,arr
+
+	return arr
+		
+
 
 
 

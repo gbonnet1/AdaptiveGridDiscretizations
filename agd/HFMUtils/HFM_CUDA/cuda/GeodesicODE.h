@@ -161,7 +161,8 @@ void Flow(const Scalar * flow_vector_t, const Scalar * flow_weightsum_t,
 
 extern "C" {
 
-__global__ void GeodesicODE(const Scalar * flow_vector_t, const Scalar * flow_weightsum_t,
+__global__ void GeodesicODE(
+	const Scalar * flow_vector_t, const Scalar * flow_weightsum_t,
 	const Scalar * dist_t, const uchar * eucl_t,
 	Scalar * x_s, Int * len_s, uchar * stop_s){
 

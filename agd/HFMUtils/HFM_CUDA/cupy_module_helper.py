@@ -63,7 +63,6 @@ def traits_header(traits,
 	Returns the source (mostly a preamble) for the gpu kernel code 
 	for the given traits.
 	- join (optional): return a multiline string, rather than a list of strings
-	- dtype_sup: insert a trait T_Sup (inf, or largest value) for each numerical type defined.
 	- size_of_shape: insert traits for the size of each shape.
 	- log2_size: insert a trait for the ceil of the base 2 logarithm of previous size.
 	"""
@@ -77,6 +76,11 @@ def traits_header(traits,
 
 		if isinstance(value,numbers.Integral):
 			source.append(f"const int {key}={value};")
+		elif isinstance(value,tuple) and isinstance(value[1],type):
+			val,dtype=value
+			source.append(f"const {np2cuda_dtype[dtype]} {key} = "
+				("1./0" if val==np.inf else "-1./0." if val==-np.inf else str(val)) )
+
 		elif isinstance(value,type):
 			source.append(f"typedef {np2cuda_dtype[value]} {key};")
 		elif all(isinstance(v,numbers.Integral) for v in value):
@@ -87,12 +91,6 @@ def traits_header(traits,
 
 	# Special treatment for some traits
 	for key,value in traits.items():
-#		if dtype_sup and isinstance(value,type):
-#			kind =  np.dtype(value).kind==
-#			if kind=='i':
-#				source.append(f"const {key} {key}_Sup = {np.iinfo(value).max};")
-#			elif kind=='f':
-#				source.append(f"const {key} {key}_Sup = 1./0.;")
 		if size_of_shape and key.startswith('shape_'):
 			suffix = key[len('shape_'):]
 			size = np.prod(value)
