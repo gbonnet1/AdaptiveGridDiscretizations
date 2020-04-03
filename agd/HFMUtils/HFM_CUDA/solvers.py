@@ -11,7 +11,7 @@ The solvers defined below are member functions of the "interface" class devoted 
 running the gpu eikonal solver.
 """
 
-def global_iteration(self):
+def global_iteration(self,solver=True):
 	"""
 	Solves the eikonal equation by applying repeatedly the updates on the whole domain.
 	"""	
@@ -19,10 +19,12 @@ def global_iteration(self):
 	updateNow_o  = xp.ones(	self.shape_o,   dtype='uint8')
 	updateNext_o = xp.zeros(self.shape_o,   dtype='uint8')
 	updateList_o = xp.ascontiguousarray(xp.flatnonzero(updateNow_o),dtype=self.int_t)
-	kernel = self.module.get_function("Update")
+	module = self.solver_module if solver else self.flow_module
+	kernel = module.get_function("Update")
 
-	for niter_o in range(self.nitermax_o):
-		kernel((updateList_o.size,),self.shape_i, self.KernelArgs() + (updateList_o,updateNext_o))
+	nitermax_o = self.nitermax_o if solver else 1
+	for niter_o in range(nitermax_o):
+		kernel((updateList_o.size,),self.shape_i, self.KernelArgs(solver) + (updateList_o,updateNext_o))
 		if xp.any(updateNext_o): updateNext_o.fill(0)
 		else: return niter_o
 	return self.nitermax_o
@@ -43,7 +45,7 @@ def adaptive_gauss_siedel_iteration(self):
 			update_o = np.logical_or(update_o,np.roll(update_o,axis=k,shift=eps))
 	update_o = xp.ascontiguousarray(update_o, dtype='uint8')
 
-	kernel = self.module.get_function("Update")
+	kernel = self.solver_module.get_function("Update")
 
 	"""Pruning is intellectually satisfying, because the expected complexity drops from 
 	N+eps*N^(1+1/d) to N, where N is the number of points and eps is a small but positive 
@@ -116,7 +118,7 @@ def set_minChg_thres(self,updateList_o):
 		self.minChgNext_thres += minChgNext_delta
 	
 #	print(f"Leaving set_minChg_thres. prev : {self.minChgPrev_thres}, next {self.minChgNext_thres}")
-	mod = self.module
+	mod = self.solver_module
 	SetModuleConstant(mod,'minChgPrev_thres',self.minChgPrev_thres,self.float_t)
 	SetModuleConstant(mod,'minChgNext_thres',self.minChgNext_thres,self.float_t)
 

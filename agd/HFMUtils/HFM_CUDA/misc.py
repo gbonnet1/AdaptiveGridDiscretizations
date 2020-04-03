@@ -58,55 +58,26 @@ def block_expand(arr,shape_i,**kwargs):
 	return xp.ascontiguousarray(arr)
 
 def block_squeeze(arr,shape):
+	"""
+	Inverse operation to block_expand.
+	"""
 	ndim = len(shape)
-	shape_o = np.array(arr.shape[:ndim])
-	shape_i = np.array(arr.shape[ndim:])
+	shape_pre = arr.shape[:-2*ndim]
+	ndim_pre = len(shape_pre)
+	shape_o = arr.shape[(-2*ndim):-ndim]
+	shape_i = arr.shape[-ndim:]
 
 	# Move axes
 	rg = np.arange(ndim)
-	axes_interleaved = 1+2*rg
-	axes_split = ndim+rg
+	axes_interleaved = ndim_pre + 1+2*rg
+	axes_split = ndim_pre + ndim+rg
 	arr = np.moveaxis(arr,axes_split,axes_interleaved)
 
 	# Reshape
-	arr = arr.reshape(shape_o*shape_i)
+	arr = arr.reshape(shape_pre
+		+tuple(s_o*s_i for (s_o,s_i) in zip(shape_o,shape_i)) )
 
 	# Extract subdomain
-	region = tuple(slice(0,s) for s in shape)
+	region = tuple(slice(0,s) for s in (shape_pre+shape))
 	arr = arr.__getitem__(region)
 	return arr
-
-# ----- Access an array, maintaining a report of the oprations -------
-
-"""
-def HasValue(dico,key,report):
-	report['key visited'].append(key)
-	return key in dico
-
-def GetValue(dico,key,report,default=None,verbosity=2,help=None):
-	
-	#Get a value from a dictionnary, printing some requested help.
-	
-	verb = report['verbosity']
-
-	if key in report['help'] and key not in report['help content']:
-		report['help content'][key] = help
-		if verb>=1:
-			if help is None: 
-				print(f"Sorry : no help for key {key}")
-			else:
-				print(f"---- Help for key {key} ----")
-				print(help)
-				print("-----------------------------")
-
-	if key in dico:
-		report['key used'].append(key)
-		return dico[key]
-	elif default is not None:
-		report['key defaulted'].append((key,default))
-		if verb>=verbosity:
-			print(f"key {key} defaults to {default}")
-		return default
-	else:
-		raise ValueError(f"Missing value for key {key}")
-"""

@@ -37,3 +37,27 @@ def default_traits(self):
 		raise ValueError("Unsupported model")
 
 	return traits
+
+def nact(self):
+	"""
+	Max number of active neighbors for an HFM model.
+	"""
+	ndim = self.ndim
+	symdim = int( (ndim*(ndim+1))/2 )
+	model = self.model
+
+	if model.startswith('Isotropic'):
+		return dim
+	elif model.startswith('Riemann') or model.startswith('Rander'):
+		return symdim
+	elif model.startswith('ReedsShepp'):
+		return symdim
+	elif model.startswith('ReedsSheppForward'):
+		return symdim+1
+	elif model.startswith('Dubins'):
+		return 2*symdim
+	elif model.startswith('Elastica'):
+		nFejer = self.solver_traits.get('nFejer_macro',5)
+		return nFejer*symdim
+
+

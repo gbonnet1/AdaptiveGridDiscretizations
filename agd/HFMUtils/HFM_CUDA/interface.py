@@ -10,7 +10,8 @@ from collections import OrderedDict
 from . import kernel_traits
 from . import solvers
 from . import misc
-from .cupy_module_helper import GetModule,SetModuleConstant,getmtime_max,traits_header
+from . import cupy_module_helper
+from .cupy_module_helper import GetModule
 from .. import Grid
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
@@ -147,10 +148,11 @@ class Interface(object):
 			traits['pruning_macro']=1
 
 		self.strict_iter_o = traits.get('strict_iter_o_macro',0)
-		self.traits = traits
 		self.float_t = np.dtype(traits['Scalar']).type
 		self.int_t   = np.dtype(traits['Int']   ).type
 		self.shape_i = traits['shape_i']
+
+		self.traits = traits
 
 	def SetGeometry(self):
 		if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
@@ -276,6 +278,17 @@ class Interface(object):
 			self.minChg_delta_min = self.GetValue('minChg_delta_min',default=self.h/10.,
 				help="Minimal threshold increase for bound_active_blocks variants")
 
+
+		# Geodesics related geometrical data
+		self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,
+			help="Export the upwind geodesic flow (direction of the geodesics)")
+		self.tips = self.GetValue('tips',default=None,
+			help="Tips from which to compute the minimal geodesics")
+		if self.isCurvature:
+			self.unorientedTips = self.GetValue('unorientedTips',default=None,
+				help="Compute a geodesic from the most favorable orientation") 
+
+
 	def SetValuesArray(self):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
 		xp = self.xp
@@ -349,6 +362,14 @@ class Interface(object):
 			if value.dtype.type not in (self.float_t,self.int_t,np.uint8):
 				raise ValueError(f"Inconsistent type {value.dtype.type} for key {key}")
 
+	def SetModuleConstant(self,*args,**kwargs,module="Eikonal"):
+		if isinstance(module,str):
+			if module=="Eikonal": module = (self.solver_module,self.flow_module)
+			elif module=="All": module = (self.solver_module,self.flow_module,self.geo_module)
+		else: module=(module,)
+
+		for mod in module: cupy_module_helper.SetModuleConstant(mod,*args,**kwargs)
+
 	def SetKernel(self):
 		if self.verbosity>=1: print("Preparing the GPU kernel")
 		if self.GetValue('dummy_kernel',default=False): return
@@ -362,66 +383,82 @@ class Interface(object):
 			traits['periodic_macro']=1
 			traits['periodic_axes']=self.periodic
 
-		self.source = traits_header(self.traits)
+		self.solver_source = cupy_module_helper.traits_header(self.traits)
 
 		if self.isCurvature: 
-			self.source += f'#include "{self.model}.h"\n'
+			self.model_source = f'#include "{self.model}.h"\n'
 		else: 
 			model = self.model[:-1]+'_' # Dimension generic
 			if model == 'Rander_': model = 'Riemann_' # Rander = Riemann + drift
-			self.source += f'#include "{model}.h"\n' 
+			self.model_source = f'#include "{model}.h"\n' 
 
 		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
-		date_modified = getmtime_max(cuda_path)
-		self.source += f"// Date cuda code last modified : {date_modified}\n"
+		date_modified = cupy_module_helper.getmtime_max(cuda_path)
+		self.model_source += f"// Date cuda code last modified : {date_modified}\n"
 		cuoptions = ("-default-device", f"-I {cuda_path}"
 			) + self.GetValue('cuoptions',default=tuple(),
 			help="Options passed via cupy.RawKernel to the cuda compiler")
 
-		self.module = GetModule(self.source,cuoptions)
-		mod = self.module
+		self.solver_module = GetModule(self.solver_source+self.model_source,cuoptions)
 
+		# Produce a second kernel for computing the geodesic flow
+		flow_traits = traits.copy() 
+		flow_traits.update({
+			'pruning_macro':0,
+			'minChg_freeze_macro':0,
+			'niter_i':1,
+		})
+
+		flow_traits['flow_vector'] = (
+			self.exportGeodesicFlow or (self.tips is not None) or 
+			(self.isCurvature and (self.unorientedTips is not None)))
+
+		self.flow_traits = flow_traits
+		self.flow_source = cupy_module_helper.traits_header(flow_traits)
+		self.flow_module = GetModule(self.flow_source+self.model_source,cuoptions)
+
+		# Set the constants
 		float_t,int_t = self.float_t,self.int_t
-		SetModuleConstant(mod,'tol',self.tol,float_t)
+		self.SetModuleConstant('tol',self.tol,float_t)
 
 		self.size_o = np.prod(self.shape_o)
-		SetModuleConstant(mod,'shape_o',self.shape_o,int_t)
-		SetModuleConstant(mod,'size_o', self.size_o, int_t)
+		self.SetModuleConstant('shape_o',self.shape_o,int_t)
+		self.SetModuleConstant('size_o', self.size_o, int_t)
 
 		size_tot = self.size_o * np.prod(self.shape_i)
-		SetModuleConstant(mod,'shape_tot',self.shape,int_t) # Used for periodicity
-		SetModuleConstant(mod,'size_tot', size_tot, int_t) # Used for geom indexing
+		self.SetModuleConstant('shape_tot',self.shape,int_t) # Used for periodicity
+		self.SetModuleConstant('size_tot', size_tot, int_t) # Used for geom indexing
 
 		if self.multiprecision:
 			# Choose power of two, significantly less than h
 			self.multip_step = 2.**np.floor(np.log2(self.h/10)) 
-			SetModuleConstant(mod,'multip_step',self.multip_step, float_t)
+			self.SetModuleConstant('multip_step',self.multip_step, float_t)
 			self.multip_max = np.iinfo(self.int_t).max*self.multip_step/2
-			SetModuleConstant(mod,'multip_max',self.multip_max, float_t)
+			self.SetModuleConstant('multip_max',self.multip_max, float_t)
 
 		if self.factoringRadius:
-			SetModuleConstant(mod,'factor_radius2',self.factoringRadius**2,float_t)
-			SetModuleConstant(mod,'factor_origin',self.seed,float_t) # Single seed only
+			self.SetModuleConstant('factor_radius2',self.factoringRadius**2,float_t)
+			self.SetModuleConstant('factor_origin',self.seed,float_t) # Single seed only
 			factor_metric = self.Metric(self.seed).to_HFM()
 			# The drift part of a Rander metric can be ignored for factorization purposes 
 			if self.model.startswith('Rander'): factor_metric = factor_metric[:-self.ndim]
-			SetModuleConstant(mod,'factor_metric',factor_metric,float_t)
+			self.SetModuleConstant('factor_metric',factor_metric,float_t)
 
 		if self.order==2:
 			order2_threshold = self.GetValue('order2_threshold',0.3,
 				help="Relative threshold on second order differences / first order difference,"
 				"beyond which the second order scheme deactivates")
-			SetModuleConstant(mod,'order2_threshold',order2_threshold,float_t)
+			self.SetModuleConstant('order2_threshold',order2_threshold,float_t)
 		
 		if self.isCurvature:
-			if np.isscalar(self.xi): SetModuleConstant(mod,'xi',self.xi,float_t)
-			if np.isscalar(self.kappa): SetModuleConstant(mod,'kappa',self.kappa,float_t)
+			if np.isscalar(self.xi): self.SetModuleConstant('xi',self.xi,float_t)
+			if np.isscalar(self.kappa): self.SetModuleConstant('kappa',self.kappa,float_t)
 
 		if self.bound_active_blocks:
 			self.minChgPrev_thres = np.inf
 			self.minChgNext_thres = np.inf
-			SetModuleConstant(mod,'minChgPrev_thres',self.minChgPrev_thres,float_t)
-			SetModuleConstant(mod,'minChgNext_thres',self.minChgNext_thres,float_t)
+			SetModuleConstant('minChgPrev_thres',self.minChgPrev_thres,float_t,module=solver_module)
+			SetModuleConstant('minChgNext_thres',self.minChgNext_thres,float_t,module=solver_module)
 
 	def Metric(self,x):
 		if self.isCurvature: 
@@ -429,13 +466,14 @@ class Interface(object):
 		if hasattr(self,'metric'): return self.metric.at(x)
 		else: return self.dualMetric.at(x).dual()
 
-	def KernelArgs(self):
+	def KernelArgs(self,solver=True):
 
 		if self.bound_active_blocks:
 			self.block['minChgPrev_o'],self.block['minChgNext_o'] \
 				=self.block['minChgNext_o'],self.block['minChgPrev_o']
 
-		kernel_args = tuple(self.block[key] for key in self.kernel_argnames)
+		kernel_argnames = self.solver_kernel_argnames if solver else self.flow_kernel_argnames
+		kernel_args = tuple(self.block[key] for key in kernel_argnames)
 
 		if self.strict_iter_o:
 			self.block['values'],self.block['valuesNext'] \
@@ -460,11 +498,13 @@ class Interface(object):
 		kernel_argnames.append('geom')
 		if self.drift is not None: kernel_argnames.append('drift')
 		kernel_argnames.append('seedTags')
-		if self.bound_active_blocks:
-			kernel_argnames.append('minChgPrev_o')
-			kernel_argnames.append('minChgNext_o')
 
-		self.kernel_argnames = kernel_argnames
+		self.solver_kernel_argnames = kernel_argnames
+		self.flow_kernel_argnames = kernel_argnames.copy()
+
+		if self.bound_active_blocks:
+			self.solver_kernel_argnames.append('minChgPrev_o')
+			self.solver_kernel_argnames.append('minChgNext_o')
 
 		solver_start_time = time.time()
 		if solver=='global_iteration':
@@ -510,7 +550,28 @@ class Interface(object):
 		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['keys']['used']))
 		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
 			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
-		return self.hfmOut
 
+		# Compute the geodesic flow, if needed
+		shape_oi = self.shape_o+self.shape_i
+		nact = kernel_traits.nact(self)
+		ndim = self.ndim
 
+		if self.flow_traits['flow_weights']:
+			self.flow_kernel_argnames.append('flow_weights')
+			self.block['flow_weights'] = self.xp.empty((nact,)+shape_oi,dtype=self.float_t)
+		if self.flow_traits['flow_offsets']:
+			self.flow_kernel_argnames.append('flow_offsets')
+			self.block['flow_offsets'] = self.xp.empty((ndim,nact,)+shape_oi,dtype=np.int8)
+		if self.flow_traits['flow_indices']:
+			self.flow_kernel_argnames.append('flow_indices')
+			self.block['flow_indices'] = self.xp.empty((nact,)+shape_oi,dtype=self.int_t)
+		if self.flow_traits['flow_vector']:
+			self.flow_kernel_argnames.append('flow_vector')
+			self.block['flow_vector'] = self.xp.empty((ndim,)+shape_oi,dtype=self.float_t)
 
+		self.flow_needed = any(self.flow_traits[key] 
+			for key in ('flow_weights','flow_offsets','flow_indices','flow_vector'))
+		if self.flow_needed: solvers.global_iteration(self,solver=False)
+
+		if self.exportGeodesicFlow:
+			self.hfmOut['geodesicFlow']=misc.block_squeeze(self.block['flow_vector'],self.shape)
