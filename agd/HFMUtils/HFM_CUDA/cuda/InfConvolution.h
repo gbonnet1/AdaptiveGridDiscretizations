@@ -19,12 +19,36 @@ const Int size_c = 3*3;
 __constant__ Int shape_tot[ndim];
 __constant__ Int size_tot; // product of shape_tot
 
-#ifndef
+#ifndef T_macro
 typedef float T;
-const T T_Max = 1./0.;
-/* // Optionally use saturated arithmetic (for integral types)
-#define saturation_macro
-*/
+const T T_Sup =  1./0.;
+const T T_Inf = -1./0.;
+#endif
+
+// 1-> min. 0->max 
+#ifndef mix_is_min_macro
+#define mix_is_min_macro 1
+#endif
+
+// Work in the max-plus or min-plus algebra.
+#if mix_is_min_macro
+T Plus(const T a, const T b){return min(a,b);}
+const T T_Neutral = T_Sup;
+#else
+T Plus(const T a, const T b){return max(a,b);}
+const T T_Neutral = T_Inf;
+#endif
+
+// Optionally define upper_saturation_macro or lower_saturation_macro for saturated arithmetic
+T Times(const T a, const T b){
+	#if upper_saturation_macro
+	if(a>=0 && b>=T_Sup-a){return T_Sup;}
+	#endif
+	#if lower_saturation_macro
+	if(a<=0 && b<=T_Inf-a){return T_Inf;}
+	#endif
+	return a+b;
+}
 
 __constant__ T kernel_c[size_c];
 
@@ -39,7 +63,7 @@ InfConvolution(const T * input, T * output){
 	Int x_t[ndim];
 	Grid::Position(n_t,shape_tot,x_t);
 
-	T result = T_Max;
+	T result = T_Neutral;
 	// Access neighbor values, and perform the inf convolution
 	for(Int i_c=0; i_c<size_c; ++i_c){
 		Int y_t[ndim];
@@ -48,16 +72,8 @@ InfConvolution(const T * input, T * output){
 			y_t[k] += x_t[k] - shape_c[k]/2;} // Centered kernel
 		if(Grid::InRange_per(y_t,shape_tot)){
 			const Int ny_t = Grid::Index_per(y_t);
-			const T vy = input[ny_t];
-			const T vc = kernel_c[i_c];
-
-			#ifdef saturation_macro
-			const T sum = (vy<=T_Max-vc) ? vy+vc : T_Max;
-			#else
-			const T sum = vy+vc;
-			#endif
-
-			result = min(result,sum);
+			const T sum = Plus(input[ny_t],kernel_c[i_c])
+			result = Plus(result,sum);
 		}
 	}
 	output[n_t] = result;

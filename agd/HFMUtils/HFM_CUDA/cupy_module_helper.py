@@ -58,8 +58,7 @@ np2cuda_dtype = {
 	}
 
 def traits_header(traits,
-	join=False,dtype_sup=False,
-	size_of_shape=False,log2_size=False):
+	join=False,size_of_shape=False,log2_size=False):
 	"""
 	Returns the source (mostly a preamble) for the gpu kernel code 
 	for the given traits.
@@ -88,12 +87,12 @@ def traits_header(traits,
 
 	# Special treatment for some traits
 	for key,value in traits.items():
-		if dtype_sup and isinstance(value,type):
-			kind =  np.dtype(value).kind==
-			if kind=='i':
-				source.append(f"const {key} {key}_Sup = {np.iinfo(value).max};")
-			elif kind=='f':
-				source.append(f"const {key} {key}_Sup = 1./0.;")
+#		if dtype_sup and isinstance(value,type):
+#			kind =  np.dtype(value).kind==
+#			if kind=='i':
+#				source.append(f"const {key} {key}_Sup = {np.iinfo(value).max};")
+#			elif kind=='f':
+#				source.append(f"const {key} {key}_Sup = 1./0.;")
 		if size_of_shape and key.startswith('shape_'):
 			suffix = key[len('shape_'):]
 			size = np.prod(value)

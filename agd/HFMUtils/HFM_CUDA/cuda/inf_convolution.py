@@ -3,7 +3,8 @@
 
 import cupy_module_helper
 
-def inf_convolution(arr,kernel,niter=1,periodic=None,saturation=False):
+def inf_convolution(arr,kernel,niter=1,periodic=None,
+	upper_saturation=None, lower_saturation=None):
 	"""
 	Perform an inf convolution of an input with a given kernel, on the GPU.
 	- arr : the input array
