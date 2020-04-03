@@ -383,7 +383,8 @@ class Interface(object):
 			traits['periodic_macro']=1
 			traits['periodic_axes']=self.periodic
 
-		self.solver_source = cupy_module_helper.traits_header(self.traits)
+		self.solver_source = cupy_module_helper.traits_header(self.traits,
+			join=True,size_of_shape=True,log2_size=True)
 
 		if self.isCurvature: 
 			self.model_source = f'#include "{self.model}.h"\n'
@@ -559,6 +560,9 @@ class Interface(object):
 		if self.flow_traits['flow_weights']:
 			self.flow_kernel_argnames.append('flow_weights')
 			self.block['flow_weights'] = self.xp.empty((nact,)+shape_oi,dtype=self.float_t)
+		if self.flow_traits['flow_weightsum']:
+			self.flow_kernel_argnames.append('flow_weightsum')
+			self.block['flow_weightsum'] = self.xp.empty(shape_oi,dtype=self.float_t)
 		if self.flow_traits['flow_offsets']:
 			self.flow_kernel_argnames.append('flow_offsets')
 			self.block['flow_offsets'] = self.xp.empty((ndim,nact,)+shape_oi,dtype=np.int8)

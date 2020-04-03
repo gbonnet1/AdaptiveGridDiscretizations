@@ -57,36 +57,52 @@ np2cuda_dtype = {
 	np.float64:'double',
 	}
 
-def traits_header(traits):
+def traits_header(traits,
+	join=False,dtype_sup=False,
+	size_of_shape=False,log2_size=False):
 	"""
 	Returns the source (mostly a preamble) for the gpu kernel code 
 	for the given traits.
+	- join (optional): return a multiline string, rather than a list of strings
+	- dtype_sup: insert a trait T_Sup (inf, or largest value) for each numerical type defined.
+	- size_of_shape: insert traits for the size of each shape.
+	- log2_size: insert a trait for the ceil of the base 2 logarithm of previous size.
 	"""
-	source = ""
+	source = []
 	for key,value in traits.items():
 		if key.endswith('macro'):
-			source += f"#define {key} {traits[key]}\n"
+			source.append(f"#define {key} {traits[key]}")
 			continue
 		else:
-			source += f"#define {key}_macro\n"
+			source.append(f"#define {key}_macro")
 
 		if isinstance(value,numbers.Integral):
-			source += f"const int {key}={value};\n"
+			source.append(f"const int {key}={value};")
 		elif isinstance(value,type):
-			source += f"typedef {np2cuda_dtype[value]} {key};\n"
+			source.append(f"typedef {np2cuda_dtype[value]} {key};")
 		elif all(isinstance(v,numbers.Integral) for v in value):
-			source += (f"const int {key}[{len(value)}] = "
-				+"{"+",".join(str(s).lower() for s in value)+ "};\n")
+			source.append(f"const int {key}[{len(value)}] = "
+				+"{"+",".join(str(s).lower() for s in value)+ "};")
 		else: 
 			raise ValueError(f"Unsupported trait {key}:{value}")
 
 	# Special treatment for some traits
-	if 'Int' in traits:
-		source += f"const Int Int_MAX = {np.iinfo(traits['Int']).max};\n"
-	if "shape_i" in traits:
-		size_i = np.prod(traits['shape_i'])
-		log2_size_i = int(np.ceil(np.log2(size_i)))
-		source += (f"const int size_i = {size_i};\n"
-			+ f"const int log2_size_i = {log2_size_i};\n")
+	for key,value in traits.items():
+		if dtype_sup and isinstance(value,type):
+			kind =  np.dtype(value).kind==
+			if kind=='i':
+				source.append(f"const {key} {key}_Sup = {np.iinfo(value).max};")
+			elif kind=='f':
+				source.append(f"const {key} {key}_Sup = 1./0.;")
+		if size_of_shape and key.startswith('shape_'):
+			suffix = key[len('shape_'):]
+			size = np.prod(value)
+			source.append(f"const int size_{suffix} = {size};")
+			if log2_size:
+				log2 = int(np.ceil(np.log2(size)))
+				source.append(f"const int log2_size_{suffix} = {log2};")
 
-	return source
+	return "\n".join(source) if join else source
+
+
+

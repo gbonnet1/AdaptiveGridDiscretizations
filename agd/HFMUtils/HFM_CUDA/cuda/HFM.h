@@ -1,7 +1,6 @@
+#pragma once
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
-
-#pragma once
 /**
 This file implements common rountines for HFM-type fast marching methods 
 running on the GPU based on CUDA.

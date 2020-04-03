@@ -1,7 +1,6 @@
+#pragma once
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
-
-#pragma once
 
 #include "TypeTraits.h"
 const Int ndim=2;
@@ -17,7 +16,7 @@ void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 		const Int i=iter%3, j=(iter+1)%3,k=(iter+2)%3;
 		if(scal_vmv(sb[i],m,sb[j]) > 0){
 			sub_vv(sb[i],sb[j],sb[k]);
-			neg_v(sb[i],sb[i]);
+			neg_V(sb[i]);
 			iterReduced=0;
 		}
 	}

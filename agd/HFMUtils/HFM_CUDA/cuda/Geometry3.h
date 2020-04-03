@@ -1,7 +1,6 @@
+#pragma once
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
-
-#pragma once
 
 #include "TypeTraits.h"
 const Int ndim=3;
@@ -23,9 +22,9 @@ void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 		const Int i = perm[0], j=perm[1];
 		if(scal_vmv(sb[i],m,sb[j]) > 0){
 			const Int k=perm[2], l=perm[3];
-			add_vv(sb[i],sb[k],sb[k]);
-			add_vv(sb[i],sb[l],sb[l]);
-			neg_v(sb[i],sb[i]);
+			add_vV(sb[i],sb[k]);
+			add_vV(sb[i],sb[l]);
+			neg_V(sb[i]);
 			iterReduced=0;
 		}
 	}
@@ -61,7 +60,7 @@ void Selling_v(const Scalar v[ndim], Scalar weights[symdim], Int offsets[symdim]
 		const Int * e = offsets[k]; // e[ndim]
 		const Scalar ve = scal_vv(v,e), ee = scal_vv(e,e);
 		if(ve*ve < vv*ee*Selling_v_cosmin2){weights[k]=0; continue;}
-		if(ve>0){neg_v(e,e);} // Note : we want ve<0.
+		if(ve>0){neg_V(e);} // Note : we want ve<0.
 	}
 }
 )

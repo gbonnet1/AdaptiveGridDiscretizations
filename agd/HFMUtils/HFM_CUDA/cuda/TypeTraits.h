@@ -1,7 +1,6 @@
+#pragma once
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
-
-#pragma once
 
 #include "static_assert.h"
 
@@ -11,7 +10,6 @@ typedef float Scalar;
 
 #ifndef Int_macro
 typedef int Int;
-const Int IntMax = 2147483647;
 #endif
 
 /// Ceil of the division of positive numbers
@@ -218,6 +216,17 @@ to take effect.
 #define FLOW_WEIGHTS(...) __VA_ARGS__
 #else
 #define FLOW_WEIGHTS(...) 
+#endif
+
+// weightsum
+#ifndef flow_weightsum_macro
+#define flow_weightsum_macro 0
+#endif
+
+#if flow_weightsum_macro
+#define FLOW_WEIGHTSUM(...) __VA_ARGS__
+#else
+#define FLOW_WEIGHTSUM(...)
 #endif
 
 // offets

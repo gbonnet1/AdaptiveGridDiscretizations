@@ -1,35 +1,64 @@
+#pragma once
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-#pragma once
-
 const Int symdim = (ndim*(ndim+1))/2; // Dimension of the space of symmetric matrices.
-typedef Int VC; // Vector component
-typedef Scalar MC; // Symmetric matrix component
+
+/**
+Naming conventions : 
+- k : scalar input
+- v : vector input
+- m : symmetric matrix input
+- upper case : output (terminal output may be omitted)
+*/
+
+template<typename T>
+void copy_vV(const T x[ndim], T out[ndim]){
+	for(Int i=0; i<ndim; ++i){out[i]=x[i];}} 
 
 /// Sum 
-void add_vv(const VC x[ndim], const VC y[ndim], VC out[ndim]){
-	for(Int i=0; i<ndim; ++i){
-		out[i]=x[i]+y[i];}
-}
+void add_vv(const Int x[ndim], const Int y[ndim], Int out[ndim]){
+	for(Int i=0; i<ndim; ++i){out[i]=x[i]+y[i];}}
+
+void add_vV(const Int x[ndim], Int y[ndim]){
+	for(Int i=0; i<ndim; ++i){y[i]+=x[i];}}
 
 /// Difference
-void sub_vv(const VC x[ndim], const VC y[ndim], VC out[ndim]){
+void sub_vv(const Int x[ndim], const Int y[ndim], Int out[ndim]){
 	for(Int i=0; i<ndim; ++i){
 		out[i]=x[i]-y[i];}
 }
 
 /// Opposite vector
-void neg_v(const VC x[ndim], VC out[ndim]){
-	for(Int i=0; i<ndim; ++i){
-		out[i]=-x[i];}
-}
+void neg_v(const Int x[ndim], Int out[ndim]){
+	for(Int i=0; i<ndim; ++i){out[i]=-x[i];}}
+void neg_V(Int x[ndim]){
+	for(Int i=0; i<ndim; ++i){x[i]=-x[i];}}
 
 /// Perpendicular vector, in dimension two. Caution : assume x and out are distinct.
-void perp_v(const VC x[2], VC out[2]){ 
+void perp_v(const Int x[2], Int out[2]){ 
 	out[0]=-x[1];
 	out[1]= x[0];
 }
+
+template<typename T>
+void fill_kV(const T k, T v[ndim]){
+	for(Int i=0; i<ndim; ++i){v[i]=k;}}
+
+template<typename T>
+void mul_kV(const T k, T v[ndim]){
+	for(Int i=0; i<ndim; ++i){v[i]*=k;}}
+
+void div_Vk(Scalar v[ndim], const Scalar k){
+	const Scalar l=1./k; mul_kV(l,v);}
+
+template<typename T>
+void madd_kvv(const T k, T x[ndim], const T y[ndim], T out[ndim]){
+	for(Int i=0; i<ndim; ++i){out[i]=k*x[i]+y[i];}}
+
+template<typename T>
+void madd_kvV(const T k, T x[ndim], T y[ndim]){
+	for(Int i=0; i<ndim; ++i){y[i]+=k*x[i];} }
 
 /// Cross product, in dimension three. Caution : assumes out is dstinct from x and y.
 template<typename Tx, typename Ty, typename Tout=Tx>
@@ -39,6 +68,7 @@ void cross_vv(const Tx x[3], const Ty y[3], Tout out[3]){
 		out[i]=x[j]*y[k]-x[k]*y[j];
 	}
 }
+
 
 /// Euclidean scalar product
 template<typename Tx, typename Ty, typename Tout=Tx>
@@ -88,7 +118,7 @@ void self_outer_relax_v(const Scalar x[ndim], const Scalar relax, Scalar m[ndim]
 
 
 
-void canonicalsuperbase(VC sb[ndim+1][ndim]){
+void canonicalsuperbase(Int sb[ndim+1][ndim]){
 	for(Int i=0; i<ndim; ++i){
 		for(Int j=0; j<ndim; ++j){
 			sb[i][j]= (i==j);

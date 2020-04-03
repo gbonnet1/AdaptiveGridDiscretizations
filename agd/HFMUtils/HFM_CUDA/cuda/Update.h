@@ -1,10 +1,11 @@
+#pragma once
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-#pragma once
-
 #include "Grid.h"
 #include "HFM.h"
+#include "REDUCE_i.h"
+#include "GetBool.h"
 
 MINCHG_FREEZE(
 __constant__ Scalar minChgPrev_thres, minChgNext_thres; // Previous and next threshold for freezing
@@ -40,8 +41,9 @@ __global__ void Update(
 	const Scalar * geom_t, DRIFT(const Scalar * drift_t,) const BoolPack * seeds_t, 
 	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
 	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o 
-	FLOW_WEIGHTS(, Scalar * flow_weights_t) FLOW_OFFSETS(, char * flow_offsets_t) 
-	FLOW_INDICES(, Int* flow_indices_t) FLOW_VECTOR(, Scalar * flow_vector_t) ){ 
+	FLOW_WEIGHTS(, Scalar * flow_weights_t) FLOW_WEIGHTSUM(, Scalar * flow_weightsum_t)
+	FLOW_OFFSETS(, char * flow_offsets_t) FLOW_INDICES(, Int* flow_indices_t) 
+	FLOW_VECTOR(, Scalar * flow_vector_t) ){ 
 
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
@@ -104,7 +106,7 @@ __global__ void Update(
 		)
 
 	const Int n_t = n_o*size_i + n_i;
-	const bool isSeed = Grid::GetBool(seeds_t,n_t);
+	const bool isSeed = GetBool(seeds_t,n_t);
 
 	Scalar weights[nactx_];
 	ISO(weights[0] = geom_t[n_t];) // Offsets are constant.
@@ -176,11 +178,8 @@ __global__ void Update(
 
 			Int y_t[ndim], y_i[ndim]; // Position of neighbor. 
 			const Int eps=2*s-1;
-
-			for(Int l=0; l<ndim; ++l){
-				y_t[l] = x_t[l] + eps*e[l]; 
-				y_i[l] = x_i[l] + eps*e[l];
-			}
+			madd_kvv(eps,e,x_t,y_t);
+			madd_kvv(eps,e,x_i,y_i);
 
 			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) )  {
 				v_i[kv] = Grid::Index(y_i,shape_i);
@@ -198,10 +197,8 @@ __global__ void Update(
 			}
 
 			ORDER2(
-			for(int l=0; l<ndim; ++l){
-				y_t[l] +=  eps*e[l]; 
-				y_i[l] +=  eps*e[l];
-			}
+			madd_kvV(eps,e,y_t);
+			madd_kvV(eps,e,y_i);
 
 			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) ) {
 				v2_i[kv] = Grid::Index(y_i,shape_i);
@@ -258,11 +255,12 @@ __global__ void Update(
 	#endif
 
 	FLOW( // Extract and export the geodesic flow
-	FLOW_VECTOR(Scalar flow_vector[ndim]; 
-	for(Int l=0; l<ndim; ++l){flow_vector[l]=0.;})
+	FLOW_VECTOR(Scalar flow_vector[ndim]; fill_kV(0.,flow_vector);)
+	FLOW_WEIGHTSUM(Scalar flow_weightsum=0.;)
 
 	for(Int k=0; k<nact; ++k){
 		FLOW_WEIGHTS(flow_weights_t[n_t+size_tot*k]=flow_weights[k];)
+		FLOW_WEIGHTSUM(flow_weightsum+=flow_weights[k];)
 		Int offset[ndim]; FLOW_INDICES(Int y_t[ndim];)
 		const Int eps = 2*active_side[l]-1;
 		for(Int l=0; l<ndim; ++l){
@@ -273,6 +271,7 @@ __global__ void Update(
 		}
 		FLOW_INDICES(flow_indices_t[n_t+size_tot*k]=Grid::Index_per(y_t,shape_tot);) 
 	}
+	FLOW_WEIGHTSUM(flow_weightsum_t[n_t]=flow_weightsum;)
 	FLOW_VECTOR(for(Int l=0; l<ndim; ++l){flow_vector_t[n_t+size_tot*l]=flow_vector[l];})
 	) // FLOW 
 
