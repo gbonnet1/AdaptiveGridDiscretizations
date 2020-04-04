@@ -193,24 +193,29 @@ def spsolve(mat,rhs):
 	"""
 	Solves a sparse linear system where the matrix is given as triplets.
 	"""
-	import scipy.sparse; import scipy.sparse.linalg
-	return scipy.sparse.linalg.spsolve(
-	scipy.sparse.coo_matrix(mat).tocsr(),rhs)
+	if cupy_generic.from_cupy(mat[0]):
+		import cupy.cupyx.scipy.sparse as spmod
+		spmat = spmod.coo_matrix(mat)
+		return spmod.linalg.lsqr(spmat,rhs) # Only available solver
+	else:
+		import scipy.sparse; import scipy.sparse.linalg
+		return scipy.sparse.linalg.spsolve(
+		scipy.sparse.coo_matrix(mat).tocsr(),rhs)
 
 def spapply(mat,rhs,crop_rhs=False):
 	"""
 	Applies a sparse matrix, given as triplets, to an rhs.
 	"""
-	import scipy.sparse; import scipy.sparse.linalg
 	if crop_rhs: 
 		cols = mat[1][1]
 		if len(cols)==0: 
-			return np.zeros(0)
+			return numpy_like.zeros_like(rhs,shape=(0,))
 		size = 1+np.max(cols)
 		if rhs.shape[0]>size:
 			rhs = rhs[:size]
-	return scipy.sparse.coo_matrix(mat).tocsr()*rhs
-
+	if from_cupy(rhs): import cupy.cupyx.scipy.sparse as spmod
+	else: import scipy.sparse as spmod
+	return spmod.coo_matrix(mat).tocsr()*rhs
 
 def min(array,axis=None,keepdims=False,out=None):
 	if axis is None: return array.flatten().min(axis=0,out=out)
