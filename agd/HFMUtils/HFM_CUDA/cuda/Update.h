@@ -255,14 +255,14 @@ __global__ void Update(
 	#endif
 
 	FLOW( // Extract and export the geodesic flow
-	FLOW_VECTOR(Scalar flow_vector[ndim]; fill_kV(0.,flow_vector);)
-	FLOW_WEIGHTSUM(Scalar flow_weightsum=0.;)
+	FLOW_VECTOR(Scalar flow_vector[ndim]; fill_kV(Scalar(0),flow_vector);)
+	FLOW_WEIGHTSUM(Scalar flow_weightsum=0;)
 
 	for(Int k=0; k<nact; ++k){
 		FLOW_WEIGHTS(flow_weights_t[n_t+size_tot*k]=flow_weights[k];)
 		FLOW_WEIGHTSUM(flow_weightsum+=flow_weights[k];)
 		Int offset[ndim]; FLOW_INDICES(Int y_t[ndim];)
-		const Int eps = 2*active_side[l]-1;
+		const Int eps = 2*active_side[k]-1;
 		for(Int l=0; l<ndim; ++l){
 			offset[l] = eps*offsets[kmix*nact+k][l];
 			FLOW_INDICES(y_t[l] = x_t[l]+offset[l];)

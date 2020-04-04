@@ -186,7 +186,7 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		b+=w*t;
 		c+=w*t*t;
 		// Delta is expected to be non-negative by Cauchy-Schwartz inequality
-		const Scalar delta = max(0.,b*b-a*c); 
+		const Scalar delta = max(Scalar(0),b*b-a*c); 
 		const Scalar sdelta = sqrt(delta);
 		value = (b+sdelta)/a;
 	}
@@ -202,13 +202,13 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 
 	FLOW(
 	if(*u_out==infinity()){
-		for(Int k=0; k<nact; ++k){flow_weights[k]=0.;}
+		for(Int k=0; k<nact; ++k){flow_weights[k]=0;}
 		return;}
 	
-	ISO(const Scalar w = 1./(weights[0]*weights[0]);)
+	ISO(w = 1./(weights[0]*weights[0]);)
 	for(Int k=0; k<nact; ++k){
 		ANISO(const Scalar w = weights[k];)
-		const Scalar diff = max(0,val - v[k]);
+		const Scalar diff = max(Scalar(0),val - v[k]);
 		flow_weights[k] = w*diff;
 		ORDER2(if(order2[k]) {flow_weights[k]*=3./2.;})
 	})
@@ -239,7 +239,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 					ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
 					u_i MULTIP(,uq_i),
 					&u_i_mix MULTIP(,&uq_i_mix) 
-					FLOW(, Scalar flow_weights_mix[nact], Int active_side_mix[nsym])
+					FLOW(, flow_weights_mix, active_side_mix)
 					);
 
 				MIX(if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
@@ -266,7 +266,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 				u_i MULTIP(,uq_i),
 				&u_i[n_i] MULTIP(,&uq_i[n_i]) 
-				FLOW(, Scalar flow_weights[nact], Int active_side[nsym])
+				FLOW(, flow_weights, active_side)
 				);
 			if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
 										  u_i_new  MULTIP(,uq_i_new)))) {
