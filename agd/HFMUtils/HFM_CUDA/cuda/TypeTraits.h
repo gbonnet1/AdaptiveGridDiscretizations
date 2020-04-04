@@ -26,6 +26,8 @@ typedef unsigned char BoolAtom;
 const Int debug_print = 0;
 #endif
 
+#define bilevel_grid_macro
+
 /** In multi-precision, we address float roundoff errors 
 by representing a real in the form u+uq*multip_step, where
 u is a float, uq is an integer, and multip_step is a constant.*/

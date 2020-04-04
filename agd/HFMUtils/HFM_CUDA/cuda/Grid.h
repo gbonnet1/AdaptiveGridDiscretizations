@@ -7,6 +7,7 @@
 /** This file implements common facilities for bounds checking and array access.*/
 namespace Grid {
 
+#ifdef bilevel_grid_macro // Only if shape_tot, shape_o and shape_i are defined
 Int Index_tot(const Int x[ndim]){
 	// Get the index of a point in the full array.
 	// No bounds check 
@@ -24,6 +25,7 @@ Int Index_tot(const Int x[ndim]){
 	const Int n=n_o*size_i+n_i;
 	return n;
 }
+#endif
 
 bool InRange(const Int x[ndim], const Int shape_[ndim]){
 	for(int k=0; k<ndim; ++k){

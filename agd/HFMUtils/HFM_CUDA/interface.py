@@ -306,9 +306,12 @@ class Interface(object):
 		seedRadius = self.GetValue('seedRadius',default=0.,
 			help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
+
 		if seedRadius==0.:
 			seedIndices = np.round(self.seeds).astype(int)
 			values[tuple(seedIndices.T)] = seedValues
+			self.seedValues = seedValues
+			self.seedIndices = seedIndices
 		else:
 			neigh = Grid.GridNeighbors(self.hfmIn,self.seed,seedRadius) # Geometry last
 			r = seedRadius 
@@ -331,7 +334,9 @@ class Interface(object):
 #			neigh[:,self.periodic] = neigh[:,self.periodic] % self.shape[self.periodic]
 			metric0 = self.Metric(self.seed)
 			metric1 = self.Metric(neigh.T)
-			values[tuple(neigh.T)] = neighValues+0.5*(metric0.norm(diff) + metric1.norm(diff))
+			self.seedValues = neighValues+0.5*(metric0.norm(diff) + metric1.norm(diff))
+			self.seedIndices = neigh
+			values[tuple(self.seedIndices.T)] = self.seedValues 
 
 		block_values = misc.block_expand(values,self.shape_i,
 			mode='constant',constant_values=np.inf)
@@ -565,6 +570,13 @@ class Interface(object):
 		nact = kernel_traits.nact(self)
 		ndim = self.ndim
 
+		self.forward_ad = self.HasField('costVariation') or ad.is_ad(self.seedValues)
+		self.reverse_ad = self.HasField('sensitivity')
+
+		if self.forward_ad or self.reverse_ad:
+			for key in 'flow_weights','flow_weightsum','flow_indices':
+				self.flow_traits[key]=1
+
 		if self.flow_traits['flow_weights']:
 			self.flow_kernel_argnames.append('flow_weights')
 			self.block['flow_weights'] = self.xp.empty((nact,)+shape_oi,dtype=self.float_t)
@@ -599,7 +611,31 @@ class Interface(object):
 		if self.exportGeodesicFlow:
 			self.hfmOut['geodesicFlow']=self.flow['flow_vector']
 
-		# TODO : foward and backward AD
+		if self.foward_ad or self.reverse_ad:
+			import cupy.cupyx.scipy.sparse as spmod
+			xp=self.xp
+			weightsum = self.flow['flow_weightsum']
+			self.block_boundary = weightsum==0. #seeds, or walls, or out of domain
+			coef = xp.concatenate((weightsum,-self.flow['flow_weights']),axis=0)
+			rg = xp.arange(self.size_tot)
+			row = np.expand_dims(rg,axis=0).broadcast_to(data.shape)
+			col = xp.concatenate((rg,self.flow['flow_indices']),axis=0)
+
+			coef[0,self.boundary] = 1.			
+			self.triplets = (coef.flatten(),(row.flatten(),col.flatten())) 
+			self.spmat = spmod.coo_matrix(self.triplets)
+
+		if self.forward_ad:
+			if hasattr(self,costVariation):
+				rhs=self.GetValue('costVariation',help='Forward automatic differentiation')
+				size_ad = rhs.shape(-1)
+				if ad.is_ad(self.seedValues):
+					rhs[self.seedIndices.T,:] = self.seedValues.coef
+				hfmOut['valueVariation'] = spmod.linalg.lsqr(self.spmat.tocsr(),rhs)
+
+		if self.reverse_ad:
+			rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
+			hfmOut['valueSensitivity'] = spmod.linalg.lsqr(self.spmat.T.tocsr(),rhs)
 
 	def GetGeodesics(self):
 		if self.tips is None: return
