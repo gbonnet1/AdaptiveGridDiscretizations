@@ -15,7 +15,7 @@ def dtype_inf(dtype):
 	elif dtype.kind=='f': return dtype(-np.inf)
 	else: raise ValueError("Unsupported dtype")
 
-def inf_convolution(arr,kernel,niter=1,periodic=None,
+def inf_convolution(arr,kernel,niter=1,periodic=False,
 	upper_saturation=None, lower_saturation=None,
 	overwrite=False,block_size=1024):
 	"""
@@ -23,7 +23,7 @@ def inf_convolution(arr,kernel,niter=1,periodic=None,
 	- arr : the input array
 	- kernel : the convolution kernel. A centered kernel will be used.
 	- niter (optional) : number of iterations of the convolution.
-	- periodic (optional) : on which axes to use periodic boundary conditions.
+	- periodic (optional, bool or tuple of bool): axes using periodic boundary conditions.
 	"""
 	conv_t = arr.dtype.type
 	int_t = np.int32
@@ -38,12 +38,13 @@ def inf_convolution(arr,kernel,niter=1,periodic=None,
 
 	if upper_saturation is None: upper_saturation = dtype_sup(conv_t)
 	else: traits['upper_saturation_macro']=1
-	traits['T_Sup']=upper_saturation
+	traits['T_Sup']=(upper_saturation,conv_t)
 	if lower_saturation is None: lower_saturation = dtype_inf(conv_t)
 	else traits['lower_saturation_macro']=1
-	traits['T_Inf']=lower_saturation
+	traits['T_Inf']=(lower_saturation,conv_t)
 
-	if periodic is not None: traits['periodic'] = periodic
+	if not isinstance(periodic,tuple): periodic = (periodic,)*arr.ndim
+	if any(periodic): traits['periodic'] = periodic
 
 	source = cupy_module_helper.traits_header(traits,size_of_shape=True)
 

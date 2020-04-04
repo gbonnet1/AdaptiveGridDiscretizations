@@ -58,13 +58,14 @@ np2cuda_dtype = {
 	}
 
 def traits_header(traits,
-	join=False,size_of_shape=False,log2_size=False):
+	join=False,size_of_shape=False,log2_size=False,integral_max=False):
 	"""
 	Returns the source (mostly a preamble) for the gpu kernel code 
 	for the given traits.
 	- join (optional): return a multiline string, rather than a list of strings
 	- size_of_shape: insert traits for the size of each shape.
 	- log2_size: insert a trait for the ceil of the base 2 logarithm of previous size.
+	- integral_max: declare max of integral typedefs
 	"""
 	source = []
 	for key,value in traits.items():
@@ -79,10 +80,13 @@ def traits_header(traits,
 		elif isinstance(value,tuple) and isinstance(value[1],type):
 			val,dtype=value
 			source.append(f"const {np2cuda_dtype[dtype]} {key} = "
-				("1./0" if val==np.inf else "-1./0." if val==-np.inf else str(val)) )
+				("1./0" if val==np.inf else "-1./0." if val==-np.inf else str(val)) +";")
 
 		elif isinstance(value,type):
-			source.append(f"typedef {np2cuda_dtype[value]} {key};")
+			ctype = np2cuda_dtype[value]
+			source.append(f"typedef {ctype} {key};")
+			if integral_max and issubclass(type,numbers.Integral):
+				source.append(f"const {ctype} {key}_Max = {np.iinfo(value).max};")
 		elif all(isinstance(v,numbers.Integral) for v in value):
 			source.append(f"const int {key}[{len(value)}] = "
 				+"{"+",".join(str(s).lower() for s in value)+ "};")

@@ -13,36 +13,70 @@ silly to solve it on the GPU. We do it here because the Python code is unaccepta
 and to avoid relying on compiled CPU code.)
 */
 
+#include "static_assert.h"
+
+#ifndef Int_macro
 typedef int Int;
+const Int Int_Max = 
+#endif
+#ifndef Scalar_macro
 typedef float Scalar;
+#endif
+
+#ifndef EuclT_macro
+typedef unsigned char EuclT;
+const EuclT EuclT_Max = 255;
+#endif
+
+#ifndef ndim_macro
 const Int ndim = 2;
+#endif
+
+#ifndef periodic_macro
+#define PERIODIC(...) 
+#else
+#define PERIODIC(...) __VA_ARGS__
+//const bool periodic[ndim]={false,true}; //must be defined
+#endif
 
 #include "Geometry_.h"
 
 const Int ncorners = 1<<ndim;
-const bool periodic[ndim]={false,false};
 __constant__ shape_tot[ndim];
 __constant__ size_tot[ndim];
 
-typedef unsigned char uchar;
-const uchar uchar_MAX = 255;
-
+__constant__ Int nGeodesics;
 __constant__ Int max_len = 200; // Max geodesic length
 __constant__ Scalar causalityTolerance = 4; 
-__constant__ Scalar geodesicStep = 6.*sqrt(ndim);
+__constant__ Scalar geodesicStep = 0.25;
+
+#ifndef hlen_macro
 const Int hlen = 20; // History length (a small periodic history of computations is kept)
+#endif
+
+#ifndef eucl_delay_macro
 const Int eucl_delay = hlen-1; // Used in PastSeed stopping  criterion
+#else
+STATIC_ASSERT(eucl_delay<hlen,"eucl_delay must be strictly less than history length hlen")
+#endif
+
+#ifndef nymin_delay_macro
 const Int nymin_delay = hlen-1; // Used in Stationnary stropping criterion
+#else
+STATIC_ASSERT(nymin_delay<hlen,"nymin _delay must be strictly less than history length hlen")
+#endif
 
 
 enum class ODEStop {
 	Continue = 0, // Do not stop here
-	Seed, // Correct termination
-	Wall, // Went out of domain
+	AtSeed, // Correct termination
+	InWall, // Went out of domain
 	Stationnary, // Error : Stall in ODE process
 	PastSeed, // Error : Moving away from target
 	VanishingFlow, // Error : Vanishing flow
 };
+
+typedef char ODEStopT;
 
 /** Array suffix conventions:
 - t : global field [physical dims][shape_tot]
@@ -81,7 +115,7 @@ Outputs :
  - stop : if true, the minimal neighbor is a degenerate point (seed or wall)
 */
 ODEStop NormalizedFlow(
-	const Scalar* flow_vector_t,const Scalar* flow_weightsum_t,const Scalar* dist_t, 
+	const Scalar * flow_vector_t,const Scalar * flow_weightsum_t,const Scalar * dist_t, 
 	const Scalar x[ndim], Scalar flow[ndim],
 	Int xq[ndim], Int * nymin,
 	Scalar flow_cache[ncorners][ndim], bool exclude_cache[ncorners] ){
@@ -115,8 +149,8 @@ ODEStop NormalizedFlow(
 		}
 
 		const Scalar flow_weightsum = flow_weightsum_t[*nymin];
-		if(dist_min==infinity()){ODEStop=ODEStop::Wall;}
-		else if(flow_weightsum==0.){ODEStop=ODEStop::Seed;}
+		if(dist_min==infinity()){ODEStop=ODEStop::InWall;}
+		else if(flow_weightsum==0.){ODEStop=ODEStop::AtSeed;}
 
 		// Exclude interpolation neighbors with too high value.
 		const Scalar dist_threshold = dist_min+causalityTolerance/flow_weightsum;
@@ -151,22 +185,15 @@ ODEStop NormalizedFlow(
 }
 
 
-/*
-void Flow(const Scalar * flow_vector_t, const Scalar * flow_weightsum_t,
-	const Scalar * dist_t, const uchar * eucl_t, 
-	const Scalar x[ndim], Int xq[ndim], 
-	Scalar flow_cache[ncorners][ndim], bool exclude_cache[ncorners],
-	Scalar flow[ndim], uchar * eucl){
-*/
-
 extern "C" {
 
 __global__ void GeodesicODE(
 	const Scalar * flow_vector_t, const Scalar * flow_weightsum_t,
-	const Scalar * dist_t, const uchar * eucl_t,
-	Scalar * x_s, Int * len_s, uchar * stop_s){
+	const Scalar * dist_t, const EuclT * eucl_t,
+	Scalar * x_s, Int * len_s, ODEStopT * stop_s){
 
 	const Int tid = BlockIdx.x * BlockDim.x + ThreadIdx.x;
+	if(tid>=nGeodesics) return;
 
 	// Get the position, and euclidean distance to target, of the previous points
 	/*
@@ -180,11 +207,11 @@ __global__ void GeodesicODE(
 	}
 	*/
 	// Short term periodic history introduced to avoid stalls or moving past the seed.
-	uchar eucl_p[hlen];
+	EuclT eucl_p[hlen];
 	Int nymin_p[hlen];
 	for(Int l=0; l<hlen; ++l){
-		eucl_p[l]  = uchar_MAX;
-		nymin_p[l] = Int_MAX;
+		eucl_p[l]  = EuclT_Max;
+		nymin_p[l] = Int_Max;
 	}
 
 	Scalar x[ndim]; copy_vV(x_s+tid*max_len*ndim,x);
@@ -233,7 +260,7 @@ __global__ void GeodesicODE(
 	}
 
 	len_s[tid] = len;
-	stop_s[tid] = stop;
+	stop_s[tid] = ODEStopT(stop);
 }
 
 } // extern "C"

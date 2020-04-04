@@ -12,6 +12,7 @@ from . import solvers
 from . import misc
 from . import cupy_module_helper
 from .cupy_module_helper import GetModule
+from .import inf_convolution
 from .. import Grid
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
@@ -99,6 +100,7 @@ class Interface(object):
 		self.SetKernel()
 		self.SetSolver()
 		self.PostProcess()
+		self.GetGeodesics()
 
 		return self.hfmOut
 
@@ -313,30 +315,33 @@ class Interface(object):
 			aX = [xp.arange(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
 			neigh =  ad.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
 			neigh = neigh.reshape(-1,neigh.shape[-1])
+			neighValues = seedValues.repeat(len(neigh)//len(self.seeds))
 
 			# Select neighbors which are close enough
 			neigh = neigh[ad.Optimization.norm(neigh-self.seed,axis=-1) < r]
 
 			# Periodize, and select neighbors which are in the domain
 			nper = np.logical_not(self.periodic)
-			test = np.logical_and(-0.5<=neigh[:,nper],
-				neigh[:,nper]<xp.array(self.shape)[nper]-0.5)
 			inRange = np.all(np.logical_and(-0.5<=neigh[:,nper],
 				neigh[:,nper]<xp.array(self.shape)[nper]-0.5),axis=-1)
 			neigh = neigh[inRange,:]
+			neighValues = neighValues[inRange,:]
 			
 			diff = (neigh - self.seed).T # Geometry first
 #			neigh[:,self.periodic] = neigh[:,self.periodic] % self.shape[self.periodic]
 			metric0 = self.Metric(self.seed)
 			metric1 = self.Metric(neigh.T)
-			values[tuple(neigh.T)] = 0.5*(metric0.norm(diff) + metric1.norm(diff))
+			values[tuple(neigh.T)] = neighValues+0.5*(metric0.norm(diff) + metric1.norm(diff))
 
-		block_values = misc.block_expand(values,self.shape_i,mode='constant',constant_values=xp.nan)
+		block_values = misc.block_expand(values,self.shape_i,
+			mode='constant',constant_values=np.inf)
 
 		# Tag the seeds
 		if np.prod(self.shape_i)%8!=0:
 			raise ValueError('Product of shape_i must be a multiple of 8')
-		block_seedTags = np.logical_or(xp.isfinite(block_values),xp.isnan(block_values))
+		self.seedTags = xp.isfinite(values)
+		block_seedTags = misc.block_expand(seedTags,self.shape_i,
+			mode='constant',constant=True)
 		block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 		block_seedTags = block_seedTags.reshape( self.shape_o + (-1,) )
 		block_values[xp.isnan(block_values)] = xp.inf
@@ -393,14 +398,16 @@ class Interface(object):
 			if model == 'Rander_': model = 'Riemann_' # Rander = Riemann + drift
 			self.model_source = f'#include "{model}.h"\n' 
 
-		cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
+		self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 		date_modified = cupy_module_helper.getmtime_max(cuda_path)
-		self.model_source += f"// Date cuda code last modified : {date_modified}\n"
-		cuoptions = ("-default-device", f"-I {cuda_path}"
+		self.cuda_date_modified = (
+			f"// Date cuda code last modified : {self.cuda_date_modified}\n")
+		self.cuoptions = ("-default-device", f"-I {self.cuda_path}"
 			) + self.GetValue('cuoptions',default=tuple(),
 			help="Options passed via cupy.RawKernel to the cuda compiler")
 
-		self.solver_module = GetModule(self.solver_source+self.model_source,cuoptions)
+		self.solver_module = GetModule(self.solver_source+self.model_source
+			+self.cuda_date_modified,self.cuoptions)
 
 		# Produce a second kernel for computing the geodesic flow
 		flow_traits = traits.copy() 
@@ -416,7 +423,8 @@ class Interface(object):
 
 		self.flow_traits = flow_traits
 		self.flow_source = cupy_module_helper.traits_header(flow_traits)
-		self.flow_module = GetModule(self.flow_source+self.model_source,cuoptions)
+		self.flow_module = GetModule(self.flow_source+self.model_source
+			+self.cuda_date_modified,self.cuoptions)
 
 		# Set the constants
 		float_t,int_t = self.float_t,self.int_t
@@ -552,7 +560,7 @@ class Interface(object):
 		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
 			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
 
-		# Compute the geodesic flow, if needed
+		# Compute the geodesic flow, if needed, and related quantities
 		shape_oi = self.shape_o+self.shape_i
 		nact = kernel_traits.nact(self)
 		ndim = self.ndim
@@ -577,5 +585,150 @@ class Interface(object):
 			for key in ('flow_weights','flow_offsets','flow_indices','flow_vector'))
 		if self.flow_needed: solvers.global_iteration(self,solver=False)
 
+		self.flow = {}
+		for key in self.block:
+			if key.startswith('flow_'):
+				self.flow[key] = misc.block_squeeze(self.block[key],self.shape)
+
+		if self.model.startswith('Rander') and 'flow_vector' in self.flow:
+			if self.dualMetric is None: self.dualMetric = self.metric.dual()
+			flow_orig = self.flow['flow_vector']
+			flow = self.dualMetric.gradient(lp.dot_AV(self.metric.m,flow)+self.metric.w)
+			self.flow['flow_vector_orig'],self.flow['flow_vector'] = flow_orig,flow
+
 		if self.exportGeodesicFlow:
-			self.hfmOut['geodesicFlow']=misc.block_squeeze(self.block['flow_vector'],self.shape)
+			self.hfmOut['geodesicFlow']=self.flow['flow_vector']
+
+		# TODO : foward and backward AD
+
+	def GetGeodesics(self):
+		if self.tips is None: return
+
+		# Set the kernel traits
+		geodesic_step = self.GetValue('geodesic_step',default=0.25,
+			'Step size, in pixels, for the geodesic ODE solver')
+
+		geodesic_hlen = int(4*sqrt(self.ndim)/geodesic_step)
+		geodesic_hlen = self.GetValue('geodesic_hlen',default=geodesic_hlen,
+			help="History length for the geodesic solver, for termination error criteria")
+
+		geodesic_traits = {
+			'hlen':geodesic_hlen,
+			'eucl_delay':geodesic_hlen-1,
+			'nymin_delay':geodesic_hlen-1,
+			'EuclT':np.uint8,
+			}
+		if any(self.periodic): geodesic_traits['periodic'] = self.periodic
+		geodesic_traits.update(self.GetValue('geodesic_traits',default=geodesic_traits,
+			help='Traits for the geodesic backtracking kernel') )
+		geodesic_traits.update({ # Non-negotiable
+			'ndim':self.ndim,
+			'Int':self.int_t,
+			'Scalar':self.float_t})
+
+		# Get the module
+		self.geodesic_traits=geodesic_traits
+		self.geodesic_source = cupy_module_helper.traits_header(geodesic_traits,
+			join=True,integral_max=True)
+
+		cuoptions = ("-default-device", f"-I {self.cuda_path}"
+			) + self.GetValue('cuoptions',default=tuple(),
+			help="Options passed via cupy.RawKernel to the cuda compiler")
+
+		self.geodesic_module = GetModule(self.solver_source+'include "GeodesicODE.h"'
+			+self.cuda_date_modified,self.cuoptions)
+		geodesic_kernel = self.geodesic_module.get_function('GeodesicODE')
+
+		# Set the module constants
+		def SetCst(*args):cupy_module_helper.SetModuleConstant(self.geodesic_module,*args)
+		SetCst('shape_tot',self.shape_tot,self.int_t)
+		SetCst('size_tot', self.size_tot, self.int_t)
+		max_len = max(200,0.25*np.max(self.shape_tot)/geodesic_step)
+		max_len = self.GetValue('geodesic_max_len',default=max_len,
+			help="Typical expected length of geodesics.")
+		SetCst('max_len', max_len, self.int_t)
+		causalityTolerance = self.GetValue('geodesic_causalityTolerance',default=4.,
+			help="Used in criterion for rejecting points in flow interpolation")
+		SetCst('causalityTolerance', causalityTolerance, self.float_t)
+		nGeodesics=len(tips)
+		SetCst('nGeodesics', nGeodesics, self.int_t)
+
+		# Prepare the euclidean distance to seed estimate (for stopping criterion)
+		xp = self.xp
+		eucl_bound = self.GetValue('geodesic_targetTolerance',default=6.,
+			"Tolerance, in pixels, for declaring a seed as reached.")
+		eucl_t = geodesic_traits['EuclT']
+		eucl = np.zeros_like(self.seedTags,dtype=eucl_t)
+		eucl_integral = np.dtype(eucl_t).kind=='i'
+		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
+		eucl[np.logical_not(self.seedTags)] = eucl_max
+		aX = xp.arange(-1,2) 
+		eucl_kernel = ad.Optimization.norm(
+			xp.meshgrid( *(aX,)*self.ndim, indexing='ij'),axis=0)
+		eucl_mult = 5 if eucl_integral else 1
+		eucl_kernel = (eucl_mult*eucl_kernel).astype(eucl_t)
+		eucl = inf_convolution(eucl,eucl_kernel.astype(eucl_t),
+			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
+		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
+
+		# Run the geodesic ODE solver
+		geodesics = list( (list(),)*nGeodesics)
+		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
+		corresp = range(nGeodesics)
+		tips = self.tips.copy()
+		block_size=self.GetValue('geodesic_block_size',default=32,
+			help="Block size for the GPU based geodesic solver")
+		values = self.hfmOut['values'].astype(self.float_t).ascontiguousarray()
+		geodesic_termination_codes = [
+			'Continue', 'AtSeed', 'InWall', 'Stationnary', 'PastSeed', 'VanishingFlow']
+
+		while len(corresp)>0:
+			nGeo = len(corresp)
+			x_s = xp.full( (nGeo,max_len,ndim), np.nan, self.float_t)
+			x_s[:,0,:] = tips[corresp]
+			len_s = xp.full((nGeo,),-1,self.int_t)
+			stop_s = xp.full((nGeo,),-1,np.int8)
+
+			nBlocks = int(np.ceil(nGeo/block_size))
+			geodesic_kernel( (nBlocks,),(block_size,),
+				(self.flow['flow_vector'],self.flow['flow_weightsum'],
+					values,eucl,x_s,len_s,stop_s))
+
+			corresp_next = []
+			for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
+				geodesics[i].append(x_s)
+				if stop!=0:
+					stopping_criterion[i] = geodesic_termination_codes[stop]
+					geodesics[i] = xp.concatenate(geodesics[i],axis=0)[:-(max_len-l)]
+				else:
+					corresp_next.append(i)
+
+		self.hfmOut['geodesics'] =  [x.T for x in geodesics]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
