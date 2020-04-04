@@ -1,9 +1,9 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-import cupy_module_helper
 import numpy as np
-from ... import ad
+from . import cupy_module_helper
+from ... import AutomaticDifferentiation as ad
 
 def dtype_sup(dtype):
 	dtype=np.dtype(dtype)
@@ -49,7 +49,7 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	else: traits['upper_saturation_macro']=1
 	traits['T_Sup']=(upper_saturation,conv_t)
 	if lower_saturation is None: lower_saturation = dtype_inf(conv_t)
-	else traits['lower_saturation_macro']=1
+	else: traits['lower_saturation_macro']=1
 	traits['T_Inf']=(lower_saturation,conv_t)
 
 	if not isinstance(periodic,tuple): periodic = (periodic,)*arr.ndim
@@ -73,7 +73,7 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	arr = np.ascontiguousarray(arr)
 	out = np.empty_like(arr)
 	if out is None: out = np.empty_like(arr)
-	else: assert out.dtype==arr.dtype && out.size==arr.size && out.flags['C_CONTIGUOUS']
+	else: assert out.dtype==arr.dtype and out.size==arr.size and out.flags['C_CONTIGUOUS']
 
 	for i in range(niter):
 		cupy_kernel((arr.size,),(block_size,),(arr,out))

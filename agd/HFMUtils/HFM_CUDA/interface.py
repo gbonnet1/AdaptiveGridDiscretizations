@@ -345,8 +345,8 @@ class Interface(object):
 		if np.prod(self.shape_i)%8!=0:
 			raise ValueError('Product of shape_i must be a multiple of 8')
 		self.seedTags = xp.isfinite(values)
-		block_seedTags = misc.block_expand(seedTags,self.shape_i,
-			mode='constant',constant=True)
+		block_seedTags = misc.block_expand(self.seedTags,self.shape_i,
+			mode='constant',constant_values=True)
 		block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 		block_seedTags = block_seedTags.reshape( self.shape_o + (-1,) )
 		block_values[xp.isnan(block_values)] = xp.inf
@@ -372,7 +372,7 @@ class Interface(object):
 			if value.dtype.type not in (self.float_t,self.int_t,np.uint8):
 				raise ValueError(f"Inconsistent type {value.dtype.type} for key {key}")
 
-	def SetModuleConstant(self,*args,**kwargs,module="Eikonal"):
+	def SetModuleConstant(self,*args,module="Eikonal",**kwargs):
 		if isinstance(module,str):
 			if module=="Eikonal": module = (self.solver_module,self.flow_module)
 			elif module=="All": module = (self.solver_module,self.flow_module,self.geo_module)
@@ -394,7 +394,7 @@ class Interface(object):
 			traits['periodic_axes']=self.periodic
 
 		self.solver_source = cupy_module_helper.traits_header(self.traits,
-			join=True,size_of_shape=True,log2_size=True)
+			join=True,size_of_shape=True,log2_size=True) + "\n"
 
 		if self.isCurvature: 
 			self.model_source = f'#include "{self.model}.h"\n'
@@ -404,15 +404,14 @@ class Interface(object):
 			self.model_source = f'#include "{model}.h"\n' 
 
 		self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
-		date_modified = cupy_module_helper.getmtime_max(cuda_path)
-		self.cuda_date_modified = (
-			f"// Date cuda code last modified : {self.cuda_date_modified}\n")
+		date_modified = cupy_module_helper.getmtime_max(self.cuda_path)
+		self.cuda_date_modified = f"// Date cuda code last modified : {date_modified}\n"
 		self.cuoptions = ("-default-device", f"-I {self.cuda_path}"
 			) + self.GetValue('cuoptions',default=tuple(),
 			help="Options passed via cupy.RawKernel to the cuda compiler")
 
-		self.solver_module = GetModule(self.solver_source+self.model_source
-			+self.cuda_date_modified,self.cuoptions)
+		source = self.solver_source+self.model_source+self.cuda_date_modified
+		self.solver_module = GetModule(source,self.cuoptions)
 
 		# Produce a second kernel for computing the geodesic flow
 		flow_traits = traits.copy() 
@@ -422,14 +421,16 @@ class Interface(object):
 			'niter_i':1,
 		})
 
-		flow_traits['flow_vector'] = (
+		flow_traits['flow_vector_macro'] = int(
 			self.exportGeodesicFlow or (self.tips is not None) or 
 			(self.isCurvature and (self.unorientedTips is not None)))
 
 		self.flow_traits = flow_traits
-		self.flow_source = cupy_module_helper.traits_header(flow_traits)
-		self.flow_module = GetModule(self.flow_source+self.model_source
-			+self.cuda_date_modified,self.cuoptions)
+		self.flow_source = cupy_module_helper.traits_header(flow_traits,
+			join=True,size_of_shape=True,log2_size=True) + "\n"
+		source = self.flow_source+self.model_source+self.cuda_date_modified
+		print(source)
+		self.flow_module = GetModule(source,self.cuoptions)
 
 		# Set the constants
 		float_t,int_t = self.float_t,self.int_t
@@ -570,31 +571,31 @@ class Interface(object):
 		nact = kernel_traits.nact(self)
 		ndim = self.ndim
 
-		self.forward_ad = self.HasField('costVariation') or ad.is_ad(self.seedValues)
-		self.reverse_ad = self.HasField('sensitivity')
+		self.forward_ad = self.HasValue('costVariation') or ad.is_ad(self.seedValues)
+		self.reverse_ad = self.HasValue('sensitivity')
 
 		if self.forward_ad or self.reverse_ad:
 			for key in 'flow_weights','flow_weightsum','flow_indices':
-				self.flow_traits[key]=1
+				self.flow_traits[key+"_macro"]=1
 
-		if self.flow_traits['flow_weights']:
+		if self.flow_traits.get('flow_weights_macro',False):
 			self.flow_kernel_argnames.append('flow_weights')
 			self.block['flow_weights'] = self.xp.empty((nact,)+shape_oi,dtype=self.float_t)
-		if self.flow_traits['flow_weightsum']:
+		if self.flow_traits.get('flow_weightsum_macro',False):
 			self.flow_kernel_argnames.append('flow_weightsum')
 			self.block['flow_weightsum'] = self.xp.empty(shape_oi,dtype=self.float_t)
-		if self.flow_traits['flow_offsets']:
+		if self.flow_traits.get('flow_offsets_macro',False):
 			self.flow_kernel_argnames.append('flow_offsets')
 			self.block['flow_offsets'] = self.xp.empty((ndim,nact,)+shape_oi,dtype=np.int8)
-		if self.flow_traits['flow_indices']:
+		if self.flow_traits.get('flow_indices_macro',False):
 			self.flow_kernel_argnames.append('flow_indices')
 			self.block['flow_indices'] = self.xp.empty((nact,)+shape_oi,dtype=self.int_t)
-		if self.flow_traits['flow_vector']:
+		if self.flow_traits.get('flow_vector_macro',False):
 			self.flow_kernel_argnames.append('flow_vector')
 			self.block['flow_vector'] = self.xp.empty((ndim,)+shape_oi,dtype=self.float_t)
 
-		self.flow_needed = any(self.flow_traits[key] 
-			for key in ('flow_weights','flow_offsets','flow_indices','flow_vector'))
+		self.flow_needed = any(self.flow_traits.get(key+"_macro",False) for key in 
+			('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 		if self.flow_needed: solvers.global_iteration(self,solver=False)
 
 		self.flow = {}
@@ -611,7 +612,7 @@ class Interface(object):
 		if self.exportGeodesicFlow:
 			self.hfmOut['geodesicFlow']=self.flow['flow_vector']
 
-		if self.foward_ad or self.reverse_ad:
+		if self.forward_ad or self.reverse_ad:
 			import cupy.cupyx.scipy.sparse as spmod
 			xp=self.xp
 			weightsum = self.flow['flow_weightsum']
@@ -642,7 +643,7 @@ class Interface(object):
 
 		# Set the kernel traits
 		geodesic_step = self.GetValue('geodesic_step',default=0.25,
-			'Step size, in pixels, for the geodesic ODE solver')
+			help='Step size, in pixels, for the geodesic ODE solver')
 
 		geodesic_hlen = int(4*sqrt(self.ndim)/geodesic_step)
 		geodesic_hlen = self.GetValue('geodesic_hlen',default=geodesic_hlen,
@@ -692,7 +693,7 @@ class Interface(object):
 		# Prepare the euclidean distance to seed estimate (for stopping criterion)
 		xp = self.xp
 		eucl_bound = self.GetValue('geodesic_targetTolerance',default=6.,
-			"Tolerance, in pixels, for declaring a seed as reached.")
+			help="Tolerance, in pixels, for declaring a seed as reached.")
 		eucl_t = geodesic_traits['EuclT']
 		eucl = np.zeros_like(self.seedTags,dtype=eucl_t)
 		eucl_integral = np.dtype(eucl_t).kind=='i'

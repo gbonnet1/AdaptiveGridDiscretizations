@@ -197,18 +197,6 @@ to take effect.
 
 
 /** The following macros are for the extraction of the upwind geodesic flow. */
-#ifndef flow_macro // Compute the upwind geodesic flow, in one form or another
-#define flow_macro (flow_weights_macro || flow_offsets_macro || flow_indices_macro || flow_vector_macro) 
-#endif 
-
-#if flow_macro
-#define FLOW(...) __VA_ARGS__
-#define NOFLOW(...) 
-#else 
-#define FLOW(...)
-#define NOFLOW(...) __VA_ARGS__
-#endif
-
 // weights
 #ifndef flow_weights_macro 
 #define flow_weights_macro 0
@@ -264,6 +252,19 @@ to take effect.
 #define FLOW_VECTOR(...) 
 #endif
 
+// Any of these
+#ifndef flow_macro // Compute the upwind geodesic flow, in one form or another
+#define flow_macro (flow_weights_macro || flow_weightsum_macro \
+	|| flow_offsets_macro || flow_indices_macro || flow_vector_macro) 
+#endif 
+
+#if flow_macro
+#define FLOW(...) __VA_ARGS__
+#define NOFLOW(...) 
+#else 
+#define FLOW(...)
+#define NOFLOW(...) __VA_ARGS__
+#endif
 #if order2_macro || flow_macro
 #define ORDER2_OR_FLOW(...) __VA_ARGS__
 #else

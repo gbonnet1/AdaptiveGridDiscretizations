@@ -228,7 +228,7 @@ __global__ void Update(
 		printf("hi there, before HFM\n");
 		printf("v_o %f,%f,%f, v_i %i,%i,%i,\n",v_o[0],v_o[1],v_o[2]);
 		DRIFT(printf("drift %f,%f\n", drift[0],drift[1]);)
-		printf("geom %f,%f,%f\n",geom[0],geom[1],geom[2]);
+//		printf("geom %f,%f,%f\n",geom[0],geom[1],geom[2]);
 		printf("weights %f,%f,%f\n",weights[0],weights[1],weights[2]);
 		printf("isSeed %i\n",isSeed);
 	}
@@ -304,7 +304,7 @@ __global__ void Update(
 
 	if(debug_print && x_i==0){
 		printf("hello world\n");
-		printf("geom : %f,%f,%f\n",geom[0],geom[1],geom[2]);
+//		printf("geom : %f,%f,%f\n",geom[0],geom[1],geom[2]);
 		DRIFT(printf("drift : %f,%f\n",drift[0],drift[1]);)
 	}
 

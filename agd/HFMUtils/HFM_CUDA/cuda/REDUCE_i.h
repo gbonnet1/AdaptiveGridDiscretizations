@@ -23,3 +23,4 @@ CAUTION : no syncing in the last iteration, so s[0] is only visible to thread 0.
 		if(k_<log2_size_i-1) {__syncthreads();} \
 	} \
 } \
+

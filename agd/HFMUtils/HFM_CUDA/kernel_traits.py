@@ -47,7 +47,7 @@ def nact(self):
 	model = self.model
 
 	if model.startswith('Isotropic'):
-		return dim
+		return ndim
 	elif model.startswith('Riemann') or model.startswith('Rander'):
 		return symdim
 	elif model.startswith('ReedsShepp'):

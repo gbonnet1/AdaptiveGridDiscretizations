@@ -17,26 +17,30 @@ void copy_vV(const T x[ndim], T out[ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i];}} 
 
 /// Sum 
-void add_vv(const Int x[ndim], const Int y[ndim], Int out[ndim]){
+template<typename T>
+void add_vv(const T x[ndim], const T y[ndim], T out[ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i]+y[i];}}
 
-void add_vV(const Int x[ndim], Int y[ndim]){
+template<typename T>
+void add_vV(const T x[ndim], T y[ndim]){
 	for(Int i=0; i<ndim; ++i){y[i]+=x[i];}}
 
 /// Difference
-void sub_vv(const Int x[ndim], const Int y[ndim], Int out[ndim]){
-	for(Int i=0; i<ndim; ++i){
-		out[i]=x[i]-y[i];}
-}
+template<typename T>
+void sub_vv(const T x[ndim], const T y[ndim], T out[ndim]){
+	for(Int i=0; i<ndim; ++i){out[i]=x[i]-y[i];}}
 
 /// Opposite vector
-void neg_v(const Int x[ndim], Int out[ndim]){
+template<typename T>
+void neg_v(const T x[ndim], T out[ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=-x[i];}}
-void neg_V(Int x[ndim]){
+template<typename T>
+void neg_V(T x[ndim]){
 	for(Int i=0; i<ndim; ++i){x[i]=-x[i];}}
 
 /// Perpendicular vector, in dimension two. Caution : assume x and out are distinct.
-void perp_v(const Int x[2], Int out[2]){ 
+template<typename T>
+void perp_v(const T x[2], T out[2]){ 
 	out[0]=-x[1];
 	out[1]= x[0];
 }
@@ -53,11 +57,11 @@ void div_Vk(Scalar v[ndim], const Scalar k){
 	const Scalar l=1./k; mul_kV(l,v);}
 
 template<typename T>
-void madd_kvv(const T k, T x[ndim], const T y[ndim], T out[ndim]){
+void madd_kvv(const T k, const T x[ndim], const T y[ndim], T out[ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=k*x[i]+y[i];}}
 
 template<typename T>
-void madd_kvV(const T k, T x[ndim], T y[ndim]){
+void madd_kvV(const T k, const T x[ndim], T y[ndim]){
 	for(Int i=0; i<ndim; ++i){y[i]+=k*x[i];} }
 
 /// Cross product, in dimension three. Caution : assumes out is dstinct from x and y.
@@ -81,7 +85,7 @@ Tout scal_vv(const Tx x[ndim], const Ty y[ndim]){
 
 /// Scalar product associated with a symmetric matrix
 template<typename Tx,typename Ty>
-Scalar scal_vmv(const Tx x[ndim], const MC m[symdim], const Ty y[ndim]){
+Scalar scal_vmv(const Tx x[ndim], const Scalar m[symdim], const Ty y[ndim]){
 	Scalar result=0.;
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
@@ -115,8 +119,6 @@ void self_outer_relax_v(const Scalar x[ndim], const Scalar relax, Scalar m[ndim]
 		}
 	}
 }
-
-
 
 void canonicalsuperbase(Int sb[ndim+1][ndim]){
 	for(Int i=0; i<ndim; ++i){
