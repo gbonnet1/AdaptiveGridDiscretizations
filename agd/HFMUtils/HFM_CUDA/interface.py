@@ -315,7 +315,7 @@ class Interface(object):
 			aX = [xp.arange(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
 			neigh =  ad.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
 			neigh = neigh.reshape(-1,neigh.shape[-1])
-			neighValues = seedValues.repeat(len(neigh)//len(self.seeds))
+			neighValues = seedValues.repeat(len(neigh)//len(self.seeds)) # corrected below
 
 			# Select neighbors which are close enough
 			neigh = neigh[ad.Optimization.norm(neigh-self.seed,axis=-1) < r]
@@ -662,12 +662,10 @@ class Interface(object):
 		eucl_integral = np.dtype(eucl_t).kind=='i'
 		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
 		eucl[np.logical_not(self.seedTags)] = eucl_max
-		aX = xp.arange(-1,2) 
-		eucl_kernel = ad.Optimization.norm(
-			xp.meshgrid( *(aX,)*self.ndim, indexing='ij'),axis=0)
 		eucl_mult = 5 if eucl_integral else 1
-		eucl_kernel = (eucl_mult*eucl_kernel).astype(eucl_t)
-		eucl = inf_convolution(eucl,eucl_kernel.astype(eucl_t),
+		eucl_kernel = inf_convolution.distance_kernel(radius=1,ndim=self.ndim,
+			dtype=eucl_t,mult=eucl_mult)
+		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel.astype(eucl_t),
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
 

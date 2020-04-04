@@ -3,6 +3,7 @@
 
 import cupy_module_helper
 import numpy as np
+from ... import ad
 
 def dtype_sup(dtype):
 	dtype=np.dtype(dtype)
@@ -14,6 +15,14 @@ def dtype_inf(dtype):
 	if dtype.kind=='i': return np.iinfo(dtype).min
 	elif dtype.kind=='f': return dtype(-np.inf)
 	else: raise ValueError("Unsupported dtype")
+
+def distance_kernel(radius,ndim,dtype=np.float,ord=2,mult=1):
+	rg = range(-radius,radius+1)
+	axes = (rg,)*ndim
+	X = xp.meshgrid(*axes)
+	dist = mult*ad.Optimization.norm(X,axis=0,ord=ord)
+	if np.dtype(dtype).kind=='i': dist = np.round(dist)
+	return dist.astype(dtype)
 
 def inf_convolution(arr,kernel,niter=1,periodic=False,
 	upper_saturation=None, lower_saturation=None,
