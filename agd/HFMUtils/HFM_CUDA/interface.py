@@ -428,6 +428,15 @@ class Interface(object):
 			'niter_i':1,
 		})
 
+		self.forward_ad = self.HasValue('costVariation') or ad.is_ad(self.seedValues)
+		self.reverse_ad = self.HasValue('sensitivity')
+		if self.forward_ad or self.reverse_ad:
+			for key in ('flow_weights','flow_weightsum','flow_indices'):
+				flow_traits[key+"_macro"]=1
+		if self.hasTips: 
+			for key in ('flow_vector','flow_weightsum'):
+				flow_traits[key+"_macro"]=1
+
 		flow_traits['flow_vector_macro'] = int(
 			self.exportGeodesicFlow or (self.tips is not None) or 
 			(self.isCurvature and (self.unorientedTips is not None)))
@@ -579,16 +588,6 @@ class Interface(object):
 		nact = kernel_traits.nact(self)
 		ndim = self.ndim
 
-		self.forward_ad = self.HasValue('costVariation') or ad.is_ad(self.seedValues)
-		self.reverse_ad = self.HasValue('sensitivity')
-
-		if self.forward_ad or self.reverse_ad:
-			for key in ('flow_weights','flow_weightsum','flow_indices'):
-				self.flow_traits[key+"_macro"]=1
-		if self.hasTips: 
-			for key in ('flow_vector','flow_weightsum'):
-				self.flow_traits[key+"_macro"]=1
-
 		if self.flow_traits.get('flow_weights_macro',False):
 			self.flow_kernel_argnames.append('flow_weights')
 			self.block['flow_weights'] = self.xp.empty((nact,)+shape_oi,dtype=self.float_t)
@@ -606,12 +605,14 @@ class Interface(object):
 			self.block['flow_vector'] = self.xp.ones((ndim,)+shape_oi,dtype=self.float_t)
 
 		print(self.block['flow_vector'].shape)
+		print(self.flow_kernel_argnames)
+		print(self.solver_kernel_argnames)
+		print(self.block['flow_weightsum'].shape)
+
 		self.flow_needed = any(self.flow_traits.get(key+"_macro",False) for key in 
 			('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 		if self.flow_needed: solvers.global_iteration(self,solver=False)
 		print(self.block['flow_vector'])
-		print(self.flow_kernel_argnames)
-		print(self.solver_kernel_argnames)
 
 		self.flow = {}
 		for key in self.block:
@@ -718,14 +719,16 @@ class Interface(object):
 		eucl_mult = 5 if eucl_integral else 1
 		eucl_kernel = inf_convolution.distance_kernel(radius=1,ndim=self.ndim,
 			dtype=eucl_t,mult=eucl_mult)
-		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel.astype(eucl_t),
+		print(eucl,eucl_kernel)
+		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
+		print(eucl)
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
 
 		# Run the geodesic ODE solver
 		geodesics = list( (list(),)*nGeodesics)
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
-		corresp = self.xp.arange(nGeodesics)
+		corresp = list(range(nGeodesics))
 		tips = self.tips.copy()
 		block_size=self.GetValue('geodesic_block_size',default=32,
 			help="Block size for the GPU based geodesic solver")
@@ -745,6 +748,10 @@ class Interface(object):
 			stop_s = xp.full((nGeo,),-1,np.int8)
 
 			nBlocks = int(np.ceil(nGeo/block_size))
+
+			args = (self.flow['flow_vector'],self.flow['flow_weightsum'],
+					values,eucl,x_s,len_s,stop_s)
+			for arg in args: print(arg.shape,arg.dtype)
 			geodesic_kernel( (nBlocks,),(block_size,),
 				(self.flow['flow_vector'],self.flow['flow_weightsum'],
 					values,eucl,x_s,len_s,stop_s))
@@ -752,9 +759,10 @@ class Interface(object):
 			corresp_next = []
 			for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
 				geodesics[i].append(x_s)
+				print(f"stop = {stop}",type(stop))
 				if stop!=0:
-					stopping_criterion[i] = geodesic_termination_codes[stop]
-					geodesics[i] = xp.concatenate(geodesics[i],axis=0)[:-(max_len-l)]
+					stopping_criterion[i] = geodesic_termination_codes[int(stop)]
+					geodesics[i] = xp.concatenate(geodesics[i],axis=0)[:-(max_len-int(l))]
 				else:
 					corresp_next.append(i)
 

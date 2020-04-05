@@ -28,3 +28,4 @@ hfmIn.SetRect([[-1,1],[-1,1]],dimx=n+1,sampleBoundary=True)
 gpuOut = hfmIn.RunGPU()
 
 print(gpuOut['geodesicFlow'])
+print(gpuOut['geodesics'])

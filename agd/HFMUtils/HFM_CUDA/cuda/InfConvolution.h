@@ -82,8 +82,8 @@ InfConvolution(const T * input, T * output){
 			y_t[k] += x_t[k] - shape_c[k]/2;} // Centered kernel
 		if(Grid::InRange_per(y_t,shape_tot)){
 			const Int ny_t = Grid::Index_per(y_t,shape_tot);
-			const T sum = Plus(input[ny_t],kernel_c[i_c]);
-			result = Plus(result,sum);
+			const T prod = Times(input[ny_t],kernel_c[i_c]);
+			result = Plus(result,prod);
 		}
 	}
 	output[n_t] = result;
