@@ -17,11 +17,13 @@ and to avoid relying on compiled CPU code.)
 
 #ifndef Int_macro
 typedef int Int;
-const Int Int_Max = 
+const Int Int_Max = 2147483647;
 #endif
+
 #ifndef Scalar_macro
 typedef float Scalar;
 #endif
+Scalar infinity(){return 1./0.;}
 
 #ifndef EuclT_macro
 typedef unsigned char EuclT;
@@ -40,10 +42,11 @@ const Int ndim = 2;
 #endif
 
 #include "Geometry_.h"
+#include "Grid.h"
 
 const Int ncorners = 1<<ndim;
-__constant__ shape_tot[ndim];
-__constant__ size_tot[ndim];
+__constant__ Int shape_tot[ndim];
+__constant__ Int size_tot;
 
 __constant__ Int nGeodesics;
 __constant__ Int max_len = 200; // Max geodesic length
@@ -57,17 +60,18 @@ const Int hlen = 20; // History length (a small periodic history of computations
 #ifndef eucl_delay_macro
 const Int eucl_delay = hlen-1; // Used in PastSeed stopping  criterion
 #else
-STATIC_ASSERT(eucl_delay<hlen,"eucl_delay must be strictly less than history length hlen")
+//STATIC_ASSERT(eucl_delay<hlen,"eucl_delay must be strictly less than history length hlen")
 #endif
 
 #ifndef nymin_delay_macro
 const Int nymin_delay = hlen-1; // Used in Stationnary stropping criterion
 #else
-STATIC_ASSERT(nymin_delay<hlen,"nymin _delay must be strictly less than history length hlen")
+//STATIC_ASSERT(nymin_delay<hlen,"nymin_delay must be strictly less than history length hlen")
 #endif
 
 
-enum class ODEStop {
+namespace ODEStop {
+enum Enum {
 	Continue = 0, // Do not stop here
 	AtSeed, // Correct termination
 	InWall, // Went out of domain
@@ -75,7 +79,7 @@ enum class ODEStop {
 	PastSeed, // Error : Moving away from target
 	VanishingFlow, // Error : Vanishing flow
 };
-
+}
 typedef char ODEStopT;
 
 /** Array suffix conventions:
@@ -88,7 +92,7 @@ typedef char ODEStopT;
 /** Computes the floor of the scalar components. Returns wether value changed.*/
 bool Floor(const Scalar x[ndim], Int xq[ndim]){
 	bool changed = false;
-	for(Int k=0; k<ndim; ++k){
+	for(Int i=0; i<ndim; ++i){
 		const Int xqi = round(x[i]);
 		if(xqi!=xq[i]) changed=true;
 		xq[i]=xqi;
@@ -114,13 +118,13 @@ Outputs :
  Returned value : 
  - stop : if true, the minimal neighbor is a degenerate point (seed or wall)
 */
-ODEStop NormalizedFlow(
+ODEStop::Enum NormalizedFlow(
 	const Scalar * flow_vector_t,const Scalar * flow_weightsum_t,const Scalar * dist_t, 
 	const Scalar x[ndim], Scalar flow[ndim],
 	Int xq[ndim], Int * nymin,
 	Scalar flow_cache[ncorners][ndim], bool exclude_cache[ncorners] ){
 
-	ODEStop result = ODEStop::Continue;
+	ODEStop::Enum result = ODEStop::Continue;
 
 	if(Floor(x,xq)){
 		Scalar dist[ncorners];
@@ -130,11 +134,11 @@ ODEStop NormalizedFlow(
 			// Get the i-th corner and its index in the total shape.
 			Int yq[ndim]; 
 			for(Int k=0; k<ndim; ++k){yq[k] = xq[k]+((icorner >> k) & 1);}
-			if(!InRange_per(yq,shape_tot)){
+			if(!Grid::InRange_per(yq,shape_tot)){
 				exclude_cache[icorner]=true; 
 				dist[icorner]=infinity(); 
 				continue;}
-			const Int ny = Index_per(yq,shape_tot);
+			const Int ny = Grid::Index_per(yq,shape_tot);
 
 			// Update the minimal distance, and corresponding weightsum, and eucl distance.
 			dist[icorner] = dist_t[ny];
@@ -149,8 +153,8 @@ ODEStop NormalizedFlow(
 		}
 
 		const Scalar flow_weightsum = flow_weightsum_t[*nymin];
-		if(dist_min==infinity()){ODEStop=ODEStop::InWall;}
-		else if(flow_weightsum==0.){ODEStop=ODEStop::AtSeed;}
+		if(dist_min==infinity()){result=ODEStop::InWall;}
+		else if(flow_weightsum==0.){result=ODEStop::AtSeed;}
 
 		// Exclude interpolation neighbors with too high value.
 		const Scalar dist_threshold = dist_min+causalityTolerance/flow_weightsum;
@@ -160,14 +164,14 @@ ODEStop NormalizedFlow(
 
 	// Perform the interpolation
 //	Scalar wsum=0.;
-	fill_kV(0.,flow)
+	fill_kV(Scalar(0),flow);
 
 	for(Int icorner=0; icorner<ncorners; ++icorner){
 		// Get the corner bilinear interpolation weight.
 		if(exclude_cache[icorner]) continue;
 		Scalar w = 1.;
 		for(Int k=0; k<ndim; ++k){
-			const Scalar dxk = x[k] - xq[k]
+			const Scalar dxk = x[k] - xq[k];
 			w *= ((icorner>>k) & 1) ? 1-dxk : dxk;
 		}
 
@@ -177,7 +181,7 @@ ODEStop NormalizedFlow(
 	}
 	
 //	if(wsum>0){for(Int k=0; k<ndim; ++k){flow[k] /= wsum;}}
-	const Scalar flow_norm = sqrt(scal_vv(flow));
+	const Scalar flow_norm = norm_v(flow);
 	if(flow_norm>0){div_Vk(flow,flow_norm);}
 	else if(result==ODEStop::Continue){result = ODEStop::VanishingFlow;}
 
@@ -192,7 +196,7 @@ __global__ void GeodesicODE(
 	const Scalar * dist_t, const EuclT * eucl_t,
 	Scalar * x_s, Int * len_s, ODEStopT * stop_s){
 
-	const Int tid = BlockIdx.x * BlockDim.x + ThreadIdx.x;
+	const Int tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if(tid>=nGeodesics) return;
 
 	// Get the position, and euclidean distance to target, of the previous points
@@ -215,15 +219,17 @@ __global__ void GeodesicODE(
 	}
 
 	Scalar x[ndim]; copy_vV(x_s+tid*max_len*ndim,x);
-	Int xq[ndim]; fill_kV(Int_MAX,xq);
-	Int nymin = Int_MAX;
+	Int xq[ndim]; fill_kV(Int_Max,xq);
+	Int nymin = Int_Max;
 	Scalar flow_cache[ncorners][ndim]; 
 	bool exclude_cache[ncorners];
 
 	Int len;
-	ODEStop stop = ODEStop::Continue;
+	ODEStop::Enum stop = ODEStop::Continue;
 	for(len = 1; len<max_len; ++len){
 		const Int l = len%hlen;
+		Scalar xPrev[ndim],xMid[ndim];
+		copy_vV(x,xPrev);
 
 		// Compute the flow at the current position
 		Scalar flow[ndim];
@@ -231,7 +237,7 @@ __global__ void GeodesicODE(
 			flow_vector_t,flow_weightsum_t,dist_t,
 			x,flow,
 			xq,&nymin,
-			flow_cache,exclude_cache)
+			flow_cache,exclude_cache);
 		if(stop!=ODEStop::Continue){break;}
 
 		// Check PastSeed and Stationnary stopping criteria
@@ -244,19 +250,18 @@ __global__ void GeodesicODE(
 			stop = ODEStop::PastSeed;    break;}
 
 		// Make a half step, to get the Euler midpoint
-		Scalar xMid[ndim];
-		madd_kvv(0.5*geodesicStep,flow,x[lPrev],xMid);
+		madd_kvv(Scalar(0.5)*geodesicStep,flow,xPrev,xMid);
 
 		// Compute the flow at the midpoint
 		stop = NormalizedFlow(
 			flow_vector_t,flow_weightsum_t,dist_t,
 			xMid,flow,
 			xq,&nymin,
-			flow_cache,exclude_cache) 
+			flow_cache,exclude_cache);
 		if(stop!=ODEStop::Continue){break;}
 
-		madd_kvv(geodesicStep,flow,x[lPrev],x[l]);
-		copy_vV(x[l],x_s + (tid*max_len + len)*ndim)
+		madd_kvv(geodesicStep,flow,xPrev,x);
+		copy_vV(x,x_s + (tid*max_len + len)*ndim);
 	}
 
 	len_s[tid] = len;

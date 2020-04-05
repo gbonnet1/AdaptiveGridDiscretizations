@@ -79,13 +79,16 @@ def traits_header(traits,
 			source.append(f"const int {key}={value};")
 		elif isinstance(value,tuple) and isinstance(value[1],type):
 			val,dtype=value
-			source.append(f"const {np2cuda_dtype[dtype]} {key} = "
-				("1./0" if val==np.inf else "-1./0." if val==-np.inf else str(val)) +";")
+			line = f"const {np2cuda_dtype[dtype]} {key} = "
+			if   val== np.inf: line+="1./0."
+			elif val==-np.inf: line+="-1./0."
+			else: line+=str(val)
+			source.append(line+";")
 
 		elif isinstance(value,type):
 			ctype = np2cuda_dtype[value]
 			source.append(f"typedef {ctype} {key};")
-			if integral_max and issubclass(type,numbers.Integral):
+			if integral_max and issubclass(value,numbers.Integral):
 				source.append(f"const {ctype} {key}_Max = {np.iinfo(value).max};")
 		elif all(isinstance(v,numbers.Integral) for v in value):
 			source.append(f"const int {key}[{len(value)}] = "

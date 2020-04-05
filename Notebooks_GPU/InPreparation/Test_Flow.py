@@ -17,6 +17,7 @@ hfmIn = HFMUtils.dictIn({
     'exportValues':1,
     'cost':cp.array(1.,dtype=np.float32),
     'exportGeodesicFlow':1,
+    'tips':[[1.,1.]],
     'traits':{
     	'niter_i':16,'shape_i':(8,8),
     	'debug_print':1,

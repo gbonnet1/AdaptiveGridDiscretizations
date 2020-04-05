@@ -7,6 +7,7 @@ import numpy as np
 import copy
 from . import Dense
 from . import Sparse
+from . import ad_generic
 from .ad_generic import remove_ad
 
 def norm(arr,ord=2,axis=None,keepdims=False,averaged=False):
@@ -24,6 +25,7 @@ def norm(arr,ord=2,axis=None,keepdims=False,averaged=False):
 
 	Compatible with automatic differentiation.
 	"""
+	arr = ad_generic.array(arr)
 	if ord==np.inf: return np.max(np.abs(arr),axis=axis,keepdims=keepdims)
 	if ord%2!=0:    arr = np.abs(arr)
 	sum_pow = np.sum(arr**ord,axis=axis,keepdims=keepdims)

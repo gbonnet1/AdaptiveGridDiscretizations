@@ -82,6 +82,9 @@ Tout scal_vv(const Tx x[ndim], const Ty y[ndim]){
 		result+=x[i]*y[i];}
 	return result;
 }
+template<typename T>
+T norm2_v(const T x[ndim]){return scal_vv(x,x);}
+Scalar norm_v(const Scalar x[ndim]){return sqrt(norm2_v<Scalar>(x));}
 
 /// Scalar product associated with a symmetric matrix
 template<typename Tx,typename Ty>

@@ -7,6 +7,10 @@ This file implements the inf-convolution of an array with a small constant array
 The implementation could be substantially optimized, by rearranging the data in blocks, etc
 */
 
+#ifndef Int_macro
+typedef int Int;
+#endif
+
 #ifndef ndim_macro
 const Int ndim=2;
 #endif
@@ -41,10 +45,10 @@ const T T_Neutral = T_Inf;
 
 // Optionally define upper_saturation_macro or lower_saturation_macro for saturated arithmetic
 T Times(const T a, const T b){
-	#if upper_saturation_macro
+	#ifdef upper_saturation_macro
 	if(a>=0 && b>=T_Sup-a){return T_Sup;}
 	#endif
-	#if lower_saturation_macro
+	#ifdef lower_saturation_macro
 	if(a<=0 && b<=T_Inf-a){return T_Inf;}
 	#endif
 	return a+b;
@@ -52,13 +56,19 @@ T Times(const T a, const T b){
 
 __constant__ T kernel_c[size_c];
 
+#ifdef periodic_macro
+#define PERIODIC(...) __VA_ARGS__
+#else
+#define PERIODIC(...) 
+#endif
+
 #include "Grid.h"
 
 extern "C" {
 __global__ void 
 InfConvolution(const T * input, T * output){
 	// Get the position where the work is to be done.
-	const Int n_t = BlockIdx.x*BlockDim.x + ThreadIdx.x;
+	const Int n_t = blockIdx.x*blockDim.x + threadIdx.x;
 	if(n_t>=size_tot) {return;}
 	Int x_t[ndim];
 	Grid::Position(n_t,shape_tot,x_t);
@@ -71,8 +81,8 @@ InfConvolution(const T * input, T * output){
 		for(Int k=0; k<ndim; ++k){
 			y_t[k] += x_t[k] - shape_c[k]/2;} // Centered kernel
 		if(Grid::InRange_per(y_t,shape_tot)){
-			const Int ny_t = Grid::Index_per(y_t);
-			const T sum = Plus(input[ny_t],kernel_c[i_c])
+			const Int ny_t = Grid::Index_per(y_t,shape_tot);
+			const T sum = Plus(input[ny_t],kernel_c[i_c]);
 			result = Plus(result,sum);
 		}
 	}

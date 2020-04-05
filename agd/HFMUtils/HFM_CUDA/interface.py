@@ -655,7 +655,7 @@ class Interface(object):
 		geodesic_step = self.GetValue('geodesic_step',default=0.25,
 			help='Step size, in pixels, for the geodesic ODE solver')
 
-		geodesic_hlen = int(4*sqrt(self.ndim)/geodesic_step)
+		geodesic_hlen = int(4*np.sqrt(self.ndim)/geodesic_step)
 		geodesic_hlen = self.GetValue('geodesic_hlen',default=geodesic_hlen,
 			help="History length for the geodesic solver, for termination error criteria")
 
@@ -672,32 +672,32 @@ class Interface(object):
 			'ndim':self.ndim,
 			'Int':self.int_t,
 			'Scalar':self.float_t})
+		self.geodesic_traits=geodesic_traits
 
 		# Get the module
-		self.geodesic_traits=geodesic_traits
 		self.geodesic_source = cupy_module_helper.traits_header(geodesic_traits,
-			join=True,integral_max=True)
-
-		cuoptions = ("-default-device", f"-I {self.cuda_path}"
-			) + self.GetValue('cuoptions',default=tuple(),
-			help="Options passed via cupy.RawKernel to the cuda compiler")
-
-		self.geodesic_module = GetModule(self.solver_source+'include "GeodesicODE.h"'
+			join=True,integral_max=True) + "\n"
+		print(self.geodesic_source)
+		cuoptions = ("-default-device", f"-I {self.cuda_path}") 
+		self.geodesic_module = GetModule(self.geodesic_source+'#include "GeodesicODE.h"\n'
 			+self.cuda_date_modified,self.cuoptions)
 		geodesic_kernel = self.geodesic_module.get_function('GeodesicODE')
 
 		# Set the module constants
 		def SetCst(*args):cupy_module_helper.SetModuleConstant(self.geodesic_module,*args)
-		SetCst('shape_tot',self.shape_tot,self.int_t)
-		SetCst('size_tot', self.size_tot, self.int_t)
-		max_len = max(200,0.25*np.max(self.shape_tot)/geodesic_step)
+		# Note: geodesic solver does not use bilevel array structure
+		shape_tot = self.shape
+		size_tot = int(np.prod(shape_tot))  #distinct from self.size_tot
+		SetCst('shape_tot',shape_tot,self.int_t)
+		SetCst('size_tot', size_tot, self.int_t)
+		max_len = max(200,0.25*np.max(shape_tot)/geodesic_step)
 		max_len = self.GetValue('geodesic_max_len',default=max_len,
 			help="Typical expected length of geodesics.")
 		SetCst('max_len', max_len, self.int_t)
 		causalityTolerance = self.GetValue('geodesic_causalityTolerance',default=4.,
 			help="Used in criterion for rejecting points in flow interpolation")
 		SetCst('causalityTolerance', causalityTolerance, self.float_t)
-		nGeodesics=len(tips)
+		nGeodesics=len(self.tips)
 		SetCst('nGeodesics', nGeodesics, self.int_t)
 
 		# Prepare the euclidean distance to seed estimate (for stopping criterion)
@@ -706,7 +706,7 @@ class Interface(object):
 			help="Tolerance, in pixels, for declaring a seed as reached.")
 		eucl_t = geodesic_traits['EuclT']
 		eucl = np.zeros_like(self.seedTags,dtype=eucl_t)
-		eucl_integral = np.dtype(eucl_t).kind=='i'
+		eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
 		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
 		eucl[np.logical_not(self.seedTags)] = eucl_max
 		eucl_mult = 5 if eucl_integral else 1
@@ -723,13 +723,13 @@ class Interface(object):
 		tips = self.tips.copy()
 		block_size=self.GetValue('geodesic_block_size',default=32,
 			help="Block size for the GPU based geodesic solver")
-		values = self.hfmOut['values'].astype(self.float_t).ascontiguousarray()
+		values = xp.ascontiguousarray(self.hfmOut['values'].astype(self.float_t))
 		geodesic_termination_codes = [
 			'Continue', 'AtSeed', 'InWall', 'Stationnary', 'PastSeed', 'VanishingFlow']
 
 		while len(corresp)>0:
 			nGeo = len(corresp)
-			x_s = xp.full( (nGeo,max_len,ndim), np.nan, self.float_t)
+			x_s = xp.full( (nGeo,max_len,self.ndim), np.nan, self.float_t)
 			x_s[:,0,:] = tips[corresp]
 			len_s = xp.full((nGeo,),-1,self.int_t)
 			stop_s = xp.full((nGeo,),-1,np.int8)

@@ -2,26 +2,28 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
+import os
 from . import cupy_module_helper
+from .cupy_module_helper import SetModuleConstant
 from ... import AutomaticDifferentiation as ad
 
 def dtype_sup(dtype):
 	dtype=np.dtype(dtype)
-	if dtype.kind=='i': return np.iinfo(dtype).max
+	if dtype.kind in ('i','u'): return np.iinfo(dtype).max
 	elif dtype.kind=='f': return dtype(np.inf)
 	else: raise ValueError("Unsupported dtype")
 def dtype_inf(dtype):
 	dtype=np.dtype(dtype)
-	if dtype.kind=='i': return np.iinfo(dtype).min
+	if dtype.kind in ('i','u'): return np.iinfo(dtype).min
 	elif dtype.kind=='f': return dtype(-np.inf)
 	else: raise ValueError("Unsupported dtype")
 
 def distance_kernel(radius,ndim,dtype=np.float,ord=2,mult=1):
 	rg = range(-radius,radius+1)
 	axes = (rg,)*ndim
-	X = xp.meshgrid(*axes)
+	X = np.meshgrid(*axes)
 	dist = mult*ad.Optimization.norm(X,axis=0,ord=ord)
-	if np.dtype(dtype).kind=='i': dist = np.round(dist)
+	if np.dtype(dtype).kind in ('i','u'): dist = np.round(dist)
 	return dist.astype(dtype)
 
 def inf_convolution(arr,kernel,niter=1,periodic=False,
@@ -62,6 +64,8 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	f"// Date cuda code last modified : {date_modified}"]
 	cuoptions = ("-default-device", f"-I {cuda_path}") 
 
+	source="\n".join(source)
+	print(source)
 	module = cupy_module_helper.GetModule(source,cuoptions)
 	SetModuleConstant(module,'kernel_c',kernel,conv_t)
 	SetModuleConstant(module,'shape_tot',arr.shape,int_t)
@@ -70,7 +74,8 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	cupy_kernel = module.get_function("InfConvolution")
 
 	if niter>=2 and not overwrite: arr=arr.copy()
-	arr = np.ascontiguousarray(arr)
+	xp = ad.cupy_generic.get_array_module(arr)
+	arr = xp.ascontiguousarray(arr)
 	out = np.empty_like(arr)
 	if out is None: out = np.empty_like(arr)
 	else: assert out.dtype==arr.dtype and out.size==arr.size and out.flags['C_CONTIGUOUS']
