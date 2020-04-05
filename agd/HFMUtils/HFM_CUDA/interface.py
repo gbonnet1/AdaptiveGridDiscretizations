@@ -592,11 +592,15 @@ class Interface(object):
 			self.block['flow_indices'] = self.xp.empty((nact,)+shape_oi,dtype=self.int_t)
 		if self.flow_traits.get('flow_vector_macro',False):
 			self.flow_kernel_argnames.append('flow_vector')
-			self.block['flow_vector'] = self.xp.empty((ndim,)+shape_oi,dtype=self.float_t)
+			self.block['flow_vector'] = self.xp.ones((ndim,)+shape_oi,dtype=self.float_t)
 
+		print(self.block['flow_vector'].shape)
 		self.flow_needed = any(self.flow_traits.get(key+"_macro",False) for key in 
 			('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 		if self.flow_needed: solvers.global_iteration(self,solver=False)
+		print(self.block['flow_vector'])
+		print(self.flow_kernel_argnames)
+		print(self.solver_kernel_argnames)
 
 		self.flow = {}
 		for key in self.block:

@@ -40,10 +40,11 @@ __global__ void Update(
 	Scalar * u_t, MULTIP(Int * uq_t,) STRICT_ITER_O(Scalar * uNext_t, MULTIP(Int * uqNext_t,) )
 	const Scalar * geom_t, DRIFT(const Scalar * drift_t,) const BoolPack * seeds_t, 
 	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
+	FLOW_WEIGHTS(Scalar * flow_weights_t,) FLOW_WEIGHTSUM(Scalar * flow_weightsum_t,)
+	FLOW_OFFSETS(char * flow_offsets_t,) FLOW_INDICES(Int* flow_indices_t,) 
+	FLOW_VECTOR(Scalar * flow_vector_t,) 
 	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o 
-	FLOW_WEIGHTS(, Scalar * flow_weights_t) FLOW_WEIGHTSUM(, Scalar * flow_weightsum_t)
-	FLOW_OFFSETS(, char * flow_offsets_t) FLOW_INDICES(, Int* flow_indices_t) 
-	FLOW_VECTOR(, Scalar * flow_vector_t) ){ 
+	){ 
 
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
@@ -223,7 +224,7 @@ __global__ void Update(
 
 	
 	__syncthreads(); // __shared__ u_i
-
+/*
 	if(debug_print && n_i==17 && n_o==3){
 		printf("hi there, before HFM\n");
 		printf("v_o %f,%f,%f, v_i %i,%i,%i,\n",v_o[0],v_o[1],v_o[2]);
@@ -231,7 +232,7 @@ __global__ void Update(
 //		printf("geom %f,%f,%f\n",geom[0],geom[1],geom[2]);
 		printf("weights %f,%f,%f\n",weights[0],weights[1],weights[2]);
 		printf("isSeed %i\n",isSeed);
-	}
+	}*/
 
 	FLOW(
 	Scalar flow_weights[nact]; 
@@ -255,6 +256,12 @@ __global__ void Update(
 	#endif
 
 	FLOW( // Extract and export the geodesic flow
+	if(debug_print && n_i==0){
+		printf("Hello, world !");
+		printf("flow_weights %f,%f\n",flow_weights[0],flow_weights[1]);
+		printf("active_side %i,%i\n",active_side[0],active_side[1]);
+			}
+
 	FLOW_VECTOR(Scalar flow_vector[ndim]; fill_kV(Scalar(0),flow_vector);)
 	FLOW_WEIGHTSUM(Scalar flow_weightsum=0;)
 
@@ -272,18 +279,11 @@ __global__ void Update(
 		FLOW_INDICES(flow_indices_t[n_t+size_tot*k]=Grid::Index_per(y_t,shape_tot);) 
 	}
 	FLOW_WEIGHTSUM(flow_weightsum_t[n_t]=flow_weightsum;)
+	if(debug_print && n_i==0){
+		printf("flow_vector %f,%f\n",flow_vector[0],flow_vector[1]);}
 	FLOW_VECTOR(for(Int l=0; l<ndim; ++l){flow_vector_t[n_t+size_tot*l]=flow_vector[l];})
 	) // FLOW 
-
-	if(debug_print && x_i[0]==2 && x_i[1]==1 && x_o[0]==1 && x_o[1]==1){
-		printf("n_i %i, n_o %o, u_i[n_i] %f\n",n_i,n_o,u_i[n_i]);
-		for(Int k=0; k<size_i; ++k){printf(" %f",u_i[k]);}
-		/*
-		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
-		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
-		*/
-	}
-
+	
 	// Find the smallest value which was changed.
 	const Scalar u_diff = abs(u_old - u_i[n_i] MULTIP( + (uq_old - uq_i[n_i]) * multip_step ) );
 	if( !(u_diff>tol) ){// Equivalent to u_diff<=tol, but Ignores NaNs 
@@ -301,13 +301,6 @@ __global__ void Update(
 
 	__syncthreads();  // Make u_i[0] accessible to all, also minChgPrev
 	Scalar minChg = u_i[0];
-
-	if(debug_print && x_i==0){
-		printf("hello world\n");
-//		printf("geom : %f,%f,%f\n",geom[0],geom[1],geom[2]);
-		DRIFT(printf("drift : %f,%f\n",drift[0],drift[1]);)
-	}
-
 
 	// Tag neighbor blocks, and this particular block, for update
 

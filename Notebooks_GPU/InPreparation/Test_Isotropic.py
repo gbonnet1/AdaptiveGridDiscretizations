@@ -63,7 +63,6 @@ hfmIn = HFMUtils.dictIn({
 	'pruning_macro':1,
 	'strict_iter_o_macro':1,
     },
-#    'nonzero_untidy_kwargs':{'log2_size_i':8,'size2_i':256},
 })
 
 if False:
