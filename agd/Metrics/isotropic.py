@@ -56,9 +56,9 @@ class Isotropic(Base):
 	def shape(self): return self.cost.shape
 	
 	def rotate(self,a):     return self
-	def rescale(self,h):	
-		if not np.isscalar(h): 
-			raise ValueError("Isotropic metrics can only be rescaled isotropically")
+	def rescale(self,h):
+		h = ad.array(h)
+		if h.ndim!=0: raise ValueError("Isotropic metrics can only be rescaled isotropically")
 		return Isotropic(self.cost/h)
 
 	def flatten(self):      return self.cost

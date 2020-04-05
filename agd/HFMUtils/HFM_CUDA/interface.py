@@ -53,6 +53,7 @@ class Interface(object):
 		
 		self.returns=None
 		self.xp = ad.cupy_generic.get_array_module(hfmIn,iterables=(dict,Metrics.Base))
+		self.caster=ad.cupy_generic.array_float_caster(hfmIn,iterables=(dict,Metrics.Base))
 		
 	def HasValue(self,key):
 		self.hfmOut['keys']['visited'].append(key)
@@ -171,12 +172,19 @@ class Interface(object):
 			self.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
 		
 		if self.HasValue('gridScale'):
-			self.h = self.GetValue('gridScale', default=None,
-				help="Scale of the computational grid")
+			self.h = self.caster(self.GetValue('gridScale', default=None,
+				help="Scale of the computational grid"))
+			# Gridscale for periodic dimension, in the curvature case
+			if self.isCurvature: 
+				self.h_per = self.caster(2.*np.pi / self.shape[2] )
+				self.h = self.caster((self.h,self.h,self.h_per))
 		else:
-			self.h = self.GetValue('gridScales', default=None,
-				help="Axis independent scales of the computational grid")
-		if self.isCurvature: self.h_per = 2.*np.pi / self.shape[2] # Gridscale for periodic dimension
+			self.h = self.caster(self.GetValue('gridScales', default=None,
+				help="Axis independent scales of the computational grid"))
+
+		self.h_broadcasted = np.broadcast_to(self.h,(self.ndim,))
+		self.h_broadcasted = np.broadcast_to(np.reshape(self.h_broadcasted,
+			(self.ndim,)+(1,)*self.ndim),(self.ndim,)+self.shape)
 
 		self.drift = self.GetValue('drift', default=None, verbosity=3,
 			help="Drift introduced in the eikonal equation, becoming F(grad u - drift)=1")
@@ -212,14 +220,10 @@ class Interface(object):
 			self.dualMetric = copy.deepcopy(self.dualMetric)
 
 		# Rescale 
-		if self.metric is not None: 	self.metric =     self.metric.rescale(1/self.h)
-		if self.dualMetric is not None: self.dualMetric = self.dualMetric.rescale(self.h)
-		if self.drift is not None:
-			if np.isscalar(self.h): 
-				self.drift *= self.h
-			else: 
-				h = self.xp.array((self.h,self.h,self.h_per) if self.isCurvature else self.h)
-				self.drift *= h.reshape((self.ndim,)+(1,)*self.ndim)
+		h_base = self.h[0] if self.isCurvature else self.h
+		if self.metric is not None: 	self.metric =     self.metric.rescale(1/h_base)
+		if self.dualMetric is not None: self.dualMetric = self.dualMetric.rescale(h_base)
+		if self.drift is not None: self.drift*=self.h_broadcasted
 
 		if self.isCurvature:
 			if self.metric is None: self.metric = self.dualMetric.dual()
@@ -277,7 +281,7 @@ class Interface(object):
 		self.tol = self.float_t(tol)
 
 		if self.bound_active_blocks:
-			self.minChg_delta_min = self.GetValue('minChg_delta_min',default=self.h/10.,
+			self.minChg_delta_min = self.GetValue('minChg_delta_min',default=float(self.h)/10.,
 				help="Minimal threshold increase for bound_active_blocks variants")
 
 
@@ -446,7 +450,8 @@ class Interface(object):
 
 		if self.multiprecision:
 			# Choose power of two, significantly less than h
-			self.multip_step = 2.**np.floor(np.log2(self.h/10)) 
+			h = float(np.min(self.h))
+			self.multip_step = 2.**np.floor(np.log2(h/10)) 
 			self.SetModuleConstant('multip_step',self.multip_step, float_t)
 			self.multip_max = np.iinfo(self.int_t).max*self.multip_step/2
 			self.SetModuleConstant('multip_max',self.multip_max, float_t)
@@ -610,11 +615,12 @@ class Interface(object):
 		if self.model.startswith('Rander') and 'flow_vector' in self.flow:
 			if self.dualMetric is None: self.dualMetric = self.metric.dual()
 			flow_orig = self.flow['flow_vector']
-			flow = self.dualMetric.gradient(lp.dot_AV(self.metric.m,flow)+self.metric.w)
+			eucl_gradient = lp.dot_AV(self.metric.m,flow)+self.metric.w
+			flow = self.dualMetric.gradient(eucl_gradient)
 			self.flow['flow_vector_orig'],self.flow['flow_vector'] = flow_orig,flow
 
 		if self.exportGeodesicFlow:
-			self.hfmOut['geodesicFlow']=self.flow['flow_vector']
+			self.hfmOut['geodesicFlow'] = - self.flow['flow_vector'] * self.h_broadcasted
 
 		if self.forward_ad or self.reverse_ad:
 			import cupy.cupyx.scipy.sparse as spmod

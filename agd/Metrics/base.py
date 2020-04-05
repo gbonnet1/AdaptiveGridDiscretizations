@@ -39,7 +39,7 @@ class Base:
 		"""
 		Ambient vector space dimension
 		"""
-		raise NotImplementedError("ndim is not implemented for this norm")
+		raise NotImplementedError("vdim is not implemented for this norm")
 
 	@property
 	def shape(self):
@@ -150,14 +150,18 @@ class Base:
 			for i in range(self.vdim)] for j in range(self.vdim)])
 		return self.inv_transform(a)
 
-	def _rescale_helper(self,h,broadcast=True):
+	def _rescale_helper(self,h,point_dependent=False):
 		"""
 		Returns a point dependent and axis dependent scale, with the correct array type.
 		"""
 		h = self.array_float_caster(h)
 		hshape = (self.vdim,)+self.shape # shape for axis and point dependent
-		if broadcast: return np.broadcast_to(h,hshape)
-		elif h.ndim==self.ndim: return np.broadcast_to(np.expand_dims(h,0),hshape)
+		if point_dependent:
+			if h.shape==self.shape: return np.broadcast_to(np.expand_dims(h,0),hshape)
+			else: assert h.shape==hshape; return h
+		else:
+			if h.ndim==0: return np.broadcast_to(h,hshape)
+			else:return np.broadcast_to(np.reshape(h,(vdim,)+(1,)*len(self.shape)),hshape)
 
 # ---- Import and export ----
 
