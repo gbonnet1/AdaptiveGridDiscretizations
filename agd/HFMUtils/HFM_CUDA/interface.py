@@ -59,7 +59,7 @@ class Interface(object):
 		self.hfmOut['keys']['visited'].append(key)
 		return key in self.hfmIn
 
-	def GetValue(self,key,default="_None",verbosity=2,help=None):
+	def GetValue(self,key,default="_None",verbosity=2,help=None,array_float=False):
 		"""
 		Get a value from a dictionnary, printing some help if requested.
 		"""
@@ -81,7 +81,8 @@ class Interface(object):
 
 		if key in self.hfmIn:
 			self.hfmOut['keys']['used'].append(key)
-			return self.hfmIn[key]
+			value = self.hfmIn[key]
+			return self.caster(value) if array_float else value
 		elif isinstance(default,str) and default == "_None":
 			raise ValueError(f"Missing value for key {key}")
 		else:
@@ -172,21 +173,21 @@ class Interface(object):
 			self.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
 		
 		if self.HasValue('gridScale'):
-			self.h = self.caster(self.GetValue('gridScale', default=None,
-				help="Scale of the computational grid"))
+			self.h = self.GetValue('gridScale',array_float=True,
+				help="Scale of the computational grid")
 			# Gridscale for periodic dimension, in the curvature case
 			if self.isCurvature: 
 				self.h_per = self.caster(2.*np.pi / self.shape[2] )
 				self.h = self.caster((self.h,self.h,self.h_per))
 		else:
-			self.h = self.caster(self.GetValue('gridScales', default=None,
-				help="Axis independent scales of the computational grid"))
+			self.h = self.GetValue('gridScales',array_float=True,
+				help="Axis independent scales of the computational grid")
 
 		self.h_broadcasted = np.broadcast_to(self.h,(self.ndim,))
 		self.h_broadcasted = np.broadcast_to(np.reshape(self.h_broadcasted,
 			(self.ndim,)+(1,)*self.ndim),(self.ndim,)+self.shape)
 
-		self.drift = self.GetValue('drift', default=None, verbosity=3,
+		self.drift = self.GetValue('drift', default=None, verbosity=3, array_float=True,
 			help="Drift introduced in the eikonal equation, becoming F(grad u - drift)=1")
 
 		# Get the metric or cost function
@@ -285,14 +286,16 @@ class Interface(object):
 				help="Minimal threshold increase for bound_active_blocks variants")
 
 
-		# Geodesics related geometrical data
+		# geometrical data related with geodesics geodesics
 		self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,
 			help="Export the upwind geodesic flow (direction of the geodesics)")
-		self.tips = self.GetValue('tips',default=None,
+		self.tips = self.GetValue('tips',default=None,array_float=True,
 			help="Tips from which to compute the minimal geodesics")
 		if self.isCurvature:
-			self.unorientedTips = self.GetValue('unorientedTips',default=None,
-				help="Compute a geodesic from the most favorable orientation") 
+			self.unorientedTips=self.GetValue('unorientedTips',default=None,array_float=True,
+				help="Compute a geodesic from the most favorable orientation")
+		self.hasTips = (self.tips is not None 
+			or self.isCurvature and self.unorientedTips is not None)
 
 
 	def SetValuesArray(self):
@@ -580,7 +583,10 @@ class Interface(object):
 		self.reverse_ad = self.HasValue('sensitivity')
 
 		if self.forward_ad or self.reverse_ad:
-			for key in 'flow_weights','flow_weightsum','flow_indices':
+			for key in ('flow_weights','flow_weightsum','flow_indices'):
+				self.flow_traits[key+"_macro"]=1
+		if self.hasTips: 
+			for key in ('flow_vector','flow_weightsum'):
 				self.flow_traits[key+"_macro"]=1
 
 		if self.flow_traits.get('flow_weights_macro',False):
@@ -649,7 +655,7 @@ class Interface(object):
 			hfmOut['valueSensitivity'] = spmod.linalg.lsqr(self.spmat.T.tocsr(),rhs)
 
 	def GetGeodesics(self):
-		if self.tips is None: return
+		if not self.hasTips: return
 
 		# Set the kernel traits
 		geodesic_step = self.GetValue('geodesic_step',default=0.25,
@@ -719,7 +725,7 @@ class Interface(object):
 		# Run the geodesic ODE solver
 		geodesics = list( (list(),)*nGeodesics)
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
-		corresp = range(nGeodesics)
+		corresp = self.xp.arange(nGeodesics)
 		tips = self.tips.copy()
 		block_size=self.GetValue('geodesic_block_size',default=32,
 			help="Block size for the GPU based geodesic solver")
@@ -727,7 +733,11 @@ class Interface(object):
 		geodesic_termination_codes = [
 			'Continue', 'AtSeed', 'InWall', 'Stationnary', 'PastSeed', 'VanishingFlow']
 
-		while len(corresp)>0:
+		print("block : ",self.block.keys())
+		print("flow : ",self.flow.keys())
+		geoIt=0; geoMaxIt = 1
+		while len(corresp)>0 and geoIt<geoMaxIt:
+			geoIt+=1
 			nGeo = len(corresp)
 			x_s = xp.full( (nGeo,max_len,self.ndim), np.nan, self.float_t)
 			x_s[:,0,:] = tips[corresp]
