@@ -17,15 +17,19 @@ hfmIn = HFMUtils.dictIn({
     'exportValues':1,
     'cost':cp.array(1.,dtype=np.float32),
     'exportGeodesicFlow':1,
-    'tips':[[1.,1.]],
+    'tips':[[-1.,-1.]],
     'traits':{
     	'niter_i':16,'shape_i':(8,8),
     	'debug_print':1,
-    }
+    },
+    'geodesic_traits':{
+        'debug_print':1,
+    },
+    'geodesic_max_len':5,
 })
 hfmIn.SetRect([[-1,1],[-1,1]],dimx=n+1,sampleBoundary=True)
 
 gpuOut = hfmIn.RunGPU()
 
-print(gpuOut['geodesicFlow'])
-print(gpuOut['geodesics'])
+#print("flow",gpuOut['geodesicFlow'])
+#print("geodesics",gpuOut['geodesics'][0][:5])

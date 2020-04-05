@@ -729,7 +729,8 @@ class Interface(object):
 		geodesics = list( (list(),)*nGeodesics)
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
 		corresp = list(range(nGeodesics))
-		tips = self.tips.copy()
+		tips = self.hfmIn.PointFromIndex(self.tips,to=True)
+		print("tips",tips)
 		block_size=self.GetValue('geodesic_block_size',default=32,
 			help="Block size for the GPU based geodesic solver")
 		values = xp.ascontiguousarray(self.hfmOut['values'].astype(self.float_t))
@@ -743,7 +744,7 @@ class Interface(object):
 			geoIt+=1
 			nGeo = len(corresp)
 			x_s = xp.full( (nGeo,max_len,self.ndim), np.nan, self.float_t)
-			x_s[:,0,:] = tips[corresp]
+			x_s[:,0,:] = tips[corresp] # TODO : only first run
 			len_s = xp.full((nGeo,),-1,self.int_t)
 			stop_s = xp.full((nGeo,),-1,np.int8)
 
@@ -752,13 +753,15 @@ class Interface(object):
 			args = (self.flow['flow_vector'],self.flow['flow_weightsum'],
 					values,eucl,x_s,len_s,stop_s)
 			for arg in args: print(arg.shape,arg.dtype)
+
 			geodesic_kernel( (nBlocks,),(block_size,),
 				(self.flow['flow_vector'],self.flow['flow_weightsum'],
 					values,eucl,x_s,len_s,stop_s))
+			print(x_s,len_s);
 
 			corresp_next = []
 			for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
-				geodesics[i].append(x_s)
+				geodesics[i].append(self.hfmIn.PointFromIndex(x_s))
 				print(f"stop = {stop}",type(stop))
 				if stop!=0:
 					stopping_criterion[i] = geodesic_termination_codes[int(stop)]

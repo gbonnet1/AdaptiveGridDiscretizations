@@ -69,6 +69,9 @@ const Int nymin_delay = hlen-1; // Used in Stationnary stropping criterion
 //STATIC_ASSERT(nymin_delay<hlen,"nymin_delay must be strictly less than history length hlen")
 #endif
 
+#ifndef debug_print_macro
+const Int debug_print = 0;
+#endif
 
 namespace ODEStop {
 enum Enum {
@@ -113,44 +116,42 @@ Outputs :
  - xq : from Floor(x). Initialize to Int_MAX before first call.
  - nymin : index of cube corner with minimal value.
  - flow_cache : flow at the cube corners.
- - exclude_cache : corners excluded from averaging.
+ - dist_cache : distance at the cube corners.
+ - threshold_cache : for cube corner exclusion.
 
  Returned value : 
- - stop : if true, the minimal neighbor is a degenerate point (seed or wall)
+ - stop : ODE stopping criterion (if any)
 */
 ODEStop::Enum NormalizedFlow(
 	const Scalar * flow_vector_t,const Scalar * flow_weightsum_t,const Scalar * dist_t, 
 	const Scalar x[ndim], Scalar flow[ndim],
 	Int xq[ndim], Int * nymin,
-	Scalar flow_cache[ncorners][ndim], bool exclude_cache[ncorners] ){
+	Scalar flow_cache[ncorners][ndim], Scalar dist_cache[ncorners], threshold_cache[1]){
 
 	ODEStop::Enum result = ODEStop::Continue;
-
-	if(Floor(x,xq)){
-		Scalar dist[ncorners];
-		Scalar dist_min = infinity(); // Minimal distance among corners
+	const bool newCell = Floor(x,xq); // Get the index of the cell containing x
+	if(newCell){ // Load cell corners data
 		for(Int icorner=0; icorner< ncorners; ++icorner){
-
 			// Get the i-th corner and its index in the total shape.
 			Int yq[ndim]; 
 			for(Int k=0; k<ndim; ++k){yq[k] = xq[k]+((icorner >> k) & 1);}
 			if(!Grid::InRange_per(yq,shape_tot)){
-				exclude_cache[icorner]=true; 
 				dist[icorner]=infinity(); 
 				continue;}
 			const Int ny = Grid::Index_per(yq,shape_tot);
 
-			// Update the minimal distance, and corresponding weightsum, and eucl distance.
-			dist[icorner] = dist_t[ny];
-			if(dist[icorner]<dist_min){
-				dist_min=dist[icorner];
-				*nymin = ny;
-			}
-
-			// Get the flow components
+			// Load distance and flow 
+			dist_cache[icorner] = dist_t[ny];
 			for(Int k=0; k<ndim; ++k){
 				flow_cache[icorner][k] = flow_vector_t[ny+size_tot*k];}
 		}
+	}
+
+	Scalar dist_min = dist_cache[*nymin]; // Minimal distance among corners
+	Scalar weights[ncorners];
+	for(
+
+
 
 		const Scalar flow_weightsum = flow_weightsum_t[*nymin];
 		if(dist_min==infinity()){result=ODEStop::InWall;}
@@ -159,8 +160,21 @@ ODEStop::Enum NormalizedFlow(
 		// Exclude interpolation neighbors with too high value.
 		const Scalar dist_threshold = dist_min+causalityTolerance/flow_weightsum;
 		for(Int icorner=0; icorner<ncorners; ++icorner){
-			exclude_cache[icorner] = dist[icorner] < dist_threshold;}
-	}
+			exclude_cache[icorner] = dist[icorner] >= dist_threshold;}
+
+		if(debug_print){
+			printf("dist[ncorners] %f,%f,%f,%f\n",dist[0],dist[1],dist[2],dist[3]);
+			printf("dist_threshold %f, flow_weightsum %f\n",dist_threshold,flow_weightsum);
+			for(Int i=0; i<ncorners; ++i){
+				printf("corner %i, flow %f,%f\n",i,flow_cache[i][0],flow_cache[i][1]);}
+		}
+
+			if(dist[icorner]<dist_min){
+				dist_min=dist[icorner];
+				*nymin = ny;
+				// TODO : Exclude those with too small weight ?
+			}
+
 
 	// Perform the interpolation
 //	Scalar wsum=0.;
@@ -199,17 +213,6 @@ __global__ void GeodesicODE(
 	const Int tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if(tid>=nGeodesics) return;
 
-	// Get the position, and euclidean distance to target, of the previous points
-	/*
-	Scalar x_p[min_len][ndim];
-	const Int q_s_shape[3] = {BlockDim.x*GridDim.x, max_len, ndim};
-	for(Int k=0; k<ndim; ++k){
-		for(Int l=0; l<min_len; ++l){
-			const Int q_s_pos[3]={tid,l,k};
-			x_p[l][k] = x_s[Index(q_s_pos,q_s_shape)];
-		}
-	}
-	*/
 	// Short term periodic history introduced to avoid stalls or moving past the seed.
 	EuclT eucl_p[hlen];
 	Int nymin_p[hlen];
@@ -220,9 +223,17 @@ __global__ void GeodesicODE(
 
 	Scalar x[ndim]; copy_vV(x_s+tid*max_len*ndim,x);
 	Int xq[ndim]; fill_kV(Int_Max,xq);
-	Int nymin = Int_Max;
+	Int nymin = 0;
 	Scalar flow_cache[ncorners][ndim]; 
-	bool exclude_cache[ncorners];
+	Scalar dist_cache[ncorners];
+	Scalar threshold_cache[1];
+
+	if(debug_print && tid==0){
+		printf("In geodesic ODE solver\n");
+		printf("x %f,%f\n",x[0],x[1]);
+		printf("ncorners %i\n",ncorners);
+	}
+
 
 	Int len;
 	ODEStop::Enum stop = ODEStop::Continue;
@@ -237,8 +248,18 @@ __global__ void GeodesicODE(
 			flow_vector_t,flow_weightsum_t,dist_t,
 			x,flow,
 			xq,&nymin,
-			flow_cache,exclude_cache);
+			flow_cache,dist_cache,threshold_cache);
+
+		if(debug_print && tid==0){
+			printf("Hi there\n");
+			printf("xq %i,%i\n",xq[0],xq[1]); 
+			printf("First flow %f,%f\n",flow[0],flow[1]);
+			printf("stop : %i\n",Int(stop));
+		}
+
 		if(stop!=ODEStop::Continue){break;}
+
+
 
 		// Check PastSeed and Stationnary stopping criteria
 		nymin_p[l] = nymin;
@@ -257,7 +278,7 @@ __global__ void GeodesicODE(
 			flow_vector_t,flow_weightsum_t,dist_t,
 			xMid,flow,
 			xq,&nymin,
-			flow_cache,exclude_cache);
+			flow_cache,dist_cache,threshold_cache);
 		if(stop!=ODEStop::Continue){break;}
 
 		madd_kvv(geodesicStep,flow,xPrev,x);
