@@ -17,6 +17,7 @@ from .. import Grid
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
 from ... import Metrics
+from ... import LinearParallel as lp
 
 class Interface(object):
 	"""
@@ -612,7 +613,8 @@ class Interface(object):
 		if self.model.startswith('Rander') and 'flow_vector' in self.flow:
 			if self.dualMetric is None: self.dualMetric = self.metric.dual()
 			flow_orig = self.flow['flow_vector']
-			eucl_gradient = lp.dot_AV(self.metric.m,flow)+self.metric.w
+#			m = self.metric.m # TODO broadcast
+			eucl_gradient = lp.dot_AV(self.metric.m,flow_orig)+self.metric.w
 			flow = self.dualMetric.gradient(eucl_gradient)
 			self.flow['flow_vector_orig'],self.flow['flow_vector'] = flow_orig,flow
 
@@ -751,7 +753,7 @@ class Interface(object):
 
 			corresp_next = []
 			for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
-#				print(int(l),x.shape)
+				print(int(l),x.shape)
 				geodesics[i].append(x[1:int(l)])
 				if stop!=0: stopping_criterion[i] = geodesic_termination_codes[int(stop)]
 				else: corresp_next.append(i)
