@@ -736,18 +736,15 @@ class Interface(object):
 		geodesic_termination_codes = [
 			'Continue', 'AtSeed', 'InWall', 'Stationnary', 'PastSeed', 'VanishingFlow']
 
-		print("block : ",self.block.keys())
-		print("flow : ",self.flow.keys())
 		max_len = max(40,20*np.max(shape_tot)/geodesic_step)
 		max_len = self.GetValue("geodesic_max_len",default=max_len,
 			help="Maximum allowed length of geodesics.")
 		
 		geoIt=0; geoMaxIt = max_len/typical_len
-		print("max_len = ",max_len," typical_len=",typical_len," geoMaxIt=",geoMaxIt)
 		while len(corresp)>0:
 			if geoIt>=geoMaxIt: 
-				self.Warn("Geodesic solver failed to converge, or geodesic too long"
-					' (in latter case, try setting "geodesic_max_len":np.inf)')
+				self.Warn("Geodesic solver failed to converge, or geodesic has too many points"
+					" (in latter case, try setting 'geodesic_max_len':np.inf)")
 				break
 			geoIt+=1
 			nGeo = len(corresp)

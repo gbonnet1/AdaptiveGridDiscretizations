@@ -154,7 +154,7 @@ ODEStop::Enum NormalizedFlow(
 	for(Int icorner=0; icorner<ncorners; ++icorner){
 		weights[icorner] = 1.;
 		for(Int k=0; k<ndim; ++k){
-			weights[icorner]*=((icorner>>k) & 1) ? Scalar(1)-dx[k] : dx[k];}
+			weights[icorner]*=((icorner>>k) & 1) ? dx[k] : Scalar(1)-dx[k];}
 	}
 	
 	// Get the point with the smallest distance, and a weight above threshold.
@@ -164,6 +164,18 @@ ODEStop::Enum NormalizedFlow(
 		if(weights[icorner]<weight_threshold) continue;
 		if(dist_cache[icorner]<dist_min) {imin=icorner; dist_min=dist_cache[icorner];}
 	}
+
+/*
+	if(debug_print){
+		Scalar * dist = dist_cache;
+		printf("dist[ncorners] %f,%f,%f,%f\n",dist[0],dist[1],dist[2],dist[3]);
+		printf("weights[ncorners] %f,%f,%f,%f\n",weights[0],weights[1],weights[2],weights[3]);
+//		printf("dist_threshold %f, flow_weightsum %f\n",dist_threshold,flow_weightsum);
+//		for(Int i=0; i<ncorners; ++i){
+//			printf("corner %i, flow %f,%f\n",i,flow_cache[i][0],flow_cache[i][1]);}
+	}
+*/
+
 	if(dist_min==infinity()){return ODEStop::InWall;}
 	Int yq[ndim]; copy_vV(xq,yq); 
 	for(Int k=0; k<ndim; ++k){if((imin>>k)&1) {yq[k]+=1;}}
@@ -176,14 +188,6 @@ ODEStop::Enum NormalizedFlow(
 		if(flow_weightsum==0.){result=ODEStop::AtSeed;}
 		*dist_threshold=dist_min+causalityTolerance/flow_weightsum;
 	}
-
-/*
-		if(debug_print){
-			printf("dist[ncorners] %f,%f,%f,%f\n",dist[0],dist[1],dist[2],dist[3]);
-			printf("dist_threshold %f, flow_weightsum %f\n",dist_threshold,flow_weightsum);
-			for(Int i=0; i<ncorners; ++i){
-				printf("corner %i, flow %f,%f\n",i,flow_cache[i][0],flow_cache[i][1]);}
-		}*/
 
 
 	// Perform the interpolation, and its normalization

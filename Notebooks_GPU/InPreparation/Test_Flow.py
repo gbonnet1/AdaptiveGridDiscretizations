@@ -19,7 +19,7 @@ hfmIn = HFMUtils.dictIn({
     'exportValues':1,
     'cost':cp.array(1.,dtype=np.float32),
     'exportGeodesicFlow':1,
-#    'tips':[[n,n]],
+    'tips':[[n,n]],
     'traits':{
     	'niter_i':16,'shape_i':(8,8),
     	'debug_print':1,
@@ -27,13 +27,13 @@ hfmIn = HFMUtils.dictIn({
     'geodesic_traits':{
         'debug_print':1,
     },
-    'geodesic_typical_len':20,
-    'geodesic_max_len':20,
+    'geodesic_typical_len':25,
+    'geodesic_max_len':40,
 })
 hfmIn.SetRect([[0,n],[0,n]],dimx=n+1,sampleBoundary=True)
 
 gpuOut = hfmIn.RunGPU()
 
-print("flow",gpuOut['geodesicFlow'])
+#print("flow",gpuOut['geodesicFlow'])
 #print("geodesics : ",gpuOut['geodesics'])
-#print("stopping criteria : ",gpuOut['geodesic_stopping_criteria'])
+print("stopping criteria : ",gpuOut['geodesic_stopping_criteria'])
