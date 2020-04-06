@@ -7,7 +7,7 @@ from . import AutomaticDifferentiation as ad
 import functools
 import operator
 
-def as_field(u,shape,conditional=True):
+def as_field(u,shape,conditional=True,depth=None):
 	"""
 	Checks if the last dimensions of u match the given shape. 
 	If not, u is extended with these additional dimensions.
@@ -15,7 +15,11 @@ def as_field(u,shape,conditional=True):
 	"""
 	u=ad.asarray(u)
 	ndim = len(shape)
-	if conditional and u.ndim>=ndim and u.shape[-ndim:]==shape: return u
+	def as_is():
+		if not conditional: return True
+		elif depth is None: return u.ndim>=ndim and u.shape[-ndim:]==shape
+		else: return u.shape[depth:]==shape
+	if as_is(): return u
 	else: return ad.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)
 
 def common_field(arrays,depths,common_shape=tuple()):
