@@ -613,8 +613,9 @@ class Interface(object):
 		if self.model.startswith('Rander') and 'flow_vector' in self.flow:
 			if self.dualMetric is None: self.dualMetric = self.metric.dual()
 			flow_orig = self.flow['flow_vector']
-#			m = self.metric.m # TODO broadcast
-			eucl_gradient = lp.dot_AV(self.metric.m,flow_orig)+self.metric.w
+			m = fd.as_field(self.metric.m,self.shape,depth=2)
+			w = fd.as_field(self.metric.w,self.shape,depth=1)
+			eucl_gradient = lp.dot_AV(m,flow_orig)+w
 			flow = self.dualMetric.gradient(eucl_gradient)
 			self.flow['flow_vector_orig'],self.flow['flow_vector'] = flow_orig,flow
 
@@ -689,7 +690,7 @@ class Interface(object):
 		SetCst('shape_tot',shape_tot,self.int_t)
 		SetCst('size_tot', size_tot, self.int_t)
 		typical_len = int(max(40,0.5*np.max(shape_tot)/geodesic_step))
-		typical_len = self.GetValue('geodesic_typical_len',default=typical_len,
+		typical_len = self.GetValue('geodesic_typical_length',default=typical_len,
 			help="Typical expected length of geodesics (number of points).")
 		# Typical geodesic length is max_len for the GPU solver, which computes just a part
 		SetCst('max_len', typical_len, self.int_t) 
@@ -697,7 +698,6 @@ class Interface(object):
 			help="Used in criterion for rejecting points in flow interpolation")
 		SetCst('causalityTolerance', causalityTolerance, self.float_t)
 		nGeodesics=len(self.tips)
-		SetCst('nGeodesics', nGeodesics, self.int_t)
 
 		# Prepare the euclidean distance to seed estimate (for stopping criterion)
 		xp = self.xp
@@ -714,6 +714,7 @@ class Interface(object):
 		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
+		eucl=xp.ascontiguousarray(eucl)
 
 		# Run the geodesic ODE solver
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
@@ -728,7 +729,7 @@ class Interface(object):
 			'Continue', 'AtSeed', 'InWall', 'Stationnary', 'PastSeed', 'VanishingFlow']
 
 		max_len = int(max(40,20*np.max(shape_tot)/geodesic_step))
-		max_len = self.GetValue("geodesic_max_len",default=max_len,
+		max_len = self.GetValue("geodesic_max_length",default=max_len,
 			help="Maximum allowed length of geodesics.")
 		
 		geoIt=0; geoMaxIt = int(np.ceil(max_len/typical_len))
@@ -745,15 +746,13 @@ class Interface(object):
 			stop_s = xp.full((nGeo,),-1,np.int8)
 
 			nBlocks = int(np.ceil(nGeo/block_size))
-			args = (self.flow['flow_vector'],self.flow['flow_weightsum'],
-					values,eucl,x_s,len_s,stop_s)
+
+			SetCst('nGeodesics', nGeo, self.int_t)
 			geodesic_kernel( (nBlocks,),(block_size,),
 				(self.flow['flow_vector'],self.flow['flow_weightsum'],
 					values,eucl,x_s,len_s,stop_s))
-
 			corresp_next = []
 			for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
-				print(int(l),x.shape)
 				geodesics[i].append(x[1:int(l)])
 				if stop!=0: stopping_criterion[i] = geodesic_termination_codes[int(stop)]
 				else: corresp_next.append(i)

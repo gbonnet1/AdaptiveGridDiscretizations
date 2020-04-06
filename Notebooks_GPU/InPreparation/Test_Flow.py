@@ -12,7 +12,7 @@ from agd import AutomaticDifferentiation as ad
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
-n=24
+n=201
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
     'seeds':[[0.,0.]],

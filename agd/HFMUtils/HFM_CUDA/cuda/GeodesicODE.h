@@ -227,7 +227,7 @@ __global__ void GeodesicODE(
 
 	Scalar x[ndim]; copy_vV(x_s+tid*max_len*ndim,x);
 	Int xq[ndim]; fill_kV(Int_Max,xq);
-	Int nymin = 0;
+	Int nymin = Int_Max;
 	Scalar flow_cache[ncorners][ndim]; 
 	Scalar dist_cache[ncorners];
 	Scalar dist_threshold;
@@ -271,7 +271,7 @@ __global__ void GeodesicODE(
 		eucl_p[l] = eucl_t[nymin];
 
 		if(nymin     == nymin_p[(l-nymin_delay+hlen)%hlen]){
-			stop = ODEStop::Stationnary; break;}
+						stop = ODEStop::Stationnary; break;}
 		if(eucl_p[l] >  eucl_p[ (l-eucl_delay+hlen) %hlen]){
 			stop = ODEStop::PastSeed;    break;}
 
