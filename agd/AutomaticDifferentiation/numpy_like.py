@@ -50,7 +50,7 @@ def concatenate(elems,axis=0):
 		if is_ad(e): return type(e).concatenate(elems,axis)
 	return np.concatenate(elems,axis)
 
-# ------- Old cupy compatibility --------
+# ------- Compatibility with cupy (old version?) --------
 
 def max(a,*args,**kwargs):
 	"""Reimplemeted to support cupy"""
@@ -63,3 +63,11 @@ def flat(a):
 	"""Reimplemented to support cupy"""
 	try: return a.flat
 	except AttributeError: return a.reshape(-1) # cupy (old version ?) does not have flat
+
+def expand_dims(a,axis):
+	"""Reimplemented to support cupy"""
+	try: return np.expand_dims(a)
+	except TypeError: 
+		if axis<0: axis=a.ndim+axis
+		newshape = a.shape[:axis]+(1,)+a.shape[axis:]
+		return a.reshape(newshape)

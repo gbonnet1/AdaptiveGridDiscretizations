@@ -12,34 +12,24 @@ def as_field(u,shape,conditional=True,depth=None):
 	Checks if the last dimensions of u match the given shape. 
 	If not, u is extended with these additional dimensions.
 	conditional : if False, reshaping is always done
+	depth (optional) : the depth of the geometrical tensor field (1: vectors, 2: matrices)
 	"""
 	u=ad.asarray(u)
 	ndim = len(shape)
 	def as_is():
 		if not conditional: return True
 		elif depth is None: return u.ndim>=ndim and u.shape[-ndim:]==shape
-		else: return u.shape[depth:]==shape
+		else: assert u.shape[depth:] in (tuple(),shape); return u.shape[depth:]==shape
 	if as_is(): return u
 	else: return ad.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)
 
-def common_field(arrays,depths,common_shape=tuple()):
-	to_field=[]
-	for arr,d in zip(arrays,depths):
-		if arr is None: 
-			to_field.append(False)
-			continue
-		shape = arr.shape[d:]
-		to_field.append(shape is tuple())
-		if shape:
-			if common_shape:
-				assert(shape==common_shape)
-			else:
-				common_shape=shape
-	if common_shape is None:
-		return arrays
-	else:
-		return tuple(as_field(arr,common_shape,conditional=False) if b else arr 
-			for arr,b in zip(arrays,to_field))
+def common_field(arrays,depths):
+	for arr,depth in zip(arrays,depths):
+		if arr is not None:
+			shape = arr.shape[depth:]
+			break
+	return tuple(None if arr is None else as_field(arr,shape,depth=depth) 
+		for (arr,depth) in zip(arrays,depths))
 
 # ----- Utilities for finite differences ------
 

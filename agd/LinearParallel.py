@@ -4,7 +4,7 @@
 import numpy as np
 from . import AutomaticDifferentiation as ad
 from . import FiniteDifferences as fd
-
+from .AutomaticDifferentiation import numpy_like as npl
 def identity(shape):
 	dim = len(shape)
 	a = np.full((dim,dim)+shape,0.)
@@ -44,7 +44,7 @@ def dot_VV(v,w):
 
 def dot_AV(a,v):
 	if a.shape[1]!=v.shape[0]: raise ValueError("dot_AV : Incompatible shapes")
-	return (a*np.expand_dims(v,axis=0)).sum(1)
+	return (a*npl.expand_dims(v,axis=0)).sum(1)
 
 def dot_VA(v,a):
 	m,n = a.shape[:2]
@@ -137,7 +137,7 @@ def inverse(a):
 
 	if isinstance(a,ad.Dense.denseAD):
 		b = inverse(a.value)
-		b_ = fd.as_field(b,(a.size_ad,),conditional=False) #np.expand_dims(b,axis=-1)
+		b_ = fd.as_field(b,(a.size_ad,),conditional=False) 
 		h = a.coef
 		return ad.Dense.denseAD(b,-dot_AA(b_,dot_AA(h,b_)))
 	elif isinstance(a,ad.Dense2.denseAD2):
@@ -148,8 +148,8 @@ def inverse(a):
 
 		bh = dot_AA(b1,h)
 		bhb = dot_AA(bh,b1)
-		bhbhb = dot_AA(np.broadcast_to(np.expand_dims(bh,-1),h2.shape),
-			np.broadcast_to(np.expand_dims(bhb,-2),h2.shape))
+		bhbhb = dot_AA(np.broadcast_to(npl.expand_dims(bh,-1),h2.shape),
+			np.broadcast_to(npl.expand_dims(bhb,-2),h2.shape))
 
 		b2 = fd.as_field(b,(a.size_ad,a.size_ad),conditional=False)
 		bh2b = dot_AA(b2,dot_AA(h2,b2))

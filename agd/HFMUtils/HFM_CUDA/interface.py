@@ -617,6 +617,8 @@ class Interface(object):
 			w = fd.as_field(self.metric.w,self.shape,depth=1)
 			eucl_gradient = lp.dot_AV(m,flow_orig)+w
 			flow = self.dualMetric.gradient(eucl_gradient)
+			flow[np.isnan(flow)]=0. # Vanishing flow yields nan after gradient
+			flow = self.xp.ascontiguousarray(flow)
 			self.flow['flow_vector_orig'],self.flow['flow_vector'] = flow_orig,flow
 
 		if self.exportGeodesicFlow:
