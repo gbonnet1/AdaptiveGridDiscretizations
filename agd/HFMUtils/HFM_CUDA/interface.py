@@ -196,7 +196,8 @@ class Interface(object):
 			help="Drift introduced in the eikonal equation, becoming F(grad u - drift)=1")
 
 		# Get the metric or cost function
-		if self.model.startswith('Isotropic') or self.isCurvature:
+		self.cost_based = self.model.startswith('Isotropic') or self.isCurvature
+		if self.cost_based:
 			self.metric = self.GetValue('cost',None,verbosity=3,
 				help="Cost function for the minimal paths. cost = 1/speed.")
 			self.dualMetric = self.GetValue('speed',None,verbosity=3,
@@ -231,8 +232,21 @@ class Interface(object):
 		if self.dualMetric is not None: self.dualMetric = self.dualMetric.rescale(h_base)
 		if self.drift is not None: self.drift*=self.h_broadcasted
 
-		if self.isCurvature:
+		self.costVariation = self.GetValue('costVariation',default=None,
+			help = "First order variation of the cost function "
+			"(defined as 1 in the case of an anisotropic metric)")
+		if self.cost_based: 
+			# These models internally only use the cost function, not the speed function
 			if self.metric is None: self.metric = self.dualMetric.dual()
+			self.dualMetric = None
+			if ad.is_ad(self.metric.cost):
+				assert self.costVariation is None
+				self.costVariation = self.metric.cost.coef
+				self.metric = Metrics.Isotropic(self.metric.cost.value)
+			# Internally, we always use a relative cost variation
+			self.costVariation/=self.xp.expand_dims(self.metric.cost,axis=-1)
+
+		if self.isCurvature:
 			self.xi = self.GetValue('xi',
 				help="Cost of rotation for the curvature penalized models")
 			self.kappa = self.GetValue('kappa',default=0.,
@@ -243,12 +257,11 @@ class Interface(object):
 			self.xi *= self.h_per
 			self.kappa /= self.h_per
 
-			self.geom = ad.array([e for e in (self.metric,self.xi,self.kappa,self.theta)
-				if not np.isscalar(e)])
+			self.geom = ad.array([e for e in 
+				(self.metric.cost,self.xi,self.kappa,self.theta) if not np.isscalar(e)])
 
 		else: # not self.isCurvature
 			if self.model.startswith('Isotropic'):
-				if self.metric is None: self.metric = self.dualMetric.dual()
 				self.geom = self.metric.cost
 			elif self.model.startswith('Riemann'):
 				if self.dualMetric is None: self.dualMetric = self.metric.dual()
@@ -307,14 +320,14 @@ class Interface(object):
 		if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
 		xp = self.xp
 		values = xp.full(self.shape,xp.inf,dtype=self.float_t)
-		self.seeds = xp.asarray(self.GetValue('seeds', 
-			help="Points from where the front propagation starts"),dtype=self.float_t)
+		self.seeds = self.GetValue('seeds',
+			help="Points from where the front propagation starts",array_float=True)
 		assert self.seeds.ndim==2 and self.seeds.shape[1]==self.ndim
 		self.seeds = Grid.PointFromIndex(self.hfmIn,self.seeds,to=True) # Adimensionize seed position
 		if len(self.seeds)==1: self.seed=self.seeds[0]
 		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
-		seedValues = xp.asarray(self.GetValue('seedValues',default=seedValues,
-			help="Initial value for the front propagation"))
+		seedValues = self.GetValue('seedValues',default=seedValues,
+			help="Initial value for the front propagation",array_float=True)
 		seedRadius = self.GetValue('seedRadius',default=0.,
 			help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
@@ -433,7 +446,7 @@ class Interface(object):
 			'niter_i':1,
 		})
 
-		self.forward_ad = self.HasValue('costVariation') or ad.is_ad(self.seedValues)
+		self.forward_ad = self.costVariation is not None or ad.is_ad(self.seedValues)
 		self.reverse_ad = self.HasValue('sensitivity')
 		if self.forward_ad or self.reverse_ad:
 			for key in ('flow_weights','flow_weightsum','flow_indices'):
@@ -625,13 +638,13 @@ class Interface(object):
 			self.hfmOut['flow'] = - self.flow['flow_vector'] * self.h_broadcasted
 
 		if self.forward_ad or self.reverse_ad:
-			import cupy.cupyx.scipy.sparse as spmod
+			spmod=self.xp.cupyx.scipy.sparse
 			xp=self.xp
-			weightsum = self.flow['flow_weightsum']
-			self.block_boundary = weightsum==0. #seeds, or walls, or out of domain
+			weightsum = self.xp.expand_dims(self.flow['flow_weightsum'],axis=0)
+			self.boundary = weightsum==0. #seeds, or walls, or out of domain
 			coef = xp.concatenate((weightsum,-self.flow['flow_weights']),axis=0)
-			rg = xp.arange(self.size_tot)
-			row = np.expand_dims(rg,axis=0).broadcast_to(data.shape)
+			rg = xp.arange(np.prod(self.shape)).reshape((1,)+self.shape)
+			row = self.xp.broadcast_to(rg,coef.shape)
 			col = xp.concatenate((rg,self.flow['flow_indices']),axis=0)
 
 			coef[0,self.boundary] = 1.			
@@ -639,12 +652,12 @@ class Interface(object):
 			self.spmat = spmod.coo_matrix(self.triplets)
 
 		if self.forward_ad:
-			if hasattr(self,costVariation):
-				rhs=self.GetValue('costVariation',help='Forward automatic differentiation')
-				size_ad = rhs.shape(-1)
-				if ad.is_ad(self.seedValues):
-					rhs[self.seedIndices.T,:] = self.seedValues.coef
-				hfmOut['valueVariation'] = spmod.linalg.lsqr(self.spmat.tocsr(),rhs)
+			if self.costVariation is None:
+				self.costVariation = self.xp.zeros(self.shape+self.seedValues.size_ad)
+			rhs=self.cost_variation
+			if ad.is_ad(self.seedValues):
+				rhs[self.seedIndices.T,:] = self.seedValues.coef
+			hfmOut['valueVariation'] = spmod.linalg.lsqr(self.spmat.tocsr(),rhs)
 
 		if self.reverse_ad:
 			rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
@@ -688,7 +701,7 @@ class Interface(object):
 		def SetCst(*args):cupy_module_helper.SetModuleConstant(self.geodesic_module,*args)
 		# Note: geodesic solver does not use bilevel array structure
 		shape_tot = self.shape
-		size_tot = int(np.prod(shape_tot))  #distinct from self.size_tot
+		size_tot = int(np.prod(shape_tot))  #distinct from size_tot used for solver
 		SetCst('shape_tot',shape_tot,self.int_t)
 		SetCst('size_tot', size_tot, self.int_t)
 		typical_len = int(max(40,0.5*np.max(shape_tot)/geodesic_step))

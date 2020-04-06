@@ -286,8 +286,6 @@ __global__ void Update(
 		FLOW_INDICES(flow_indices_t[n_t+size_tot*k]=Grid::Index_per(y_t,shape_tot);) 
 	}
 	FLOW_WEIGHTSUM(flow_weightsum_t[n_t]=flow_weightsum;)
-	if(debug_print && n_i==0){
-		printf("flow_vector %f,%f\n",flow_vector[0],flow_vector[1]);}
 	FLOW_VECTOR(for(Int l=0; l<ndim; ++l){flow_vector_t[n_t+size_tot*l]=flow_vector[l];})
 	) // FLOW 
 	
