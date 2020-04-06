@@ -262,6 +262,12 @@ __global__ void Update(
 		printf("flow_weights %f,%f\n",flow_weights[0],flow_weights[1]);
 		printf("active_side %i,%i\n",active_side[0],active_side[1]);
 			}
+	if(isSeed){ // HFM leaves these fields to their (unspecified) initial state
+		for(Int k=0; k<nact; ++k){
+			flow_weights[k]=0; 
+			active_side[k]=0;}
+		MIX(kmix=0;)
+	}
 
 	FLOW_VECTOR(Scalar flow_vector[ndim]; fill_kV(Scalar(0),flow_vector);)
 	FLOW_WEIGHTSUM(Scalar flow_weightsum=0;)

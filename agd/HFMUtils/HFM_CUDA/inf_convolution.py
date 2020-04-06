@@ -65,7 +65,6 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	cuoptions = ("-default-device", f"-I {cuda_path}") 
 
 	source="\n".join(source)
-	print(source)
 	module = cupy_module_helper.GetModule(source,cuoptions)
 	SetModuleConstant(module,'kernel_c',kernel,conv_t)
 	SetModuleConstant(module,'shape_tot',arr.shape,int_t)

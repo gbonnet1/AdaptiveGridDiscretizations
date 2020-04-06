@@ -92,6 +92,9 @@ class Interface(object):
 				print(f"key {key} defaults to {default}")
 			return default
 
+	def Warn(self,msg):
+		if self.verbosity>=-1:
+			print("---- Warning ----\n",msg,"\n-----------------\n")
 
 	def Run(self):
 		self.block={}
@@ -556,11 +559,8 @@ class Interface(object):
 		if niter_o>=self.nitermax_o:
 			nonconv_msg = (f"Solver {solver} did not reach convergence after "
 				f"maximum allowed number {niter_o} of iterations")
-			if self.raiseOnNonConvergence:
-				raise ValueError(nonconv_msg)
-			else:
-				print("---- Warning ----\n",nonconv_msg,"\n-----------------\n")
-
+			if self.raiseOnNonConvergence: raise ValueError(nonconv_msg)
+			else: self.Warn(nonconv_msg)
 		if self.verbosity>=1: print(f"GPU solve took {solverGPUTime} seconds,"
 			f" in {niter_o} iterations.")
 
@@ -604,15 +604,14 @@ class Interface(object):
 			self.flow_kernel_argnames.append('flow_vector')
 			self.block['flow_vector'] = self.xp.ones((ndim,)+shape_oi,dtype=self.float_t)
 
-		print(self.block['flow_vector'].shape)
-		print(self.flow_kernel_argnames)
-		print(self.solver_kernel_argnames)
-		print(self.block['flow_weightsum'].shape)
+#		print(self.block['flow_vector'].shape)
+#		print("flow kernel argnames : ",self.flow_kernel_argnames)
+#		print(self.block['flow_weightsum'].shape)
 
 		self.flow_needed = any(self.flow_traits.get(key+"_macro",False) for key in 
 			('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 		if self.flow_needed: solvers.global_iteration(self,solver=False)
-		print(self.block['flow_vector'])
+		print("flow_vector (block) : ",self.block['flow_vector'])
 
 		self.flow = {}
 		for key in self.block:
@@ -697,10 +696,11 @@ class Interface(object):
 		size_tot = int(np.prod(shape_tot))  #distinct from self.size_tot
 		SetCst('shape_tot',shape_tot,self.int_t)
 		SetCst('size_tot', size_tot, self.int_t)
-		max_len = max(200,0.25*np.max(shape_tot)/geodesic_step)
-		max_len = self.GetValue('geodesic_max_len',default=max_len,
-			help="Typical expected length of geodesics.")
-		SetCst('max_len', max_len, self.int_t)
+		typical_len = max(40,0.5*np.max(shape_tot)/geodesic_step)
+		typical_len = self.GetValue('geodesic_typical_len',default=typical_len,
+			help="Typical expected length of geodesics (number of points).")
+		# Typical geodesic length is max_len for the GPU solver, which computes just a part
+		SetCst('max_len', typical_len, self.int_t) 
 		causalityTolerance = self.GetValue('geodesic_causalityTolerance',default=4.,
 			help="Used in criterion for rejecting points in flow interpolation")
 		SetCst('causalityTolerance', causalityTolerance, self.float_t)
@@ -719,18 +719,17 @@ class Interface(object):
 		eucl_mult = 5 if eucl_integral else 1
 		eucl_kernel = inf_convolution.distance_kernel(radius=1,ndim=self.ndim,
 			dtype=eucl_t,mult=eucl_mult)
-		print(eucl,eucl_kernel)
 		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
-		print(eucl)
+		print("euclidean distance estimate : \n",eucl)
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
 
 		# Run the geodesic ODE solver
-		geodesics = list( (list(),)*nGeodesics)
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
 		corresp = list(range(nGeodesics))
 		tips = self.hfmIn.PointFromIndex(self.tips,to=True)
-		print("tips",tips)
+		geodesics = [ [tip.reshape(1,-1)] for tip in tips]
+
 		block_size=self.GetValue('geodesic_block_size',default=32,
 			help="Block size for the GPU based geodesic solver")
 		values = xp.ascontiguousarray(self.hfmOut['values'].astype(self.float_t))
@@ -739,12 +738,21 @@ class Interface(object):
 
 		print("block : ",self.block.keys())
 		print("flow : ",self.flow.keys())
-		geoIt=0; geoMaxIt = 1
-		while len(corresp)>0 and geoIt<geoMaxIt:
+		max_len = max(40,20*np.max(shape_tot)/geodesic_step)
+		max_len = self.GetValue("geodesic_max_len",default=max_len,
+			help="Maximum allowed length of geodesics.")
+		
+		geoIt=0; geoMaxIt = max_len/typical_len
+		print("max_len = ",max_len," typical_len=",typical_len," geoMaxIt=",geoMaxIt)
+		while len(corresp)>0:
+			if geoIt>=geoMaxIt: 
+				self.Warn("Geodesic solver failed to converge, or geodesic too long"
+					' (in latter case, try setting "geodesic_max_len":np.inf)')
+				break
 			geoIt+=1
 			nGeo = len(corresp)
-			x_s = xp.full( (nGeo,max_len,self.ndim), np.nan, self.float_t)
-			x_s[:,0,:] = tips[corresp] # TODO : only first run
+			x_s = xp.full( (nGeo,typical_len,self.ndim), np.nan, self.float_t)
+			x_s[:,0,:] = np.stack([geodesics[i][-1][-1,:] for i in corresp], axis=0)
 			len_s = xp.full((nGeo,),-1,self.int_t)
 			stop_s = xp.full((nGeo,),-1,np.int8)
 
@@ -761,15 +769,18 @@ class Interface(object):
 
 			corresp_next = []
 			for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
-				geodesics[i].append(self.hfmIn.PointFromIndex(x_s))
+				geodesics[i].append(x[1:int(l)])
 				print(f"stop = {stop}",type(stop))
-				if stop!=0:
-					stopping_criterion[i] = geodesic_termination_codes[int(stop)]
-					geodesics[i] = xp.concatenate(geodesics[i],axis=0)[:-(max_len-int(l))]
-				else:
-					corresp_next.append(i)
+				if stop!=0: stopping_criterion[i] = geodesic_termination_codes[int(stop)]
+				else: corresp_next.append(i)
+			corresp=corresp_next
+			print(corresp,geodesics)
 
-		self.hfmOut['geodesics'] =  [x.T for x in geodesics]
+		print(geodesics)
+		geodesics_cat = [np.concatenate(geo,axis=0) for geo in geodesics]
+		print("geodesics_cat = ",geodesics_cat)
+		self.hfmOut['geodesics']=[self.hfmIn.PointFromIndex(geo).T for geo in geodesics_cat]
+		self.hfmOut['geodesic_stopping_criteria'] = stopping_criterion
 
 
 

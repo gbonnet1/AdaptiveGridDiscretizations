@@ -52,6 +52,7 @@ __constant__ Int nGeodesics;
 __constant__ Int max_len = 200; // Max geodesic length
 __constant__ Scalar causalityTolerance = 4; 
 __constant__ Scalar geodesicStep = 0.25;
+__constant__ Scalar weight_threshold = 0.05;
 
 #ifndef hlen_macro
 const Int hlen = 20; // History length (a small periodic history of computations is kept)
@@ -125,18 +126,18 @@ Outputs :
 ODEStop::Enum NormalizedFlow(
 	const Scalar * flow_vector_t,const Scalar * flow_weightsum_t,const Scalar * dist_t, 
 	const Scalar x[ndim], Scalar flow[ndim],
-	Int xq[ndim], Int * nymin,
-	Scalar flow_cache[ncorners][ndim], Scalar dist_cache[ncorners], threshold_cache[1]){
+	Int xq[ndim], Int * nymin, Scalar * dist_threshold,
+	Scalar flow_cache[ncorners][ndim], Scalar dist_cache[ncorners]){
 
 	ODEStop::Enum result = ODEStop::Continue;
 	const bool newCell = Floor(x,xq); // Get the index of the cell containing x
-	if(newCell){ // Load cell corners data
+	if(newCell){ // Load cell corners data (flow and dist)
 		for(Int icorner=0; icorner< ncorners; ++icorner){
 			// Get the i-th corner and its index in the total shape.
 			Int yq[ndim]; 
 			for(Int k=0; k<ndim; ++k){yq[k] = xq[k]+((icorner >> k) & 1);}
 			if(!Grid::InRange_per(yq,shape_tot)){
-				dist[icorner]=infinity(); 
+				dist_cache[icorner]=infinity(); 
 				continue;}
 			const Int ny = Grid::Index_per(yq,shape_tot);
 
@@ -147,54 +148,52 @@ ODEStop::Enum NormalizedFlow(
 		}
 	}
 
-	Scalar dist_min = dist_cache[*nymin]; // Minimal distance among corners
+	// Compute the bilinear weigths.
+	Scalar dx[ndim]; sub_vv(x,xq,dx); 
 	Scalar weights[ncorners];
-	for(
+	for(Int icorner=0; icorner<ncorners; ++icorner){
+		weights[icorner] = 1.;
+		for(Int k=0; k<ndim; ++k){
+			weights[icorner]*=((icorner>>k) & 1) ? Scalar(1)-dx[k] : dx[k];}
+	}
+	
+	// Get the point with the smallest distance, and a weight above threshold.
+	Scalar dist_min=infinity();
+	Int imin;
+	for(Int icorner=0; icorner<ncorners; ++icorner){
+		if(weights[icorner]<weight_threshold) continue;
+		if(dist_cache[icorner]<dist_min) {imin=icorner; dist_min=dist_cache[icorner];}
+	}
+	if(dist_min==infinity()){return ODEStop::InWall;}
+	Int yq[ndim]; copy_vV(xq,yq); 
+	for(Int k=0; k<ndim; ++k){if((imin>>k)&1) {yq[k]+=1;}}
+	const Int ny = Grid::Index(yq,shape_tot);
 
+	// Set the distance threshold
+	if(ny!=*nymin){
+		*nymin=ny;
+		const Scalar flow_weightsum = flow_weightsum_t[ny];
+		if(flow_weightsum==0.){result=ODEStop::AtSeed;}
+		*dist_threshold=dist_min+causalityTolerance/flow_weightsum;
+	}
 
-
-		const Scalar flow_weightsum = flow_weightsum_t[*nymin];
-		if(dist_min==infinity()){result=ODEStop::InWall;}
-		else if(flow_weightsum==0.){result=ODEStop::AtSeed;}
-
-		// Exclude interpolation neighbors with too high value.
-		const Scalar dist_threshold = dist_min+causalityTolerance/flow_weightsum;
-		for(Int icorner=0; icorner<ncorners; ++icorner){
-			exclude_cache[icorner] = dist[icorner] >= dist_threshold;}
-
+/*
 		if(debug_print){
 			printf("dist[ncorners] %f,%f,%f,%f\n",dist[0],dist[1],dist[2],dist[3]);
 			printf("dist_threshold %f, flow_weightsum %f\n",dist_threshold,flow_weightsum);
 			for(Int i=0; i<ncorners; ++i){
 				printf("corner %i, flow %f,%f\n",i,flow_cache[i][0],flow_cache[i][1]);}
-		}
-
-			if(dist[icorner]<dist_min){
-				dist_min=dist[icorner];
-				*nymin = ny;
-				// TODO : Exclude those with too small weight ?
-			}
+		}*/
 
 
-	// Perform the interpolation
-//	Scalar wsum=0.;
+	// Perform the interpolation, and its normalization
 	fill_kV(Scalar(0),flow);
-
 	for(Int icorner=0; icorner<ncorners; ++icorner){
-		// Get the corner bilinear interpolation weight.
-		if(exclude_cache[icorner]) continue;
-		Scalar w = 1.;
-		for(Int k=0; k<ndim; ++k){
-			const Scalar dxk = x[k] - xq[k];
-			w *= ((icorner>>k) & 1) ? 1-dxk : dxk;
-		}
-
-		// Add corner contribution
-//		wsum+=w;
-		madd_kvV(w,flow_cache[icorner],flow);
+		if(dist_cache[icorner]>=*dist_threshold) {continue;}
+		madd_kvV(weights[icorner],flow_cache[icorner],flow);
 	}
-	
-//	if(wsum>0){for(Int k=0; k<ndim; ++k){flow[k] /= wsum;}}
+	// Not that a proper interpolation would require dividing by the weights sum
+	// But this would be pointless here, due to the Euclidean normalization.
 	const Scalar flow_norm = norm_v(flow);
 	if(flow_norm>0){div_Vk(flow,flow_norm);}
 	else if(result==ODEStop::Continue){result = ODEStop::VanishingFlow;}
@@ -226,12 +225,13 @@ __global__ void GeodesicODE(
 	Int nymin = 0;
 	Scalar flow_cache[ncorners][ndim]; 
 	Scalar dist_cache[ncorners];
-	Scalar threshold_cache[1];
+	Scalar dist_threshold;
 
 	if(debug_print && tid==0){
 		printf("In geodesic ODE solver\n");
 		printf("x %f,%f\n",x[0],x[1]);
 		printf("ncorners %i\n",ncorners);
+		printf("max_len %i\n",max_len);
 	}
 
 
@@ -247,16 +247,16 @@ __global__ void GeodesicODE(
 		stop = NormalizedFlow(
 			flow_vector_t,flow_weightsum_t,dist_t,
 			x,flow,
-			xq,&nymin,
-			flow_cache,dist_cache,threshold_cache);
-
+			xq,&nymin,&dist_threshold,
+			flow_cache,dist_cache);
+/*
 		if(debug_print && tid==0){
 			printf("Hi there\n");
 			printf("xq %i,%i\n",xq[0],xq[1]); 
 			printf("First flow %f,%f\n",flow[0],flow[1]);
 			printf("stop : %i\n",Int(stop));
 		}
-
+*/
 		if(stop!=ODEStop::Continue){break;}
 
 
@@ -277,8 +277,8 @@ __global__ void GeodesicODE(
 		stop = NormalizedFlow(
 			flow_vector_t,flow_weightsum_t,dist_t,
 			xMid,flow,
-			xq,&nymin,
-			flow_cache,dist_cache,threshold_cache);
+			xq,&nymin,&dist_threshold,
+			flow_cache,dist_cache);
 		if(stop!=ODEStop::Continue){break;}
 
 		madd_kvv(geodesicStep,flow,xPrev,x);

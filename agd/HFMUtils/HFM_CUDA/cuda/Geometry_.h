@@ -26,8 +26,8 @@ void add_vV(const T x[ndim], T y[ndim]){
 	for(Int i=0; i<ndim; ++i){y[i]+=x[i];}}
 
 /// Difference
-template<typename T>
-void sub_vv(const T x[ndim], const T y[ndim], T out[ndim]){
+template<typename Tx, typename Ty, typename Tout>
+void sub_vv(const Tx x[ndim], const Ty y[ndim], Tout out[ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i]-y[i];}}
 
 /// Opposite vector
