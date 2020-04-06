@@ -23,7 +23,7 @@ def round_up(num,den):
 	num,den = np.asarray(num),np.asarray(den)
 	return (num+den-1)//den
 
-def block_expand(arr,shape_i,**kwargs):
+def block_expand(arr,shape_i,contiguous=False,**kwargs):
 	"""
 	Reshape an array so as to factor  shape_i (the inner shape),
 	and move its axes last.
@@ -54,10 +54,10 @@ def block_expand(arr,shape_i,**kwargs):
 	axes_split = ndim_pre + ndim+rg
 	arr = np.moveaxis(arr,axes_interleaved,axes_split)
 
-	xp = get_array_module(arr)
-	return xp.ascontiguousarray(arr)
+	if contiguous: return get_array_module(arr).ascontiguousarray(arr)
+	else: return arr
 
-def block_squeeze(arr,shape):
+def block_squeeze(arr,shape,contiguous=False):
 	"""
 	Inverse operation to block_expand.
 	"""
@@ -80,4 +80,6 @@ def block_squeeze(arr,shape):
 	# Extract subdomain
 	region = tuple(slice(0,s) for s in (shape_pre+shape))
 	arr = arr.__getitem__(region)
-	return arr
+
+	if contiguous: return get_array_module(arr).ascontiguousarray(arr)
+	else: return arr

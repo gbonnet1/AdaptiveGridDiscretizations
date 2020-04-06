@@ -165,16 +165,17 @@ ODEStop::Enum NormalizedFlow(
 		if(dist_cache[icorner]<dist_min) {imin=icorner; dist_min=dist_cache[icorner];}
 	}
 
-/*
+
 	if(debug_print){
 		Scalar * dist = dist_cache;
-		printf("dist[ncorners] %f,%f,%f,%f\n",dist[0],dist[1],dist[2],dist[3]);
+		printf("dist_cache[ncorners] %f,%f,%f,%f\n",dist[0],dist[1],dist[2],dist[3]);
 		printf("weights[ncorners] %f,%f,%f,%f\n",weights[0],weights[1],weights[2],weights[3]);
+		printf("flow_cache[0] = %f,%f",flow_cache[0][0],flow_cache[0][1]);
 //		printf("dist_threshold %f, flow_weightsum %f\n",dist_threshold,flow_weightsum);
 //		for(Int i=0; i<ncorners; ++i){
 //			printf("corner %i, flow %f,%f\n",i,flow_cache[i][0],flow_cache[i][1]);}
 	}
-*/
+
 
 	if(dist_min==infinity()){return ODEStop::InWall;}
 	Int yq[ndim]; copy_vV(xq,yq); 
@@ -253,14 +254,14 @@ __global__ void GeodesicODE(
 			x,flow,
 			xq,&nymin,&dist_threshold,
 			flow_cache,dist_cache);
-/*
+
 		if(debug_print && tid==0){
 			printf("Hi there\n");
 			printf("xq %i,%i\n",xq[0],xq[1]); 
 			printf("First flow %f,%f\n",flow[0],flow[1]);
 			printf("stop : %i\n",Int(stop));
 		}
-*/
+
 		if(stop!=ODEStop::Continue){break;}
 
 

@@ -42,8 +42,9 @@ def GetAxes(params,dims=None):
 	return [caster(CenteredLinspace(b,t,d)) for b,t,d in zip(bottom,top,dims)]
 
 def GetGrid(params,dims=None):
-	"""Returns a grid of coordinates for the domain.
-	Calls np.meshgrid, converts to ndarray"""
+	"""
+	Returns a grid of coordinates, containing all the discretization points of the domain.
+	"""
 	axes = GetAxes(params,dims);
 	ordering = params['arrayOrdering']
 	if ordering=='RowMajor':

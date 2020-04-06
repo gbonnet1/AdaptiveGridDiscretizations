@@ -106,6 +106,7 @@ class Interface(object):
 		self.SetSolver()
 		self.PostProcess()
 		self.GetGeodesics()
+		self.FinalCheck()
 
 		return self.hfmOut
 
@@ -264,10 +265,10 @@ class Interface(object):
 
 
 		self.block['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
-			self.shape_i,mode='constant',constant_values=self.xp.inf)
+			self.shape_i,mode='constant',constant_values=self.xp.inf,contiguous=True)
 		if self.drift is not None:
 			self.block['drift'] = misc.block_expand(fd.as_field(self.drift,self.shape),
-				self.shape_i,mode='constant',constant_values=self.xp.nan)
+				self.shape_i,mode='constant',constant_values=self.xp.nan,contiguous=True)
 
 		tol_msg = "Convergence tolerance for the fixed point solver"
 		mean_cost_magnitude_msg = ("Upper bound on the magnitude of the cost function, "
@@ -349,14 +350,14 @@ class Interface(object):
 			values[tuple(self.seedIndices.T)] = self.seedValues 
 
 		block_values = misc.block_expand(values,self.shape_i,
-			mode='constant',constant_values=np.inf)
+			mode='constant',constant_values=np.inf,contiguous=True)
 
 		# Tag the seeds
 		if np.prod(self.shape_i)%8!=0:
 			raise ValueError('Product of shape_i must be a multiple of 8')
 		self.seedTags = xp.isfinite(values)
 		block_seedTags = misc.block_expand(self.seedTags,self.shape_i,
-			mode='constant',constant_values=True)
+			mode='constant',constant_values=True,contiguous=True)
 		block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 		block_seedTags = block_seedTags.reshape( self.shape_o + (-1,) )
 		block_values[xp.isnan(block_values)] = xp.inf
@@ -448,7 +449,6 @@ class Interface(object):
 		self.flow_source = cupy_module_helper.traits_header(flow_traits,
 			join=True,size_of_shape=True,log2_size=True) + "\n"
 		source = self.flow_source+self.model_source+self.cuda_date_modified
-		print(source)
 		self.flow_module = GetModule(source,self.cuoptions)
 
 		# Set the constants
@@ -579,10 +579,6 @@ class Interface(object):
 		else:
 			self.hfmOut['values'] = values
 
-		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['keys']['used']))
-		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
-			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
-
 		# Compute the geodesic flow, if needed, and related quantities
 		shape_oi = self.shape_o+self.shape_i
 		nact = kernel_traits.nact(self)
@@ -604,19 +600,14 @@ class Interface(object):
 			self.flow_kernel_argnames.append('flow_vector')
 			self.block['flow_vector'] = self.xp.ones((ndim,)+shape_oi,dtype=self.float_t)
 
-#		print(self.block['flow_vector'].shape)
-#		print("flow kernel argnames : ",self.flow_kernel_argnames)
-#		print(self.block['flow_weightsum'].shape)
-
 		self.flow_needed = any(self.flow_traits.get(key+"_macro",False) for key in 
 			('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 		if self.flow_needed: solvers.global_iteration(self,solver=False)
-		print("flow_vector (block) : ",self.block['flow_vector'])
 
 		self.flow = {}
 		for key in self.block:
 			if key.startswith('flow_'):
-				self.flow[key] = misc.block_squeeze(self.block[key],self.shape)
+				self.flow[key]=misc.block_squeeze(self.block[key],self.shape,contiguous=True)
 
 		if self.model.startswith('Rander') and 'flow_vector' in self.flow:
 			if self.dualMetric is None: self.dualMetric = self.metric.dual()
@@ -626,7 +617,7 @@ class Interface(object):
 			self.flow['flow_vector_orig'],self.flow['flow_vector'] = flow_orig,flow
 
 		if self.exportGeodesicFlow:
-			self.hfmOut['geodesicFlow'] = - self.flow['flow_vector'] * self.h_broadcasted
+			self.hfmOut['flow'] = - self.flow['flow_vector'] * self.h_broadcasted
 
 		if self.forward_ad or self.reverse_ad:
 			import cupy.cupyx.scipy.sparse as spmod
@@ -683,7 +674,6 @@ class Interface(object):
 		# Get the module
 		self.geodesic_source = cupy_module_helper.traits_header(geodesic_traits,
 			join=True,integral_max=True) + "\n"
-		print(self.geodesic_source)
 		cuoptions = ("-default-device", f"-I {self.cuda_path}") 
 		self.geodesic_module = GetModule(self.geodesic_source+'#include "GeodesicODE.h"\n'
 			+self.cuda_date_modified,self.cuoptions)
@@ -696,7 +686,7 @@ class Interface(object):
 		size_tot = int(np.prod(shape_tot))  #distinct from self.size_tot
 		SetCst('shape_tot',shape_tot,self.int_t)
 		SetCst('size_tot', size_tot, self.int_t)
-		typical_len = max(40,0.5*np.max(shape_tot)/geodesic_step)
+		typical_len = int(max(40,0.5*np.max(shape_tot)/geodesic_step))
 		typical_len = self.GetValue('geodesic_typical_len',default=typical_len,
 			help="Typical expected length of geodesics (number of points).")
 		# Typical geodesic length is max_len for the GPU solver, which computes just a part
@@ -721,7 +711,6 @@ class Interface(object):
 			dtype=eucl_t,mult=eucl_mult)
 		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
-		print("euclidean distance estimate : \n",eucl)
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
 
 		# Run the geodesic ODE solver
@@ -736,11 +725,11 @@ class Interface(object):
 		geodesic_termination_codes = [
 			'Continue', 'AtSeed', 'InWall', 'Stationnary', 'PastSeed', 'VanishingFlow']
 
-		max_len = max(40,20*np.max(shape_tot)/geodesic_step)
+		max_len = int(max(40,20*np.max(shape_tot)/geodesic_step))
 		max_len = self.GetValue("geodesic_max_len",default=max_len,
 			help="Maximum allowed length of geodesics.")
 		
-		geoIt=0; geoMaxIt = max_len/typical_len
+		geoIt=0; geoMaxIt = int(np.ceil(max_len/typical_len))
 		while len(corresp)>0:
 			if geoIt>=geoMaxIt: 
 				self.Warn("Geodesic solver failed to converge, or geodesic has too many points"
@@ -754,30 +743,28 @@ class Interface(object):
 			stop_s = xp.full((nGeo,),-1,np.int8)
 
 			nBlocks = int(np.ceil(nGeo/block_size))
-
 			args = (self.flow['flow_vector'],self.flow['flow_weightsum'],
 					values,eucl,x_s,len_s,stop_s)
-			for arg in args: print(arg.shape,arg.dtype)
-
 			geodesic_kernel( (nBlocks,),(block_size,),
 				(self.flow['flow_vector'],self.flow['flow_weightsum'],
 					values,eucl,x_s,len_s,stop_s))
-			print(x_s,len_s);
 
 			corresp_next = []
 			for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
+#				print(int(l),x.shape)
 				geodesics[i].append(x[1:int(l)])
-				print(f"stop = {stop}",type(stop))
 				if stop!=0: stopping_criterion[i] = geodesic_termination_codes[int(stop)]
 				else: corresp_next.append(i)
 			corresp=corresp_next
-			print(corresp,geodesics)
 
-		print(geodesics)
 		geodesics_cat = [np.concatenate(geo,axis=0) for geo in geodesics]
-		print("geodesics_cat = ",geodesics_cat)
 		self.hfmOut['geodesics']=[self.hfmIn.PointFromIndex(geo).T for geo in geodesics_cat]
 		self.hfmOut['geodesic_stopping_criteria'] = stopping_criterion
+
+	def FinalCheck(self):
+		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['keys']['used']))
+		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
+			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
 
 
 
