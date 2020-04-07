@@ -5,6 +5,8 @@ import numpy as np
 from . import misc
 from . import kernel_traits
 from . import _solvers
+from . import cupy_module_helper
+from .cupy_module_helper import SetModuleConstant
 from ... import FiniteDifferences as fd
 from ... import LinearParallel as lp
 from ... import AutomaticDifferentiation as ad
@@ -72,6 +74,74 @@ def PostProcess(self):
 		self.hfmOut['flow'] = - self.flow['flow_vector'] * self.h_broadcasted
 
 def SolveAD(self)
+	if not (self.forward_ad or self.reverse_ad): return
+	xp = self.xp
+
+	diag = self.block['flow_weightsum'].copy() # diagonal preconditioner
+	self.boundary = diag==0. #seeds, or walls, or out of domain
+	diag[self.boundary]=1.
+
+	common_traits = {
+		self.traits[key] for key in 
+		('ndim','shape_i','niter','pruning_macro','minchg_freeze_macro')
+		if key in self.traits }
+
+	if self.forward_ad:
+		# Get the rhs
+		if self.costVariation is None:
+			self.costVariation = xp.zeros(self.shape+self.seedValues.size_ad,
+				dtype=self.float_t)
+		rhs=self.costVariation 
+		if ad.is_ad(self.seedValues):
+			rhs[tuple(self.seedIndices.T)] = self.seedValues.coef
+
+		rhs = misc.block_expand(np.moveaxis(rhs,-1,0),self.shape_i,
+			mode='constant',constant_values=np.nan,contiguous=True)
+
+		# Get the matrix structure
+		indices = self.block['flow_indices_twolevel'] 
+
+		fwd_traits = common_traits.copy()
+		fwd_traits.update({
+			'nrhs':len(rhs),
+			'nindex':len(indices),
+			})
+
+		# Setup the kernel
+		self.fwd_source=cupy_module_helper.traits_header(fwd_traits,join=True)+"\n"
+		cuoptions = ("-default-device", f"-I {self.cuda_path}") 
+		self.fwd_module = cupy_module_helper.GetModule(
+			self.fwd_source+'#include "LinearUpdate.h"\n'
+			+self.cuda_date_modified,self.cuoptions)
+
+		mod = self.fwd_module
+		SetModuleConstant(mod,'shape_o',self.shape_o,self.int_t)
+		SetModuleConstant(mod,'size_o',self.size_o,self.int_t)
+		SetModuleConstant(mod,'size_tot',np.prod(self.shape),self.int_t)
+		SetModuleConstant(mod,'tol',??,self.float_t)
+
+		fwd_argnames = ['fwd_solution','fwd_rhs','diag',
+			'flow_indices_twolevel','flow_weights']
+		if fwd_traits['minchg_freeze_macro']: fwd_argnames.append('values_float')
+
+		# Call the solver
+
+
+
+	if self.reverse_ad:
+		# Get the rhs
+		rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
+
+		# Get the matrix structure
+
+
+
+
+
+
+"""
+# Failed attempt using a generic sparse linear solver.
+def SolveAD(self)
 	if self.forward_ad or self.reverse_ad:
 		spmod=self.xp.cupyx.scipy.sparse
 		xp=self.xp
@@ -112,3 +182,4 @@ def SolveAD(self)
 	if self.reverse_ad:
 		rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
 		hfmOut['valueSensitivity'] = spmod.linalg.lsqr(self.spmat.T.tocsr(),rhs)
+"""

@@ -129,10 +129,10 @@ def SetGeometry(self):
 
 
 	self.block['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
-		self.shape_i,mode='constant',constant_values=self.xp.inf,contiguous=True)
+		self.shape_i,mode='constant',constant_values=np.inf,contiguous=True)
 	if self.drift is not None:
 		self.block['drift'] = misc.block_expand(fd.as_field(self.drift,self.shape),
-			self.shape_i,mode='constant',constant_values=self.xp.nan,contiguous=True)
+			self.shape_i,mode='constant',constant_values=np.nan,contiguous=True)
 
 	tol_msg = "Convergence tolerance for the fixed point solver"
 	mean_cost_magnitude_msg = ("Upper bound on the magnitude of the cost function, "

@@ -8,27 +8,6 @@
 #include "REDUCE_i.h"
 #include "GetBool.h"
 
-MINCHG_FREEZE(
-__constant__ Scalar minChgPrev_thres, minChgNext_thres; // Previous and next threshold for freezing
-)
-
-// Tag the neighbors for update
-void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * updateNext_o){
-	if(n_i>2*ndim) return;
-
-	Int k = n_i/2;
-	const Int s = n_i%2;
-	Int eps = 2*s-1;
-	if(n_i==2*ndim){k=0; eps=0;}
-
-	Int neigh_o[ndim];
-	for(Int l=0; l<ndim; ++l) {neigh_o[l]=x_o[l];}
-	neigh_o[k]+=eps;
-	if(Grid::InRange_per(neigh_o,shape_o)) {
-		updateNext_o[Grid::Index_per(neigh_o,shape_o)]=1 PRUNING(+n_i);}
-}
-
-
 /* Array suffix convention : 
  arr_t : shape_tot (Total domain shape)
  arr_o : shape_o (Grid shape)
@@ -50,62 +29,17 @@ __global__ void Update(
 	__shared__ Int x_o[ndim];
 	__shared__ Int n_o;
 
-	if(threadIdx.x==0 && threadIdx.y==0 && threadIdx.z==0){
-		n_o = updateList_o[blockIdx.x];
-		MINCHG_FREEZE(const bool frozen=n_o>=size_o; if(frozen){n_o-=size_o;})
-		Grid::Position(n_o,shape_o,x_o);
+	if( Propagation::Abort(
+		updateList_o,PRUNING(updatePrev_o,) 
+		MINCHG_FREEZE(minChgPrev_o,updateNext_o)
+		x_o,&n_o) ){return;} // Also sets x_o, n_o
 
-	#if pruning_macro
-		while(true){
-		const Int ks = blockIdx.x % (2*ndim+1);
-	#if minChg_freeze_macro
-		if(frozen){// Previously frozen block
-			if(ks!=0 // Not responsible for propagation work
-			|| updatePrev_o[n_o]!=0 // Someone else is working on the block
-			){n_o=-1; break;} 
+	const Int n_i = threadIdx.x;
+	Int x_i[ndim];
+	Grid::Position(n_i,shape_i,x_i);
 
-			const Scalar minChgPrev = minChgPrev_o[n_o];
-			minChgNext_o[n_o] = minChgPrev;
-			if(minChgPrev < minChgNext_thres){ // Unfreeze : tag neighbors for next update. 
-				updateList_o[blockIdx.x] = n_o; n_o=-3;
-			} else { // Stay frozen 
-				updateList_o[blockIdx.x] = n_o+size_o; n_o=-2;
-			}
-			break;
-		}
-	#endif
-		// Non frozen case
-		// Get the position of the block to be updated
-		if(ks!=2*ndim){
-			const Int k = ks/2, s = ks%2;
-			x_o[k]+=2*s-1;
-			PERIODIC(if(periodic_axes[k]){x_o[k] = (x_o[k]+shape_o[k])%shape_o[k];})
-			// Check that the block is in range
-			if(Grid::InRange(x_o,shape_o)) {n_o=Grid::Index(x_o,shape_o);}
-			else {n_o=-1; break;}
-		}
-
-		// Avoid multiple updates of the same block
-		if((ks+1) != updatePrev_o[n_o]) {n_o=-1; break;}
-		break;
-		} // while(true)
-		if(n_o==-1){updateList_o[blockIdx.x]=-1;}
-	#endif
-	}
-
-	__syncthreads(); // __shared__ x_o, n_o
-	PRUNING(if(n_o==-1 MINCHG_FREEZE(|| n_o==-2)) {return;})
-
-	Int x_i[ndim], x_t[ndim];
-	x_i[0] = threadIdx.x; x_i[1]=threadIdx.y; if(ndim==3) x_i[ndim-1]=threadIdx.z;
-	for(int k=0; k<ndim; ++k){
-		x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
-
-	const Int n_i = Grid::Index(x_i,shape_i);
-	MINCHG_FREEZE(
-		if(n_o==-3){TagNeighborsForUpdate(n_i,x_o,updateNext_o); return;}
-		if(n_i==0){updatePrev_o[n_o]=0;} // Cleanup required for MINCHG
-		)
+	Int x_t[ndim];
+	for(int k=0; k<ndim; ++k){x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
 
 	const Int n_t = n_o*size_i + n_i;
 	const bool isSeed = GetBool(seeds_t,n_t);
@@ -298,30 +232,11 @@ __global__ void Update(
 	}
 	__syncthreads(); // Get all values before reduction
 
-	MINCHG_FREEZE(__shared__ Scalar minChgPrev; if(n_i==0){minChgPrev = minChgPrev_o[n_o];})
-
-
-	REDUCE_i( u_i[n_i] = min(u_i[n_i],u_i[m_i]); )
-
-
-	__syncthreads();  // Make u_i[0] accessible to all, also minChgPrev
-	Scalar minChg = u_i[0];
-
-	// Tag neighbor blocks, and this particular block, for update
-
-#if minChg_freeze_macro // Propagate if change is small enough
-	const bool frozenPrev = minChgPrev>=minChgPrev_thres && minChgPrev!=infinity();
-	if(frozenPrev){minChg = min(minChg,minChgPrev);}
-	const bool propagate = minChg < minChgNext_thres;
-	const bool freeze = !propagate && minChg!=infinity();
-	if(n_i==size_i-2) {minChgNext_o[n_o] = minChg;}
-#else // Propagate as soon as something changed
-	const bool propagate = minChg != infinity();
-#endif
-
-	if(propagate){TagNeighborsForUpdate(n_i,x_o,updateNext_o);}
-	PRUNING(if(n_i==size_i-1){updateList_o[blockIdx.x] 
-		= propagate ? n_o : MINCHG_FREEZE(freeze ? (n_o+size_o) :) -1;})
+	Propagation::Finalize(
+		u_i, PRUNING(updateList_o,) 
+		minChgPrev, MINCHG_FREEZE(minChgNext_o, 
+		updatePrev_o,) updateNext_o,  
+		x_o, n_o);
 }
 
 } // Extern "C"

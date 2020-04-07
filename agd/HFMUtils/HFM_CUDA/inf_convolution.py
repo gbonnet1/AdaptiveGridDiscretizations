@@ -39,9 +39,6 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	conv_t = arr.dtype.type
 	int_t = np.int32
 
-	cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
-	date_modified = cupy_module_helper.getmtime_max(cuda_path)
-
 	traits = {
 		'T':conv_t,
 		'shape_c':kernel.shape,
@@ -57,6 +54,8 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	if not isinstance(periodic,tuple): periodic = (periodic,)*arr.ndim
 	if any(periodic): traits['periodic'] = periodic
 
+	cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
+	date_modified = cupy_module_helper.getmtime_max(cuda_path)
 	source = cupy_module_helper.traits_header(traits,size_of_shape=True)
 
 	source += [
