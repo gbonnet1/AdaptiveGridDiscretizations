@@ -69,19 +69,17 @@ def PostProcess(self):
 		if self.forward_ad or self.reverse_ad:
 			spmod=self.xp.cupyx.scipy.sparse
 			xp=self.xp
-			weightsum = self.flow['flow_weightsum']
-			self.boundary = weightsum==0. #seeds, or walls, or out of domain
-			weightsum[self.boundary]=1.
-			coef = xp.concatenate((npl.expand_dims(weightsum,axis=0),
-				-self.flow['flow_weights']),axis=0)
-			weightsum[self.boundary]=0. # Restore original values
+			diag = self.flow['flow_weightsum'].copy() # diagonal preconditioner
+			self.boundary = diag==0. #seeds, or walls, or out of domain
+			diag[self.boundary]=1.
+			coef = xp.concatenate((xp.expand_dims(diag,axis=0),
+					-self.flow['flow_weights']),axis=0)
+			diag_precond=True
+			if diag_precond: coef/=diag
 			size_tot = np.prod(self.shape) # Not same as solver size_tot
 			rg = xp.arange(size_tot).reshape((1,)+self.shape)
 			row = self.xp.broadcast_to(rg,coef.shape)
 			col = xp.concatenate((rg,self.flow['flow_indices']),axis=0)
-
-			try: coef[0,self.boundary] = 1.
-			except ValueError: coef[0][self.boundary] = 1. # Old cupy support
 
 			self.triplets = (npl.flat(coef),(npl.flat(row),npl.flat(col))) 
 			self.spmat = spmod.coo_matrix(self.triplets)
@@ -90,12 +88,10 @@ def PostProcess(self):
 			if self.costVariation is None:
 				self.costVariation = self.xp.zeros(self.shape+self.seedValues.size_ad,
 					dtype=self.float_t)
-			rhs=self.costVariation
-			print('hi',self.seedValues)
+			rhs=self.costVariation 
 			if ad.is_ad(self.seedValues):
 				rhs[tuple(self.seedIndices.T)] = self.seedValues.coef
-				print(self.seedIndices,rhs.shape)
-			print(rhs[...,0])
+#			rhs/=xp.expand_dims(diag,axis=-1)
 			rhs=rhs.reshape(size_tot,-1)
 
 			# Solve the linear system
@@ -105,7 +101,7 @@ def PostProcess(self):
 			self.forward_solutions = [ 
 				spmod.linalg.lsqr(csrmat,self.xp.ascontiguousarray(r)) for r in rhs.T] 
 			self.hfmOut['valueVariation'] = self.xp.stack(
-				[s[0].reshape(self.shape) for s in self.forward_solutions],axis=-1)
+				[s[0].reshape(self.shape) for s in self.forward_solutions],axis=-1) 
 
 		if self.reverse_ad:
 			rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')

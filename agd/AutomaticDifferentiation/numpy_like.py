@@ -68,6 +68,6 @@ def expand_dims(a,axis):
 	"""Reimplemented to support cupy"""
 	try: return np.expand_dims(a)
 	except TypeError: 
-		if axis<0: axis=a.ndim+axis
+		if axis<0: axis=1+a.ndim+axis
 		newshape = a.shape[:axis]+(1,)+a.shape[axis:]
 		return a.reshape(newshape)
