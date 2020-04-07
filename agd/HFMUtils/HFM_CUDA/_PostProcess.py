@@ -4,7 +4,8 @@ from . import kernel_traits
 from . import _solvers
 from ... import FiniteDifferences as fd
 from ... import LinearParallel as lp
-
+from ... import AutomaticDifferentiation as ad
+from ...AutomaticDifferentiation import numpy_like as npl
 
 def PostProcess(self):
 		if self.verbosity>=1: print("Post-Processing")
@@ -68,24 +69,43 @@ def PostProcess(self):
 		if self.forward_ad or self.reverse_ad:
 			spmod=self.xp.cupyx.scipy.sparse
 			xp=self.xp
-			weightsum = self.xp.expand_dims(self.flow['flow_weightsum'],axis=0)
+			weightsum = self.flow['flow_weightsum']
 			self.boundary = weightsum==0. #seeds, or walls, or out of domain
-			coef = xp.concatenate((weightsum,-self.flow['flow_weights']),axis=0)
-			rg = xp.arange(np.prod(self.shape)).reshape((1,)+self.shape)
+			weightsum[self.boundary]=1.
+			coef = xp.concatenate((npl.expand_dims(weightsum,axis=0),
+				-self.flow['flow_weights']),axis=0)
+			weightsum[self.boundary]=0. # Restore original values
+			size_tot = np.prod(self.shape) # Not same as solver size_tot
+			rg = xp.arange(size_tot).reshape((1,)+self.shape)
 			row = self.xp.broadcast_to(rg,coef.shape)
 			col = xp.concatenate((rg,self.flow['flow_indices']),axis=0)
 
-			coef[0,self.boundary] = 1.			
-			self.triplets = (coef.flatten(),(row.flatten(),col.flatten())) 
+			try: coef[0,self.boundary] = 1.
+			except ValueError: coef[0][self.boundary] = 1. # Old cupy support
+
+			self.triplets = (npl.flat(coef),(npl.flat(row),npl.flat(col))) 
 			self.spmat = spmod.coo_matrix(self.triplets)
 
 		if self.forward_ad:
 			if self.costVariation is None:
-				self.costVariation = self.xp.zeros(self.shape+self.seedValues.size_ad)
-			rhs=self.cost_variation
+				self.costVariation = self.xp.zeros(self.shape+self.seedValues.size_ad,
+					dtype=self.float_t)
+			rhs=self.costVariation
+			print('hi',self.seedValues)
 			if ad.is_ad(self.seedValues):
-				rhs[self.seedIndices.T,:] = self.seedValues.coef
-			hfmOut['valueVariation'] = spmod.linalg.lsqr(self.spmat.tocsr(),rhs)
+				rhs[tuple(self.seedIndices.T)] = self.seedValues.coef
+				print(self.seedIndices,rhs.shape)
+			print(rhs[...,0])
+			rhs=rhs.reshape(size_tot,-1)
+
+			# Solve the linear system
+			csrmat = self.spmat.tocsr()
+			# In contrast with scipy, lsqr must do one solve per entry. 
+			# Note : lsqr also assumes rhs contiguity
+			self.forward_solutions = [ 
+				spmod.linalg.lsqr(csrmat,self.xp.ascontiguousarray(r)) for r in rhs.T] 
+			self.hfmOut['valueVariation'] = self.xp.stack(
+				[s[0].reshape(self.shape) for s in self.forward_solutions],axis=-1)
 
 		if self.reverse_ad:
 			rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')

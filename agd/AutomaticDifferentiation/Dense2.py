@@ -4,7 +4,7 @@
 import numpy as np
 from .cupy_generic import cupy_init_kwargs,cupy_rebase
 from . import ad_generic
-from . import numpy_like
+from . import numpy_like as npl
 from . import misc
 from . import Dense
 
@@ -27,7 +27,7 @@ class denseAD2(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = numpy_like.asarray(value)
+		value = npl.asarray(value)
 		if cls.cupy_based():
 			denseAD2_cupy = cupy_rebase(denseAD2)
 			obj = super(denseAD2_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
@@ -38,9 +38,9 @@ class denseAD2(np.ndarray):
 		shape = value.shape
 		shape1 = shape+(0,)
 		shape2 = shape+(0,0)
-		obj.coef1 = (numpy_like.zeros_like(value,shape=shape1) if coef1 is None 
+		obj.coef1 = (npl.zeros_like(value,shape=shape1) if coef1 is None 
 			else misc._test_or_broadcast_ad(coef1,shape,broadcast_ad))
-		obj.coef2 = (numpy_like.zeros_like(value,shape=shape2) if coef2 is None 
+		obj.coef2 = (npl.zeros_like(value,shape=shape2) if coef2 is None 
 			else misc._test_or_broadcast_ad(coef2,shape,broadcast_ad,2))
 		return obj
 
@@ -100,7 +100,7 @@ class denseAD2(np.ndarray):
 
 	def __mul__(self,other):
 		if self.is_ad(other):
-			mixed = np.expand_dims(self.coef1,axis=-1)*np.expand_dims(other.coef1,axis=-2)
+			mixed = npl.expand_dims(self.coef1,axis=-1)*npl.expand_dims(other.coef1,axis=-2)
 			return self.new(self.value*other.value, _add_coef(_add_dim(self.value)*other.coef1,_add_dim(other.value)*self.coef1),
 				_add_coef(_add_coef(_add_dim2(self.value)*other.coef2,_add_dim2(other.value)*self.coef2),_add_coef(mixed,np.moveaxis(mixed,-2,-1))))
 		elif self.isndarray(other):
@@ -129,7 +129,7 @@ class denseAD2(np.ndarray):
 	# Math functions
 	def _math_helper(self,deriv): # Inputs : a=f(x), b=f'(x), c=f''(x), where x=self.value
 		a,b,c=deriv
-		mixed = np.expand_dims(self.coef1,axis=-1)*np.expand_dims(self.coef1,axis=-2)
+		mixed = npl.expand_dims(self.coef1,axis=-1)*npl.expand_dims(self.coef1,axis=-2)
 		return self.new(a,_add_dim(b)*self.coef1,_add_dim2(b)*self.coef2+_add_dim2(c)*mixed)
 	
 	def sqrt(self):			return self**0.5
@@ -184,8 +184,8 @@ class denseAD2(np.ndarray):
 			osad = other.size_ad
 			if osad==0: return self.__setitem__(key,other.value)
 			elif self.size_ad==0: 
-				self.coef1=numpy_like.zeros_like(self.value,shape=self.coef1.shape[:-1]+(osad,))
-				self.coef2=numpy_like.zeros_like(self.value,shape=self.coef2.shape[:-2]+(osad,osad))
+				self.coef1=npl.zeros_like(self.value,shape=self.coef1.shape[:-1]+(osad,))
+				self.coef2=npl.zeros_like(self.value,shape=self.coef2.shape[:-2]+(osad,osad))
 			self.value[key] = other.value
 			self.coef1[ekey1] = other.coef1
 			self.coef2[ekey2] = other.coef2
@@ -309,7 +309,7 @@ class denseAD2(np.ndarray):
 
 	@classmethod
 	def stack(cls,elems,axis=0):
-		return cls.concatenate(tuple(np.expand_dims(e,axis=axis) for e in elems),axis)
+		return cls.concatenate(tuple(npl.expand_dims(e,axis=axis) for e in elems),axis)
 
 	@classmethod
 	def concatenate(cls,elems,axis=0):
@@ -320,9 +320,9 @@ class denseAD2(np.ndarray):
 		return cls( 
 		np.concatenate(tuple(e.value for e in elems2), axis=axis), 
 		np.concatenate(tuple(e.coef1 if e.size_ad==size_ad else 
-			numpy_like.zeros_like(e.coef1,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1),
+			npl.zeros_like(e.coef1,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1),
 		np.concatenate(tuple(e.coef2 if e.size_ad==size_ad else 
-			numpy_like.zeros_like(e.coef2,shape=e.shape+(size_ad,size_ad)) for e in elems2),axis=axis2))
+			npl.zeros_like(e.coef2,shape=e.shape+(size_ad,size_ad)) for e in elems2),axis=axis2))
 
 	def apply_linear_operator(self,op):
 		return self.new(op(self.value),
@@ -336,7 +336,7 @@ def identity(*args,**kwargs):
 	arr = Dense.identity(*args,**kwargs)
 	cls = cupy_rebase(denseAD2) if arr.cupy_based() else denseAD2
 	return cls(arr.value,arr.coef,
-		numpy_like.zeros_like(arr.value,shape=arr.shape+(arr.size_ad,arr.size_ad)))
+		npl.zeros_like(arr.value,shape=arr.shape+(arr.size_ad,arr.size_ad)))
 
 def register(*args,**kwargs):
 	return Dense.register(*args,**kwargs,ident=identity)

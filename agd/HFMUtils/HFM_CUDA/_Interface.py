@@ -333,6 +333,12 @@ class Interface(object):
 		seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
 		seedValues = self.GetValue('seedValues',default=seedValues,
 			help="Initial value for the front propagation",array_float=True)
+		if not ad.is_ad(seedValues):
+			seedValueVariation = self.GetValue('seedValueVariation',default=None,
+				help="First order variation of the seed values",array_float=True)
+			if seedValueVariation is not None:
+				denseAD_cupy = ad.cupy_generic.cupy_rebase(ad.Dense.denseAD)
+				seedValues = denseAD_cupy.new(seedValues,seedValueVariation.T)
 		seedRadius = self.GetValue('seedRadius',default=0.,
 			help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
@@ -366,7 +372,7 @@ class Interface(object):
 			metric1 = self.Metric(neigh.T)
 			self.seedValues = neighValues+0.5*(metric0.norm(diff) + metric1.norm(diff))
 			self.seedIndices = neigh
-			values[tuple(self.seedIndices.T)] = self.seedValues 
+			values[tuple(self.seedIndices.T)] = ad.remove_ad(self.seedValues)
 
 		block_values = misc.block_expand(values,self.shape_i,
 			mode='constant',constant_values=np.inf,contiguous=True)

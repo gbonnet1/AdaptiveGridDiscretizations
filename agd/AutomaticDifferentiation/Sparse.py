@@ -6,7 +6,7 @@ from . import functional
 from . import ad_generic
 from . import cupy_generic
 from .cupy_generic import cupy_init_kwargs,cupy_rebase
-from . import numpy_like
+from . import numpy_like as npl
 from . import misc
 from . import Dense
 
@@ -29,7 +29,7 @@ class spAD(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = numpy_like.asarray(value)
+		value = npl.asarray(value)
 		if cls.cupy_based():
 			spAD_cupy = cupy_rebase(spAD)
 			obj = super(spAD_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
@@ -40,9 +40,9 @@ class spAD(np.ndarray):
 		shape = value.shape
 		shape2 = shape+(0,)
 		assert ((coef is None) and (index is None)) or (coef.shape==index.shape)
-		obj.coef  = (numpy_like.zeros_like(value,shape=shape2) if coef is None 
+		obj.coef  = (npl.zeros_like(value,shape=shape2) if coef is None 
 			else misc._test_or_broadcast_ad(coef,shape,broadcast_ad) ) 
-		obj.index = (numpy_like.zeros_like(value,shape=shape2,
+		obj.index = (npl.zeros_like(value,shape=shape2,
 			dtype=cupy_generic.samesize_int_t(value.dtype))  
 			if index is None else misc._test_or_broadcast_ad(index,shape,broadcast_ad) )
 		return obj
@@ -307,7 +307,7 @@ class spAD(np.ndarray):
 
 	# Conversion
 	def bound_ad(self):
-		return 1+int(numpy_like.max(self.index,initial=-1))
+		return 1+int(npl.max(self.index,initial=-1))
 	def to_dense(self,dense_size_ad=None):
 		def mvax(arr): return np.moveaxis(arr,-1,0)
 		if dense_size_ad is None: dense_size_ad = self.bound_ad()
@@ -374,7 +374,7 @@ class spAD(np.ndarray):
 
 	@staticmethod
 	def stack(elems,axis=0):
-		return spAD.concatenate(tuple(np.expand_dims(e,axis=axis) for e in elems),axis)
+		return spAD.concatenate(tuple(npl.expand_dims(e,axis=axis) for e in elems),axis)
 
 	@classmethod
 	def concatenate(cls,elems,axis=0):
@@ -403,8 +403,8 @@ class spAD(np.ndarray):
 		self.coef = np.take_along_axis(self.coef,ordering,axis=-1)
 		self.index = np.take_along_axis(self.index,ordering,axis=-1)
 
-		cum_coef = numpy_like.zeros_like(self.value)
-		indices = numpy_like.zeros_like(self.index,shape=self.shape)
+		cum_coef = npl.zeros_like(self.value)
+		indices = npl.zeros_like(self.index,shape=self.shape)
 		size_ad = self.size_ad
 		self.coef = np.moveaxis(self.coef,-1,0)
 		self.index = np.moveaxis(self.index,-1,0)
@@ -419,7 +419,7 @@ class spAD(np.ndarray):
 			cum_coef[pos_new_index]=co[pos_new_index]
 			cum_coef[pos_old_index]+=co[pos_old_index]
 			indices[pos_new_index]+=1
-			indices_exp = np.expand_dims(indices,axis=0)
+			indices_exp = npl.expand_dims(indices,axis=0)
 			np.put_along_axis(self.index,indices_exp,prev_index,axis=0)
 			np.put_along_axis(self.coef,indices_exp,cum_coef,axis=0)
 
@@ -439,7 +439,7 @@ class spAD(np.ndarray):
 		index_end[indices<indices_max] = -1
 		while np.min(indices,axis=None)<indices_max:
 			indices=np.minimum(indices_max,1+indices)
-			indices_exp = np.expand_dims(indices,axis=0)
+			indices_exp = npl.expand_dims(indices,axis=0)
 			np.put_along_axis(self.coef, indices_exp,coef_end,axis=0)
 			np.put_along_axis(self.index,indices_exp,index_end,axis=0)
 
@@ -463,7 +463,7 @@ def identity(shape=None,constant=None,shift=0):
 	xp = cupy_generic.get_array_module(constant)
 	cls = spAD if xp is np else cupy_rebase(spAD)
 	int_t=cupy_generic.samesize_int_t(constant.dtype)
-	return cls(constant,numpy_like.ones_like(constant,shape=shape2),
+	return cls(constant,npl.ones_like(constant,shape=shape2),
 		xp.arange(shift,shift+np.prod(shape,dtype=int),dtype=int_t).reshape(shape2))
 
 def register(inputs,iterables=None,shift=0,ident=identity):

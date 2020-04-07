@@ -5,7 +5,7 @@ import numpy as np
 from . import functional
 from . import ad_generic
 from .cupy_generic import from_cupy,cupy_init_kwargs,cupy_rebase
-from . import numpy_like
+from . import numpy_like as npl
 from . import misc
 
 
@@ -28,7 +28,7 @@ class denseAD(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = numpy_like.asarray(value)
+		value = npl.asarray(value)
 		if cls.cupy_based():
 			denseAD_cupy = cupy_rebase(denseAD)
 			obj = super(denseAD_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
@@ -38,7 +38,7 @@ class denseAD(np.ndarray):
 		# Add attributes
 		shape = value.shape
 		shape2 = shape+(0,)
-		obj.coef  = (numpy_like.zeros_like(value,shape=shape2) if coef is None 
+		obj.coef  = (npl.zeros_like(value,shape=shape2) if coef is None 
 			else misc._test_or_broadcast_ad(coef,shape,broadcast_ad) )
 		return obj
 
@@ -167,7 +167,7 @@ class denseAD(np.ndarray):
 		if self.is_ad(other):
 			if other.size_ad==0: return self.__setitem__(key,other.value)
 			elif self.size_ad==0: 
-				self.coef=numpy_like.zeros_like(self.value,shape=self.shape+(other.size_ad,))
+				self.coef=npl.zeros_like(self.value,shape=self.shape+(other.size_ad,))
 			self.value[key] = other.value
 			self.coef[ekey] =  other.coef
 		else:
@@ -289,7 +289,7 @@ class denseAD(np.ndarray):
 
 	@classmethod
 	def stack(cls,elems,axis=0):
-		return cls.concatenate(tuple(np.expand_dims(e,axis=axis) for e in elems),axis)
+		return cls.concatenate(tuple(npl.expand_dims(e,axis=axis) for e in elems),axis)
 
 	@classmethod
 	def concatenate(cls,elems,axis=0):
@@ -300,7 +300,7 @@ class denseAD(np.ndarray):
 		return cls( 
 		np.concatenate(tuple(e.value for e in elems2), axis=axis), 
 		np.concatenate(tuple(e.coef if e.size_ad==size_ad else 
-			numpy_like.zeros_like(e.value,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1))
+			npl.zeros_like(e.value,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1))
 
 	def associate(self,squeeze_free_dims=-1,squeeze_bound_dims=-1):
 		from . import associate
@@ -330,7 +330,7 @@ def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,
 	shape_elem = shape[:ndim_elem]
 	size_elem = int(np.prod(shape_elem))
 	size_ad = shift[0]+size_elem+shift[1]
-	coef1 = numpy_like.zeros_like(constant,shape=(size_elem,size_ad))
+	coef1 = npl.zeros_like(constant,shape=(size_elem,size_ad))
 	for i in range(size_elem):
 		coef1[i,shift[0]+i]=1.
 	coef1 = coef1.reshape(shape_elem+(1,)*len(shape_bound)+(size_ad,))

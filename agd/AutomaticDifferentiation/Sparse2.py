@@ -5,7 +5,7 @@ import numpy as np
 from . import cupy_generic
 from .cupy_generic import cupy_init_kwargs,cupy_rebase
 from . import ad_generic
-from . import numpy_like
+from . import numpy_like as npl
 from . import misc
 from . import Sparse
 from . import Dense2
@@ -32,7 +32,7 @@ class spAD2(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = numpy_like.asarray(value)
+		value = npl.asarray(value)
 		if cls.cupy_based():
 			spAD2_cupy = cupy_rebase(spAD2)
 			obj = super(spAD2_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
@@ -43,18 +43,18 @@ class spAD2(np.ndarray):
 		shape2 = shape+(0,)
 		int_t = cupy_generic.samesize_int_t(value.dtype)
 		assert ((coef1 is None) and (index is None)) or (coef1.shape==index.shape)
-		obj.coef1 = (numpy_like.zeros_like(value,shape=shape2) if coef1  is None 
+		obj.coef1 = (npl.zeros_like(value,shape=shape2) if coef1  is None 
 			else misc._test_or_broadcast_ad(coef1,shape,broadcast_ad) )
-		obj.index = (numpy_like.zeros_like(value,shape=shape2,dtype=int_t)  if index is None  
+		obj.index = (npl.zeros_like(value,shape=shape2,dtype=int_t)  if index is None  
 			else misc._test_or_broadcast_ad(index,shape,broadcast_ad) )
 		
 		assert (((coef2 is None) and (index_row is None) and (index_col is None)) 
 			or ((coef2.shape==index_row.shape) and (coef2.shape==index_col.shape)))
-		obj.coef2 = (numpy_like.zeros_like(value,shape=shape2) if coef2  is None 
+		obj.coef2 = (npl.zeros_like(value,shape=shape2) if coef2  is None 
 			else misc._test_or_broadcast_ad(coef2,shape,broadcast_ad) )
-		obj.index_row = (numpy_like.zeros_like(value,shape=shape2,dtype=int_t)  if index_row is None 
+		obj.index_row = (npl.zeros_like(value,shape=shape2,dtype=int_t)  if index_row is None 
 			else misc._test_or_broadcast_ad(index_row,shape,broadcast_ad) )
-		obj.index_col = (numpy_like.zeros_like(value,shape=shape2,dtype=int_t)  if index_col is None 
+		obj.index_col = (npl.zeros_like(value,shape=shape2,dtype=int_t)  if index_col is None 
 			else misc._test_or_broadcast_ad(index_col,shape,broadcast_ad) )
 		return obj
 
@@ -384,15 +384,15 @@ class spAD2(np.ndarray):
 
 	# Conversion
 	def bound_ad(self):
-		def maxi(a): return int(numpy_like.max(a,initial=-1))
+		def maxi(a): return int(npl.max(a,initial=-1))
 		return 1+np.max((maxi(self.index),maxi(self.index_row),maxi(self.index_col)))
 	def to_dense(self,dense_size_ad=None):
 		def mvax(arr): return np.moveaxis(arr,-1,0)
 		dsad = self.bound_ad() if dense_size_ad is None else dense_size_ad
-		coef1 = numpy_like.zeros_like(self.value,shape=self.shape+(dsad,))
+		coef1 = npl.zeros_like(self.value,shape=self.shape+(dsad,))
 		for c,i in zip(mvax(self.coef1),mvax(self.index)):
 			np.put_along_axis(coef1,_add_dim(i),np.take_along_axis(coef1,_add_dim(i),axis=-1)+_add_dim(c),axis=-1)
-		coef2 = numpy_like.zeros_like(self.value,shape=self.shape+(dsad*dsad,))
+		coef2 = npl.zeros_like(self.value,shape=self.shape+(dsad*dsad,))
 		for c,i in zip(mvax(self.coef2),mvax(self.index_row*dsad+self.index_col)):
 			np.put_along_axis(coef2,_add_dim(i),np.take_along_axis(coef2,_add_dim(i),axis=-1)+_add_dim(c),axis=-1)
 		return self._denseAD2()(self.value,coef1,np.reshape(coef2,self.shape+(dsad,dsad)))
@@ -440,7 +440,7 @@ class spAD2(np.ndarray):
 
 	@classmethod
 	def stack(cls,elems,axis=0):
-		return cls.concatenate(tuple(np.expand_dims(e,axis=axis) for e in elems),axis)
+		return cls.concatenate(tuple(npl.expand_dims(e,axis=axis) for e in elems),axis)
 
 	@classmethod
 	def concatenate(cls,elems,axis=0):
@@ -482,9 +482,9 @@ def identity(*args,**kwargs):
 	shape2 = arr.shape+(0,)
 	cls = cupy_rebase(spAD2) if arr.cupy_based() else spAD2
 	return cls(arr.value,arr.coef,arr.index,
-		numpy_like.zeros_like(arr.coef,shape=shape2),
-		numpy_like.zeros_like(arr.index,shape=shape2),
-		numpy_like.zeros_like(arr.index,shape=shape2))
+		npl.zeros_like(arr.coef,shape=shape2),
+		npl.zeros_like(arr.index,shape=shape2),
+		npl.zeros_like(arr.index,shape=shape2))
 
 def register(*args,**kwargs):
 	return Sparse.register(*args,**kwargs,ident=identity)

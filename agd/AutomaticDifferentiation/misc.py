@@ -8,13 +8,13 @@ import operator
 from .functional import map_iterables,map_iterables2,pair
 from .cupy_generic import isndarray
 from .ad_generic import is_ad,remove_ad
-from . import numpy_like
+from . import numpy_like as npl
 
 # ------- Ugly utilities -------
 def _tuple_first(a): 	return a[0] if isinstance(a,tuple) else a
 def _getitem(a,where):
 	return a if (where is True and not isndarray(a)) else a[where]
-def _add_dim(a):		return np.expand_dims(a,axis=-1)	
+def _add_dim(a):		return npl.expand_dims(a,axis=-1)	
 def _add_dim2(a):		return _add_dim(_add_dim(a))
 
 def _to_tuple(a): return tuple(a) if hasattr(a,"__iter__") else (a,)
@@ -48,7 +48,7 @@ def _set_shape_constant(shape=None,constant=None):
 		constant = np.full(shape,0.)
 	else:
 		if not isndarray(constant):
-			constant = numpy_like.asarray(constant)
+			constant = npl.asarray(constant)
 		if shape is not None and shape!=constant.shape: 
 			raise ValueError("Error : incompatible shape and constant")
 		else:
@@ -209,7 +209,7 @@ def spapply(mat,rhs,crop_rhs=False):
 	if crop_rhs: 
 		cols = mat[1][1]
 		if len(cols)==0: 
-			return numpy_like.zeros_like(rhs,shape=(0,))
+			return npl.zeros_like(rhs,shape=(0,))
 		size = 1+np.max(cols)
 		if rhs.shape[0]>size:
 			rhs = rhs[:size]
@@ -219,14 +219,14 @@ def spapply(mat,rhs,crop_rhs=False):
 
 def min(array,axis=None,keepdims=False,out=None):
 	if axis is None: return array.flatten().min(axis=0,out=out)
-	ai = np.expand_dims(np.argmin(array.value, axis=axis), axis=axis)
+	ai = npl.expand_dims(np.argmin(array.value, axis=axis), axis=axis)
 	out = np.take_along_axis(array,ai,axis=axis)
 	if not keepdims: out = out.reshape(array.shape[:axis]+array.shape[axis+1:])
 	return out
 
 def max(array,axis=None,keepdims=False,out=None):
 	if axis is None: return array.flatten().max(axis=0,out=out)
-	ai = np.expand_dims(np.argmax(array.value, axis=axis), axis=axis)
+	ai = npl.expand_dims(np.argmax(array.value, axis=axis), axis=axis)
 	out = np.take_along_axis(array,ai,axis=axis)
 	if not keepdims: out = out.reshape(array.shape[:axis]+array.shape[axis+1:])
 	return out
