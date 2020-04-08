@@ -11,7 +11,7 @@ The solvers defined below are member functions of the "interface" class devoted 
 running the gpu eikonal solver.
 """
 
-def global_iteration(self,solver=True):
+def global_iteration(self,kernelName):
 	"""
 	Solves the eikonal equation by applying repeatedly the updates on the whole domain.
 	"""	
@@ -19,17 +19,17 @@ def global_iteration(self,solver=True):
 	updateNow_o  = xp.ones(	self.shape_o,   dtype='uint8')
 	updateNext_o = xp.zeros(self.shape_o,   dtype='uint8')
 	updateList_o = xp.ascontiguousarray(xp.flatnonzero(updateNow_o),dtype=self.int_t)
-	module = self.solver_module if solver else self.flow_module
-	kernel = module.get_function("Update")
+	kernel = self.module[kernelName].get_function("Update")
 
 	nitermax_o = self.nitermax_o if solver else 1
 	for niter_o in range(nitermax_o):
-		kernel((updateList_o.size,),self.shape_i, self.KernelArgs(solver) + (updateList_o,updateNext_o))
+		kernel((updateList_o.size,),(self.size_i,), self.KernelArgs(kernelName) 
+			+ (updateList_o,updateNext_o))
 		if xp.any(updateNext_o): updateNext_o.fill(0)
 		else: return niter_o
 	return self.nitermax_o
 
-def adaptive_gauss_siedel_iteration(self):
+def adaptive_gauss_siedel_iteration(self,kernelName):
 	"""
 	Solves the eikonal equation by propagating updates, ignoring causality. 
 	"""
@@ -44,13 +44,13 @@ def adaptive_gauss_siedel_iteration(self):
 		for eps in (-1,1): 
 			update_o = np.logical_or(update_o,np.roll(update_o,axis=k,shift=eps))
 	update_o = xp.ascontiguousarray(update_o, dtype='uint8')
+	kernel = self.module[kernelName].get_function("Update")
 
-	kernel = self.solver_module.get_function("Update")
-
-	"""Pruning is intellectually satisfying, because the expected complexity drops from 
-	N+eps*N^(1+1/d) to N, where N is the number of points and eps is a small but positive 
-	constant related with the block size. However it has no effect on performance, or a slight
-	negative effect, due to the smallness of eps."""
+	"""Pruning drops the complexity from N+eps*N^(1+1/d) to N, where N is the number 
+	of points and eps is a small but positive constant related with the block size. 
+	However it usually has no effect on performance, or a slight negative effect, due
+	to the smallness of eps. Nevertheless, pruning allows the bound_active_blocks method,
+	which does, sometimes, have a significant positive effect on performance."""
 	if self.traits['pruning_macro']: 
 		updateList_o = xp.ascontiguousarray(xp.flatnonzero(update_o), dtype=self.int_t)
 		updatePrev_o = np.full_like(update_o,0)
@@ -68,8 +68,8 @@ def adaptive_gauss_siedel_iteration(self):
 
 			updateList_o = np.repeat(updateList_o,2*self.ndim+1)
 			if updateList_o.size==0: return niter_o
-			kernel((updateList_o.size,),self.shape_i, 
-				self.KernelArgs() + (updateList_o,updatePrev_o,update_o))
+			kernel((updateList_o.size,),(self.size_i,), 
+				self.KernelArgs(kernelName) + (updateList_o,updatePrev_o,update_o))
 			updatePrev_o,update_o = update_o,updatePrev_o
 			updateList_o = updateList_o[updateList_o!=-1]
 			if self.bound_active_blocks: set_minChg_thres(self,updateList_o)
@@ -80,8 +80,8 @@ def adaptive_gauss_siedel_iteration(self):
 			update_o.fill(0)
 			if updateList_o.size==0: return niter_o
 #			for key,value in self.block.items(): print(key,type(value))
-			kernel((updateList_o.size,),self.shape_i, 
-				self.KernelArgs() + (updateList_o,update_o))
+			kernel((updateList_o.size,),(self.size_i,), 
+				self.KernelArgs(kernelName) + (updateList_o,update_o))
 #			print(self.block['values'])
 #			print(self.block['values'],self.block['valuesNext'],self.block['values'] is self.block['valuesNext'])
 

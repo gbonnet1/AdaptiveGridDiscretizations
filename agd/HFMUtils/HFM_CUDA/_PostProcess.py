@@ -6,7 +6,7 @@ from . import misc
 from . import kernel_traits
 from . import _solvers
 from . import cupy_module_helper
-from .cupy_module_helper import SetModuleConstant
+from .graph_reverse import graph_reverse
 from ... import FiniteDifferences as fd
 from ... import LinearParallel as lp
 from ... import AutomaticDifferentiation as ad
@@ -34,25 +34,28 @@ def PostProcess(self):
 	nact = kernel_traits.nact(self)
 	ndim = self.ndim
 
-	if self.flow_traits.get('flow_weights_macro',False):
-		self.flow_kernel_argnames.append('flow_weights')
+	traits = self.traits['flow']
+	kernel_argnames = self.kernel_argnames['flow']
+
+	if traits.get('flow_weights_macro',False):
+		kernel_argnames.append('flow_weights')
 		self.block['flow_weights'] = self.xp.empty((nact,)+shape_oi,dtype=self.float_t)
-	if self.flow_traits.get('flow_weightsum_macro',False):
-		self.flow_kernel_argnames.append('flow_weightsum')
+	if traits.get('flow_weightsum_macro',False):
+		kernel_argnames.append('flow_weightsum')
 		self.block['flow_weightsum'] = self.xp.empty(shape_oi,dtype=self.float_t)
-	if self.flow_traits.get('flow_offsets_macro',False):
-		self.flow_kernel_argnames.append('flow_offsets')
+	if traits.get('flow_offsets_macro',False):
+		kernel_argnames.append('flow_offsets')
 		self.block['flow_offsets'] = self.xp.empty((ndim,nact,)+shape_oi,dtype=np.int8)
-	if self.flow_traits.get('flow_indices_macro',False):
-		self.flow_kernel_argnames.append('flow_indices')
+	if traits.get('flow_indices_macro',False):
+		kernel_argnames.append('flow_indices')
 		self.block['flow_indices'] = self.xp.empty((nact,)+shape_oi,dtype=self.int_t)
-	if self.flow_traits.get('flow_vector_macro',False):
-		self.flow_kernel_argnames.append('flow_vector')
+	if traits.get('flow_vector_macro',False):
+		kernel_argnames.append('flow_vector')
 		self.block['flow_vector'] = self.xp.ones((ndim,)+shape_oi,dtype=self.float_t)
 
 	self.flow_needed = any(self.flow_traits.get(key+"_macro",False) for key in 
 		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
-	if self.flow_needed: _solvers.global_iteration(self,solver=False)
+	if self.flow_needed: self.Solve('flow',solver='global_iteration')
 
 	self.flow = {}
 	for key in self.block:
@@ -73,18 +76,79 @@ def PostProcess(self):
 	if self.exportGeodesicFlow:
 		self.hfmOut['flow'] = - self.flow['flow_vector'] * self.h_broadcasted
 
-def SolveAD(self)
+def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
+	"""
+	A linear solver for the systems arising in automatic differentiation of the HFM.
+	"""
+
+	# Set the linear solver traits
+	traits = {key:value for key,value in self.traits.items() 
+		if key in ('ndim','shape_i','niter','pruning_macro','minchg_freeze_macro')}
+
+	traits.update({
+		'nrhs':len(rhs),
+		'nindex':len(indices),
+		})
+	source = cupy_module_helper.traits_header(traits,join=True)+"\n"
+	cuoptions = ("-default-device", f"-I {self.cuda_path}") 
+	module = cupy_module_helper.GetModule(
+		source+'#include "LinearUpdate.h"\n'+self.cuda_date_modified, self.cuoptions)
+
+	self.traits[kernelName] = traits
+	self.source[kernelName] = source
+	self.module[kernelName] = module
+
+	# Setup the kernel
+	def SetCst(*args): cupy_module_helper.SetModuleConstant(module,*args)
+	SetCst('shape_o', self.shape_o,       self.int_t)
+	SetCst('size_o',  self.size_o,        self.int_t)
+	SetCst('size_tot',np.prod(self.shape),self.int_t)
+
+	float_res = np.finfo(self.float_t).resolution
+	if not hasattr(self,linear_atol):
+		self.linear_atol = self.GetValue('linear_atol',default=float_res*5
+			help='Absolute convergence tolerance for the linear systems')
+	if not hasattr(self,linear_rtol):
+		self.linear_rtol = self.GetValue('linear_rtol',default=float_res*5,
+			help='Relative convergence tolerance for the linear systems')
+
+	SetCst('rtol',self.linear_rtol,self.float_t)
+	SetCst('atol',self.linear_atol,self.float_t)
+
+	# Call the kernel
+	sol = cp.zeros_like(rhs)
+	args = (('sol',sol),('rhs',rhs),('diag',diag),('indices',indices),('weights',weights))
+	if self.bound_active_blocks: args.append(('chg',chg))
+	kernel_argnames = []
+	for key,value in args:
+		ker = kernelName+"_"+key
+		self.block[key]=cp.ascontiguousarray(value)
+		kernel_argnames.append(key)
+
+	self.kernel_argnames[kernelName] = kernel_argnames
+
+	self.Solve(kernelName)
+	return sol
+
+
+def SolveAD(self):
+	"""
+	Forward and reverse differentiation of the HFM.
+	"""
 	if not (self.forward_ad or self.reverse_ad): return
-	xp = self.xp
+	
+	if self.bound_active_blocks:
+		dist = self.block['values']
+		if self.multiprecision: 
+			dist += self.float_t(self.multip_step) * self.block['valuesq']
+	else: dist=0
 
 	diag = self.block['flow_weightsum'].copy() # diagonal preconditioner
 	self.boundary = diag==0. #seeds, or walls, or out of domain
 	diag[self.boundary]=1.
-
-	common_traits = {
-		self.traits[key] for key in 
-		('ndim','shape_i','niter','pruning_macro','minchg_freeze_macro')
-		if key in self.traits }
+	
+	indices = self.block['flow_indices_twolevel'] 
+	weights = self.block['flow_weights']
 
 	if self.forward_ad:
 		# Get the rhs
@@ -98,34 +162,9 @@ def SolveAD(self)
 		rhs = misc.block_expand(np.moveaxis(rhs,-1,0),self.shape_i,
 			mode='constant',constant_values=np.nan,contiguous=True)
 
-		# Get the matrix structure
-		indices = self.block['flow_indices_twolevel'] 
-
-		fwd_traits = common_traits.copy()
-		fwd_traits.update({
-			'nrhs':len(rhs),
-			'nindex':len(indices),
-			})
-
-		# Setup the kernel
-		self.fwd_source=cupy_module_helper.traits_header(fwd_traits,join=True)+"\n"
-		cuoptions = ("-default-device", f"-I {self.cuda_path}") 
-		self.fwd_module = cupy_module_helper.GetModule(
-			self.fwd_source+'#include "LinearUpdate.h"\n'
-			+self.cuda_date_modified,self.cuoptions)
-
-		mod = self.fwd_module
-		SetModuleConstant(mod,'shape_o',self.shape_o,self.int_t)
-		SetModuleConstant(mod,'size_o',self.size_o,self.int_t)
-		SetModuleConstant(mod,'size_tot',np.prod(self.shape),self.int_t)
-		SetModuleConstant(mod,'tol',??,self.float_t)
-
-		fwd_argnames = ['fwd_solution','fwd_rhs','diag',
-			'flow_indices_twolevel','flow_weights']
-		if fwd_traits['minchg_freeze_macro']: fwd_argnames.append('values_float')
-
-		# Call the solver
-
+		# solve
+		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
+		self.hfmOut['valueVariation'] = valueVariation
 
 
 	if self.reverse_ad:
@@ -133,6 +172,13 @@ def SolveAD(self)
 		rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
 
 		# Get the matrix structure
+		invalid_index = np.iinfo(self.int_t).max
+		indices[weights==0]=invalid_index
+		indicesT,weightsT = graph_reverse(indices,weights,invalid=invalid_index)
+
+		allSensitivity = self.SolveLinear(rhs,diag,indicesT,weightsT,-dist,'reverseAD')
+		self.hfmOut['costSensitivity'] = allSensitivity #TODO : seedSensitivity
+
 
 
 

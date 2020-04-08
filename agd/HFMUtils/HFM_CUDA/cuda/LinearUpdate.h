@@ -60,7 +60,8 @@ const Int niter=16;
 __constant__ Int shape_o; 
 __constant__ Int size_o;
 __constant__ Int size_tot;
-__constant__ Scalar tol;
+__constant__ Scalar atol;
+__constant__ Scalar rtol;
 
 extern "C" {
 
@@ -145,7 +146,9 @@ void __global__ Update(
 	for(Int irhs=0; irhs<nrhs; ++irhs){
 		const Scalar val = u_i_[irhs][n_i];
 		u_t[irhs*size_tot + n_t] = val;
-		changed = changed || abs(val - u_old[irhs]) > tol;
+		old = u_old[irhs]
+		const Scalar tol = max(abs(val),abs(old))*rtol + atol;
+		changed = changed || abs(val - old) > tol;
 	}
 
 	MINCHG_FREEZE(

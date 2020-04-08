@@ -2,6 +2,7 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
+import cupy as cp
 import copy
 
 from . import misc
@@ -11,6 +12,13 @@ from ... import AutomaticDifferentiation as ad
 from ... import Metrics
 
 # This file implements some member functions of the Interface class of HFM_CUDA
+
+def Metric(self,x):
+	if self.isCurvature: 
+		raise ValueError("No metric available for curvature penalized models")
+	if hasattr(self,'metric'): return self.metric.at(x)
+	else: return self.dualMetric.at(x).dual()
+
 
 def SetGeometry(self):
 	if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
@@ -94,7 +102,7 @@ def SetGeometry(self):
 			self.metric = Metrics.Isotropic(self.metric.cost.value)
 		# Internally, we always use a relative cost variation
 		if self.costVariation is not None:
-			self.costVariation/=self.xp.expand_dims(self.metric.cost,axis=-1)
+			self.costVariation/=cp.expand_dims(self.metric.cost,axis=-1)
 
 	if self.isCurvature:
 		self.xi = self.GetValue('xi',
@@ -123,7 +131,7 @@ def SetGeometry(self):
 			else: self.drift += self.metric.w
 
 		# TODO : remove. No need to create this grid for our interpolation
-		grid = ad.array(np.meshgrid(*(self.xp.arange(s,dtype=self.float_t) 
+		grid = ad.array(np.meshgrid(*(cp.arange(s,dtype=self.float_t) 
 			for s in self.shape), indexing='ij')) # Adimensionized coordinates
 		self.metric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
 
@@ -168,14 +176,13 @@ def SetGeometry(self):
 
 def SetValuesArray(self):
 	if self.verbosity>=1: print("Preparing the values array (setting seeds,...)")
-	xp = self.xp
-	values = xp.full(self.shape,xp.inf,dtype=self.float_t)
+	values = cp.full(self.shape,np.inf,dtype=self.float_t)
 	self.seeds = self.GetValue('seeds',
 		help="Points from where the front propagation starts",array_float=True)
 	assert self.seeds.ndim==2 and self.seeds.shape[1]==self.ndim
 	self.seeds = Grid.PointFromIndex(self.hfmIn,self.seeds,to=True) # Adimensionize seed position
 	if len(self.seeds)==1: self.seed=self.seeds[0]
-	seedValues = xp.zeros(len(self.seeds),dtype=self.float_t)
+	seedValues = cp.zeros(len(self.seeds),dtype=self.float_t)
 	seedValues = self.GetValue('seedValues',default=seedValues,
 		help="Initial value for the front propagation",array_float=True)
 	if not ad.is_ad(seedValues):
@@ -196,8 +203,8 @@ def SetValuesArray(self):
 	else:
 		neigh = Grid.GridNeighbors(self.hfmIn,self.seed,seedRadius) # Geometry last
 		r = seedRadius 
-		aX = [xp.arange(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
-		neigh =  ad.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
+		aX = [cp.arange(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
+		neigh =  ad.stack(cp.meshgrid( *aX, indexing='ij'),axis=-1)
 		neigh = neigh.reshape(-1,neigh.shape[-1])
 		neighValues = seedValues.repeat(len(neigh)//len(self.seeds)) # corrected below
 
@@ -207,7 +214,7 @@ def SetValuesArray(self):
 		# Periodize, and select neighbors which are in the domain
 		nper = np.logical_not(self.periodic)
 		inRange = np.all(np.logical_and(-0.5<=neigh[:,nper],
-			neigh[:,nper]<xp.array(self.shape)[nper]-0.5),axis=-1)
+			neigh[:,nper]<cp.array(self.shape)[nper]-0.5),axis=-1)
 		neigh = neigh[inRange,:]
 		neighValues = neighValues[inRange,:]
 		
@@ -225,18 +232,18 @@ def SetValuesArray(self):
 	# Tag the seeds
 	if np.prod(self.shape_i)%8!=0:
 		raise ValueError('Product of shape_i must be a multiple of 8')
-	self.seedTags = xp.isfinite(values)
+	self.seedTags = cp.isfinite(values)
 	block_seedTags = misc.block_expand(self.seedTags,self.shape_i,
 		mode='constant',constant_values=True,contiguous=True)
 	block_seedTags = misc.packbits(block_seedTags,bitorder='little')
 	block_seedTags = block_seedTags.reshape( self.shape_o + (-1,) )
-	block_values[xp.isnan(block_values)] = xp.inf
+	block_values[cp.isnan(block_values)] = np.inf
 
 	self.block.update({'values':block_values,'seedTags':block_seedTags})
 
 	# Handle multiprecision
 	if self.multiprecision:
-		block_valuesq = xp.zeros(block_values.shape,dtype=self.int_t)
+		block_valuesq = cp.zeros(block_values.shape,dtype=self.int_t)
 		self.block.update({'valuesq':block_valuesq})
 
 	if self.strict_iter_o:
@@ -245,7 +252,7 @@ def SetValuesArray(self):
 			self.block['valuesqNext']=block_valuesq.copy()
 
 	if self.bound_active_blocks:
-		minChg = xp.full(self.shape_o,np.inf,dtype=self.float_t)
+		minChg = cp.full(self.shape_o,np.inf,dtype=self.float_t)
 		self.block['minChgPrev_o'] = minChg
 		self.block['minChgNext_o'] = minChg.copy()
 
