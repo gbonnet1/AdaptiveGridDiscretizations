@@ -1,7 +1,6 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-import numpy as np
 from .base import Base
 from .. import AutomaticDifferentiation as ad
 
@@ -56,10 +55,7 @@ class Isotropic(Base):
 	def shape(self): return self.cost.shape
 	
 	def rotate(self,a):     return self
-	def rescale(self,h):
-		h = ad.array(h)
-		if h.ndim!=0: raise ValueError("Isotropic metrics can only be rescaled isotropically")
-		return Isotropic(self.cost/h)
+	def with_cost(self,cost): return Isotropic(cost*self.cost)
 
 	def flatten(self):      return self.cost
 	@classmethod
@@ -79,5 +75,3 @@ class Isotropic(Base):
 
 	def __iter__(self):
 		yield self.cost
-
-	# TODO : upwind gradient from HFM AD info (with grid)

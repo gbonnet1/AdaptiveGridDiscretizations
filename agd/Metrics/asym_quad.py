@@ -44,7 +44,11 @@ class AsymQuad(Base):
 		return Riemann(self.m).cost_bound() + ad.Optimization.norm(w,ord=2,axis=0)
 
 	def inv_transform(self,a):
-		return AsymQuad(Riemann(self.m).inv_transform(a),lp.dot_VA(self.w,a))
+		rander = Rander(self.m,self.w).inv_transform(a)
+		return AsymQuad(rander.m,rander.w)
+	def with_costs(self,costs):
+		rander = Rander(self.m,self.w).with_costs(costs)
+		return AsymQuad(rander.m,rander.w)
 
 	def flatten(self):
 		return Rander(self.m,self.w).flatten()

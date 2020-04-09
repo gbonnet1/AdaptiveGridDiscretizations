@@ -55,10 +55,10 @@ class Rander(Base):
 
 	def inv_transform(self,a):
 		return Rander(Riemann(self.m).inv_transform(a).m,lp.dot_VA(self.w,a))
-#	def rescale(self,h):
-#		if np.ndim(h)==0: return Rander(self.m/h**2,self.w/h)
-#		else: raise NotImplemented #"TODO"
 
+	def with_costs(self,costs):
+		costs,m,w = fd.common_field((costs,self.m,self.w),depths=(1,2,1))
+		return Riemann(m*lp.outer_self(costs),w*costs)
 
 	def flatten(self):
 		return ad.concatenate((misc.flatten_symmetric_matrix(self.m),self.w),axis=0)

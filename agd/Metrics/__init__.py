@@ -3,6 +3,7 @@
 
 from .base 	    import Base
 from .isotropic import Isotropic
+from .diagonal  import Diagonal 
 from .riemann 	import Riemann
 from .rander    import Rander
 from .asym_quad import AsymQuad

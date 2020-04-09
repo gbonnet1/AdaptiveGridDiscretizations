@@ -108,7 +108,7 @@ class Interface(object):
 
 		self.SetKernelTraits()
 		self.SetGeometry()
-		self.SetValuesArray()
+		self.SetRHS()
 		self.SetKernel()
 		self.Solve()
 		self.PostProcess()
@@ -119,7 +119,7 @@ class Interface(object):
 		return self.hfmOut
 
 	SetGeometry = _PreProcess.SetGeometry
-	SetValuesArray = _PreProcess.SetValuesArray
+	SetValuesArray = _PreProcess.SetRHS
 	Metric = _PreProcess.Metric
 	SetKernelTraits = _Kernel.SetKernelTraits
 	SetKernel = _Kernel.SetKernel

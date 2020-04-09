@@ -5,7 +5,7 @@ import numpy as np
 
 from . import misc
 from .base import Base
-from .isotropic import Isotropic
+from .diagonal import Diagonal
 from .. import LinearParallel as lp
 from .. import AutomaticDifferentiation as ad
 from .. import FiniteDifferences as fd
@@ -40,9 +40,9 @@ class Riemann(Base):
 
 	def inv_transform(self,a):
 		return Riemann(lp.dot_AA(lp.transpose(a),lp.dot_AA(self.m,a)))
-#	def rescale(self,h,**kwargs):
-#		if np.ndim(h)==0: return Riemann(self.m/h**2)
-#		else: raise NotImplemented #"TODO"
+	def with_costs(self,costs):
+		costs,m = fd.common_field((costs,self.m),depths=(1,2))
+		return Riemann(m*lp.outer_self(costs))
 
 	def flatten(self):
 		return misc.flatten_symmetric_matrix(self.m)
@@ -94,8 +94,8 @@ class Riemann(Base):
 	@classmethod
 	def from_cast(cls,metric):
 		if isinstance(metric,cls): return metric
-		isotropic = Isotropic.from_cast(metric)
-		return Riemann.from_diagonal( *(isotropic.cost**2,)*isotropic.vdim )
+		diag = Diagonal.from_cast(metric)
+		return Riemann.from_diagonal(diag.costs**2)
 
 	@classmethod
 	def from_mapped_eigenvalues(cls,matrix,mapping):

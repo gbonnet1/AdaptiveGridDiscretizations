@@ -139,6 +139,18 @@ class Base:
 		"""
 		return self.rotate(lp.rotation(*args,**kwargs))
 
+	def with_costs(self,costs):
+		a = ad.zeros_like(costs,(len(costs),)+costs.shape)
+		for i,cost in enumerate(costs): a[i,i] = cost
+		return self.inv_transform(a)
+
+	def with_speeds(self,speeds): return self.with_costs(1./speeds)
+	def with_cost(self,cost): 
+		costs = ad.broadcast_to(cost,(self.vdim,)+cost.shape)
+		return self.with_costs(costs)
+	def with_speed(self,speed): return self.with_cost(1/speed)
+
+"""
 	def rescale(self,h,**kwargs):
 		"""
 		The unit ball is multiplied by the given scale h, which may be axis dependent.
@@ -162,7 +174,7 @@ class Base:
 		else:
 			if h.ndim==0: return np.broadcast_to(h,hshape)
 			else:return np.broadcast_to(np.reshape(h,(vdim,)+(1,)*len(self.shape)),hshape)
-
+"""
 # ---- Import and export ----
 
 	def flatten(self):

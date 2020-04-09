@@ -34,25 +34,38 @@ def SetGeometry(self):
 	if self.bound_active_blocks is True: 
 		self.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
 	
-	if self.HasValue('gridScale'):
-		self.h = self.GetValue('gridScale',array_float=True,
-			help="Scale of the computational grid")
-		# Gridscale for periodic dimension, in the curvature case
-		if self.isCurvature: 
-			self.h_per = self.caster(2.*np.pi / self.shape[2] )
-			self.h = self.caster((self.h,self.h,self.h_per))
+	# Set the discretization gridScale(s)
+	if self.isCurvature:
+		self.h_base = self.GetValue('gridScale',array_float=True,
+			help="Scale of the physical (not angular) grid.")
+		self.h_per = self.caster(2.*np.pi / self.shape[2] )
+		self.h = self.caster((self.h_base,self.h_base,self.h_per))
+
+	elif self.HasValue('gridScale') or self.isCurvature:
+		self.h = cp.broadcast_to(self.GetValue('gridScale',array_float=True,
+			help="Scale of the computational grid"), (self.ndim,))
+
 	else:
 		self.h = self.GetValue('gridScales',array_float=True,
 			help="Axis independent scales of the computational grid")
 
-	self.h_broadcasted = np.broadcast_to(self.h,(self.ndim,))
-	self.h_broadcasted = np.broadcast_to(np.reshape(self.h_broadcasted,
-		(self.ndim,)+(1,)*self.ndim),(self.ndim,)+self.shape)
+	self.h_broadcasted = fd.as_field(self.h,self.shape,depth=1)
 
 	self.drift = self.GetValue('drift', default=None, verbosity=3, array_float=True,
 		help="Drift introduced in the eikonal equation, becoming F(grad u - drift)=1")
 
-	# Get the metric or cost function
+	# Get the metric 
+	if   self.model.startswith('Riemann'): self.metricClass = Metrics.Riemann
+	elif self.model.startswith('Rander') : self.metricClass = Metrics.Rander
+	else: self.metricClass = None
+
+	if self.metricClass is not None:
+		self.metric = self.GetValue('metric',default=None,verbosity=3,
+			help="Metric of the minimal path model")
+		self.dualMetric = self.GetValue('dualMetric',default=None,verbosity=3,
+			help="Dual metric of the minimal path model")
+
+
 	self.cost_based = self.model.startswith('Isotropic') or self.isCurvature
 	if self.cost_based:
 		self.metric = self.GetValue('cost',None,verbosity=3,
@@ -60,10 +73,6 @@ def SetGeometry(self):
 		self.dualMetric = self.GetValue('speed',None,verbosity=3,
 			help="Speed function for the minimal paths. speed = 1/cost.")
 	else:
-		self.metric = self.GetValue('metric',default=None,verbosity=3,
-			help="Metric of the minimal path model")
-		self.dualMetric = self.GetValue('dualMetric',default=None,verbosity=3,
-			help="Dual metric of the minimal path model")
 
 	# Import from HFM format, and make copy, if needed
 	if self.model.startswith('Isotropic') or self.isCurvature: 
