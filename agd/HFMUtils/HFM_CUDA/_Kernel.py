@@ -57,7 +57,6 @@ def SetKernelTraits(self):
 	self.size_i = np.prod(self.shape_i)
 	self.caster = lambda x : cp.asarray(x,dtype=self.float_t)
 
-
 def SetKernel(self):
 	"""
 	Setup the eikonal kernel, and (partly) the flow kernel
@@ -80,9 +79,10 @@ def SetKernel(self):
 	if self.isCurvature: 
 		model_source = f'#include "{self.model}.h"\n'
 	else: 
-		model = self.model[:-1]+'_' # Dimension generic
-		if model == 'Rander_': model = 'Riemann_' # Rander = Riemann + drift
-		model_source = f'#include "{model}.h"\n' 
+		model = self.model[:-1] # Dimension generic
+		if model == 'Rander': model = 'Riemann' # Rander = Riemann + drift
+		elif model == 'Diagonal': model = 'Isotropic'
+		model_source = f'#include "{model}_.h"\n' 
 
 	self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 	date_modified = cupy_module_helper.getmtime_max(self.cuda_path)

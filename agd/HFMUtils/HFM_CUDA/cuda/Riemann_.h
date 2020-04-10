@@ -7,13 +7,12 @@
 #include "Geometry2.h"
 #elif (ndim_macro == 3)
 #include "Geometry3.h"
-#else
-// Not supported presently
 #endif
 
 const Int nsym = symdim; // Number of symmetric offsets
 const Int nfwd = 0; // Number of forward offsets
 const Int geom_size = symdim;
+const Int factor_size = symdim;
 
 #include "Constants.h"
 

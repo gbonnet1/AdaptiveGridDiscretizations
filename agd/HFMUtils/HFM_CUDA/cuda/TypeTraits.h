@@ -44,11 +44,11 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 #endif
 
 /** Min or Max of a family of schemes*/
-#ifndef mix_macro
-#define mix_macro 0
+#ifndef nmix_macro
+#define nmix_macro 0
 #endif
 
-#if mix_macro
+#if nmix_macro
 #define MIX(...) __VA_ARGS__
 #define NOMIX(...) 
 #else

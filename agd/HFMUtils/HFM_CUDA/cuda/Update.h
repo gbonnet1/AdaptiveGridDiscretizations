@@ -50,6 +50,7 @@ __global__ void Update(
 	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];}
 	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 	ADAPTIVE_OFFSETS(Int offsets[nactx][ndim];)
+	MIX(const bool mix_is_min = )
 	scheme(geom, CURVATURE(x_t,) weights, offsets);
 	
 
@@ -175,7 +176,8 @@ __global__ void Update(
 	) 
 
 	// Compute and save the values
-	HFMIter(!isSeed, rhs, n_i, weights,
+	HFMIter(!isSeed, n_i, 
+		rhs, MIX(mix_is_min,) weights,
 		v_o MULTIP(,vq_o), v_i, 
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 		u_i MULTIP(,uq_i) 

@@ -1,4 +1,6 @@
-#pragma once
+/* This file is missing a #pragma once, because it is sometimes useful to include it 
+within several namespaces, where the constant ndim takes different values.*/ 
+
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
@@ -137,5 +139,22 @@ void canonicalsuperbase(Int sb[ndim+1][ndim]){
 	}
 	for(Int j=0; j<ndim; ++j){
 		sb[ndim][j]=-1;
+	}
+}
+
+Scalar coef_m(const Scalar m[symdim], const Int i, const Int j){
+	const Int i_ = max(i,j), j_=min(i,j);
+    return (i_*(i_+1))/2+j_;
+}
+
+void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar out[ndim]){
+	fill_kV(0.,out);
+	Int k=0; 
+	for(Int i=0; i<ndim; ++i){
+		for(Int j=0; j<=i; ++j){
+			out[i]+=m[k]*v[j];
+			if(i!=j) {out[j]+=m[k]*v[i];}
+			++k;
+		}
 	}
 }

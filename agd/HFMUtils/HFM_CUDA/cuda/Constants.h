@@ -19,7 +19,7 @@ const Int ntotx = nmix * ntot;
 
 Scalar infinity(){return 1./0.;}
 Scalar not_a_number(){return 0./0.;}
-Scalar mix_neutral(){return mix_is_min ? infinity() : -infinity();}
+Scalar mix_neutral(const bool mix_is_min){return mix_is_min ? infinity() : -infinity();}
 const Scalar pi = 3.14159265358979323846;
 
 // -------- Module constants ---------

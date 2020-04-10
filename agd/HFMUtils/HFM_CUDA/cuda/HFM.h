@@ -212,14 +212,15 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 	})
 }
 
-void HFMIter(const bool active, const Scalar rhs, const Int n_i, const Scalar weights[nactx],
+void HFMIter(const bool active, const Int n_i, 
+	const Scalar rhs, MIX(const bool mix_is_min,) const Scalar weights[nactx],
 	const Scalar v_o[ntotx], MULTIP(const Int vq_o[ntotx],) const Int v_i[ntotx], 
 	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) 
 	FLOW(, Scalar flow_weights[nact], Int active_side[nsym] MIX(, Int * kmix_) ) ){
 
 
-	Scalar u_i_new MIX(=mix_neutral()); MULTIP(Int uq_i_new MIX(=0);)
+	Scalar u_i_new MIX(=mix_neutral(mix_is_min)); MULTIP(Int uq_i_new MIX(=0);)
 	if(strict_iter_i_macro || nmix>1){
 	for(int i=0; i<niter_i; ++i){
 		if(active) {

@@ -4,7 +4,7 @@
 
 #define adaptive_offsets_macro 0
 
-#if isotropic_macro // We're using the same file for the anisotropic diagonal model
+#ifdef diagonal_macro // We're using the same file for the anisotropic diagonal model
 #define adaptive_weights_macro 0
 #endif
 
@@ -28,15 +28,14 @@ const Int offsets[ndim][ndim] = {{1,0,0,0,0},{0,1,0,0,0},{0,0,1,0,0},{0,0,0,1,0}
 
 #include "Geometry_.h"
 
-#if isotropic_macro
-const Int geom_size = 0;
-__constant__ Scalar weights[ndim];
-void scheme(const Scalar dual_costs2[ndim], 
-	const Scalar weights[ndim], const Int offsets[ndim]){}
-#else
+#if diagonal_macro
 const Int geom_size = ndim;
 void scheme(const Scalar dual_costs2[ndim], Scalar weights[ndim], const Int offsets[ndim]){
 	copy_vV(dual_costs2,weights);}
+#else // Isotropic model
+const Int geom_size = 0;
+__constant__ Scalar weights[ndim];
+void scheme(const Scalar geom[0], const Scalar weights[ndim], const Int offsets[ndim]){}
 #endif
 
 FACTOR(
