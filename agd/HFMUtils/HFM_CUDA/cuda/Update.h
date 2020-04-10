@@ -19,7 +19,7 @@ extern "C" {
 __global__ void Update(
 	Scalar * u_t, MULTIP(Int * uq_t,) STRICT_ITER_O(Scalar * uNext_t, MULTIP(Int * uqNext_t,) )
 	const Scalar * geom_t, DRIFT(const Scalar * drift_t,) 
-	const BoolPack * seeds_t, const Scalar * rhs_t,
+	const BoolPack * seeds_t, const Scalar * rhs_t, WALLS(wallDist_t,)
 	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
 	FLOW_WEIGHTS(Scalar * flow_weights_t,) FLOW_WEIGHTSUM(Scalar * flow_weightsum_t,)
 	FLOW_OFFSETS(char * flow_offsets_t,) FLOW_INDICES(Int* flow_indices_t,) 
@@ -55,9 +55,8 @@ __global__ void Update(
 	
 
 	DRIFT(
-		Scalar drift[ndim];
-		for(Int k=0; k<ndim; ++k){
-			drift[k] = drift_t[n_t+size_tot*k];}
+	Scalar drift[ndim];
+	for(Int k=0; k<ndim; ++k){drift[k] = drift_t[n_t+size_tot*k];}
 	)
 
 	Scalar u_old = iSeed ? rhs : u_t[n_t]; 
@@ -68,6 +67,12 @@ __global__ void Update(
 	u_i[n_i] = u_old;
 	MULTIP(__shared__ Int uq_i[size_i];
 	uq_i[n_i] = uq_old;)
+
+	WALLS(
+	__shared__ WallsT wallDist_i[size_i];
+	wallDist_i[n_i] = wallDist_t[n_t];
+	__syncthreads();
+	)
 
 /*	if(debug_print && n_i==0 && n_o==size_o-1){
 //		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
@@ -111,11 +116,22 @@ __global__ void Update(
 
 		for(Int s=0; s<2; ++s){
 			if(s==0 && kact>=nsym) continue;
+			Int offset[ndim];
+			const Int eps=2*s-1; // direction of offset
+			mult_kv(eps,e,offset);
+
+			WALLS(
+			const bool visible = Visible(offset, x_t,wallDist_t, x_i,wallDist_i,n_i);
+			if(!visible){
+				v_i[kv]=-1; ORDER2(v2_i[kv]=-1;)
+				v_o[kv]=infinity(); ORDER2(v2_o[kv]=infinity();)
+				MULTIP(vq_o[kv]=0;  ORDER2(vq2_o[kv]=0;) )
+				continue;}
+			)
 
 			Int y_t[ndim], y_i[ndim]; // Position of neighbor. 
-			const Int eps=2*s-1;
-			madd_kvv(eps,e,x_t,y_t);
-			madd_kvv(eps,e,x_i,y_i);
+			add_vv(offset,x_t,y_t);
+			add_vv(offset,x_i,y_i);
 
 			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) )  {
 				v_i[kv] = Grid::Index(y_i,shape_i);
@@ -133,8 +149,8 @@ __global__ void Update(
 			}
 
 			ORDER2(
-			madd_kvV(eps,e,y_t);
-			madd_kvV(eps,e,y_i);
+			add_vV(offset,y_t);
+			add_vV(offset,y_i);
 
 			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) ) {
 				v2_i[kv] = Grid::Index(y_i,shape_i);
@@ -218,7 +234,7 @@ __global__ void Update(
 			FLOW_OFFSETS(flow_offsets_t[n_t+size_tot*(k+nact*l)]=offset[l];)
 			FLOW_VECTOR(flow_vector[l]+=flow_weights[k]*offset[l];)
 		}
-		FLOW_INDICES(flow_indices_t[n_t+size_tot*k]=Grid::Index_per(y_t,shape_tot);) 
+		FLOW_INDICES(flow_indices_t[n_t+size_tot*k]=Grid::Index_tot(y_t);) 
 	}
 	FLOW_WEIGHTSUM(flow_weightsum_t[n_t]=flow_weightsum;)
 	FLOW_VECTOR(for(Int l=0; l<ndim; ++l){flow_vector_t[n_t+size_tot*l]=flow_vector[l];})

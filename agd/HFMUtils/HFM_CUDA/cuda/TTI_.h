@@ -123,5 +123,10 @@ bool scheme(const Scalar geom[geom_size],
 
 
 FACTOR(
-TODO
+void factor_sym(const Scalar x[ndim], const Int e[ndim], 
+	Scalar fact[2] ORDER2(,Scalar fact2[2])){
+	// Get the optimal solves for x,x+e
+	// Get the matrices
+	// 
+}
 )

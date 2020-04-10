@@ -293,15 +293,14 @@ and weights in the anisotropic case.*/
 #define ADAPTIVE_OFFSETS(...)
 #endif
 
-/*
-#ifndef isotropic_macro
-#define isotropic_macro 0
+/** Dealing with walls in the domain */
+#ifndef walls_macro
+#define walls_macro 0
 #endif
 
-#if isotropic_macro 
-#define ISO(...) __VA_ARGS__
-#define ANISO(...)
-#else 
-#define ISO(...) 
-#define ANISO(...) __VA_ARGS__
-#endif*/
+#if walls_macro
+#define WALLS(...) __VA_ARGS__
+#else
+#define WALLS(...) 
+#endif
+

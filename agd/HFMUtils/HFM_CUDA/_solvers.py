@@ -102,8 +102,10 @@ def adaptive_gauss_siedel_iteration(self,data):
 #	update_o = xp.ascontiguousarray(update_o, dtype='uint8')
 #	kernel = self.module[kernelName].get_function("Update")
 	
-	update_o = misc.block_expand(data.trigger,self.shape_i).reshape(self.shape_o+(-1,))
-	update_o = cp.ascontiguousarray(np.any(update_o,axis=-1))
+	trigger = data.trigger
+	if trigger.shape==self.shape: trigger = misc.block_expand(data.trigger,self.shape_i)
+	trigger = np.any(trigger.rehsape(self.shape_o+(-1,)),axis=-1)
+	update_o = cp.ascontiguousarray(trigger)
 	policy = data.policy
 	nitermax_o = policy.nitermax_o
 
@@ -122,6 +124,10 @@ def adaptive_gauss_siedel_iteration(self,data):
 			policy.minChgNext_thres = np.inf
 			SetModuleConstant(data.module,'minChgPrev_thres',policy.minChgPrev_thres,float_t)
 			SetModuleConstant(data.module,'minChgNext_thres',policy.minChgNext_thres,float_t)
+			minChgPrev_o = cp.full(self.shape_o,np.inf,dtype=self.float_t)
+			minChgNext_o = minChgPrev_o.copy()
+			minChg = (minChgPrev_o,minChgNext_o)
+		else:minChg=tuple()
 
 		for niter_o in range(nitermax_o):
 						
@@ -137,11 +143,14 @@ def adaptive_gauss_siedel_iteration(self,data):
 			updateList_o = np.repeat(updateList_o,2*self.ndim+1)
 			if updateList_o.size==0: return niter_o
 			data.kernel((updateList_o.size,),(self.size_i,), 
-				KernelArgs(data) + (updateList_o,updatePrev_o,update_o))
+				KernelArgs(data) + minChg + (updateList_o,updatePrev_o,update_o))
 			updatePrev_o,update_o = update_o,updatePrev_o
 			updateList_o = updateList_o[updateList_o!=-1]
-			if policy.bound_active_blocks: self.set_minChg_thres(data,updateList_o)
-	else:
+			if policy.bound_active_blocks: 
+				self.set_minChg_thres(data,updateList_o)
+				minChg = tuple(reversed(minChg))
+
+	else: # No pruning
 		for niter_o in range(nitermax_o):
 			updateList_o = cp.ascontiguousarray(cp.flatnonzero(update_o), dtype=self.int_t)
 #			print(update_o.astype(int)); print()

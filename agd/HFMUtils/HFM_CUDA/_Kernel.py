@@ -79,7 +79,7 @@ def SetKernel(self):
 	if self.isCurvature: 
 		model_source = f'#include "{self.model}.h"\n'
 	else: 
-		model = self.model[:-1] # Dimension generic
+		model = self.model_ # Dimension generic
 		if model == 'Rander': model = 'Riemann' # Rander = Riemann + drift
 		elif model == 'Diagonal': model = 'Isotropic'
 		model_source = f'#include "{model}_.h"\n' 
@@ -158,7 +158,7 @@ def SetKernel(self):
 		order2_threshold = self.GetValue('order2_threshold',0.3,
 			help="Relative threshold on second order differences / first order difference,"
 			"beyond which the second order scheme deactivates")
-		SetCst('order2_threshold',order2_threshold,float_t)
+		SetCst('order2_threshold',order2_threshold,float_t)		
 	
 	if self.model.startswith('Isotropic'):
 		SetCst('weights', self.h**-2, float_t)
@@ -178,7 +178,7 @@ def SetKernel(self):
 	# Sort the kernel arguments
 	args = eikonal.args
 	flow_argnames = ('values','valuesq','valuesNext','valuesqNext',
-		'geom','drift','seedTags','rhs')
+		'geom','drift','seedTags','rhs','wallDist')
 	eikonal_argnames = flow_argnames + ('minChgPrev_o','minChgNext_o')
 	eikonal.args = OrderedDict(key:args[key] for key in eikonal_argnames if key in args)
 	flow.args = OrderedDict(key:args[key] for key in eikonal_argnames if key in args)

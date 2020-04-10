@@ -6,6 +6,7 @@ import cupy as cp
 import copy
 
 from . import misc
+from . import inf_convolution
 from .. import Grid
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
@@ -49,11 +50,12 @@ def SetGeometry(self):
 
 
 	# Get the metric 
-	if   self.model.startswith('Diagonal'):metricClass = Metrics.Diagonal
-	elif self.model.startswith('Riemann'): metricClass = Metrics.Riemann
-	elif self.model.startswith('Rander') : metricClass = Metrics.Rander
+	if   self.model_=='Diagonal':metricClass = Metrics.Diagonal
+	elif self.model_=='Riemann': metricClass = Metrics.Riemann
+	elif self.model_=='Rander' : metricClass = Metrics.Rander
+	elif self.model_=='TTI':     metricClass = Metrics.Seismic.Reduced
 
-	if self.model.startswith('Isotropic'):
+	if self.model_=='Isotropic':
 		self._metric = Metrics.Diagonal(cp.ones(self.ndim,dtype=self.float_t))
 	elif self.isCurvature: 
 		pass
@@ -91,14 +93,14 @@ def SetGeometry(self):
 		if self._dualMetric is not None:self._dualMetric=self._dualMetric.with_speeds(self.h)
 		if self.drift is not None: self.drift *= self.h_broadcasted
 
-		if self.model.startswith('Isotropic'):
+		if self.model_=='Isotropic':
 			# No geometry field. Metric passed as a module constant
 			self.geom = cp.zeros((0,)+self.shape,dtype=self.float_t) 
-		elif self.model.startswith('Diagonal'):
+		elif self.model_=='Diagonal':
 			self.geom = self.dualMetric.costs**2
-		elif self.model.startswith('Riemann'):
+		elif self.model_=='Riemann':
 			self.geom = self.dualMetric.flatten()
-		elif self.model.startswith('Rander'):
+		elif self.model_=='Rander':
 			self.geom = Metrics.Riemann(self.metric.m).dual().flatten()
 			if self.drift is None: self.drift = self.float_t(0.)
 			self.drift += self.metric.w
@@ -146,8 +148,24 @@ def SetGeometry(self):
 		if not self.multiprecision: tol *= np.sum(self.shape)
 		self.hfmOut['keys']['defaulted']['tol']=self.float_t(tol)
 
+	eikonal = self.kernel_data['eikonal']
 	if self.bound_active_blocks:
-		self.kernel_data['eikonal'].minChg_delta_min = self.GetValue(
+		eikonal.policy.minChg_delta_min = self.GetValue(
 			'minChg_delta_min',default=float(self.h)/10.,
 			help="Minimal threshold increase with bound_active_blocks method")
 
+	# Walls
+	walls = self.GetValue('walls',default=None,help='Obstacles in the domain')
+	if walls is not None:
+		wallDist_t = np.uint8
+		wallDistBound = self.GetValue('wallsDistBound',default=15,
+			help="Bound on the computed distance to the obstacles.\n"
+			"(Ideally a sharp upper bound on the stencil width.)")
+		wallDist = cp.full(self.shape, wallDistBound+1, dtype=wallDist_t)
+		wallDist[walls]=0
+		l1Kernel = inf_convolution.distance_kernel(1,self.ndim,dtype=wallDist_t,ord=1)
+		wallDist = inf_convolution.inf_convolution(wallDist,l1Kernel,
+			niter=wallDistBound,periodic=self.periodic,overwrite=True)
+		self.wallDist = walls
+		eikonal.args['wallDist'] = misc.block_expand(wallDist,self.shape_i,
+			mode='constant',constant_values=np.iinfo(wallDist_t).max)

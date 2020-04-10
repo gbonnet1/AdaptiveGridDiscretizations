@@ -59,6 +59,9 @@ class Interface(object):
 		self.kernel_data = {key:kernel_data_default() 
 			for key in ('eikonal','flow','geodesic','forwardAD','reverseAD')}
 
+	@property # Dimension agnostic model
+	def model_(self): return self.model[:-1]
+	
 	def kernel_data_default():
 		members = ['traits','source','policy','module','kernel','args','trigger','stats']
 		dtype = namedTuple('solve',members,defaults=[None for m in members])

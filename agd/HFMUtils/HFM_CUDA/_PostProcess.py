@@ -52,7 +52,7 @@ def PostProcess(self):
 		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 	if self.flow_needed: self.Solve('flow')
 
-	if self.model.startswith('Rander') and 'flow_vector' in self.flow:
+	if self.model_=='Rander' and 'flow_vector' in self.flow:
 		if self.dualMetric is None: self.dualMetric = self.metric.dual()
 		flow_orig = self.flow['flow_vector']
 		m = fd.as_field(self.metric.m,self.shape,depth=2)
@@ -103,7 +103,8 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	# We use a dummy initialization, to infinity, to track non-visited values
 	sol = cp.full(rhs.shape,np.inf,dtype=self.float_t) 
 	# Trigger is from the seeds (forward), or farthest points (reverse), excluding walls
-	data.trigger = np.all(weights==0.,axis=0)
+	domain = np.isfinite(self.kernel_data['eikonal'].args['values'])
+	data.trigger = np.logical_and(np.all(weights==0.,axis=0),domain)
 
 	# Call the kernel
 	data.args = OrderedDict({
@@ -130,7 +131,7 @@ def SolveAD(self):
 	self.boundary = diag==0. #seeds, or walls, or out of domain
 	diag[self.boundary]=1.
 	
-	indices = eikonal.args['flow_indices_twolevel'] 
+	indices = eikonal.args['flow_indices'] 
 	weights = eikonal.args['flow_weights']
 
 	if self.forward_ad:

@@ -92,10 +92,16 @@ def GetRHS(self):
 		neigh = neigh[inRange,:]
 		neighValues = neighValues[inRange,:]
 		
+		self._CostMetric = self.metric.with_cost(self.cost)
+		# TODO : remove. No need to create this grid for our interpolation
+		grid = ad.array(np.meshgrid(*(cp.arange(s,dtype=self.float_t) 
+			for s in self.shape), indexing='ij')) # Adimensionized coordinates
+		self._CostMetric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
+
 		diff = (neigh - self.seed).T # Geometry first
 #			neigh[:,self.periodic] = neigh[:,self.periodic] % self.shape[self.periodic]
-		metric0 = self.Metric(self.seed)
-		metric1 = self.Metric(neigh.T)
+		metric0 = self.CostMetric(self.seed)
+		metric1 = self.CostMetric(neigh.T)
 		self.seedValues = neighValues+0.5*(metric0.norm(diff) + metric1.norm(diff))
 		self.seedIndices = neigh
 	
@@ -134,14 +140,9 @@ def SetArgs(self):
 	# Handle multiprecision
 	if self.multiprecision:
 		block_valuesq = cp.zeros(block_values.shape,dtype=self.int_t)
-		self.block.update({'valuesq':block_valuesq})
+		eikonal.args['valuesq'] = block_valuesq
 
-	if self.strict_iter_o:
-		self.block['valuesNext']=block_values.copy()
+	if eikonal.policy.strict_iter_o:
+		eikonal.args['valuesNext']=block_values.copy()
 		if self.multiprecision:
-			self.block['valuesqNext']=block_valuesq.copy()
-
-	if self.bound_active_blocks:
-		minChg = cp.full(self.shape_o,np.inf,dtype=self.float_t)
-		self.block['minChgPrev_o'] = minChg
-		self.block['minChgNext_o'] = minChg.copy()
+			eikonal.args['valuesqNext']=block_valuesq.copy()
