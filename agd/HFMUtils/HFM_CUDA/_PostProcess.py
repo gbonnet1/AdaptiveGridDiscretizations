@@ -2,6 +2,7 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
+import cupy as cp
 from . import misc
 from . import kernel_traits
 from . import _solvers
@@ -16,16 +17,17 @@ from ...AutomaticDifferentiation import numpy_like as npl
 
 def PostProcess(self):
 	if self.verbosity>=1: print("Post-Processing")
-	values = misc.block_squeeze(self.block['values'],self.shape)
+	eikonal = self.kernel_data['eikonal']
+	values = misc.block_squeeze(eikonal.args['values'],self.shape)
 	if self.multiprecision:
-		valuesq = misc.block_squeeze(self.block['valuesq'],self.shape)
+		valuesq = misc.block_squeeze(eikonal.args['valuesq'],self.shape)
 		if self.GetValue('values_float64',default=False,
 			help="Export values using the float64 data type"):
 			float64_t = np.dtype('float64').type
 			self.hfmOut['values'] = (values.astype(float64_t) 
 				+ float64_t(self.multip_step) * valuesq)
 		else:
-			self.hfmOut['values'] = (values + valuesq.astype(self.float_t)*self.multip_step)
+			self.hfmOut['values'] = (values+valuesq.astype(self.float_t)*self.multip_step)
 	else:
 		self.hfmOut['values'] = values
 
@@ -34,33 +36,21 @@ def PostProcess(self):
 	nact = kernel_traits.nact(self)
 	ndim = self.ndim
 
-	traits = self.traits['flow']
-	kernel_argnames = self.kernel_argnames['flow']
-
-	if traits.get('flow_weights_macro',False):
-		kernel_argnames.append('flow_weights')
-		self.block['flow_weights'] = self.xp.empty((nact,)+shape_oi,dtype=self.float_t)
-	if traits.get('flow_weightsum_macro',False):
-		kernel_argnames.append('flow_weightsum')
-		self.block['flow_weightsum'] = self.xp.empty(shape_oi,dtype=self.float_t)
-	if traits.get('flow_offsets_macro',False):
-		kernel_argnames.append('flow_offsets')
-		self.block['flow_offsets'] = self.xp.empty((ndim,nact,)+shape_oi,dtype=np.int8)
-	if traits.get('flow_indices_macro',False):
-		kernel_argnames.append('flow_indices')
-		self.block['flow_indices'] = self.xp.empty((nact,)+shape_oi,dtype=self.int_t)
-	if traits.get('flow_vector_macro',False):
-		kernel_argnames.append('flow_vector')
-		self.block['flow_vector'] = self.xp.ones((ndim,)+shape_oi,dtype=self.float_t)
+	flow = self.kernel_data['flow']
+	if flow.traits.get('flow_weights_macro',False):
+		flow.args['flow_weights']   = cp.empty((nact,)+shape_oi,dtype=self.float_t)
+	if flow.traits.get('flow_weightsum_macro',False):
+		flow.args['flow_weightsum'] = cp.empty(shape_oi,dtype=self.float_t)
+	if flow.traits.get('flow_offsets_macro',False):
+		flow.args['flow_offsets']   = cp.empty((ndim,nact,)+shape_oi,dtype=np.int8)
+	if flow.traits.get('flow_indices_macro',False):
+		flow.args['flow_indices']   = cp.empty((nact,)+shape_oi,dtype=self.int_t)
+	if flow.traits.get('flow_vector_macro',False):
+		flow.args['flow_vector']    = cp.empty((ndim,)+shape_oi,dtype=self.float_t)
 
 	self.flow_needed = any(self.flow_traits.get(key+"_macro",False) for key in 
 		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
-	if self.flow_needed: self.Solve('flow',solver='global_iteration')
-
-	self.flow = {}
-	for key in self.block:
-		if key.startswith('flow_'):
-			self.flow[key]=misc.block_squeeze(self.block[key],self.shape,contiguous=True)
+	if self.flow_needed: self.Solve('flow')
 
 	if self.model.startswith('Rander') and 'flow_vector' in self.flow:
 		if self.dualMetric is None: self.dualMetric = self.metric.dual()
@@ -80,26 +70,20 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	"""
 	A linear solver for the systems arising in automatic differentiation of the HFM.
 	"""
+	data = self.kernel_data[kernelName]
+	eikonal = self.kernel_data['eikonal']
 
 	# Set the linear solver traits
-	traits = {key:value for key,value in self.traits.items() 
+	data.traits = {key:value for key,value in eikonal.traits.items() 
 		if key in ('ndim','shape_i','niter','pruning_macro','minchg_freeze_macro')}
-
-	traits.update({
-		'nrhs':len(rhs),
-		'nindex':len(indices),
-		})
-	source = cupy_module_helper.traits_header(traits,join=True)+"\n"
-	cuoptions = ("-default-device", f"-I {self.cuda_path}") 
-	module = cupy_module_helper.GetModule(
-		source+'#include "LinearUpdate.h"\n'+self.cuda_date_modified, self.cuoptions)
-
-	self.traits[kernelName] = traits
-	self.source[kernelName] = source
-	self.module[kernelName] = module
+	data.traits.update({'nrhs':len(rhs),'nindex':len(indices)})
+	data.source = cupy_module_helper.traits_header(traits,join=True)+"\n"
+	data.source += '#include "LinearUpdate.h"\n'+self.cuda_date_modified
+	data.module = cupy_module_helper.GetModule(data.source, self.cuoptions)
+	data.policy = eikonal.policy
 
 	# Setup the kernel
-	def SetCst(*args): cupy_module_helper.SetModuleConstant(module,*args)
+	def SetCst(*args): cupy_module_helper.SetModuleConstant(data.module,*args)
 	SetCst('shape_o', self.shape_o,       self.int_t)
 	SetCst('size_o',  self.size_o,        self.int_t)
 	SetCst('size_tot',np.prod(self.shape),self.int_t)
@@ -117,15 +101,8 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 
 	# Call the kernel
 	sol = cp.zeros_like(rhs)
-	args = (('sol',sol),('rhs',rhs),('diag',diag),('indices',indices),('weights',weights))
-	if self.bound_active_blocks: args.append(('chg',chg))
-	kernel_argnames = []
-	for key,value in args:
-		ker = kernelName+"_"+key
-		self.block[key]=cp.ascontiguousarray(value)
-		kernel_argnames.append(key)
-
-	self.kernel_argnames[kernelName] = kernel_argnames
+	data.args = OrderedDict({
+		'sol':sol,'rhs':rhs,'diag':diag,'indices':indices,'weights':weights})
 
 	self.Solve(kernelName)
 	return sol
@@ -136,33 +113,24 @@ def SolveAD(self):
 	Forward and reverse differentiation of the HFM.
 	"""
 	if not (self.forward_ad or self.reverse_ad): return
+	eikonal = self.kernel_data['eikonal']
 	
-	if self.bound_active_blocks:
-		dist = self.block['values']
+	if eikonal.policy.bound_active_blocks:
+		dist = eikonal.args['values']
 		if self.multiprecision: 
-			dist += self.float_t(self.multip_step) * self.block['valuesq']
-	else: dist=0
+			dist += self.float_t(self.multip_step) * eikonal.args['valuesq']
+	else: dist=0.
 
-	diag = self.block['flow_weightsum'].copy() # diagonal preconditioner
+	diag = eikonal.args['flow_weightsum'].copy() # diagonal preconditioner
 	self.boundary = diag==0. #seeds, or walls, or out of domain
 	diag[self.boundary]=1.
 	
-	indices = self.block['flow_indices_twolevel'] 
-	weights = self.block['flow_weights']
+	indices = eikonal.args['flow_indices_twolevel'] 
+	weights = eikonal.args['flow_weights']
 
 	if self.forward_ad:
-		# Get the rhs
-		if self.costVariation is None:
-			self.costVariation = xp.zeros(self.shape+self.seedValues.size_ad,
-				dtype=self.float_t)
-		rhs=self.costVariation 
-		if ad.is_ad(self.seedValues):
-			rhs[tuple(self.seedIndices.T)] = self.seedValues.coef
-
-		rhs = misc.block_expand(np.moveaxis(rhs,-1,0),self.shape_i,
-			mode='constant',constant_values=np.nan,contiguous=True)
-
-		# solve
+		rhs = misc.block_expand(self.rhs.gradient(),self.shape_i,
+			mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
 		self.hfmOut['valueVariation'] = valueVariation
 
@@ -180,13 +148,8 @@ def SolveAD(self):
 		self.hfmOut['costSensitivity'] = allSensitivity #TODO : seedSensitivity
 
 
-
-
-
-
-
 """
-# Failed attempt using a generic sparse linear solver.
+# Failed attempt using a generic sparse linear solver. (Fails to converge or too slow.)
 def SolveAD(self)
 	if self.forward_ad or self.reverse_ad:
 		spmod=self.xp.cupyx.scipy.sparse

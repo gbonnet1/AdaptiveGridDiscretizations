@@ -150,31 +150,6 @@ class Base:
 		return self.with_costs(costs)
 	def with_speed(self,speed): return self.with_cost(1/speed)
 
-"""
-	def rescale(self,h,**kwargs):
-		"""
-		The unit ball is multiplied by the given scale h, which may be axis dependent.
-		Set broadcast=False for a point dependent (and possibly axis dependent) scale.
-		"""
-		h = self._rescale_helper(h,**kwargs)
-		z = ad.numpy_like.zeros_like(h[0])
-		a = ad.array([[1./h[i] if i==j else z 
-			for i in range(self.vdim)] for j in range(self.vdim)])
-		return self.inv_transform(a)
-
-	def _rescale_helper(self,h,point_dependent=False):
-		"""
-		Returns a point dependent and axis dependent scale, with the correct array type.
-		"""
-		h = self.array_float_caster(h)
-		hshape = (self.vdim,)+self.shape # shape for axis and point dependent
-		if point_dependent:
-			if h.shape==self.shape: return np.broadcast_to(np.expand_dims(h,0),hshape)
-			else: assert h.shape==hshape; return h
-		else:
-			if h.ndim==0: return np.broadcast_to(h,hshape)
-			else:return np.broadcast_to(np.reshape(h,(vdim,)+(1,)*len(self.shape)),hshape)
-"""
 # ---- Import and export ----
 
 	def flatten(self):

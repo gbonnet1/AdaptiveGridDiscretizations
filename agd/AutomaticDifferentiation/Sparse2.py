@@ -476,12 +476,12 @@ def _flatten_nlast(a,n):
 	return a.reshape(s[:-n]+(np.prod(s[-n:]),))
 
 # -------- Factory method -----
+new = ad_generic._new(spAD2) # Factory function
 
 def identity(*args,**kwargs):
 	arr = Sparse.identity(*args,**kwargs)
 	shape2 = arr.shape+(0,)
-	cls = cupy_rebase(spAD2) if arr.cupy_based() else spAD2
-	return cls(arr.value,arr.coef,arr.index,
+	return new(arr.value,arr.coef,arr.index,
 		npl.zeros_like(arr.coef,shape=shape2),
 		npl.zeros_like(arr.index,shape=shape2),
 		npl.zeros_like(arr.index,shape=shape2))

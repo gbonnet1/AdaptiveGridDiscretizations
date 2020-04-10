@@ -332,10 +332,11 @@ class denseAD2(np.ndarray):
 
 # -------- Factory method -----
 
+new = ad_generic._new(denseAD2) # Factory function
+
 def identity(*args,**kwargs):
 	arr = Dense.identity(*args,**kwargs)
-	cls = cupy_rebase(denseAD2) if arr.cupy_based() else denseAD2
-	return cls(arr.value,arr.coef,
+	return new(arr.value,arr.coef,
 		npl.zeros_like(arr.value,shape=arr.shape+(arr.size_ad,arr.size_ad)))
 
 def register(*args,**kwargs):

@@ -5,7 +5,8 @@ import numpy as np
 import cupy as cp
 import os
 import time
-from collections import OrderedDict
+from collections import OrderedDict,namedTuple
+from types import SimpleNamespace
 
 from . import kernel_traits
 from . import misc
@@ -55,12 +56,18 @@ class Interface(object):
 		if self.model.endswith("Ext2"): self.model=self.model[:-4]+"2"
 
 		self.ndim = len(hfmIn['dims'])
-		
-		self.traits = dict()
-		self.source = dict()
-		self.module = dict()
-		self.kernel_argnames = dict()
+		self.kernel_data = {key:kernel_data_default() 
+			for key in ('eikonal','flow','geodesic','forwardAD','reverseAD')}
 
+	def kernel_data_default():
+		members = ['traits','source','policy','module','kernel','args','trigger','stats']
+		dtype = namedTuple('solve',members,defaults=[None for m in members])
+		result = dtype()
+		result.traits=dict()
+		result.policy=SimpleNamespace() 
+		result.args = OrderedDict()
+		result.stats = dict()
+		return result
 		
 	def HasValue(self,key):
 		self.hfmOut['keys']['visited'].append(key)
@@ -104,11 +111,9 @@ class Interface(object):
 			print("---- Warning ----\n",msg,"\n-----------------\n")
 
 	def Run(self):
-		self.block={}
-
 		self.SetKernelTraits()
 		self.SetGeometry()
-		self.SetRHS()
+		self.SetArgs()
 		self.SetKernel()
 		self.Solve()
 		self.PostProcess()
@@ -118,55 +123,35 @@ class Interface(object):
 
 		return self.hfmOut
 
-	SetGeometry = _PreProcess.SetGeometry
-	SetValuesArray = _PreProcess.SetRHS
-	Metric = _PreProcess.Metric
 	SetKernelTraits = _Kernel.SetKernelTraits
+	SetGeometry = _PreProcess.SetGeometry
+	SetArgs = _PreProcess.SetArgs
 	SetKernel = _Kernel.SetKernel
-	KernelArgs = _Kernel.KernelArgs
+	Solve = _solvers.Solve
 	PostProcess = _PostProcess.PostProcess
 	SolveAD = _PostProcess.SolveAD
 	GetGeodesics = _GetGeodesics.GetGeodesics
 
+	CostMetric = _PreProcess.CostMetric
+	GetRHS = _PreProcess.GetRHS
+	global_iteration = _solvers.global_iteration
+	adaptive_gauss_siedel_iteration = _solvers.adaptive_gauss_siedel_iteration
+	set_minChg_thres = _solvers.set_minChg_thres
+
 
 	@property
 	def isCurvature(self):
-		if any(self.model.startswith(e) for e in ('Isotropic','Riemann','Rander')):
-			return False
-		if self.model in ['ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2']:
-			return True
-		raise ValueError("Unreconized model")
+		return self.model in ['ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2']
 
+	@property
+	def metric(self):
+		if self._metric is None: self._metric = self._dualMetric.dual()
+		return self._metric
+	@property
+	def dualMetric(self):
+		if self._dualMetric is None: self._dualMetric = self._metric.dual()
+		return self._dualMetric
 
-	def Solve(self,kernelName,solver=None):
-		if solver is None: solver = self.solver
-		verb = self.verbosity>=2 or (self.verbosity==1 and kernelName=='eikonal')
-		if verb: print(f"Running the {kernelName} GPU kernel")
-
-		kernel_start = time.time()
-		if self.solver=='global_iteration':
-			niter_o = _solvers.global_iteration(self,kernelName)
-		elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
-			niter_o = _solvers.adaptive_gauss_siedel_iteration(self,kernelName)
-		else:
-			raise ValueError(f"Unrecognized solver : {solver}")
-		kernel_time = time.time() - kernel_start # TODO : use cuda event ...
-
-		if verb: print(f"GPU kernel {kernelName} ran for {kernel_time} seconds, "
-			f" and {niter_o} iterations.")
-
-		self.hfmOut['kernelStats'][kernelName] = {
-			'niter_o':niter_o,
-			'time':kernel_time,
-		}
-
-		if niter_o>=self.nitermax_o:
-			nonconv_msg = (f"Solver {solver} for kernel {eikonal} did not "
-				f"reach convergence after  maximum allowed number {niter_o} of iterations")
-			if self.raiseOnNonConvergence: raise ValueError(nonconv_msg)
-			else: self.Warn(nonconv_msg)
-
-	
 	
 	def FinalCheck(self):
 		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['keys']['used']))

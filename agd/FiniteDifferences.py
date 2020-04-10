@@ -17,17 +17,18 @@ def as_field(u,shape,conditional=True,depth=None):
 	u=ad.asarray(u)
 	ndim = len(shape)
 	def as_is():
-		if not conditional: return True
+		if not conditional: return False
 		elif depth is None: return u.ndim>=ndim and u.shape[-ndim:]==shape
 		else: assert u.shape[depth:] in (tuple(),shape); return u.shape[depth:]==shape
 	if as_is(): return u
 	else: return ad.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)
 
-def common_field(arrays,depths):
-	for arr,depth in zip(arrays,depths):
-		if arr is not None:
+def common_field(arrays,depths,shape=tuple()):
+	if shape==tuple():
+		for arr,depth in zip(arrays,depths):
+			if arr is None: continue
 			shape = arr.shape[depth:]
-			break
+			if shape!=tuple(): break
 	return tuple(None if arr is None else as_field(arr,shape,depth=depth) 
 		for (arr,depth) in zip(arrays,depths))
 

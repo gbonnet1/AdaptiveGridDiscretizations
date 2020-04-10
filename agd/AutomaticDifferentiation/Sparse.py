@@ -456,14 +456,14 @@ class spAD(np.ndarray):
 # -------- End of class spAD -------
 
 # -------- Factory method -----
+new = ad_generic._new(spAD) # Factory function
 
 def identity(shape=None,constant=None,shift=0):
 	shape,constant = misc._set_shape_constant(shape,constant)
 	shape2 = shape+(1,)
 	xp = cupy_generic.get_array_module(constant)
-	cls = spAD if xp is np else cupy_rebase(spAD)
 	int_t=cupy_generic.samesize_int_t(constant.dtype)
-	return cls(constant,npl.ones_like(constant,shape=shape2),
+	return new(constant,npl.ones_like(constant,shape=shape2),
 		xp.arange(shift,shift+np.prod(shape,dtype=int),dtype=int_t).reshape(shape2))
 
 def register(inputs,iterables=None,shift=0,ident=identity):

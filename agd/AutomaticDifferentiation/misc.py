@@ -6,7 +6,7 @@ import numbers
 import functools
 import operator
 from .functional import map_iterables,map_iterables2,pair
-from .cupy_generic import isndarray
+from .cupy_generic import isndarray,from_cupy
 from .ad_generic import is_ad,remove_ad
 from . import numpy_like as npl
 
@@ -193,7 +193,7 @@ def spsolve(mat,rhs):
 	"""
 	Solves a sparse linear system where the matrix is given as triplets.
 	"""
-	if cupy_generic.from_cupy(mat[0]):
+	if from_cupy(mat[0]):
 		import cupy.cupyx.scipy.sparse as spmod
 		spmat = spmod.coo_matrix(mat)
 		return spmod.linalg.lsqr(spmat,rhs) # Only available solver

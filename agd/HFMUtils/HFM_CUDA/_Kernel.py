@@ -1,16 +1,24 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
+import numpy as np
+from ... import AutomaticDifferentiation as ad
+from .cupy_module_helper import SetModuleConstant,GetModule
+
 """
-This file implements some member functions of the Interface class.
+This file implements some member functions of the Interface class, related with the 
+eikonal cuda kernel.
 """
 
 def SetKernelTraits(self):
+	"""
+	Set the traits of the eikonal kernel.
+	"""
 	if self.verbosity>=1: print("Setting the kernel traits.")
-	if self.verbosity>=2: print("(Scalar,Int,shape_i,niter_i,...)")	
 	traits = kernel_traits.default_traits(self)
 	traits.update(self.GetValue('traits',default=traits,
-		help="Optional trait parameters passed to kernel."))
+		help="Optional trait parameters for the eikonal kernel."))
+	self.kernel_data['eikonal'].traits = traits
 
 	self.multiprecision = (self.GetValue('multiprecision',default=False,
 		help="Use multiprecision arithmetic, to improve accuracy") or 
@@ -47,16 +55,17 @@ def SetKernelTraits(self):
 	self.int_t   = np.dtype(traits['Int']   ).type
 	self.shape_i = traits['shape_i']
 	self.size_i = np.prod(self.shape_i)
-
-	self.traits['eikonal']=traits
-
 	self.caster = lambda x : cp.asarray(x,dtype=self.float_t)
 
+
 def SetKernel(self):
+	"""
+	Setup the eikonal kernel, and (partly) the flow kernel
+	"""
 	if self.verbosity>=1: print("Preparing the GPU kernel")
-	if self.GetValue('dummy_kernel',default=False): return
 	# Set a few last traits
-	traits = self.traits['eikonal']
+	eikonal = self.kernel_data['eikonal']
+	traits = eikonal.traits
 	if self.isCurvature:
 		traits['xi_var_macro'] = int(not np.isscalar(self.xi))
 		traits['kappa_var_macro'] = int(not np.isscalar(self.kappa))
@@ -65,15 +74,15 @@ def SetKernel(self):
 		traits['periodic_macro']=1
 		traits['periodic_axes']=self.periodic
 
-	self.source['eikonal'] = cupy_module_helper.traits_header(traits,
+	eikonal.source = cupy_module_helper.traits_header(traits,
 		join=True,size_of_shape=True,log2_size=True) + "\n"
 
 	if self.isCurvature: 
-		self.source['model'] = f'#include "{self.model}.h"\n'
+		model_source = f'#include "{self.model}.h"\n'
 	else: 
 		model = self.model[:-1]+'_' # Dimension generic
 		if model == 'Rander_': model = 'Riemann_' # Rander = Riemann + drift
-		self.source['model'] = f'#include "{model}.h"\n' 
+		model_source = f'#include "{model}.h"\n' 
 
 	self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 	date_modified = cupy_module_helper.getmtime_max(self.cuda_path)
@@ -82,40 +91,41 @@ def SetKernel(self):
 		) + self.GetValue('cuoptions',default=tuple(),
 		help="Options passed via cupy.RawKernel to the cuda compiler")
 
-	source = self.source['eikonal']+self.source['model']+self.cuda_date_modified
-	self.module['eikonal'] = GetModule(source,self.cuoptions)
+	eikonal.source += model_source+self.cuda_date_modified
+	eikonal.module = GetModule(eikonal.source,self.cuoptions)
 
 	# ---- Produce a second kernel for computing the geodesic flow ---
-	self.traits['flow'] = self.traits['eikonal'].copy()
-	traits = self.traits['flow']
-	traits.update({
+	flow = self.kernel_data['flow']
+	flow.traits = {
+		**eikonal.traits,
 		'pruning_macro':0,
 		'minChg_freeze_macro':0,
 		'niter_i':1,
-	})
+	}
+	flow.policy.nitermax_o = 1
+	flow.policy.solver = 'global_iteration'
 
-	self.forward_ad = self.costVariation is not None or ad.is_ad(self.seedValues)
+	self.forward_ad = ad.is_ad(self.rhs)
 	self.reverse_ad = self.HasValue('sensitivity')
 	if self.forward_ad or self.reverse_ad:
 		for key in ('flow_weights','flow_weightsum','flow_indices'): 
-			traits[key+"_macro"]=1
+			flow.traits[key+"_macro"]=1
 	if self.hasTips: 
 		for key in ('flow_vector','flow_weightsum'): 
-			traits[key+"_macro"]=1
+			flow.traits[key+"_macro"]=1
 
-	traits['flow_vector_macro'] = int(
+	flow.traits['flow_vector_macro'] = int(
 		self.exportGeodesicFlow or (self.tips is not None) or 
 		(self.isCurvature and (self.unorientedTips is not None)))
 
-	self.source['flow'] = cupy_module_helper.traits_header(traits,
+	flow.source = cupy_module_helper.traits_header(flow.traits,
 		join=True,size_of_shape=True,log2_size=True) + "\n"
-	source = self.source['flow']+self.source['model']+self.cuda_date_modified
-	self.module['flow'] = GetModule(source,self.cuoptions)
+	flow.source += self.source['model']+self.cuda_date_modified
+	flow.module = GetModule(flow.source,self.cuoptions)
 
 	# Set the constants
 	def SetCst(*args):
-		for kernelName in ('eikonal','flow'):
-			SetModuleConstant(self.module['kernelName'],*args)
+		for module in (eikonal.module,flow.module): SetModuleConstant(module,*args)
 
 	float_t,int_t = self.float_t,self.int_t		
 	SetCst('tol',self.tol,float_t)
@@ -139,7 +149,7 @@ def SetKernel(self):
 	if self.factoringRadius:
 		SetCst('factor_radius2',self.factoringRadius**2,float_t)
 		SetCst('factor_origin', self.seed,              float_t) # Single seed only
-		factor_metric = self.Metric(self.seed).to_HFM()
+		factor_metric = ad.remove_ad(self.CostMetric(self.seed).to_HFM())
 		# The drift part of a Rander metric can be ignored for factorization purposes 
 		if self.model.startswith('Rander'): factor_metric = factor_metric[:-self.ndim]
 		SetCst('factor_metric',factor_metric,float_t)
@@ -150,72 +160,25 @@ def SetKernel(self):
 			"beyond which the second order scheme deactivates")
 		SetCst('order2_threshold',order2_threshold,float_t)
 	
+	if self.model.startswith('Isotropic'):
+		SetCst('weights', self.h**-2, float_t)
 	if self.isCurvature:
-		if np.isscalar(self.xi):    SetCst('xi',   self.xi,   float_t)
-		if np.isscalar(self.kappa): SetCst('kappa',self.kappa,float_t)
-
-	if self.bound_active_blocks:
-		self.minChgPrev_thres = np.inf
-		self.minChgNext_thres = np.inf
-		mod = self.module['eikonal']
-		SetModuleConstant(mod,'minChgPrev_thres',self.minChgPrev_thres,float_t)
-		SetModuleConstant(mod,'minChgNext_thres',self.minChgNext_thres,float_t)
+		if self.xi.ndim==0:    SetCst('xi',   self.xi,   float_t)
+		if self.kappa.ndim==0: SetCst('kappa',self.kappa,float_t)
 
 	# Set the kernel arguments
-	self.solver = self.GetValue('solver',default='AGSI',
+	policy = eikonal.policy
+	policy.solver = self.GetValue('solver',default='AGSI',
 		help="Choice of fixed point solver (AGSI, global_iteration)")
-	self.nitermax_o = self.GetValue('nitermax_o',default=2000,
+	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,
 		help="Maximum number of iterations of the solver")
 	self.raiseOnNonConvergence = self.GetValue('raiseOnNonConvergence',default=True,
 		help="Raise an exception of a solver fails to converge")
 
-	
-	kernel_argnames = ['values'] 
-	if self.multiprecision: kernel_argnames.append('valuesq')
-	if self.strict_iter_o: 
-		kernel_argnames.append('valuesNext')
-		if self.multiprecision: kernel_argnames.append('valuesqNext')
-	kernel_argnames.append('geom')
-	if self.drift is not None: kernel_argnames.append('drift')
-	kernel_argnames.append('seedTags')
-
-	self.kernel_argnames['flow'] = kernel_argnames.copy()
-
-	if self.bound_active_blocks: kernel_argnames += ['minChgPrev_o','minChgNext_o']
-	self.kernel_argnames['eikonal'] = kernel_argnames
-
-
-def KernelArgs(self,kernelName):
-
-	if self.bound_active_blocks:
-		self.block['minChgPrev_o'],self.block['minChgNext_o'] \
-			=self.block['minChgNext_o'],self.block['minChgPrev_o']
-
-	kernel_argnames = self.kernel_argnames[kernelName]
-	kernel_args = tuple(self.block[key] for key in kernel_argnames)
-
-	if self.strict_iter_o and kernelName=='eikonal':
-		self.block['values'],self.block['valuesNext'] \
-			=self.block['valuesNext'],self.block['values']
-		if self.multiprecision:
-			self.block['valuesq'],self.block['valuesqNext'] \
-				=self.block['valuesqNext'],self.block['valuesq']
-
-	return kernel_args		self.solver = self.GetValue('solver',default='AGSI',help="Choice of fixed point solver")
-		self.nitermax_o = self.GetValue('nitermax_o',default=2000,
-			help="Maximum number of iterations of the solver")
-		
-		kernel_argnames = ['values'] 
-		if self.multiprecision: kernel_argnames.append('valuesq')
-		if self.strict_iter_o: 
-			kernel_argnames.append('valuesNext')
-			if self.multiprecision: kernel_argnames.append('valuesqNext')
-		kernel_argnames.append('geom')
-		if self.drift is not None: kernel_argnames.append('drift')
-		kernel_argnames.append('seedTags')
-
-		self.kernel_argnames['flow'] = kernel_argnames.copy()
-
-		if self.bound_active_blocks: kernel_argnames += ['minChgPrev_o','minChgNext_o']
-		self.kernel_argnames['eikonal'] = kernel_argnames
-
+	# Sort the kernel arguments
+	args = eikonal.args
+	flow_argnames = ('values','valuesq','valuesNext','valuesqNext',
+		'geom','drift','seedTags','rhs')
+	eikonal_argnames = flow_argnames + ('minChgPrev_o','minChgNext_o')
+	eikonal.args = OrderedDict(key:args[key] for key in eikonal_argnames if key in args)
+	flow.args = OrderedDict(key:args[key] for key in eikonal_argnames if key in args)

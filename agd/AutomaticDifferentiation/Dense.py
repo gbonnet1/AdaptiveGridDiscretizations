@@ -318,6 +318,8 @@ class denseAD(np.ndarray):
 
 # -------- Factory methods -----
 
+new = ad_generic._new(denseAD) # Factory function
+
 def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,0)):
 	"""
 	Creates a dense AD variable with independent symbolic perturbations for each coordinate
@@ -336,8 +338,7 @@ def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,
 	coef1 = coef1.reshape(shape_elem+(1,)*len(shape_bound)+(size_ad,))
 	if coef1.shape[:-1]!=constant.shape: 
 		coef1 = np.broadcast_to(coef1,shape+(size_ad,))
-	cls = cupy_rebase(denseAD) if from_cupy(constant) else denseAD
-	return cls(constant,coef1)
+	return new(constant,coef1)
 
 def register(inputs,iterables=None,shape_bound=None,shift=(0,0),ident=identity,considered=None):
 	"""
@@ -369,10 +370,8 @@ def register(inputs,iterables=None,shape_bound=None,shift=(0,0),ident=identity,c
 	starts_it = iter(starts)
 	def setad(a):
 		start = next(starts_it)
-		if start is None:
-			return a
-		else:
-			return ident(constant=a,shift=(start,end-start-a.size//boundsize),
-				shape_bound=shape_bound)
+		if start is None: return a
+		else: return ident(constant=a,shift=(start,end-start-a.size//boundsize),
+			shape_bound=shape_bound)
 	return functional.map_iterables(setad,inputs,iterables)
 

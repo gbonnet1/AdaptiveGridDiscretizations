@@ -119,7 +119,5 @@ class Riemann(Base):
 		m = lp.outer(eVec,mVal*eVec).sum(axis=2)
 		return cls(m)
 
-
-
 	def __iter__(self):
 		yield self.m

@@ -3,15 +3,14 @@
 
 import os
 import numpy as np
+import cupy as cp
 import numbers
 
-def _get_cupy():
+def _cupy_has_RawModule():
 	"""
-	Returns the cupy python module, and wether it supports cuda RawModule.
+	RawModule appears in cupy 8. 
 	"""
-	import cupy
-	has_rawmodule = False # Version(cupy.__version__) >= Version("8") # Untested
-	return cupy,has_rawmodule
+	return False # Version(cupy.__version__) >= Version("8") # Untested
 
 def getmtime_max(directory):
 	"""
@@ -23,9 +22,8 @@ def getmtime_max(directory):
 
 def GetModule(source,cuoptions):
 	"""Returns a cupy raw module"""
-	cupy,has_rawmodule = _get_cupy()
-	if has_rawmodule: return cupy.RawModule(source,options=cuoptions)
-	else: return cupy.core.core.compile_with_cache(source, 
+	if _cupy_has_RawModule(): return cp.RawModule(source,options=cuoptions)
+	else: return cp.core.core.compile_with_cache(source, 
 		options=cuoptions, prepend_cupy_headers=False)
 
 
@@ -33,8 +31,7 @@ def SetModuleConstant(module,key,value,dtype):
 	"""
 	Sets a global constant in a cupy cuda module.
 	"""
-	cupy,has_rawmodule = _get_cupy()
-	if has_rawmodule: 
+	if _cupy_has_rawmodule(): 
 		memptr = module.get_global(key)
 	else: 
 		#https://github.com/cupy/cupy/issues/1703
@@ -107,6 +104,5 @@ def traits_header(traits,
 				source.append(f"const int log2_size_{suffix} = {log2};")
 
 	return "\n".join(source) if join else source
-
 
 

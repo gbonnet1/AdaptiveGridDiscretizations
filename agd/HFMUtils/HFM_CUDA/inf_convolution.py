@@ -27,7 +27,7 @@ def distance_kernel(radius,ndim,dtype=np.float,ord=2,mult=1):
 	return dist.astype(dtype)
 
 def inf_convolution(arr,kernel,niter=1,periodic=False,
-	upper_saturation=None, lower_saturation=None,
+	upper_saturation=None, lower_saturation=None, mix_is_min=True,
 	overwrite=False,block_size=1024):
 	"""
 	Perform an inf convolution of an input with a given kernel, on the GPU.
@@ -35,6 +35,7 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	- kernel : the convolution kernel. A centered kernel will be used.
 	- niter (optional) : number of iterations of the convolution.
 	- periodic (optional, bool or tuple of bool): axes using periodic boundary conditions.
+	- mix_is_min : if false, use sup_convolution instead
 	"""
 	conv_t = arr.dtype.type
 	int_t = np.int32
@@ -42,6 +43,7 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	traits = {
 		'T':conv_t,
 		'shape_c':kernel.shape,
+		'mix_is_min':mix_is_min,
 		}
 
 	if upper_saturation is None: upper_saturation = dtype_sup(conv_t)

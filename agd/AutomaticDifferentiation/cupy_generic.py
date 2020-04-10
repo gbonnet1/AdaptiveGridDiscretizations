@@ -140,4 +140,3 @@ def cupy_rebase(cls):
 	Rebase a class on cupy.ndarray.
 	"""
 	return functional.class_rebase(cls,(cupy_module().ndarray,),cls.__name__+'_cupy')
-

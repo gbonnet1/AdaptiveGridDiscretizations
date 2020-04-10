@@ -3,6 +3,7 @@
 
 import itertools
 import numpy as np
+import functools
 
 from . import functional
 from .functional import is_ad
@@ -28,6 +29,14 @@ def array(a,copy=True):
 	else: return np.array(a,copy=copy)
 
 def asarray(a): return array(a,copy=False)
+
+def _new(cls):
+	@functools.wraps(cls.__new__)
+	def new(value,*args,**kwargs): 
+		value = asarray(value)
+		cls_ = cupy_generic.cupy_rebase(cls) if cupy_generic.from_cupy(value) else cls
+		return cls_(value,*args,**kwargs)
+	return new
 
 def remove_ad(data,iterables=tuple()):
 	def f(a): return a.value if is_ad(a) else a
