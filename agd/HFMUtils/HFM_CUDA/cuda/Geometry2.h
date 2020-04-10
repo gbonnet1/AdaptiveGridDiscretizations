@@ -33,7 +33,7 @@ void Selling_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdi
 	}
 }
 
-
+/* Constants of the following type must be defined.
 #ifndef shape_i_macro
 const Int shape_i[ndim] = {24,24}; // Shape of a single block
 const Int size_i = 24*24; // Product of shape_i
@@ -43,3 +43,4 @@ const Int log2_size_i = 10; // Upper bound on log_2(size_i)
 #ifndef niter_i_macro
 const Int niter_i = 48;
 #endif
+*/

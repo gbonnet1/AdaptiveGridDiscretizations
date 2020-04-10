@@ -87,7 +87,7 @@ def SetGeometry(self):
 		self.geom = ad.array([e for e in (self.xi,self.kappa,self.theta) if e.ndim!=0])
 
 	else:
-		if self._metric is not None:    self._metric =     self._metric.with_costs(self.h)
+		if self._metric is not None: self._metric = self._metric.with_costs(self.h)
 		if self._dualMetric is not None:self._dualMetric=self._dualMetric.with_speeds(self.h)
 		if self.drift is not None: self.drift *= self.h_broadcasted
 
@@ -103,12 +103,12 @@ def SetGeometry(self):
 			if self.drift is None: self.drift = self.float_t(0.)
 			self.drift += self.metric.w
 
-	self.block['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
+	eikonal = self.kernel_data['eikonal']
+	eikonal.args['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
 		self.shape_i,mode='constant',constant_values=np.inf,contiguous=True)
 	if self.drift is not None:
-		self.block['drift'] = misc.block_expand(fd.as_field(self.drift,self.shape),
+		eikonal.args['drift'] = misc.block_expand(fd.as_field(self.drift,self.shape),
 			self.shape_i,mode='constant',constant_values=np.nan,contiguous=True)
-
 
 	# geometrical data related with geodesics 
 	self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,

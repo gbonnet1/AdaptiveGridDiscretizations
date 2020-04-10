@@ -128,7 +128,7 @@ void HFMNeighbors(const Int n_i,
 
 
 /// --------- Eulerian fast marching update operator -----------
-void HFMUpdate(const Int n_i, const Scalar weights[nact_],
+void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 	const Scalar v_o[ntot], MULTIP(const Int vq_o[ntot],) const Int v_i[ntot],
 	ORDER2(const Scalar v2_o[ntot], MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],)
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
@@ -168,8 +168,7 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		return;
 	}
 	
-	const Scalar rhs = ISO(weights[0]) ANISO(1.);
-	Scalar w = ISO(1.) ANISO(weights[k]); 
+	Scalar w = weights[k]; 
 	ORDER2(if(order2[k]) w*=9./4.;)
 
 	Scalar value = rhs/sqrt(w);
@@ -179,7 +178,7 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		const Int k = order[k_];
 		const Scalar t = v[k] - vmin;
 		if(value<=t){break;}
-		Scalar w = ISO(1.) ANISO(weights[k]); 
+		Scalar w = weights[k]; 
 		ANISO(if(w==0) continue;) // Avoids NaNs in the form 0*infinity
 		ORDER2(if(order2[k]) w*=9./4.;)
 		a+=w;
@@ -205,16 +204,15 @@ void HFMUpdate(const Int n_i, const Scalar weights[nact_],
 		for(Int k=0; k<nact; ++k){flow_weights[k]=0;}
 		return;}
 	
-	ISO(w = 1./(weights[0]*weights[0]);)
 	for(Int k=0; k<nact; ++k){
-		ANISO(const Scalar w = weights[k];)
+		const Scalar w = weights[k];
 		const Scalar diff = max(Scalar(0),val - v[k]);
 		flow_weights[k] = w*diff;
 		ORDER2(if(order2[k]) {flow_weights[k]*=3./2.;})
 	})
 }
 
-void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
+void HFMIter(const bool active, const Scalar rhs, const Int n_i, const Scalar weights[nactx],
 	const Scalar v_o[ntotx], MULTIP(const Int vq_o[ntotx],) const Int v_i[ntotx], 
 	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) 
@@ -234,7 +232,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 			for(Int kmix=0; kmix<nmix; ++kmix){
 				const Int s = kmix*ntot;
 				HFMUpdate(
-					n_i,weights ANISO(+kmix*nact),
+					n_i, rhs, weights+kmix*nact,
 					v_o+s MULTIP(,vq_o+s), v_i+s,
 					ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
 					u_i MULTIP(,uq_i),
@@ -261,7 +259,7 @@ void HFMIter(const bool active, const Int n_i, const Scalar weights[nactx_],
 	for(int i=0; i<niter_i; ++i){
 		if(active) {
 			HFMUpdate(
-				n_i,weights,
+				n_i, rhs, weights,
 				v_o MULTIP(,vq_o), v_i,
 				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 				u_i MULTIP(,uq_i),

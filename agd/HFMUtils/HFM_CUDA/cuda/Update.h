@@ -18,7 +18,8 @@ extern "C" {
 
 __global__ void Update(
 	Scalar * u_t, MULTIP(Int * uq_t,) STRICT_ITER_O(Scalar * uNext_t, MULTIP(Int * uqNext_t,) )
-	const Scalar * geom_t, DRIFT(const Scalar * drift_t,) const BoolPack * seeds_t, 
+	const Scalar * geom_t, DRIFT(const Scalar * drift_t,) 
+	const BoolPack * seeds_t, const Scalar * rhs_t,
 	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
 	FLOW_WEIGHTS(Scalar * flow_weights_t,) FLOW_WEIGHTSUM(Scalar * flow_weightsum_t,)
 	FLOW_OFFSETS(char * flow_offsets_t,) FLOW_INDICES(Int* flow_indices_t,) 
@@ -43,31 +44,29 @@ __global__ void Update(
 
 	const Int n_t = n_o*size_i + n_i;
 	const bool isSeed = GetBool(seeds_t,n_t);
+	const Scalar rhs = rhs_t[n_t];
 
-	Scalar weights[nactx_];
-	ISO(weights[0] = geom_t[n_t];) // Offsets are constant.
-	ANISO(
-		Scalar geom[geom_size];
-		Int offsets[nactx][ndim];
-		for(Int k=0; k<geom_size; ++k){
-			geom[k] = geom_t[n_t+size_tot*k];}
-		scheme(geom, CURVATURE(x_t,) weights,offsets);
-	)
+	Scalar geom[geom_size];
+	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];}
+	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
+	ADAPTIVE_OFFSETS(Int offsets[nactx][ndim];)
+	scheme(geom, CURVATURE(x_t,) weights, offsets);
+	
+
 	DRIFT(
 		Scalar drift[ndim];
 		for(Int k=0; k<ndim; ++k){
 			drift[k] = drift_t[n_t+size_tot*k];}
 	)
 
-	const Scalar u_old = u_t[n_t]; 
+	Scalar u_old = iSeed ? rhs : u_t[n_t]; 
+	MULTIP(Int uq_old = isSeed ? 0 : uq_t[n_t];
+	if(isSeed){Normalize(u_old,uq_old);})
+
 	__shared__ Scalar u_i[size_i]; // Shared block values
 	u_i[n_i] = u_old;
-
-	MULTIP(
-	const Int uq_old = uq_t[n_t];
-	__shared__ Int uq_i[size_i];
-	uq_i[n_i] = uq_old;
-	)
+	MULTIP(__shared__ Int uq_i[size_i];
+	uq_i[n_i] = uq_old;)
 
 /*	if(debug_print && n_i==0 && n_o==size_o-1){
 //		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
@@ -176,7 +175,7 @@ __global__ void Update(
 	) 
 
 	// Compute and save the values
-	HFMIter(!isSeed, n_i, weights,
+	HFMIter(!isSeed, rhs, n_i, weights,
 		v_o MULTIP(,vq_o), v_i, 
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 		u_i MULTIP(,uq_i) 

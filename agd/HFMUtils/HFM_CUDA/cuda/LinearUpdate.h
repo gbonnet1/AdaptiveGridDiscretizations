@@ -35,6 +35,22 @@ typedef int Int
 #define PRUNING(...) 
 #endif
 
+#ifndef dummy_init_macro
+#define dummy_init_macro 1
+#endif
+
+#if dummy_init_macro
+ /** A dummy initialization, to infinity, is passed for tracking values which have not been
+visited. Actual initialization is zero.*/
+Scalar init(const Scalar x){
+	if(x==1./0.) {return 0.;}
+	else {return x;}
+} 
+#else
+Scalar init(const Scalar x){return x;}
+#endif
+
+/* // These constants should be defined when including the LinearUpdate.h file
 #ifndef nrhs_macro
 const Int nrhs=1;
 #endif
@@ -56,6 +72,7 @@ const Int log2_size_i = 7;
 #ifndef niter_macro
 const Int niter=16;
 #endif
+*/
 
 __constant__ Int shape_o; 
 __constant__ Int size_o;
@@ -89,7 +106,7 @@ void __global__ Update(
 
 	for(Int irhs=0; irhs<nrhs; ++irhs){
 		u_old[irhs] = u_t[irhs*size_tot + n_t];
-		u_i_[irhs][n_i] = u_old[irhs];
+		u_i_[irhs][n_i] = init(u_old[irhs]);
 		rhs_[irhs] =    rhs_t[irhs*size_tot + n_t];
 	}
 
@@ -111,7 +128,7 @@ void __global__ Update(
 		} else {
 			v_i[k] = v_i_inBlock;
 			for(Int irhs=0; irhs<nrhs; ++irhs){
-				v_o_[irhs][k] = u_t[irhs*size_tot + index]}
+				v_o_[irhs][k] = init(u_t[irhs*size_tot + index]);}
 		}
 
 	}

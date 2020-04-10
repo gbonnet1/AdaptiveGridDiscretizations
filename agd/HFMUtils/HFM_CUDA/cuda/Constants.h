@@ -17,23 +17,6 @@ const bool mix_is_min = true; // dummy value
 const Int nactx = nmix * nact;
 const Int ntotx = nmix * ntot;  
 
-#ifndef isotropic_macro
-#define isotropic_macro 0
-#endif
-
-// Special treatment of isotropic metrics, whose scheme uses a single shared weight.
-#if isotropic_macro 
-const Int nact_ = 1;
-const Int nactx_= 1;
-#define ISO(...) __VA_ARGS__
-#define ANISO(...)
-#else 
-const Int nact_ = nact;
-const Int nactx_= nactx;
-#define ISO(...) 
-#define ANISO(...) __VA_ARGS__
-#endif
-
 Scalar infinity(){return 1./0.;}
 Scalar not_a_number(){return 0./0.;}
 Scalar mix_neutral(){return mix_is_min ? infinity() : -infinity();}
@@ -59,13 +42,8 @@ __constant__ Int size_o;
 __constant__ Int shape_tot[ndim]; // shape_i * shape_o
 __constant__ Int size_tot; // product(shape_tot)
 
-#if isotropic_macro
-const Int geom_size = 1;
-#endif
-
 #if factor_macro
-// geom_size == metric_size for all cases of interest
-__constant__ Scalar factor_metric[geom_size]; 
+__constant__ Scalar factor_metric[factor_size]; 
 __constant__ Scalar factor_origin[ndim];
 __constant__ Scalar factor_radius2;
 

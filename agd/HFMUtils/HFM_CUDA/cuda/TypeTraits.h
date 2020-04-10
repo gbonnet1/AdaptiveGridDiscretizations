@@ -270,3 +270,38 @@ to take effect.
 #else
 #define ORDER2_OR_FLOW(...) 
 #endif
+
+/** Isotropic and diagonal metrics have special treatment, since they and offsets,
+and weights in the anisotropic case.*/
+#ifndef adaptive_weights_macro
+#define adaptive_weights_macro 1
+#endif
+
+#if adaptive_weights_macro
+#define ADAPTIVE_WEIGHTS(...) __VA_ARGS__
+#else 
+#define ADAPTIVE_WEIGHTS(...)
+#endif
+
+#ifndef adaptive_offsets_macro
+#define adaptive_offsets_macro 1
+#endif
+
+#if adaptive_offsets_macro
+#define ADAPTIVE_OFFSETS(...) __VA_ARGS__
+#else
+#define ADAPTIVE_OFFSETS(...)
+#endif
+
+/*
+#ifndef isotropic_macro
+#define isotropic_macro 0
+#endif
+
+#if isotropic_macro 
+#define ISO(...) __VA_ARGS__
+#define ANISO(...)
+#else 
+#define ISO(...) 
+#define ANISO(...) __VA_ARGS__
+#endif*/

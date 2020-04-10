@@ -100,6 +100,12 @@ Scalar scal_vmv(const Tx x[ndim], const Scalar m[symdim], const Ty y[ndim]){
 	return result;
 }
 
+// Scalar product associated with a diagonal matrix
+template<typename Tx, typename Ty>
+Scalar scal_vdv(const Tx x[ndim], const Scalar diag[ndim], const Ty y[ndim]){
+	Scalar result=0; 
+	for(Int i=0; i<ndim; ++i){result+=x[i]*y[i]*diag[i];}
+	return result;}
 
 
 void self_outer_v(const Scalar x[ndim], Scalar m[ndim]){

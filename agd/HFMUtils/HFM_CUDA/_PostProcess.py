@@ -70,6 +70,7 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	"""
 	A linear solver for the systems arising in automatic differentiation of the HFM.
 	"""
+
 	data = self.kernel_data[kernelName]
 	eikonal = self.kernel_data['eikonal']
 
@@ -99,8 +100,12 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	SetCst('rtol',self.linear_rtol,self.float_t)
 	SetCst('atol',self.linear_atol,self.float_t)
 
+	# We use a dummy initialization, to infinity, to track non-visited values
+	sol = cp.full(rhs.shape,np.inf,dtype=self.float_t) 
+	# Trigger is from the seeds (forward), or farthest points (reverse), excluding walls
+	data.trigger = np.all(weights==0.,axis=0)
+
 	# Call the kernel
-	sol = cp.zeros_like(rhs)
 	data.args = OrderedDict({
 		'sol':sol,'rhs':rhs,'diag':diag,'indices':indices,'weights':weights})
 
