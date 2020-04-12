@@ -61,7 +61,7 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 within a block to be stored separately and synced at the end of 
 each iteration*/
 #ifndef strict_iter_i_macro
-#define strict_iter_i_macro (multiprecision_macro || mix_macro)
+#define strict_iter_i_macro (multiprecision_macro || nmix_macro)
 #endif
 
 /** strict_iter_o_macro causes a similar behavior, but for the global iterations */ 

@@ -128,30 +128,34 @@ def adaptive_gauss_siedel_iteration(self,data):
 			SetModuleConstant(data.module,'minChgNext_thres',policy.minChgNext_thres,self.float_t)
 			minChgPrev_o = cp.full(self.shape_o,np.inf,dtype=self.float_t)
 			minChgNext_o = minChgPrev_o.copy()
-			minChg = (minChgPrev_o,minChgNext_o)
-		else:minChg=tuple()
+			def minChg(): return (minChgPrev_o,minChgNext_o)
+		else:
+			def minChg(): return tuple()
 
 		for niter_o in range(nitermax_o):
-						
-			
-			show = np.zeros_like(updatePrev_o)
-			l=updateList_o
-			flat(show)[ l[l<self.size_o] ]=1 # Active
-			flat(show)[ l[l>=self.size_o]-self.size_o ]=2 # Frozen
-			print(show); #print(np.max(self.block['valuesq']))
-			
+									
 			#print(updatePrev_o)
 
 			updateList_o = np.repeat(updateList_o,2*self.ndim+1)
 			if updateList_o.size==0: return niter_o
 			data.kernel((updateList_o.size,),(self.size_i,), 
-				KernelArgs(data) + minChg + (updateList_o,updatePrev_o,updateNext_o))
+				KernelArgs(data) + minChg() + (updateList_o,updatePrev_o,updateNext_o))
+
+			"""
+			print("--------------- Called kernel ---------------")
+			show = np.zeros_like(updateNext_o)
+			l=updateList_o
+			flat(show)[ l[l<self.size_o] ]=1 # Active
+			flat(show)[ l[l>=self.size_o]-self.size_o ]=2 # Frozen
+			print(show); #print(np.max(self.block['valuesq']))
+			"""
+
 #			print("after kernel: \n",updateNext_o,"\n")
 			updatePrev_o,updateNext_o = updateNext_o,updatePrev_o
 			updateList_o = updateList_o[updateList_o!=-1]
 			if policy.bound_active_blocks: 
 				self.set_minChg_thres(data,updateList_o,minChgNext_o)
-				minChg = tuple(reversed(minChg))
+				minChgPrev_o,minChgNext_o = minChgNext_o,minChgPrev_o
 
 	else: # No pruning
 		for niter_o in range(nitermax_o):
@@ -185,22 +189,17 @@ def set_minChg_thres(self,data,updateList_o,minChgNext_o):
 		activePos = updateList_o<self.size_o
 		nActiveBlocks = int(np.sum(activePos))
 		minChgPrev_delta = policy.minChgNext_thres - minChgPrev_thres
-		if not np.isfinite(minChgPrev_delta): #nActiveBlocks==nConsideredBlocks: #:
+		if not np.isfinite(minChgPrev_delta): 
 			activeList = updateList_o[activePos]
-			activeMinChg = flat(minChgNext_o[activeList])
-#			print(f"{np.min(activeMinChg)},{type(np.min(activeMinChg))}")
+			activeMinChg = flat(minChgNext_o)[activeList]
+
 			minChgPrev_thres = float(np.min(activeMinChg))
 			policy.minChgNext_thres = float(np.max(activeMinChg))
-#			print("recomputed")
 			minChgPrev_delta = policy.minChgNext_thres - minChgPrev_thres
-#		print("hi, attempting to bound active blocs")
-#		print(f"prev : {minChgPrev_thres}, next : {self.minChgNext_thres}, delta {minChgPrev_delta}")
 		mult = max(min(policy.bound_active_blocks/max(1,nActiveBlocks),2.),0.7)
 		minChgNext_delta = max(minChgPrev_delta * mult, policy.minChg_delta_min)
-#		print(f"active {nActiveBlocks}, bound {self.bound_active_blocks}, next delta {minChgNext_delta}")
 		policy.minChgNext_thres += minChgNext_delta
 	
-#	print(f"Leaving set_minChg_thres. prev : {self.minChgPrev_thres}, next {self.minChgNext_thres}")
 	SetModuleConstant(data.module,'minChgPrev_thres',policy.minChgPrev_thres,self.float_t)
 	SetModuleConstant(data.module,'minChgNext_thres',policy.minChgNext_thres,self.float_t)
 

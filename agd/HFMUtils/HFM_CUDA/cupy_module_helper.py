@@ -73,7 +73,7 @@ def traits_header(traits,
 			source.append(f"#define {key}_macro")
 
 		if isinstance(value,numbers.Integral):
-			source.append(f"const int {key}={value};")
+			source.append(f"const int {key}={str(value).lower()};")
 		elif isinstance(value,tuple) and isinstance(value[1],type):
 			val,dtype=value
 			line = f"const {np2cuda_dtype[dtype]} {key} = "

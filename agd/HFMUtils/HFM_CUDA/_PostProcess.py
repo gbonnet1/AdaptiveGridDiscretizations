@@ -52,19 +52,19 @@ def PostProcess(self):
 		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 	if self.flow_needed: self.Solve('flow')
 
+	flow_vector = misc.block_squeeze(flow.args['flow_vector'],self.shape)
 	if self.model_=='Rander' and 'flow_vector' in self.flow:
 		if self.dualMetric is None: self.dualMetric = self.metric.dual()
-		flow_orig = self.flow['flow_vector']
 		m = fd.as_field(self.metric.m,self.shape,depth=2)
 		w = fd.as_field(self.metric.w,self.shape,depth=1)
-		eucl_gradient = lp.dot_AV(m,flow_orig)+w
-		flow = self.dualMetric.gradient(eucl_gradient)
-		flow[np.isnan(flow)]=0. # Vanishing flow yields nan after gradient
-		flow = self.xp.ascontiguousarray(flow)
-		self.flow['flow_vector_orig'],self.flow['flow_vector'] = flow_orig,flow
+		eucl_gradient = lp.dot_AV(m,flow_vector)+w
+		flow_corrected = self.dualMetric.gradient(eucl_gradient)
+		flow_corrected[np.isnan(flow_corrected)]=0.# Vanishing flow yields nan gradient
+		flow_vector = flow_corrected
+	self.flow_vector = flow_vector
 
 	if self.exportGeodesicFlow:
-		self.hfmOut['flow'] = - self.flow['flow_vector'] * self.h_broadcasted
+		self.hfmOut['flow'] = - flow_vector * self.h_broadcasted
 	self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
 
 def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):

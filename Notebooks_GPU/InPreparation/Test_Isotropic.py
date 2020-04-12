@@ -26,7 +26,7 @@ raise
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
-n=100
+n=50
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
 #    'verbosity':1,
@@ -49,7 +49,7 @@ hfmIn = HFMUtils.dictIn({
 #	'factoringRadius':10000,
 #	'seedRadius':2,
 #	'returns':'in_raw',
-	'bound_active_blocks':10,
+	'bound_active_blocks':5,
 	'traits':{
 	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),

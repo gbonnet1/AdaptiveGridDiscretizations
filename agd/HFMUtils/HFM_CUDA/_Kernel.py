@@ -5,6 +5,7 @@ import numpy as np
 import cupy as cp
 import os
 from collections import OrderedDict
+import copy
 
 
 from . import kernel_traits
@@ -115,6 +116,7 @@ def SetKernel(self):
 		'minChg_freeze_macro':0,
 		'niter_i':1,
 	}
+	flow.policy = copy.copy(eikonal.policy) 
 	flow.policy.nitermax_o = 1
 	flow.policy.solver = 'global_iteration'
 

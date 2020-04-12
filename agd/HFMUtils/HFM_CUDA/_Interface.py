@@ -123,7 +123,7 @@ class Interface(object):
 	GetGeodesics = _GetGeodesics.GetGeodesics
 
 	CostMetric = _SetGeometry.CostMetric
-	GetRHS = _SetArgs.GetRHS
+	SetRHS = _SetArgs.SetRHS
 	global_iteration = _solvers.global_iteration
 	adaptive_gauss_siedel_iteration = _solvers.adaptive_gauss_siedel_iteration
 	set_minChg_thres = _solvers.set_minChg_thres

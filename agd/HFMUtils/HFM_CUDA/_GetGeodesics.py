@@ -2,6 +2,7 @@ import numpy as np
 import cupy as cp
 from . import cupy_module_helper
 from . import inf_convolution
+from . import misc
 
 def GetGeodesics(self):
 		if not self.hasTips: return
@@ -21,8 +22,8 @@ def GetGeodesics(self):
 			'nymin_delay':geodesic_hlen-1,
 			'EuclT':np.uint8,
 			}
-		if any(self.periodic): geodesic_traits['periodic'] = self.periodic
-		traits.update(self.GetValue('geodesic_traits',default=geodesic_traits,
+		if any(self.periodic): traits['periodic'] = self.periodic
+		traits.update(self.GetValue('geodesic_traits',default=traits,
 			help='Traits for the geodesic backtracking kernel') )
 		traits.update({ # Non-negotiable
 			'ndim':self.ndim,
@@ -87,7 +88,7 @@ def GetGeodesics(self):
 			help="Maximum allowed length of geodesics.")
 		
 		flow = self.kernel_data['flow']
-		flow_vector    = misc.block_squeeze(flow.args['flow_vector'],   self.shape)
+		flow_vector    = self.flow_vector
 		flow_weightsum = misc.block_squeeze(flow.args['flow_weightsum'],self.shape)
 		values = self.hfmOut['values'].astype(self.float_t)
 		args = (flow_vector,flow_weightsum,values,eucl)
@@ -109,7 +110,7 @@ def GetGeodesics(self):
 			nBlocks = int(np.ceil(nGeo/block_size))
 
 			SetCst('nGeodesics', nGeo, self.int_t)
-			kernel( (nBlocks,),(block_size,),args + (x_s,len_s,stop_s))
+			geodesic.kernel( (nBlocks,),(block_size,),args + (x_s,len_s,stop_s))
 			corresp_next = []
 			for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
 				geodesics[i].append(x[1:int(l)])

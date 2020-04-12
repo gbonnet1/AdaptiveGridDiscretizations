@@ -39,7 +39,7 @@ from . import misc
 from .. import Grid
 from ... import AutomaticDifferentiation as ad
 
-def GetRHS(self):
+def SetRHS(self):
 	rhs = self.cost.copy()
 	seedTags = cp.full(self.shape,False,dtype=bool)
 
@@ -114,7 +114,9 @@ def GetRHS(self):
 	rhs[pos] = seedValues
 	seedTags[pos] = True
 	eikonal.trigger = seedTags
-	return rhs,seedTags
+
+	self.rhs = rhs
+	self.seedTags = seedTags
 
 def SetArgs(self):
 	if self.verbosity>=1: print("Preparing the problem rhs (cost, seeds,...)")
@@ -130,14 +132,13 @@ def SetArgs(self):
 	eikonal.args['values']	= block_values
 
 	# Set the RHS and seed tags
-	rhs,seedTags = self.GetRHS()
-	self.rhs=rhs
-	eikonal.args['rhs'] = misc.block_expand(rhs,shape_i,
+	self.SetRHS()
+	eikonal.args['rhs'] = misc.block_expand(self.rhs,shape_i,
 		mode='constant',constant_values=np.nan)
 
 	if np.prod(self.shape_i)%8!=0:
 		raise ValueError('Product of shape_i must be a multiple of 8')
-	seedPacked = misc.block_expand(seedTags,shape_i,
+	seedPacked = misc.block_expand(self.seedTags,shape_i,
 		mode='constant',constant_values=True)
 	seedPacked = misc.packbits(seedPacked,bitorder='little')
 	seedPacked = seedPacked.reshape( self.shape_o + (-1,) )
