@@ -7,6 +7,7 @@
 #include "HFM.h"
 #include "REDUCE_i.h"
 #include "GetBool.h"
+#include "Propagation.h"
 
 /* Array suffix convention : 
  arr_t : shape_tot (Total domain shape)
@@ -32,7 +33,7 @@ __global__ void Update(
 
 	if( Propagation::Abort(
 		updateList_o,PRUNING(updatePrev_o,) 
-		MINCHG_FREEZE(minChgPrev_o,updateNext_o)
+		MINCHG_FREEZE(minChgPrev_o,minChgNext_o,updateNext_o,)
 		x_o,&n_o) ){return;} // Also sets x_o, n_o
 
 	const Int n_i = threadIdx.x;
@@ -46,27 +47,30 @@ __global__ void Update(
 	const bool isSeed = GetBool(seeds_t,n_t);
 	const Scalar rhs = rhs_t[n_t];
 
+	#ifndef isotropic_macro // No need to build the scheme in the isotropic case
 	Scalar geom[geom_size];
 	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];}
 	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 	ADAPTIVE_OFFSETS(Int offsets[nactx][ndim];)
 	MIX(const bool mix_is_min = )
 	scheme(geom, CURVATURE(x_t,) weights, offsets);
-	
+	#endif
 
 	DRIFT(
 	Scalar drift[ndim];
 	for(Int k=0; k<ndim; ++k){drift[k] = drift_t[n_t+size_tot*k];}
 	)
 
-	Scalar u_old = iSeed ? rhs : u_t[n_t]; 
-	MULTIP(Int uq_old = isSeed ? 0 : uq_t[n_t];
-	if(isSeed){Normalize(u_old,uq_old);})
+	const Scalar u_old = u_t[n_t]; 
+	MULTIP(const Int uq_old = uq_t[n_t];)
 
 	__shared__ Scalar u_i[size_i]; // Shared block values
 	u_i[n_i] = u_old;
 	MULTIP(__shared__ Int uq_i[size_i];
 	uq_i[n_i] = uq_old;)
+
+	// Apply boundary conditions
+	if(isSeed){u_i[n_i]=rhs; MULTIP(uq_i[n_i]=0; Normalize(&u_i[n_i],&uq_i[n_i]);)}
 
 	WALLS(
 	__shared__ WallsT wallDist_i[size_i];
@@ -118,7 +122,7 @@ __global__ void Update(
 			if(s==0 && kact>=nsym) continue;
 			Int offset[ndim];
 			const Int eps=2*s-1; // direction of offset
-			mult_kv(eps,e,offset);
+			mul_kv(eps,e,offset);
 
 			WALLS(
 			const bool visible = Visible(offset, x_t,wallDist_t, x_i,wallDist_i,n_i);
@@ -251,8 +255,7 @@ __global__ void Update(
 
 	Propagation::Finalize(
 		u_i, PRUNING(updateList_o,) 
-		minChgPrev, MINCHG_FREEZE(minChgNext_o, 
-		updatePrev_o,) updateNext_o,  
+		MINCHG_FREEZE(minChgPrev_o, minChgNext_o, updatePrev_o,) updateNext_o,  
 		x_o, n_o);
 }
 

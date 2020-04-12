@@ -31,16 +31,16 @@ def SetModuleConstant(module,key,value,dtype):
 	"""
 	Sets a global constant in a cupy cuda module.
 	"""
-	if _cupy_has_rawmodule(): 
+	if _cupy_has_RawModule(): 
 		memptr = module.get_global(key)
 	else: 
 		#https://github.com/cupy/cupy/issues/1703
-		b = cupy.core.core.memory_module.BaseMemory()
+		b = cp.core.core.memory_module.BaseMemory()
 		b.ptr = module.get_global_var(key)
-		memptr = cupy.cuda.MemoryPointer(b,0)
+		memptr = cp.cuda.MemoryPointer(b,0)
 
-	value=cupy.array(value,dtype=dtype)
-	module_constant = cupy.ndarray(value.shape, value.dtype, memptr)
+	value=cp.ascontiguousarray(cp.asarray(value,dtype=dtype))
+	module_constant = cp.ndarray(value.shape, value.dtype, memptr)
 	module_constant[...] = value
 
 # cuda does not have int8_t, int32_t, etc

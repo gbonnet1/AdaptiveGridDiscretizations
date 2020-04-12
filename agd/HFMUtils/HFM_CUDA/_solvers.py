@@ -16,13 +16,13 @@ running the gpu eikonal solver.
 def Solve(self,name):
 
 	verb = self.verbosity>=2 or (self.verbosity>=1 and name=='eikonal')
-	if verb: print(f"Running the {kernelName} GPU kernel")
+	if verb: print(f"Running the {name} GPU kernel")
 	data = self.kernel_data[name]
 	data.kernel = data.module.get_function("Update")
 	solver = data.policy.solver
 
 	#Check args
-	assert isinstance(data,collections.OrderedDict)
+	assert isinstance(data.args,collections.OrderedDict)
 	for key,value in data.args.items(): data.args[key] = cp.ascontiguousarray(value)
 	for key,value in data.args.items():
 		if value.dtype.type not in (self.float_t,self.int_t,np.uint8):
@@ -36,7 +36,7 @@ def Solve(self,name):
 	else: raise ValueError(f"Unrecognized solver : {solver}")
 	kernel_time = time.time() - kernel_start # TODO : use cuda event ...
 
-	if verb: print(f"GPU kernel {kernelName} ran for {kernel_time} seconds, "
+	if verb: print(f"GPU kernel {name} ran for {kernel_time} seconds, "
 		f" and {niter_o} iterations.")
 
 	data.stats.update({
@@ -58,8 +58,8 @@ def KernelArgs(data):
 	policy = data.policy
 	args = data.args
 
-	if policy.bound_active_blocks:
-		args['minChgPrev_o'],args['minChgNext_o']=args['minChgNext_o'],args['minChgPrev_o']
+#	if policy.bound_active_blocks:
+#		args['minChgPrev_o'],args['minChgNext_o']=args['minChgNext_o'],args['minChgPrev_o']
 
 	result = tuple(args.values())
 
@@ -76,7 +76,7 @@ def global_iteration(self,data):
 	"""	
 	updateNow_o  = cp.ones(	self.shape_o,   dtype='uint8')
 	updateNext_o = cp.zeros(self.shape_o,   dtype='uint8')
-	updateList_o = cp.ascontiguousarray(xp.flatnonzero(updateNow_o),dtype=self.int_t)
+	updateList_o = cp.ascontiguousarray(cp.flatnonzero(updateNow_o),dtype=self.int_t)
 	nitermax_o = data.policy.nitermax_o
 
 	for niter_o in range(nitermax_o):
@@ -103,8 +103,10 @@ def adaptive_gauss_siedel_iteration(self,data):
 #	kernel = self.module[kernelName].get_function("Update")
 	
 	trigger = data.trigger
-	if trigger.shape==self.shape: trigger = misc.block_expand(data.trigger,self.shape_i)
-	trigger = np.any(trigger.rehsape(self.shape_o+(-1,)),axis=-1)
+	if trigger.shape==self.shape: 
+		trigger = misc.block_expand(data.trigger,self.shape_i,
+		mode='constant',constant_values=False)
+	trigger = np.any(trigger.reshape(self.shape_o+(-1,)),axis=-1)
 	update_o = cp.ascontiguousarray(trigger)
 	policy = data.policy
 	nitermax_o = policy.nitermax_o
@@ -115,15 +117,15 @@ def adaptive_gauss_siedel_iteration(self,data):
 	to the smallness of eps. Nevertheless, pruning allows the bound_active_blocks method,
 	which does, sometimes, have a significant positive effect on performance."""
 	if data.traits['pruning_macro']: 
-		updateList_o = xp.ascontiguousarray(xp.flatnonzero(update_o), dtype=self.int_t)
+		updateList_o = cp.ascontiguousarray(cp.flatnonzero(update_o), dtype=self.int_t)
 		updatePrev_o = np.full_like(update_o,0)
 		flat(updatePrev_o)[updateList_o] = 2*self.ndim+1 # Seeds cause their own initial update
 
 		if policy.bound_active_blocks:
 			policy.minChgPrev_thres = np.inf
 			policy.minChgNext_thres = np.inf
-			SetModuleConstant(data.module,'minChgPrev_thres',policy.minChgPrev_thres,float_t)
-			SetModuleConstant(data.module,'minChgNext_thres',policy.minChgNext_thres,float_t)
+			SetModuleConstant(data.module,'minChgPrev_thres',policy.minChgPrev_thres,self.float_t)
+			SetModuleConstant(data.module,'minChgNext_thres',policy.minChgNext_thres,self.float_t)
 			minChgPrev_o = cp.full(self.shape_o,np.inf,dtype=self.float_t)
 			minChgNext_o = minChgPrev_o.copy()
 			minChg = (minChgPrev_o,minChgNext_o)

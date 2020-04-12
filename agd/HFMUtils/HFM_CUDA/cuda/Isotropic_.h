@@ -4,14 +4,14 @@
 
 #define adaptive_offsets_macro 0
 
-#ifdef diagonal_macro // We're using the same file for the anisotropic diagonal model
+#ifdef isotropic_macro // We're using the same file for the anisotropic diagonal model
 #define adaptive_weights_macro 0
 #endif
 
 #include "TypeTraits.h"
 
 // ndim_macro must be defined
-const Int ndim = ndim_macro
+const Int ndim = ndim_macro;
 const Int nsym = ndim; // Number of symmetric offsets
 const Int nfwd = 0; // Number of forward offsets
 const Int factor_size = ndim; // Size of the metric used for factorization (diagonal)
@@ -28,14 +28,12 @@ const Int offsets[ndim][ndim] = {{1,0,0,0,0},{0,1,0,0,0},{0,0,1,0,0},{0,0,0,1,0}
 
 #include "Geometry_.h"
 
-#if diagonal_macro
+#if isotropic_macro
+__constant__ Scalar weights[ndim];
+#else // Isotropic model
 const Int geom_size = ndim;
 void scheme(const Scalar dual_costs2[ndim], Scalar weights[ndim], const Int offsets[ndim]){
 	copy_vV(dual_costs2,weights);}
-#else // Isotropic model
-const Int geom_size = 0;
-__constant__ Scalar weights[ndim];
-void scheme(const Scalar geom[0], const Scalar weights[ndim], const Int offsets[ndim]){}
 #endif
 
 FACTOR(

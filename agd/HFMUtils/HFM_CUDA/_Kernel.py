@@ -2,8 +2,15 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
-from ... import AutomaticDifferentiation as ad
+import cupy as cp
+import os
+from collections import OrderedDict
+
+
+from . import kernel_traits
 from .cupy_module_helper import SetModuleConstant,GetModule
+from . import cupy_module_helper
+from ... import AutomaticDifferentiation as ad
 
 """
 This file implements some member functions of the Interface class, related with the 
@@ -15,10 +22,13 @@ def SetKernelTraits(self):
 	Set the traits of the eikonal kernel.
 	"""
 	if self.verbosity>=1: print("Setting the kernel traits.")
+	eikonal = self.kernel_data['eikonal']
+	policy = eikonal.policy
+
 	traits = kernel_traits.default_traits(self)
 	traits.update(self.GetValue('traits',default=traits,
 		help="Optional trait parameters for the eikonal kernel."))
-	self.kernel_data['eikonal'].traits = traits
+	eikonal.traits = traits
 
 	self.multiprecision = (self.GetValue('multiprecision',default=False,
 		help="Use multiprecision arithmetic, to improve accuracy") or 
@@ -43,14 +53,14 @@ def SetKernelTraits(self):
 	if self.HasValue('drift') or self.model.startswith('Rander'):
 		traits['drift_macro']=1
 
-	self.bound_active_blocks = self.GetValue('bound_active_blocks',default=False,
+	policy.bound_active_blocks = self.GetValue('bound_active_blocks',default=False,
 		help="Limit the number of active blocks in the front. " 
 		"Admissible values : (False,True, or positive integer)")
-	if self.bound_active_blocks: 
+	if policy.bound_active_blocks: 
 		traits['minChg_freeze_macro']=1
 		traits['pruning_macro']=1
 
-	self.strict_iter_o = traits.get('strict_iter_o_macro',0)
+	policy.strict_iter_o = traits.get('strict_iter_o_macro',0)
 	self.float_t = np.dtype(traits['Scalar']).type
 	self.int_t   = np.dtype(traits['Int']   ).type
 	self.shape_i = traits['shape_i']
@@ -72,6 +82,7 @@ def SetKernel(self):
 	if self.periodic != self.periodic_default:
 		traits['periodic_macro']=1
 		traits['periodic_axes']=self.periodic
+	if self.model_=='Isotropic': traits['isotropic_macro']=1
 
 	eikonal.source = cupy_module_helper.traits_header(traits,
 		join=True,size_of_shape=True,log2_size=True) + "\n"
@@ -80,8 +91,8 @@ def SetKernel(self):
 		model_source = f'#include "{self.model}.h"\n'
 	else: 
 		model = self.model_ # Dimension generic
-		if model == 'Rander': model = 'Riemann' # Rander = Riemann + drift
-		elif model == 'Diagonal': model = 'Isotropic'
+		if   model == 'Rander':   model = 'Riemann' # Rander = Riemann + drift
+		elif model == 'Diagonal': model = 'Isotropic' # Same file handles both
 		model_source = f'#include "{model}_.h"\n' 
 
 	self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
@@ -120,7 +131,7 @@ def SetKernel(self):
 
 	flow.source = cupy_module_helper.traits_header(flow.traits,
 		join=True,size_of_shape=True,log2_size=True) + "\n"
-	flow.source += self.source['model']+self.cuda_date_modified
+	flow.source += model_source+self.cuda_date_modified
 	flow.module = GetModule(flow.source,self.cuoptions)
 
 	# Set the constants
@@ -128,7 +139,7 @@ def SetKernel(self):
 		for module in (eikonal.module,flow.module): SetModuleConstant(module,*args)
 
 	float_t,int_t = self.float_t,self.int_t		
-	SetCst('tol',self.tol,float_t)
+	SetCst('tol',eikonal.policy.tol,float_t)
 
 	self.size_o = np.prod(self.shape_o)
 	SetCst('shape_o',self.shape_o,int_t)
@@ -177,8 +188,7 @@ def SetKernel(self):
 
 	# Sort the kernel arguments
 	args = eikonal.args
-	flow_argnames = ('values','valuesq','valuesNext','valuesqNext',
+	argnames = ('values','valuesq','valuesNext','valuesqNext',
 		'geom','drift','seedTags','rhs','wallDist')
-	eikonal_argnames = flow_argnames + ('minChgPrev_o','minChgNext_o')
-	eikonal.args = OrderedDict(key:args[key] for key in eikonal_argnames if key in args)
-	flow.args = OrderedDict(key:args[key] for key in eikonal_argnames if key in args)
+	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
+	flow.args = eikonal.args.copy() # Further arguments added later

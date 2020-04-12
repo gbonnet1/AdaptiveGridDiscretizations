@@ -10,6 +10,7 @@ MINCHG_FREEZE(
 __constant__ Scalar minChgPrev_thres, minChgNext_thres; // Previous and next threshold for freezing
 )
 
+namespace Propagation {
 // Tag the neighbors for update
 void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * updateNext_o){
 	if(n_i>2*ndim) return;
@@ -26,9 +27,9 @@ void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * update
 		updateNext_o[Grid::Index_per(neigh_o,shape_o)]=1 PRUNING(+n_i);}
 }
 
-bool Abort(const Int * updateList_o, PRUNING(const BoolAtom * updatePrev_o,) 
-	MINCHG_FREEZE(const Scalar * minChgPrev_o, BoolAtom * updateNext_o ) 
-	Int x_o[ndim], Int * n_o_ptr){
+bool Abort(Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) 
+MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o, BoolAtom * updateNext_o,) 
+Int x_o[ndim], Int * n_o_ptr){
 
 	const Int n_i = threadIdx.x;
 	Int n_o;
@@ -94,8 +95,8 @@ bool Abort(const Int * updateList_o, PRUNING(const BoolAtom * updatePrev_o,)
 }
 	
 void Finalize(
-	Scalar chg_i[size_i], PRUNING(const Int * updateList_o,) 
-	const Scalar minChgPrev, MINCHG_FREEZE(const Scalar * minChgNext_o, 
+	Scalar chg_i[size_i], PRUNING(Int * updateList_o,) 
+	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o, 
 	const BoolAtom * updatePrev_o,) BoolAtom * updateNext_o,  
 	Int x_o[ndim], Int n_o
 	){
@@ -121,4 +122,6 @@ void Finalize(
 	if(propagate){TagNeighborsForUpdate(n_i,x_o,updateNext_o);}
 	PRUNING(if(n_i==size_i-1){updateList_o[blockIdx.x] 
 		= propagate ? n_o : MINCHG_FREEZE(freeze ? (n_o+size_o) :) -1;})
+}
+
 }

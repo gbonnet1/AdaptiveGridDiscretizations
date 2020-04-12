@@ -55,6 +55,10 @@ template<typename T>
 void mul_kV(const T k, T v[ndim]){
 	for(Int i=0; i<ndim; ++i){v[i]*=k;}}
 
+template<typename T>
+void mul_kv(const T k, const T v[ndim], T out[ndim]){
+	for(Int i=0; i<ndim; ++i){out[i] = k * v[i];}}
+
 void div_Vk(Scalar v[ndim], const Scalar k){
 	const Scalar l=1./k; mul_kV(l,v);}
 
@@ -148,7 +152,7 @@ Scalar coef_m(const Scalar m[symdim], const Int i, const Int j){
 }
 
 void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar out[ndim]){
-	fill_kV(0.,out);
+	fill_kV(Scalar(0),out);
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
 		for(Int j=0; j<=i; ++j){

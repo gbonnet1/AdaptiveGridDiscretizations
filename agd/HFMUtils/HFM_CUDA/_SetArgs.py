@@ -35,13 +35,16 @@
 import numpy as np
 import cupy as cp
 from .inf_convolution import inf_convolution
+from . import misc
+from .. import Grid
+from ... import AutomaticDifferentiation as ad
 
 def GetRHS(self):
 	rhs = self.cost.copy()
 	seedTags = cp.full(self.shape,False,dtype=bool)
 
 	eikonal = self.kernel_data['eikonal']
-	self.seeds = self.GetValue('seeds',default=None,
+	seeds = self.GetValue('seeds',default=None,
 		help="Points from where the front propagation starts",array_float=True)
 	if seeds is None:
 		if eikonal.solver=='global_iteration': return
@@ -55,11 +58,12 @@ def GetRHS(self):
 		return rhs,seedTags
 
 	# Check and adimensionize seeds
-	assert self.seeds.ndim==2 and self.seeds.shape[1]==self.ndim
-	self.seeds = Grid.PointFromIndex(self.hfmIn,self.seeds,to=True) 
-	if len(self.seeds)==1: self.seed=self.seeds[0]
+	assert seeds.ndim==2 and seeds.shape[1]==self.ndim
+	seeds = Grid.PointFromIndex(self.hfmIn,seeds,to=True) 
+	self.seeds=seeds
+	if len(seeds)==1: self.seed = seeds[0]
 
-	seedValues = cp.zeros(len(self.seeds),dtype=self.float_t)
+	seedValues = cp.zeros(len(seeds),dtype=self.float_t)
 	seedValues = self.GetValue('seedValues',default=seedValues,
 		help="Initial value for the front propagation",array_float=True)
 	if not ad.is_ad(seedValues):
@@ -71,7 +75,7 @@ def GetRHS(self):
 		help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
 	if seedRadius==0.:
-		seedIndices = np.round(self.seeds).astype(int)
+		seedIndices = np.round(seeds).astype(int)
 		self.seedValues = seedValues
 		self.seedIndices = seedIndices		
 	else:
@@ -80,7 +84,7 @@ def GetRHS(self):
 		aX = [cp.arange(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
 		neigh =  ad.stack(cp.meshgrid( *aX, indexing='ij'),axis=-1)
 		neigh = neigh.reshape(-1,neigh.shape[-1])
-		neighValues = seedValues.repeat(len(neigh)//len(self.seeds)) # corrected below
+		neighValues = seedValues.repeat(len(neigh)//len(seeds)) # corrected below
 
 		# Select neighbors which are close enough
 		neigh = neigh[ad.Optimization.norm(neigh-self.seed,axis=-1) < r]
@@ -117,7 +121,7 @@ def SetArgs(self):
 	eikonal = self.kernel_data['eikonal']
 	shape_i = self.shape_i
 	
-	values = ad.GetValue('values',default=None,
+	values = self.GetValue('values',default=None,
 		help="Initial values for the eikonal solver")
 	if values is None: values = cp.full(self.shape,np.inf,dtype=self.float_t)
 	block_values = misc.block_expand(values,shape_i,
@@ -126,6 +130,7 @@ def SetArgs(self):
 
 	# Set the RHS and seed tags
 	rhs,seedTags = self.GetRHS()
+	self.rhs=rhs
 	eikonal.args['rhs'] = misc.block_expand(rhs,shape_i,
 		mode='constant',constant_values=np.nan)
 

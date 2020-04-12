@@ -2,22 +2,16 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
-import cupy as cp
-import os
-import time
-from collections import OrderedDict,namedTuple
+from collections import OrderedDict
 from types import SimpleNamespace
-
-from . import kernel_traits
-from . import misc
-from . import cupy_module_helper
-from .cupy_module_helper import GetModule,SetModuleConstant
 
 # Deferred implementation of Interface member functions
 from . import _Kernel
 from . import _solvers 
 from . import _GetGeodesics
 from . import _PostProcess
+from . import _SetGeometry
+from . import _SetArgs
 
 from ... import AutomaticDifferentiation as ad
 from ... import Metrics
@@ -56,21 +50,14 @@ class Interface(object):
 		if self.model.endswith("Ext2"): self.model=self.model[:-4]+"2"
 
 		self.ndim = len(hfmIn['dims'])
-		self.kernel_data = {key:kernel_data_default() 
+		self.kernel_data = {key:SimpleNamespace()
 			for key in ('eikonal','flow','geodesic','forwardAD','reverseAD')}
+		for value in self.kernel_data.values(): 
+			value.__dict__.update({'args':dict(),'policy':SimpleNamespace()})
+		# ['traits','source','policy','module','kernel','args','trigger','stats']
 
 	@property # Dimension agnostic model
 	def model_(self): return self.model[:-1]
-	
-	def kernel_data_default():
-		members = ['traits','source','policy','module','kernel','args','trigger','stats']
-		dtype = namedTuple('solve',members,defaults=[None for m in members])
-		result = dtype()
-		result.traits=dict()
-		result.policy=SimpleNamespace() 
-		result.args = OrderedDict()
-		result.stats = dict()
-		return result
 		
 	def HasValue(self,key):
 		self.hfmOut['keys']['visited'].append(key)
@@ -118,7 +105,7 @@ class Interface(object):
 		self.SetGeometry()
 		self.SetArgs()
 		self.SetKernel()
-		self.Solve()
+		self.Solve('eikonal')
 		self.PostProcess()
 		self.SolveAD()
 		self.GetGeodesics()
@@ -127,16 +114,16 @@ class Interface(object):
 		return self.hfmOut
 
 	SetKernelTraits = _Kernel.SetKernelTraits
-	SetGeometry = _PreProcess.SetGeometry
-	SetArgs = _PreProcess.SetArgs
+	SetGeometry = _SetGeometry.SetGeometry
+	SetArgs = _SetArgs.SetArgs
 	SetKernel = _Kernel.SetKernel
 	Solve = _solvers.Solve
 	PostProcess = _PostProcess.PostProcess
 	SolveAD = _PostProcess.SolveAD
 	GetGeodesics = _GetGeodesics.GetGeodesics
 
-	CostMetric = _PreProcess.CostMetric
-	GetRHS = _PreProcess.GetRHS
+	CostMetric = _SetGeometry.CostMetric
+	GetRHS = _SetArgs.GetRHS
 	global_iteration = _solvers.global_iteration
 	adaptive_gauss_siedel_iteration = _solvers.adaptive_gauss_siedel_iteration
 	set_minChg_thres = _solvers.set_minChg_thres

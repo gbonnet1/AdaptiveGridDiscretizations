@@ -91,11 +91,11 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 
 	float_res = np.finfo(self.float_t).resolution
 	if not hasattr(self,linear_atol):
-		self.linear_atol = self.GetValue('linear_atol',default=float_res*5
-			help='Absolute convergence tolerance for the linear systems')
+		self.linear_atol = self.GetValue('linear_atol',default=float_res*5,
+			help="Absolute convergence tolerance for the linear systems")
 	if not hasattr(self,linear_rtol):
 		self.linear_rtol = self.GetValue('linear_rtol',default=float_res*5,
-			help='Relative convergence tolerance for the linear systems')
+			help="Relative convergence tolerance for the linear systems")
 
 	SetCst('rtol',self.linear_rtol,self.float_t)
 	SetCst('atol',self.linear_atol,self.float_t)

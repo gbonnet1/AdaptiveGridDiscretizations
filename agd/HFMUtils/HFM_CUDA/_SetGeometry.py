@@ -19,6 +19,7 @@ def CostMetric(self,x):
 
 def SetGeometry(self):
 	if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
+	eikonal = self.kernel_data['eikonal']
 
 	# Domain shape and grid scale
 	self.shape = tuple(self.GetValue('dims',
@@ -28,7 +29,7 @@ def SetGeometry(self):
 	self.periodic = self.GetValue('periodic',default=self.periodic_default,
 		help="Apply periodic boundary conditions on some axes")
 	self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
-	if self.bound_active_blocks is True: 
+	if eikonal.policy.bound_active_blocks is True: 
 		self.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
 	
 	# Set the discretization gridScale(s)
@@ -57,6 +58,7 @@ def SetGeometry(self):
 
 	if self.model_=='Isotropic':
 		self._metric = Metrics.Diagonal(cp.ones(self.ndim,dtype=self.float_t))
+		self._dualMetric = None
 	elif self.isCurvature: 
 		pass
 	else:
@@ -146,12 +148,13 @@ def SetGeometry(self):
 		float_resolution = np.finfo(self.float_t).resolution
 		tol = mean_cost_bound * float_resolution * 5.
 		if not self.multiprecision: tol *= np.sum(self.shape)
-		self.hfmOut['keys']['defaulted']['tol']=self.float_t(tol)
+		self.hfmOut['keys']['defaulted']['tol']=self.float_t(float(tol))
+	eikonal.policy.tol = tol
 
 	eikonal = self.kernel_data['eikonal']
-	if self.bound_active_blocks:
+	if eikonal.policy.bound_active_blocks:
 		eikonal.policy.minChg_delta_min = self.GetValue(
-			'minChg_delta_min',default=float(self.h)/10.,
+			'minChg_delta_min',default=float(np.min(self.h))/10.,
 			help="Minimal threshold increase with bound_active_blocks method")
 
 	# Walls

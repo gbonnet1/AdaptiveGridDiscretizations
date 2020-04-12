@@ -179,7 +179,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 		const Scalar t = v[k] - vmin;
 		if(value<=t){break;}
 		Scalar w = weights[k]; 
-		ANISO(if(w==0) continue;) // Avoids NaNs in the form 0*infinity
+		if(w==0) continue; // Avoids NaNs in the form 0*infinity
 		ORDER2(if(order2[k]) w*=9./4.;)
 		a+=w;
 		b+=w*t;
