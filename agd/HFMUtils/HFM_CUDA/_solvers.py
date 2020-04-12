@@ -41,11 +41,10 @@ def Solve(self,name):
 
 	data.stats.update({
 		'niter_o':niter_o,
-		'time':kernel_time,
-	})
+		'time':kernel_time,})
 
-	if niter_o>=solver.policy.nitermax_o:
-		nonconv_msg = (f"Solver {solver} for kernel {eikonal} did not "
+	if niter_o>=data.policy.nitermax_o:
+		nonconv_msg = (f"Solver {solver} for kernel {name} did not "
 			f"reach convergence after maximum allowed number {niter_o} of iterations")
 		if self.raiseOnNonConvergence: raise ValueError(nonconv_msg)
 		else: self.Warn(nonconv_msg)
@@ -61,8 +60,9 @@ def KernelArgs(data):
 #	if policy.bound_active_blocks:
 #		args['minChgPrev_o'],args['minChgNext_o']=args['minChgNext_o'],args['minChgPrev_o']
 
-	result = tuple(args.values())
+	kernel_args = tuple(args.values())
 
+	# Only used for eikonal
 	if policy.strict_iter_o:
 		args['values'],args['valuesNext'] = args['valuesNext'],args['values']
 		if policy.multiprecision:
@@ -107,7 +107,7 @@ def adaptive_gauss_siedel_iteration(self,data):
 		trigger = misc.block_expand(data.trigger,self.shape_i,
 		mode='constant',constant_values=False)
 	trigger = np.any(trigger.reshape(self.shape_o+(-1,)),axis=-1)
-	update_o = cp.ascontiguousarray(trigger)
+	update_o = cp.ascontiguousarray(trigger.astype(np.uint8))
 	policy = data.policy
 	nitermax_o = policy.nitermax_o
 
@@ -116,10 +116,10 @@ def adaptive_gauss_siedel_iteration(self,data):
 	However it usually has no effect on performance, or a slight negative effect, due
 	to the smallness of eps. Nevertheless, pruning allows the bound_active_blocks method,
 	which does, sometimes, have a significant positive effect on performance."""
-	if data.traits['pruning_macro']: 
-		updateList_o = cp.ascontiguousarray(cp.flatnonzero(update_o), dtype=self.int_t)
-		updatePrev_o = np.full_like(update_o,0)
-		flat(updatePrev_o)[updateList_o] = 2*self.ndim+1 # Seeds cause their own initial update
+	if data.traits['pruning_macro']:
+		updatePrev_o = update_o * (2*self.ndim+1) # Seeds cause their own initial update
+		updateNext_o = np.full_like(update_o,0)
+		updateList_o = cp.ascontiguousarray(cp.flatnonzero(updatePrev_o), dtype=self.int_t)
 
 		if policy.bound_active_blocks:
 			policy.minChgPrev_thres = np.inf
@@ -133,23 +133,24 @@ def adaptive_gauss_siedel_iteration(self,data):
 
 		for niter_o in range(nitermax_o):
 						
-			"""
-			show = np.zeros_like(update_o)
+			
+			show = np.zeros_like(updatePrev_o)
 			l=updateList_o
 			flat(show)[ l[l<self.size_o] ]=1 # Active
 			flat(show)[ l[l>=self.size_o]-self.size_o ]=2 # Frozen
 			print(show); #print(np.max(self.block['valuesq']))
-			"""
+			
 			#print(updatePrev_o)
 
 			updateList_o = np.repeat(updateList_o,2*self.ndim+1)
 			if updateList_o.size==0: return niter_o
 			data.kernel((updateList_o.size,),(self.size_i,), 
-				KernelArgs(data) + minChg + (updateList_o,updatePrev_o,update_o))
-			updatePrev_o,update_o = update_o,updatePrev_o
+				KernelArgs(data) + minChg + (updateList_o,updatePrev_o,updateNext_o))
+#			print("after kernel: \n",updateNext_o,"\n")
+			updatePrev_o,updateNext_o = updateNext_o,updatePrev_o
 			updateList_o = updateList_o[updateList_o!=-1]
 			if policy.bound_active_blocks: 
-				self.set_minChg_thres(data,updateList_o)
+				self.set_minChg_thres(data,updateList_o,minChgNext_o)
 				minChg = tuple(reversed(minChg))
 
 	else: # No pruning
@@ -160,14 +161,14 @@ def adaptive_gauss_siedel_iteration(self,data):
 			if updateList_o.size==0: return niter_o
 #			for key,value in self.block.items(): print(key,type(value))
 			data.kernel((updateList_o.size,),(self.size_i,), 
-				KernelArgs(kernelName) + (updateList_o,update_o))
+				KernelArgs(data) + (updateList_o,update_o))
 #			print(self.block['values'])
 #			print(self.block['values'],self.block['valuesNext'],self.block['values'] is self.block['valuesNext'])
 
 
 	return nitermax_o
 
-def set_minChg_thres(self,data,updateList_o):
+def set_minChg_thres(self,data,updateList_o,minChgNext_o):
 	"""
 	Set the threshold for the AGSI variant limiting the number of active blocks, based
 	on causality.
@@ -186,7 +187,7 @@ def set_minChg_thres(self,data,updateList_o):
 		minChgPrev_delta = policy.minChgNext_thres - minChgPrev_thres
 		if not np.isfinite(minChgPrev_delta): #nActiveBlocks==nConsideredBlocks: #:
 			activeList = updateList_o[activePos]
-			activeMinChg = flat(data.args['minChgNext_o'])[activeList]
+			activeMinChg = flat(minChgNext_o[activeList])
 #			print(f"{np.min(activeMinChg)},{type(np.min(activeMinChg))}")
 			minChgPrev_thres = float(np.min(activeMinChg))
 			policy.minChgNext_thres = float(np.max(activeMinChg))

@@ -119,6 +119,7 @@ def GetRHS(self):
 def SetArgs(self):
 	if self.verbosity>=1: print("Preparing the problem rhs (cost, seeds,...)")
 	eikonal = self.kernel_data['eikonal']
+	policy = eikonal.policy
 	shape_i = self.shape_i
 	
 	values = self.GetValue('values',default=None,
@@ -143,11 +144,11 @@ def SetArgs(self):
 	eikonal.args['seedTags'] = seedPacked
 
 	# Handle multiprecision
-	if self.multiprecision:
+	if policy.multiprecision:
 		block_valuesq = cp.zeros(block_values.shape,dtype=self.int_t)
 		eikonal.args['valuesq'] = block_valuesq
 
-	if eikonal.policy.strict_iter_o:
+	if policy.strict_iter_o:
 		eikonal.args['valuesNext']=block_values.copy()
-		if self.multiprecision:
+		if policy.multiprecision:
 			eikonal.args['valuesqNext']=block_valuesq.copy()

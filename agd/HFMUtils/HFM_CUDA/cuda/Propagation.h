@@ -23,20 +23,21 @@ void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * update
 	Int neigh_o[ndim];
 	for(Int l=0; l<ndim; ++l) {neigh_o[l]=x_o[l];}
 	neigh_o[k]+=eps;
+	if(debug_print && n_i==2*ndim){printf("In TagNeighbors n_i=%i, x_o=%i,%i, neigh_o=%i,%i",
+		n_i,x_o[0],x_o[1],neigh_o[0],neigh_o[1]);}
 	if(Grid::InRange_per(neigh_o,shape_o)) {
 		updateNext_o[Grid::Index_per(neigh_o,shape_o)]=1 PRUNING(+n_i);}
 }
 
 bool Abort(Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) 
 MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o, BoolAtom * updateNext_o,) 
-Int x_o[ndim], Int * n_o_ptr){
+Int x_o[ndim], Int & n_o){
 
 	const Int n_i = threadIdx.x;
-	Int n_o;
 
-	const Int n_o_remove = -1;
-	const Int n_o_stayfrozen = -2;
-	const Int n_o_unfreeze = -3;
+	PRUNING(      const Int n_o_remove = -1;)
+	MINCHG_FREEZE(const Int n_o_stayfrozen = -2;
+	              const Int n_o_unfreeze = -3;)
 
 	if(n_i==0){
 		n_o = updateList_o[blockIdx.x];
@@ -81,7 +82,6 @@ Int x_o[ndim], Int * n_o_ptr){
 	#endif
 	}
 
-	*n_o_ptr = n_o;
 	__syncthreads();
 
 	PRUNING(if(n_o==n_o_remove MINCHG_FREEZE(|| n_o==n_o_stayfrozen)) {return true;})

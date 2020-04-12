@@ -53,7 +53,7 @@ class Interface(object):
 		self.kernel_data = {key:SimpleNamespace()
 			for key in ('eikonal','flow','geodesic','forwardAD','reverseAD')}
 		for value in self.kernel_data.values(): 
-			value.__dict__.update({'args':dict(),'policy':SimpleNamespace()})
+			value.__dict__.update({'args':dict(),'policy':SimpleNamespace(),'stats':dict()})
 		# ['traits','source','policy','module','kernel','args','trigger','stats']
 
 	@property # Dimension agnostic model

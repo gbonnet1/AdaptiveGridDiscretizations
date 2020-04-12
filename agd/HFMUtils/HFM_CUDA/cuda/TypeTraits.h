@@ -10,6 +10,7 @@ typedef float Scalar;
 
 #ifndef Int_macro
 typedef int Int;
+const Int Int_Max = 2147483647;
 #endif
 
 /// Ceil of the division of positive numbers

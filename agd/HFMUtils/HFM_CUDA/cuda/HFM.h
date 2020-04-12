@@ -70,7 +70,7 @@ void HFMNeighbors(const Int n_i,
 
 	// Find the minimum value for the multi-precision int, and account for it
 	MULTIP(
-	*vqmin = Int_MAX;
+	*vqmin = Int_Max;
 	for(Int k=0; k<nact; ++k){
 		if(v[k]<infinity()){
 			*vqmin = min(*vqmin,vq[k]);}

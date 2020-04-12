@@ -20,6 +20,7 @@ def CostMetric(self,x):
 def SetGeometry(self):
 	if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
 	eikonal = self.kernel_data['eikonal']
+	policy = eikonal.policy
 
 	# Domain shape and grid scale
 	self.shape = tuple(self.GetValue('dims',
@@ -107,7 +108,6 @@ def SetGeometry(self):
 			if self.drift is None: self.drift = self.float_t(0.)
 			self.drift += self.metric.w
 
-	eikonal = self.kernel_data['eikonal']
 	eikonal.args['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
 		self.shape_i,mode='constant',constant_values=np.inf,contiguous=True)
 	if self.drift is not None:
@@ -147,13 +147,12 @@ def SetGeometry(self):
 		mean_cost_bound = np.mean(cost_bound)
 		float_resolution = np.finfo(self.float_t).resolution
 		tol = mean_cost_bound * float_resolution * 5.
-		if not self.multiprecision: tol *= np.sum(self.shape)
+		if not policy.multiprecision: tol *= np.sum(self.shape)
 		self.hfmOut['keys']['defaulted']['tol']=self.float_t(float(tol))
-	eikonal.policy.tol = tol
+	policy.tol = tol
 
-	eikonal = self.kernel_data['eikonal']
-	if eikonal.policy.bound_active_blocks:
-		eikonal.policy.minChg_delta_min = self.GetValue(
+	if policy.bound_active_blocks:
+		policy.minChg_delta_min = self.GetValue(
 			'minChg_delta_min',default=float(np.min(self.h))/10.,
 			help="Minimal threshold increase with bound_active_blocks method")
 

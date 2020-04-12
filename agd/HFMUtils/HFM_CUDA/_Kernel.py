@@ -30,10 +30,10 @@ def SetKernelTraits(self):
 		help="Optional trait parameters for the eikonal kernel."))
 	eikonal.traits = traits
 
-	self.multiprecision = (self.GetValue('multiprecision',default=False,
+	policy.multiprecision = (self.GetValue('multiprecision',default=False,
 		help="Use multiprecision arithmetic, to improve accuracy") or 
 		self.GetValue('values_float64',default=False) )
-	if self.multiprecision: 
+	if policy.multiprecision: 
 		traits['multiprecision_macro']=1
 		traits['strict_iter_o_macro']=1
 		traits['strict_iter_i_macro']=1
@@ -74,6 +74,7 @@ def SetKernel(self):
 	if self.verbosity>=1: print("Preparing the GPU kernel")
 	# Set a few last traits
 	eikonal = self.kernel_data['eikonal']
+	policy = eikonal.policy
 	traits = eikonal.traits
 	if self.isCurvature:
 		traits['xi_var_macro'] = int(not np.isscalar(self.xi))
@@ -85,7 +86,8 @@ def SetKernel(self):
 	if self.model_=='Isotropic': traits['isotropic_macro']=1
 
 	eikonal.source = cupy_module_helper.traits_header(traits,
-		join=True,size_of_shape=True,log2_size=True) + "\n"
+		join=True,size_of_shape=True,log2_size=True,integral_max=True) + "\n"
+	print(eikonal.source)
 
 	if self.isCurvature: 
 		model_source = f'#include "{self.model}.h"\n'
@@ -130,7 +132,7 @@ def SetKernel(self):
 		(self.isCurvature and (self.unorientedTips is not None)))
 
 	flow.source = cupy_module_helper.traits_header(flow.traits,
-		join=True,size_of_shape=True,log2_size=True) + "\n"
+		join=True,size_of_shape=True,log2_size=True,integral_max=True) + "\n"
 	flow.source += model_source+self.cuda_date_modified
 	flow.module = GetModule(flow.source,self.cuoptions)
 
@@ -149,7 +151,7 @@ def SetKernel(self):
 	SetCst('shape_tot',self.shape,int_t) # Used for periodicity
 	SetCst('size_tot', size_tot,  int_t) # Used for geom indexing
 
-	if self.multiprecision:
+	if policy.multiprecision:
 		# Choose power of two, significantly less than h
 		h = float(np.min(self.h))
 		self.multip_step = 2.**np.floor(np.log2(h/10)) 
@@ -178,7 +180,6 @@ def SetKernel(self):
 		if self.kappa.ndim==0: SetCst('kappa',self.kappa,float_t)
 
 	# Set the kernel arguments
-	policy = eikonal.policy
 	policy.solver = self.GetValue('solver',default='AGSI',
 		help="Choice of fixed point solver (AGSI, global_iteration)")
 	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,

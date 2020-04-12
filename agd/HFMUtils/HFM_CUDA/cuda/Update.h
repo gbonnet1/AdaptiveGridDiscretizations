@@ -34,7 +34,8 @@ __global__ void Update(
 	if( Propagation::Abort(
 		updateList_o,PRUNING(updatePrev_o,) 
 		MINCHG_FREEZE(minChgPrev_o,minChgNext_o,updateNext_o,)
-		x_o,&n_o) ){return;} // Also sets x_o, n_o
+		x_o,n_o) ){return;} // Also sets x_o, n_o
+
 
 	const Int n_i = threadIdx.x;
 	Int x_i[ndim];
@@ -194,6 +195,9 @@ __global__ void Update(
 	Int active_side[nsym];
 	Int kmix=0; 
 	) 
+	if(debug_print && n_i==4){
+		printf("After abort n_o=%i, x_o=%i,%i", n_o,x_o[0],x_o[1]);}
+
 
 	// Compute and save the values
 	HFMIter(!isSeed, n_i, 

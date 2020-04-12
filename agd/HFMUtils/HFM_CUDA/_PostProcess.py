@@ -19,7 +19,7 @@ def PostProcess(self):
 	if self.verbosity>=1: print("Post-Processing")
 	eikonal = self.kernel_data['eikonal']
 	values = misc.block_squeeze(eikonal.args['values'],self.shape)
-	if self.multiprecision:
+	if eikonal.policy.multiprecision:
 		valuesq = misc.block_squeeze(eikonal.args['valuesq'],self.shape)
 		if self.GetValue('values_float64',default=False,
 			help="Export values using the float64 data type"):
@@ -48,7 +48,7 @@ def PostProcess(self):
 	if flow.traits.get('flow_vector_macro',False):
 		flow.args['flow_vector']    = cp.empty((ndim,)+shape_oi,dtype=self.float_t)
 
-	self.flow_needed = any(self.flow_traits.get(key+"_macro",False) for key in 
+	self.flow_needed = any(flow.traits.get(key+"_macro",False) for key in 
 		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 	if self.flow_needed: self.Solve('flow')
 
@@ -65,6 +65,7 @@ def PostProcess(self):
 
 	if self.exportGeodesicFlow:
 		self.hfmOut['flow'] = - self.flow['flow_vector'] * self.h_broadcasted
+	self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
 
 def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	"""

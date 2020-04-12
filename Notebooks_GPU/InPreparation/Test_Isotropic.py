@@ -26,7 +26,7 @@ raise
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
-n=80
+n=100
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
 #    'verbosity':1,
@@ -35,7 +35,7 @@ hfmIn = HFMUtils.dictIn({
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
 #    'raiseOnNonConvergence':False,
-    'nitermax_o':100,
+#    'nitermax_o':5,
 #    'tol':1e-8,
 #    'multiprecision':True,
 #    'values_float64':True,
@@ -96,7 +96,7 @@ hfmOut = hfmIn.RunGPU()
 
 
 if len(hfmOut['values'])<22: print(hfmOut['values'])
-print(f"niter_o : {hfmOut['niter_o']}")
+#print(f"niter_o : {hfmOut['niter_o']}")
 
 #Comparison with CPU.
 
@@ -110,12 +110,13 @@ hfmInCPU.update({
 #	'factoringPointChoice':'Key',
 })
 
-if False: #Isotopic code
+if True: #Isotopic code
 	hfmInCPU['cost']=hfmIn['cost'].get()
 	hfmOutCPU = hfmInCPU.Run()
+	solverGPUTime = hfmOut['stats']['eikonal']['time']
 	print("Infinity norm of error : ",norm_infinity(hfmOut['values'].get()-hfmOutCPU['values']))
-	print(f"GPU(s) : {hfmOut['solverGPUTime']}, CPU(s) : {hfmOutCPU['FMCPUTime']},"
-		f"Acceleration : {hfmOutCPU['FMCPUTime']/hfmOut['solverGPUTime']}")
+	print(f"GPU(s) : {solverGPUTime}, CPU(s) : {hfmOutCPU['FMCPUTime']},"
+		f"Acceleration : {hfmOutCPU['FMCPUTime']/solverGPUTime}")
 
 if False: # Riemannian code
 	from agd import Metrics
