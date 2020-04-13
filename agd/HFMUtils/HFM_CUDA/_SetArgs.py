@@ -134,7 +134,7 @@ def SetArgs(self):
 	# Set the RHS and seed tags
 	self.SetRHS()
 	eikonal.args['rhs'] = misc.block_expand(self.rhs,shape_i,
-		mode='constant',constant_values=np.nan)
+		mode='constant',constant_values=np.inf)
 
 	if np.prod(self.shape_i)%8!=0:
 		raise ValueError('Product of shape_i must be a multiple of 8')

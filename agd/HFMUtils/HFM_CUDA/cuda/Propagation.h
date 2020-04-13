@@ -23,8 +23,8 @@ void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * update
 	Int neigh_o[ndim];
 	for(Int l=0; l<ndim; ++l) {neigh_o[l]=x_o[l];}
 	neigh_o[k]+=eps;
-	if(debug_print && n_i==2*ndim){printf("In TagNeighbors n_i=%i, x_o=%i,%i, neigh_o=%i,%i",
-		n_i,x_o[0],x_o[1],neigh_o[0],neigh_o[1]);}
+/*	if(debug_print && n_i==2*ndim){printf("In TagNeighbors n_i=%i, x_o=%i,%i, neigh_o=%i,%i",
+		n_i,x_o[0],x_o[1],neigh_o[0],neigh_o[1]);}*/
 	if(Grid::InRange_per(neigh_o,shape_o)) {
 		updateNext_o[Grid::Index_per(neigh_o,shape_o)]=1 PRUNING(+n_i);}
 }

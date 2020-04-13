@@ -7,8 +7,7 @@ from .riemann import Riemann
 from . import misc
 from .. import LinearParallel as lp
 from .. import AutomaticDifferentiation as ad
-from ..FiniteDifferences import common_field
-
+from .. import FiniteDifferences as fd
 
 class Rander(Base):
 	"""
@@ -19,10 +18,10 @@ class Rander(Base):
 	"""
 	def __init__(self,m,w):
 		m,w = (ad.asarray(e) for e in (m,w))
-		self.m,self.w =common_field((m,w),(2,1))
+		self.m,self.w = fd.common_field((m,w),(2,1))
 
 	def norm(self,v):
-		v,m,w = common_field((ad.asarray(v),self.m,self.w),(1,2,1))
+		v,m,w = fd.common_field((ad.asarray(v),self.m,self.w),(1,2,1))
 		return np.sqrt(lp.dot_VAV(v,m,v))+lp.dot_VV(w,v)
 
 
@@ -58,7 +57,7 @@ class Rander(Base):
 
 	def with_costs(self,costs):
 		costs,m,w = fd.common_field((costs,self.m,self.w),depths=(1,2,1))
-		return Riemann(m*lp.outer_self(costs),w*costs)
+		return Rander(m*lp.outer_self(costs),w*costs)
 
 	def flatten(self):
 		return ad.concatenate((misc.flatten_symmetric_matrix(self.m),self.w),axis=0)

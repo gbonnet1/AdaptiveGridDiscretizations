@@ -91,6 +91,9 @@ __global__ void Update(
 		printf("scal : %f\n",scal_vmv(offsets[1],geom_,offsets[2]) );
 	}*/
 
+	if(debug_print && n_o==1 && n_i==3){
+		printf("isSeed %i, u_old %f, u_i[n_i] %f\n",isSeed,u_old,u_i[n_i]);
+	}
 
 
 	FACTOR(
@@ -195,9 +198,6 @@ __global__ void Update(
 	Int active_side[nsym];
 	Int kmix=0; 
 	) 
-	if(debug_print && n_i==4){
-		printf("After abort n_o=%i, x_o=%i,%i", n_o,x_o[0],x_o[1]);}
-
 
 	// Compute and save the values
 	HFMIter(!isSeed, n_i, 
@@ -216,11 +216,11 @@ __global__ void Update(
 	#endif
 
 	FLOW( // Extract and export the geodesic flow
-	if(debug_print && n_i==0){
+/*	if(debug_print && n_i==0){
 		printf("Hello, world !");
 		printf("flow_weights %f,%f\n",flow_weights[0],flow_weights[1]);
 		printf("active_side %i,%i\n",active_side[0],active_side[1]);
-			}
+			}*/
 	if(isSeed){ // HFM leaves these fields to their (unspecified) initial state
 		for(Int k=0; k<nact; ++k){
 			flow_weights[k]=0; 
