@@ -98,7 +98,7 @@ __global__ void Update(
 
 	FACTOR(
 	Scalar x_rel[ndim]; // Relative position wrt the seed.
-	const bool factors = factor_rel(x,x_rel);
+	const bool factors = factor_rel(x_t,x_rel);
 	)
 
 	// Get the neighbor values, or their indices if interior to the block
