@@ -25,7 +25,8 @@ bool Greater(const Scalar u MULTIP(, const Int uq), const Scalar v MULTIP(, cons
 // --- Gets all the neighbor values ---
 void HFMNeighbors(const Int n_i, 
 	const Scalar v_o[ntot],   MULTIP(const Int vq_o[ntot],) const Int v_i[ntot], 
-	ORDER2(const Scalar v2_o[ntot],   MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],)
+	ORDER2(const Scalar v2_o[ntot],   MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],
+		const Scalar weights[nact],)
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
 	Scalar v[nact], MULTIP(Int vqmin[1],) ORDER2(bool order2[nact],)
 	Int order[nact] FLOW(, Int side[nsym] )){
@@ -83,9 +84,19 @@ void HFMNeighbors(const Int n_i,
 	ORDER2(
 	// Set the threshold for second order accuracy
 	const Scalar u0 = u_i[n_i] MULTIP(+ (uq_i[n_i] - *vqmin)*multip_step);
-	Scalar diff_max = 0;
+
+	#if order2_threshold_weighted_macro
+	Scalar diff1_sum = 0.,diff1_sum2=0.;
 	for(Int k=0; k<nact; ++k){
-		diff_max=max(diff_max, u0 - v[k]);}
+		const Scalar diff1 = max(0.,u0 - v[k]);
+		const Scalar w = weights[k];
+		diff1_sum  += w*diff1;
+		diff1_sum2 += (w*diff1)*diff1;}
+	const Scalar diff1_bound = diff1_sum>0. ? diff1_sum2/diff1_sum : 0.;
+	#else 
+	Scalar diff1_bound = 0.;
+	for(Int k=0; k<nact; ++k){diff1_bound=max(diff1_bound,u0-v[k]);}
+	#endif
 
 	for(Int k=0; k<nact; ++k){
 		// Get the further neighbor value
@@ -101,7 +112,11 @@ void HFMNeighbors(const Int n_i,
 
 		// Compute the second order difference, and compare
 		const Scalar diff2 = abs(u0-2*v[k]+v2);
-		if(diff2 < order2_threshold*diff_max){
+		if(diff2 < order2_threshold*diff1_bound
+		#if order2_causal_macro
+		&& u0>v[k]
+		#endif
+		){
 			order2[k]=true;
 			v[k] += (v[k]-v2)/3.;
 		} else {
@@ -145,7 +160,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 
 	HFMNeighbors(n_i,
 		v_o MULTIP(,vq_o), v_i,
-		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
+		ORDER2(v2_o MULTIP(,vq2_o), v2_i, weights,)
 		u_i MULTIP(,uq_i), 
 		v MULTIP(,vqmin) ORDER2(,order2),
 		order FLOW(, active_side) );
@@ -268,7 +283,7 @@ void HFMIter(const bool active, const Int n_i,
 				FLOW(, flow_weights, active_side)
 				);
 			if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
-										  u_i_new  MULTIP(,uq_i_new)))) {
+										  u_i_new  MULTIP(,uq_i_new))) ) {
 				u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
 		}
 		__syncthreads();

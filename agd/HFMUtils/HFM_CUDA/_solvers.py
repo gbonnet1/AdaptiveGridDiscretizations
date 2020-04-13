@@ -80,9 +80,6 @@ def global_iteration(self,data):
 		val_old = data.args['values'].copy()
 		data.kernel((updateList_o.size,),(self.size_i,), 
 			KernelArgs(data) + (updateList_o,updateNext_o))
-
-		diff = val_old - data.args['values']
-		print(np.min(diff[np.logical_not(np.isnan(diff))]))
 		if cp.any(updateNext_o): updateNext_o.fill(0)
 		else: return niter_o
 	return nitermax_o
@@ -91,17 +88,6 @@ def adaptive_gauss_siedel_iteration(self,data):
 	"""
 	Solves the eikonal equation by propagating updates, ignoring causality. 
 	"""
-#	block_values,block_seedTags = (self.block[key] for key in ('values','seedTags'))
-
-#	finite_o = xp.any(xp.isfinite(block_values).reshape( self.shape_o + (-1,) ),axis=-1)
-#	seed_o = xp.any(block_seedTags,axis=-1)
-
-#	update_o  = xp.logical_and(finite_o,seed_o)
-#	for k in range(self.ndim): # Take care of a rare bug where the seed is alone in its block
-#		for eps in (-1,1): 
-#			update_o = np.logical_or(update_o,np.roll(update_o,axis=k,shift=eps))
-#	update_o = xp.ascontiguousarray(update_o, dtype='uint8')
-#	kernel = self.module[kernelName].get_function("Update")
 	
 	trigger = data.trigger
 	if trigger.shape==self.shape: 

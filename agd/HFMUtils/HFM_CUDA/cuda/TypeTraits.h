@@ -121,6 +121,14 @@ the finite differences computation, a expansion of the solution near the source.
 #define ORDER2(...) 
 #endif
 
+// An inconclusive experiment on setting the switching threshold adaptively
+#ifndef order2_threshold_weighted_macro
+#define order2_threshold_weighted_macro 0
+#endif
+
+#ifndef order2_causal_macro
+#define order2_causal_macro 1
+#endif
 /** Curvature penalized models have share a few specific features : 
 relaxation parameter, periodic boundary condition, xi and kappa constants, 
 position dependent metric. */
