@@ -30,8 +30,8 @@ def SetGeometry(self):
 	self.periodic = self.GetValue('periodic',default=self.periodic_default,
 		help="Apply periodic boundary conditions on some axes")
 	self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
-	if eikonal.policy.bound_active_blocks is True: 
-		self.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
+	if policy.bound_active_blocks is True: 
+		policy.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
 	
 	# Set the discretization gridScale(s)
 	if self.isCurvature:
@@ -72,7 +72,7 @@ def SetGeometry(self):
 				setattr(self,key,metricClass.from_HFM(value))
 
 	self.drift = self.GetValue('drift', default=None, verbosity=3, array_float=True,
-		help="Drift introduced in the eikonal equation, becoming F(grad u - drift)=1")
+		help="Drift introduced in the eikonal equation, becoming F^*(grad u - drift)=1")
 
 	# Set the geometry
 
@@ -149,7 +149,7 @@ def SetGeometry(self):
 		float_resolution = np.finfo(self.float_t).resolution
 		tol = mean_cost_bound * float_resolution * 5.
 		if not policy.multiprecision: tol *= np.sum(self.shape)
-		self.hfmOut['keys']['defaulted']['tol']=self.float_t(float(tol))
+		self.hfmOut['keys']['default']['tol']=self.float_t(float(tol))
 	policy.tol = tol
 
 	if policy.bound_active_blocks:

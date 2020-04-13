@@ -18,8 +18,6 @@ from ...AutomaticDifferentiation import numpy_like as npl
 def PostProcess(self):
 	if self.verbosity>=1: print("Post-Processing")
 	eikonal = self.kernel_data['eikonal']
-	print('values',eikonal.args['values'])
-	print('seedTags',eikonal.args['seedTags'])
 
 	values = misc.block_squeeze(eikonal.args['values'],self.shape)
 	if eikonal.policy.multiprecision:
@@ -69,8 +67,7 @@ def PostProcess(self):
 		self.flow_vector = flow_vector
 		if self.exportGeodesicFlow:
 			self.hfmOut['flow'] = - flow_vector * self.h_broadcasted
-	self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
-
+	
 def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	"""
 	A linear solver for the systems arising in automatic differentiation of the HFM.

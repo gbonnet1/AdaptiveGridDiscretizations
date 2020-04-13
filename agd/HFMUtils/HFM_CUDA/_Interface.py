@@ -29,21 +29,17 @@ class Interface(object):
 			raise ValueError("Only RowMajor indexing supported")
 
 		# Needed for GetValue
-		self.help = hfmIn.get('help',[])
 		self.hfmOut = {'keys':{
 		'used':['exportValues','origin','arrayOrdering'],
-		'defaulted':OrderedDict(),
+		'default':OrderedDict(),
 		'visited':[],
 		'help':OrderedDict(),
 		'kernelStats':OrderedDict(),
 		} }
-		self.help_content = self.hfmOut['keys']['help']
 		self.verbosity = 1
 
 		self.verbosity = self.GetValue('verbosity',default=1,
 			help="Choose the amount of detail displayed on the run")
-		self.help = self.GetValue('help',default=[], # help on help...
-			help="List of keys for which to display help")
 		
 		self.model = self.GetValue('model',help='Minimal path model to be solved.')
 		# Unified treatment of standard and extended curvature models
@@ -63,25 +59,16 @@ class Interface(object):
 		self.hfmOut['keys']['visited'].append(key)
 		return key in self.hfmIn
 
-	def GetValue(self,key,default="_None",verbosity=2,help=None,array_float=False):
+	def GetValue(self,key,default="_None",verbosity=2,array_float=False,
+		help="Sorry : no help for this key"):
 		"""
 		Get a value from a dictionnary, printing some help if requested.
 		"""
-		if key in self.help and key not in self.help_content:
-			self.help_content[key]=help
-			if self.verbosity>=1:
-				if help is None: 
-					print(f"Sorry : no help for key {key}")
-				else:
-					print(f"---- Help for key {key} ----")
-					print(help)
-					if isinstance(default,str) and default=="_None": 
-						print("No default value")
-					elif isinstance(default,str) and default=="_Dummy":
-						print(f"see out['keys']['defaulted'][{key}] for default")
-					else:
-						print("default value :",default)
-					print("-----------------------------")
+		# We only import arguments once, otherwise risks of issues with multiple defaults
+		assert key not in self.hfmOut['keys']['help']
+
+		self.hfmOut['keys']['help'][key] = help
+		self.hfmOut['keys']['default'][key] = default
 
 		if key in self.hfmIn:
 			self.hfmOut['keys']['used'].append(key)
@@ -90,10 +77,10 @@ class Interface(object):
 		elif isinstance(default,str) and default == "_None":
 			raise ValueError(f"Missing value for key {key}")
 		else:
-			assert key not in self.hfmOut['keys']['defaulted']
-			self.hfmOut['keys']['defaulted'][key] = default
 			if verbosity<=self.verbosity:
-				print(f"key {key} defaults to {default}")
+				if isinstance(default,str) and default=="_Dummy":
+					print(f"see out['keys']['default'][{key}] for default")
+				else:print(f"key {key} defaults to {default}")
 			return default
 
 	def Warn(self,msg):
@@ -144,9 +131,12 @@ class Interface(object):
 
 	
 	def FinalCheck(self):
+		self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
+		self.hfmOut['solverGPUTime'] = self.kernel_data['eikonal'].stats['time']
 		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['keys']['used']))
 		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
 			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
+
 
 
 

@@ -5,6 +5,7 @@ import numpy as np
 from .base import Base
 from .isotropic import Isotropic
 from .. import AutomaticDifferentiation as ad
+from .. import FiniteDifferences as fd
 
 class Diagonal(Base):
 	"""
@@ -17,11 +18,13 @@ class Diagonal(Base):
 	@classmethod
 	def from_speed(cls,speeds): return cls(1./speeds)
 	def dual(self): return self.from_speed(self.costs)
-	def with_costs(self,costs): return Diagonal(self.costs*costs)
+	def with_costs(self,costs): 
+		self_costs,costs = fd.common_field((self.costs,costs),(1,1))
+		return Diagonal(self_costs*costs)
 
 	def norm(self,v):
 		costs,v = fd.common_field((self.costs,v),depths=(1,1))
-		return ad.Optimization.norm(cost*v,ord=2,axis=0)
+		return ad.Optimization.norm(costs*v,ord=2,axis=0)
 
 	def is_definite(self): return np.all(self.costs>0.,axis=0)
 	def anisotropy(self): return np.max(self.costs,axis=0)/np.min(self.costs,axis=0)

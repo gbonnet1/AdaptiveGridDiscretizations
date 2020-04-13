@@ -31,6 +31,7 @@ def SetKernelTraits(self):
 		help="Optional trait parameters for the eikonal kernel."))
 	eikonal.traits = traits
 
+
 	policy.multiprecision = (self.GetValue('multiprecision',default=False,
 		help="Use multiprecision arithmetic, to improve accuracy") or 
 		self.GetValue('values_float64',default=False) )
@@ -57,9 +58,15 @@ def SetKernelTraits(self):
 	policy.bound_active_blocks = self.GetValue('bound_active_blocks',default=False,
 		help="Limit the number of active blocks in the front. " 
 		"Admissible values : (False,True, or positive integer)")
-	if policy.bound_active_blocks: 
+	if policy.bound_active_blocks:
 		traits['minChg_freeze_macro']=1
 		traits['pruning_macro']=1
+
+	policy.solver = self.GetValue('solver',default='AGSI',
+		help="Choice of fixed point solver (AGSI, global_iteration)")
+	if policy.solver=='global_iteration' and traits.get('pruning_macro',0):
+		raise ValueError("Incompatible options found for global_iteration solver "
+			"(bound_active_blocks, pruning)")
 
 	policy.strict_iter_o = traits.get('strict_iter_o_macro',0)
 	self.float_t = np.dtype(traits['Scalar']).type
@@ -88,7 +95,6 @@ def SetKernel(self):
 
 	eikonal.source = cupy_module_helper.traits_header(traits,
 		join=True,size_of_shape=True,log2_size=True,integral_max=True) + "\n"
-	print(eikonal.source)
 
 	if self.isCurvature: 
 		model_source = f'#include "{self.model}.h"\n'
@@ -182,12 +188,10 @@ def SetKernel(self):
 		if self.kappa.ndim==0: SetCst('kappa',self.kappa,float_t)
 
 	# Set the kernel arguments
-	policy.solver = self.GetValue('solver',default='AGSI',
-		help="Choice of fixed point solver (AGSI, global_iteration)")
 	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,
 		help="Maximum number of iterations of the solver")
 	self.raiseOnNonConvergence = self.GetValue('raiseOnNonConvergence',default=True,
-		help="Raise an exception of a solver fails to converge")
+		help="Raise an exception if a solver fails to converge")
 
 	# Sort the kernel arguments
 	args = eikonal.args

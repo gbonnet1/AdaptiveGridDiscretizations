@@ -264,7 +264,7 @@ void HFMIter(const bool active, const Int n_i,
 				v_o MULTIP(,vq_o), v_i,
 				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 				u_i MULTIP(,uq_i),
-				&u_i[n_i] MULTIP(,&uq_i[n_i]) 
+				&u_i_new MULTIP(,&uq_i_new) 
 				FLOW(, flow_weights, active_side)
 				);
 			if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),

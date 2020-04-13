@@ -76,8 +76,6 @@ def SetRHS(self):
 
 	if seedRadius==0.:
 		seedIndices = np.round(seeds).astype(int)
-		self.seedValues = seedValues
-		self.seedIndices = seedIndices		
 	else:
 		neigh = Grid.GridNeighbors(self.hfmIn,self.seed,seedRadius) # Geometry last
 		r = seedRadius 
@@ -87,14 +85,16 @@ def SetRHS(self):
 		neighValues = seedValues.repeat(len(neigh)//len(seeds)) # corrected below
 
 		# Select neighbors which are close enough
-		neigh = neigh[ad.Optimization.norm(neigh-self.seed,axis=-1) < r]
+		close = ad.Optimization.norm(neigh-self.seed,axis=-1) < r
+		neigh = neigh[close,:]
+		neighValues = neighValues[close,:]
 
 		# Periodize, and select neighbors which are in the domain
 		nper = np.logical_not(self.periodic)
 		inRange = np.all(np.logical_and(-0.5<=neigh[:,nper],
 			neigh[:,nper]<cp.array(self.shape)[nper]-0.5),axis=-1)
 		neigh = neigh[inRange,:]
-		neighValues = neighValues[inRange,:]
+		neighValues = neighValues[inRange]
 		
 		self._CostMetric = self.metric.with_cost(self.cost)
 		# TODO : remove. No need to create this grid for our interpolation
@@ -103,12 +103,11 @@ def SetRHS(self):
 		self._CostMetric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
 
 		diff = (neigh - self.seed).T # Geometry first
-#			neigh[:,self.periodic] = neigh[:,self.periodic] % self.shape[self.periodic]
 		metric0 = self.CostMetric(self.seed)
 		metric1 = self.CostMetric(neigh.T)
-		self.seedValues = neighValues+0.5*(metric0.norm(diff) + metric1.norm(diff))
-		self.seedIndices = neigh
-	
+		seedValues = neighValues+0.5*(metric0.norm(diff) + metric1.norm(diff))
+		seedIndices = neigh
+
 	rhs,seedValues = ad.common_cast(rhs,seedValues)
 	pos = tuple(seedIndices.T)
 	rhs[pos] = seedValues
@@ -117,6 +116,9 @@ def SetRHS(self):
 
 	self.rhs = rhs
 	self.seedTags = seedTags
+#	self.seedValues = seedValues
+#	self.seedIndices = seedIndices		
+
 
 def SetArgs(self):
 	if self.verbosity>=1: print("Preparing the problem rhs (cost, seeds,...)")

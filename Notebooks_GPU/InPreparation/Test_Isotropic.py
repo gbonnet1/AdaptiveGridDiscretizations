@@ -49,7 +49,7 @@ hfmIn = HFMUtils.dictIn({
 #	'factoringRadius':10000,
 #	'seedRadius':2,
 #	'returns':'in_raw',
-	'bound_active_blocks':5,
+	'bound_active_blocks':True,
 	'traits':{
 	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),

@@ -59,7 +59,7 @@ bool factor_rel(const Int x_abs[ndim], Scalar x_rel[ndim]){
 #endif
 
 ORDER2(
-__constant__ Scalar order2_threshold;
+__constant__ Scalar order2_threshold = 0.3;
 )
 
 // Get the parameters for curvature penalized models

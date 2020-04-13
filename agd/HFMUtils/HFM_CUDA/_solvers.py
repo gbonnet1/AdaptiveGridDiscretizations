@@ -57,9 +57,6 @@ def KernelArgs(data):
 	policy = data.policy
 	args = data.args
 
-#	if policy.bound_active_blocks:
-#		args['minChgPrev_o'],args['minChgNext_o']=args['minChgNext_o'],args['minChgPrev_o']
-
 	kernel_args = tuple(args.values())
 
 	# Only used for eikonal
@@ -80,8 +77,12 @@ def global_iteration(self,data):
 	nitermax_o = data.policy.nitermax_o
 
 	for niter_o in range(nitermax_o):
+		val_old = data.args['values'].copy()
 		data.kernel((updateList_o.size,),(self.size_i,), 
 			KernelArgs(data) + (updateList_o,updateNext_o))
+
+		diff = val_old - data.args['values']
+		print(np.min(diff[np.logical_not(np.isnan(diff))]))
 		if cp.any(updateNext_o): updateNext_o.fill(0)
 		else: return niter_o
 	return nitermax_o
