@@ -12,7 +12,7 @@ def GetGeodesics(self):
 		geodesic_step = self.GetValue('geodesic_step',default=0.25,
 			help='Step size, in pixels, for the geodesic ODE solver')
 
-		geodesic_hlen = int(4*np.sqrt(self.ndim)/geodesic_step)
+		geodesic_hlen = int(8*np.sqrt(self.ndim)/geodesic_step)
 		geodesic_hlen = self.GetValue('geodesic_hlen',default=geodesic_hlen,
 			help="History length for the geodesic solver, for termination error criteria")
 
