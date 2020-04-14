@@ -74,6 +74,7 @@ def SetKernelTraits(self):
 	self.shape_i = traits['shape_i']
 	self.size_i = np.prod(self.shape_i)
 	self.caster = lambda x : cp.asarray(x,dtype=self.float_t)
+	self.hfmIn['array_float_caster'] = self.caster
 
 def SetKernel(self):
 	"""

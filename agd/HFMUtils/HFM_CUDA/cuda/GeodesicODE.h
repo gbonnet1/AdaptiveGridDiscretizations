@@ -97,7 +97,7 @@ typedef char ODEStopT;
 bool Floor(const Scalar x[ndim], Int xq[ndim]){
 	bool changed = false;
 	for(Int i=0; i<ndim; ++i){
-		const Int xqi = round(x[i]);
+		const Int xqi = floor(x[i]);
 		if(xqi!=xq[i]) changed=true;
 		xq[i]=xqi;
 	}
@@ -145,6 +145,12 @@ ODEStop::Enum NormalizedFlow(
 			dist_cache[icorner] = dist_t[ny];
 			for(Int k=0; k<ndim; ++k){
 				flow_cache[icorner][k] = flow_vector_t[ny+size_tot*k];}
+
+			if(debug_print){
+				printf("Point x=%f,%f, xq=%i,%i, icorner=%i, yq=%i,%i\n",
+					x[0],x[1],xq[0],xq[1],icorner,yq[0],yq[1]);
+				printf("Flow=%f,%f\n",flow_cache[icorner][0],flow_cache[icorner][1]);
+			}
 		}
 	}
 

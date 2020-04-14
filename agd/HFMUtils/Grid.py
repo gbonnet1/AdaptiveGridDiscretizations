@@ -5,11 +5,14 @@ import numpy as np
 from collections import namedtuple
 from .. import AutomaticDifferentiation as ad
 from .. import Metrics
-array_float_caster = lambda arg: ad.cupy_generic.array_float_caster(arg,iterables=(dict,Metrics.Base))
 
 SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
 'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','DubinsExt2',
 'ReedsShepp3','ReedsSheppForward3'}
+
+def array_float_caster(params):
+	if 'array_float_caster' in params: return params['array_float_caster']
+	else: return ad.cupy_generic.array_float_caster(params,iterables=(dict,Metrics.Base))
 
 def GetCorners(params):
 	dims = params['dims']
@@ -47,12 +50,9 @@ def GetGrid(params,dims=None):
 	"""
 	axes = GetAxes(params,dims);
 	ordering = params['arrayOrdering']
-	if ordering=='RowMajor':
-		return ad.array(np.meshgrid(*axes,indexing='ij'))
-	elif ordering=='YXZ_RowMajor':
-		return ad.array(np.meshgrid(*axes))
-	else: 
-		raise ValueError('Unsupported arrayOrdering : '+ordering)
+	if ordering=='RowMajor': return ad.array(np.meshgrid(*axes,indexing='ij'))
+	elif ordering=='YXZ_RowMajor': return ad.array(np.meshgrid(*axes))
+	else: raise ValueError('Unsupported arrayOrdering : '+ordering)
 
 def Rect(sides,sampleBoundary=False,gridScale=None,gridScales=None,dimx=None,dims=None):
 	"""
@@ -94,10 +94,10 @@ GridSpec = namedtuple('GridSpec',['bottom','scale','dims'])
 
 def to_YXZ(params,index):
 	assert params['arrayOrdering'] in ('RowMajor','YXZ_RowMajor')
-	if params['arrayOrdering']=='RowMajor':
-		return index
-	else:
-		return np.stack((index[:,1],index[:,0],*index[:,2:].T),axis=1)
+	caster = array_float_caster(params)
+	index = caster(index)
+	if params['arrayOrdering']=='RowMajor': return index
+	else: return np.stack((index[:,1],index[:,0],*index[:,2:].T),axis=1)
 
 def GetGridSpec(params):
 	"""
