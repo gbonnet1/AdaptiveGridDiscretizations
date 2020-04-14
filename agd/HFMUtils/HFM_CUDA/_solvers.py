@@ -21,6 +21,8 @@ def Solve(self,name):
 	data.kernel = data.module.get_function("Update")
 	solver = data.policy.solver
 
+	SetModuleConstant(data.module,'tol',data.policy.tol,self.float_t)
+
 	#Check args
 	assert isinstance(data.args,collections.OrderedDict)
 	for key,value in data.args.items(): data.args[key] = cp.ascontiguousarray(value)
@@ -28,6 +30,7 @@ def Solve(self,name):
 		if value.dtype.type not in (self.float_t,self.int_t,np.uint8):
 			raise ValueError(f"Inconsistent type {value.dtype.type} for key {key}")
 
+	# Run
 	kernel_start = time.time()
 	if solver=='global_iteration':
 		niter_o = self.global_iteration(data)
@@ -36,6 +39,7 @@ def Solve(self,name):
 	else: raise ValueError(f"Unrecognized solver : {solver}")
 	kernel_time = time.time() - kernel_start # TODO : use cuda event ...
 
+	# Report
 	if verb: print(f"GPU kernel {name} ran for {kernel_time} seconds, "
 		f" and {niter_o} iterations.")
 

@@ -149,7 +149,6 @@ def SetKernel(self):
 		for module in (eikonal.module,flow.module): SetModuleConstant(module,*args)
 
 	float_t,int_t = self.float_t,self.int_t		
-	SetCst('tol',eikonal.policy.tol,float_t)
 
 	self.size_o = np.prod(self.shape_o)
 	SetCst('shape_o',self.shape_o,int_t)

@@ -38,6 +38,7 @@ def PostProcess(self):
 	ndim = self.ndim
 
 	flow = self.kernel_data['flow']
+	flow.policy.tol = np.inf # Not an iterative solver
 	if flow.traits.get('flow_weights_macro',False):
 		flow.args['flow_weights']   = cp.empty((nact,)+shape_oi,dtype=self.float_t)
 	if flow.traits.get('flow_weightsum_macro',False):
@@ -51,7 +52,7 @@ def PostProcess(self):
 
 	self.flow_needed = any(flow.traits.get(key+"_macro",False) for key in 
 		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
-	if self.flow_needed: 
+	if self.flow_needed:
 		self.Solve('flow')
 
 	if 'flow_vector' in flow.args:
