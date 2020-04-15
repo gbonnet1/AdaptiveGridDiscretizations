@@ -11,7 +11,7 @@ a number of numpy functions in a way that is compatible with AD information.
 
 #https://docs.scipy.org/doc/numpy/reference/arrays.classes.html
 numpy_overloads = {}
-cupy_only_overloads = {} # Take precedence over numpy overloads if necessary
+cupy_alt_overloads = {} # Used for numpy function unsupported by cupy
 numpy_implementation = {# Use original numpy implementation
 	np.moveaxis,np.expand_dims,np.ndim,np.squeeze,
 	np.amin,np.amax,np.argmin,np.argmax,
@@ -19,18 +19,31 @@ numpy_implementation = {# Use original numpy implementation
 	np.full_like,np.ones_like,np.zeros_like
 	} 
 
-def implements(numpy_function,cupy_only=False):
+def implements(numpy_function):
 	"""Register an __array_function__ implementation for MyArray objects."""
 	def decorator(func):
-		if cupy_only: cupy_only_overloads[numpy_function] = func
-		else: numpy_overloads[numpy_function] = func
+		numpy_overloads[numpy_function] = func
 		return func
 	return decorator
 
-def _array_function_overload(self,func,types,args,kwargs):
-	if self.cupy_based() and func in cupy_only_overloads:
-		return cupy_only_overloads[func](*args,**kwargs)
-	elif func in numpy_overloads:
+def implements_cupy_alt(numpy_function,exception):
+	"""Register an alternative to a numpy function only partially supported by cupy"""
+	def decorator(func):
+		cupy_alt_overloads[numpy_function] = (func,exception)
+		def wrapper(*args,**kwargs):
+			try: return numpy_function(*args,**kwargs)
+			except exception: return func(*args,**kwargs)
+		return wrapper
+	return decorator
+
+def _array_function_overload(self,func,types,args,kwargs,cupy_alt=True):
+
+	if cupy_alt and self.cupy_based() and func in cupy_alt_overloads:
+		func_alt,exception = cupy_alt_overloads[func]
+		try: return _array_function_overload(self,func,types,args,kwargs,cupy_alt=False)
+		except exception: return func_alt(*args,**kwargs)
+
+	if func in numpy_overloads:
 		return numpy_overloads[func](*args,**kwargs)
 	elif func in numpy_implementation: 
 		return func._implementation(*args,**kwargs)
