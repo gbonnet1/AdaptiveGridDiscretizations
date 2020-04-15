@@ -212,6 +212,12 @@ class denseAD2(np.ndarray):
 		return self.new(np.broadcast_to(self.value,shape), 
 			np.broadcast_to(self.coef1,shape1), np.broadcast_to(self.coef2,shape2))
 
+	def pad(self,pad_width,*args,constant_values=0,**kwargs):
+		return self.new(
+			np.pad(self.value,pad_width,*args,constant_values=constant_values,**kwargs),
+			np.pad(self.coef1,pad_width+((0,0),),*args,constant_values=0,**kwargs),
+			np.pad(self.coef2,pad_width+((0,0),(0,0),),*args,constant_values=0,**kwargs),)
+
 	@property
 	def T(self):	return self if self.ndim<2 else self.transpose()
 	

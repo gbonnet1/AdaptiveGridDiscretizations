@@ -288,6 +288,13 @@ class spAD2(np.ndarray):
 			np.broadcast_to(self.coef1,shape1), np.broadcast_to(self.index,shape1),
 			np.broadcast_to(self.coef2,shape2), np.broadcast_to(self.index_row,shape2), np.broadcast_to(self.index_col,shape2))
 
+	def pad(self,pad_width,*args,constant_values=0,**kwargs):
+		def _pad(arr):return np.pad(arr,pad_width+((0,0),),*args,constant_values=0,**kwargs)
+		return self.new(
+			np.pad(self.value,pad_width,*args,constant_values=constant_values,**kwargs),
+			_pad(self.coef1),_pad(self.index),
+			_pad(self.coef2),_pad(self.index_row),_pad(self.index_col))
+
 	@property
 	def T(self):	return self if self.ndim<2 else self.transpose()
 	

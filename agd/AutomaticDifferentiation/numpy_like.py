@@ -2,6 +2,7 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
+import numbers
 from .ad_generic import is_ad
 from . import ad_generic
 """
@@ -61,17 +62,6 @@ def empty_like(a,*args,**kwargs):
 def copy_to(dst,src,*args,**kwargs):
 	if is_ad(src): raise ValueError("copyto is not supported with an AD source")
 	np.copyto._implementation(dst.value,src,*args,**kwargs)
-"""
-@implements(np.full_like)
-def full_like(a,*args,**kwargs):
-	return type(a)(np.full_like(a.value,*args,**kwargs))
-
-# Purposedly implemented for both numpy and cupy AD variables
-@implements(np.zeros_like)
-def zeros_like(a,*args,**kwargs): return full_like(a,0.,*args,**kwargs)
-@implements(np.ones_like)
-def ones_like(a,*args,**kwargs):  return full_like(a,1.,*args,**kwargs)
-"""
 
 @implements(np.broadcast_to)
 def broadcast_to(array,shape):
@@ -99,10 +89,11 @@ def concatenate(elems,axis=0):
 def pad(array, pad_width, *args,**kwargs):
 	if isinstance(pad_width,numbers.Integral):
 		pad_width = (pad_width,)
-	if isinstance(pad_width[0],numbers.Integral) and len(pad_width==1):
-		pad_width = (pad_width[0],pad_width[0])
+	if isinstance(pad_width[0],numbers.Integral) and len(pad_width)==1:
+		pad_width = ((pad_width[0],pad_width[0]),)
 	if len(pad_width)==1:
-		pad_width = pad_width*ndim
+		pad_width = pad_width*array.ndim
+	print(pad_width)
 	return array.pad(pad_width,*args,**kwargs)
 
 
