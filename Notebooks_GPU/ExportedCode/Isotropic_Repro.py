@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_GPU\Isotropic_Repro.ipynb
+# Code automatically exported from notebook Isotropic_Repro.ipynb
 # Do not modify
 import sys; sys.path.append("../..") # Path to import agd
 
@@ -44,7 +44,8 @@ def RunCompare(gpuIn,check=True,variants=None,**kwargs):
     gpuIn = gpuIn.copy(); gpuIn.update(kwargs)
     gpuOut = gpuIn.RunGPU()
     if gpuIn.get('verbosity',1):  print(f"--- gpu done, turning to cpu ---")
-    cpuIn = gpuIn.copy(); cpuIn.pop('traits',None)
+    cpuIn = gpuIn.copy(); 
+    for key in ('traits','array_float_caster'): cpuIn.pop(key,None)
     cpuOut = cpuIn.RunSmart()
     
     # Print performance info
