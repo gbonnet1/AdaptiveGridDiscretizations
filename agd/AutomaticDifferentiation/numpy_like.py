@@ -2,13 +2,11 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
-from .ad_generic import is_ad,array,asarray
+from .ad_generic import is_ad
 from . import ad_generic
 """
-This file implements functions which have similarly named numpy counterparts, when
-the latter behave badly in cunjunction with AD types.
-(A typical issue with the numpy variants is downcasting to the numpy.ndarray type).
-Thanks to the __array_function__ numpy behavior, the numpy variants can be used transparently.
+This file takes advantage of the __array_function__ mechanisme of numpy to reimplement 
+a number of numpy functions in a way that is compatible with AD information.
 """
 
 #https://docs.scipy.org/doc/numpy/reference/arrays.classes.html
@@ -18,6 +16,7 @@ numpy_implementation = {# Use original numpy implementation
 	np.moveaxis,np.expand_dims,np.ndim,np.squeeze,
 	np.amin,np.amax,np.argmin,np.argmax,
 	np.sum,np.prod,
+	np.full_like,np.ones_like,np.zeros_like
 	} 
 
 def implements(numpy_function,cupy_only=False):
@@ -41,14 +40,25 @@ def _array_function_overload(self,func,types,args,kwargs):
 
 stack = implements(np.stack)(ad_generic.stack)
 
+@implements(np.empty_like)
+def empty_like(a,*args,**kwargs):
+	return type(a)(np.empty_like(a.value,*args,**kwargs))
+
+@implements(np.copyto)
+def copy_to(dst,src,*args,**kwargs):
+	if is_ad(src): raise ValueError("copyto is not supported with an AD source")
+	np.copyto._implementation(dst.value,src,*args,**kwargs)
+"""
 @implements(np.full_like)
-def np_full_like(a,*args,**kwargs):
+def full_like(a,*args,**kwargs):
 	return type(a)(np.full_like(a.value,*args,**kwargs))
-	
+
+# Purposedly implemented for both numpy and cupy AD variables
 @implements(np.zeros_like)
 def zeros_like(a,*args,**kwargs): return full_like(a,0.,*args,**kwargs)
 @implements(np.ones_like)
 def ones_like(a,*args,**kwargs):  return full_like(a,1.,*args,**kwargs)
+"""
 
 @implements(np.broadcast_to)
 def broadcast_to(array,shape):
@@ -71,42 +81,3 @@ def concatenate(elems,axis=0):
 	for e in elems:
 		if is_ad(e): return type(e).concatenate(elems,axis)
 	return np.concatenate(elems,axis)	
-
-# ------- Compatibility with cupy (old version?) --------
-
-@implements(np.max,cupy_only=True)
-def max(a,*args,**kwargs):
-	"""Reimplemeted to support cupy"""
-	try: return np.max(a,*args,**kwargs)
-	except TypeError: # cupy (old version ?) does not accept initial argument
-		initial = kwargs.pop('initial')
-		return np.maximum(initial,np.max(a,*args,**kwargs))
-
-def flat(a):
-	"""Reimplemented to support cupy"""
-	try: return a.flat
-	except AttributeError: return a.reshape(-1) # cupy (old version ?) does not have flat
-
-@implements(np.expand_dims,cupy_only=True)
-def expand_dims(a,axis):
-	"""Reimplemented to support cupy"""
-	try: return np.expand_dims(a,axis)
-	except TypeError: 
-		if axis<0: axis=1+a.ndim+axis
-		newshape = a.shape[:axis]+(1,)+a.shape[axis:]
-		return a.reshape(newshape)
-
-def _full_like(a,*args,**kwargs): # needed for cupy variant below
-	if is_ad(a): return type(a)(np.full_like(a.value,*args,**kwargs))
-	else: return np.full_like(a,*args,**kwargs) 
-
-@implements(np.full_like,cupy_only=True)
-def full_like(arr,*args,**kwargs):
-	"""Reimplemented to support cupy"""
-	try: return _full_like(arr,*args,**kwargs)
-	except TypeError: # Some old versions of cupy lack the shape argument
-		arr = np.broadcast_to(arr.flatten()[0], kwargs.pop('shape'))
-		return _full_like(arr,*args,**kwargs)
-
-
-

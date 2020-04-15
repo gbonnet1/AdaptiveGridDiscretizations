@@ -4,7 +4,8 @@
 import numpy as np
 from . import AutomaticDifferentiation as ad
 from . import FiniteDifferences as fd
-from .AutomaticDifferentiation import numpy_like as npl
+from .AutomaticDifferentiation import cupy_support as npl
+
 def identity(shape):
 	dim = len(shape)
 	a = np.full((dim,dim)+shape,0.)

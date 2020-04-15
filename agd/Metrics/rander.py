@@ -60,7 +60,7 @@ class Rander(Base):
 		return Rander(m*lp.outer_self(costs),w*costs)
 
 	def flatten(self):
-		return ad.concatenate((misc.flatten_symmetric_matrix(self.m),self.w),axis=0)
+		return np.concatenate((misc.flatten_symmetric_matrix(self.m),self.w),axis=0)
 	
 	@classmethod
 	def expand(cls,arr):

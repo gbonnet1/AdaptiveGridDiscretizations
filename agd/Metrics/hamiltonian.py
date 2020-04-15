@@ -249,8 +249,8 @@ class Hamiltonian(object):
 
 		if path: 
 			ndim_free = len(self.shape_free)
-			return (ad.stack(Q,axis=ndim_free),
-				ad.stack(P,axis=ndim_free),
+			return (np.stack(Q,axis=ndim_free),
+				np.stack(P,axis=ndim_free),
 				np.linspace(0,T,niter+1))
 		return q,p
 

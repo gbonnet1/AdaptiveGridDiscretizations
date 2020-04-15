@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_NonDiv\NonlinearMonotoneFirst2D.ipynb
+# Code automatically exported from notebook Notebooks_NonDiv/NonlinearMonotoneFirst2D.ipynb
 # Do not modify
 import sys; sys.path.append("../..") # Path to import agd
 
@@ -39,7 +39,7 @@ def SchemeCentered(u,A,F,rhs,bc):
     residue = -lp.dot_VV(coefs,d2u) + F(grad) - rhs
     
     # Placeholders outside domain
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 # Specialization for the quadratic non-linearity
 def SchemeCentered_Quad(u,A,omega,D,rhs,bc):
@@ -75,5 +75,5 @@ def SchemeUpwind(u,A,omega,D,rhs,bc):
     residue = - lp.dot_VV(mu,d2u) + lp.dot_VV(nu,du**2) - rhs
 
     # Placeholders outside domain
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 

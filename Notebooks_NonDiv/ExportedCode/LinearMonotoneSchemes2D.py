@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_NonDiv\LinearMonotoneSchemes2D.ipynb
+# Code automatically exported from notebook Notebooks_NonDiv/LinearMonotoneSchemes2D.ipynb
 # Do not modify
 import sys; sys.path.append("../..") # Path to import agd
 
@@ -41,7 +41,7 @@ def SchemeCentered(u,cst,mult,omega,diff,bc,ret_hmax=False):
     residue = cst + mult*u +lp.dot_VV(coefs1,du) - lp.dot_VV(coefs2,d2u)
     
     # On boundary : u-bc = 0
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def SchemeUpwind(u,cst,mult,omega,diff,bc):
     """Discretization of a linear non-divergence form second order PDE
@@ -66,5 +66,5 @@ def SchemeUpwind(u,cst,mult,omega,diff,bc):
     residue = cst + mult*u +lp.dot_VV(coefs1,du) - lp.dot_VV(coefs2,d2u)
     
     # On boundary : u-bc = 0
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
