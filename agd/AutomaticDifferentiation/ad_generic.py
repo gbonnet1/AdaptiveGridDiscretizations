@@ -28,14 +28,14 @@ def array(a,copy=True):
 	elif cupy_generic.isndarray(a): return a.copy() if copy else a
 	else: return np.array(a,copy=copy)
 
+def asarray(a): return array(a,copy=False)
+
 def precision(x):
 	"""
 	Precision of the floating point type of x.
 	"""
 	if not isinstance(x,type): x = array(x).dtype.type
-	return np.finfo(x).precision
-	
-def asarray(a): return array(a,copy=False)
+	return np.finfo(x).precision	
 
 def _new(cls):
 	@functools.wraps(cls.__new__)
