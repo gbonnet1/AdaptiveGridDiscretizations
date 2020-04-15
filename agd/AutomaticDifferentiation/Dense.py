@@ -70,7 +70,7 @@ class denseAD(np.ndarray):
 		else: return self.view(np.ndarray)
 	def copy(self,order='C'):
 		return self.new(self.value.copy(order=order),self.coef.copy(order=order))
-
+	
 	# Representation 
 	def __iter__(self):
 		for value,coef in zip(self.value,self.coef):
@@ -266,6 +266,8 @@ class denseAD(np.ndarray):
 
 		return NotImplemented
 
+	def __array_function__(self,func,types,args,kwargs):
+			return npl._array_function_overload(self,func,types,args,kwargs)
 
 	# Numerical 
 	def solve(self,shape_free=None,shape_bound=None):

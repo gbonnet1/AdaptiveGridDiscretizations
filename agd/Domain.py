@@ -584,9 +584,9 @@ class Dirichlet:
 		du = fd.DiffUpwind(u+self._ExteriorNaNs,offsets,self.gridscale)
 		mask = self._BoundaryLayer(u,du)
 		offsets = fd.as_field(np.asarray(offsets),u.shape)
-		um = ad.broadcast_to(u,offsets.shape[1:])[mask]
+		um = np.broadcast_to(u,offsets.shape[1:])[mask]
 		om = offsets[:,mask]
-		gm = ad.broadcast_to(grid.reshape( 
+		gm = np.broadcast_to(grid.reshape( 
 			(len(grid),)+(1,)*(offsets.ndim-grid.ndim)+u.shape),offsets.shape)[:,mask]
 #		um,om,gm = u[mask], offsets[:,mask], grid[:,mask]
 		if not reth: 

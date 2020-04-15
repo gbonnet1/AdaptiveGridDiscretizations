@@ -295,6 +295,9 @@ class denseAD2(np.ndarray):
 
 		return NotImplemented
 	
+	def __array_function__(self,func,types,args,kwargs):
+		return npl._array_function_overload(self,func,types,args,kwargs)
+
 	# Static methods
 
 	# Support for +=, -=, *=, /=

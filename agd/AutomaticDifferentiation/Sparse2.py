@@ -382,6 +382,9 @@ class spAD2(np.ndarray):
 
 		return NotImplemented
 
+	def __array_function__(self,func,types,args,kwargs):
+		return npl._array_function_overload(self,func,types,args,kwargs)
+
 	# Conversion
 	def bound_ad(self):
 		def maxi(a): return int(npl.max(a,initial=-1))
