@@ -138,7 +138,7 @@ def SetGeometry(self):
 			help="First order variation of the cost function")
 		if costVariation is not None: self.cost = ad.Dense.new(self.cost,costVariation)
 	if self.isCurvature: self.cost /= self.h_base
-	self.cost = ad.broadcast_to(self.cost,self.shape)
+	self.cost = np.broadcast_to(self.cost,self.shape)
 
 	# Cost related parameters
 	tol = self.GetValue('tol',default="_Dummy",array_float=True,

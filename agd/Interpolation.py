@@ -6,6 +6,7 @@ import itertools
 import scipy.linalg
 
 from . import AutomaticDifferentiation as ad
+from .AutomaticDifferentiation import cupy_support as cps
 lo = ad.left_operand
 
 
@@ -342,7 +343,7 @@ class UniformGridInterpolation:
 		# Separate treatment of interior and boundary points
 		if interior is None:
 			result_shape = self.oshape+x.shape[1:]
-			result = np.zeros_like(x,shape = result_shape)
+			result = cps.zeros_like(x,shape = result_shape)
 			y = (ad.remove_ad(x) - origin)/scale
 			interior_x = self.spline.interior(y)
 			boundary_x = np.logical_not(interior_x)

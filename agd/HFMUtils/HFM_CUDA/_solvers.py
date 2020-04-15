@@ -6,7 +6,7 @@ import cupy as cp
 import time
 import collections
 from . import misc
-from ...AutomaticDifferentiation.numpy_like import flat
+from ...AutomaticDifferentiation.cupy_support import flat
 from .cupy_module_helper import SetModuleConstant
 """
 The solvers defined below are member functions of the "interface" class devoted to 

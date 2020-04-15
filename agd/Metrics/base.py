@@ -3,6 +3,7 @@
 
 import numpy as np
 from .. import AutomaticDifferentiation as ad
+from ..AutomaticDifferentiation import cupy_support as cps
 from .. import LinearParallel as lp
 from .. import FiniteDifferences as fd
 from .. import Interpolation
@@ -140,13 +141,13 @@ class Base:
 		return self.rotate(lp.rotation(*args,**kwargs))
 
 	def with_costs(self,costs):
-		a = ad.zeros_like(costs,(len(costs),)+costs.shape)
+		a = cps.zeros_like(costs,(len(costs),)+costs.shape)
 		for i,cost in enumerate(costs): a[i,i] = cost
 		return self.inv_transform(a)
 
 	def with_speeds(self,speeds): return self.with_costs(1./speeds)
 	def with_cost(self,cost): 
-		costs = ad.broadcast_to(cost,(self.vdim,)+cost.shape)
+		costs = np.broadcast_to(cost,(self.vdim,)+cost.shape)
 		return self.with_costs(costs)
 	def with_speed(self,speed): return self.with_cost(1/speed)
 

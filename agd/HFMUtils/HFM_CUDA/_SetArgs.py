@@ -80,7 +80,7 @@ def SetRHS(self):
 		neigh = Grid.GridNeighbors(self.hfmIn,self.seed,seedRadius) # Geometry last
 		r = seedRadius 
 		aX = [cp.arange(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
-		neigh =  ad.stack(cp.meshgrid( *aX, indexing='ij'),axis=-1)
+		neigh =  np.stack(cp.meshgrid( *aX, indexing='ij'),axis=-1)
 		neigh = neigh.reshape(-1,neigh.shape[-1])
 		neighValues = seedValues.repeat(len(neigh)//len(seeds)) # corrected below
 

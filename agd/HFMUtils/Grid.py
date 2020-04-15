@@ -147,7 +147,7 @@ def GridNeighbors(params,point,gridRadius):
 	xp = ad.cupy_generic.get_array_module(point)
 	point_cindex = PointFromIndex(params,point,to=True)
 	aX = [xp.arange(int(np.floor(ci-gridRadius)),int(np.ceil(ci+gridRadius)+1)) for ci in point_cindex]
-	neigh_index =  ad.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
+	neigh_index =  xp.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
 	neigh_index = neigh_index.reshape(-1,neigh_index.shape[-1])
 
 	# Check which neighbors are close enough
