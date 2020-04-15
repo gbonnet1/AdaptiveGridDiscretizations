@@ -94,3 +94,22 @@ def concatenate(elems,axis=0):
 	for e in elems:
 		if is_ad(e): return type(e).concatenate(elems,axis)
 	return np.concatenate(elems,axis)	
+
+@implements(np.pad)
+def pad(array, pad_width, *args,**kwargs):
+	if isinstance(pad_width,numbers.Integral):
+		pad_width = (pad_width,)
+	if isinstance(pad_width[0],numbers.Integral) and len(pad_width==1):
+		pad_width = (pad_width[0],pad_width[0])
+	if len(pad_width)==1:
+		pad_width = pad_width*ndim
+	return array.pad(pad_width,*args,**kwargs)
+
+
+
+
+
+
+
+
+
