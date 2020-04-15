@@ -1,4 +1,5 @@
 import numpy as np
+from . import cupy_generic
 from .ad_generic import is_ad
 from .numpy_like import implements_cupy_alt
 
@@ -26,8 +27,8 @@ def flat(a):
 	try: return a.flat # cupy.ndarray (old version ?) does not have flat
 	except AttributeError: return a.reshape(-1) 
 
-@implements_cupy_alt(np.expand_dims,TypeError)
-def expand_dims(a,axis):
+@implements_cupy_alt(np.expand_dims,ValueError)
+def expand_dims(a,axis): # numpy will not accept cupy arrays
 	if axis<0: axis=1+a.ndim+axis
 	newshape = a.shape[:axis]+(1,)+a.shape[axis:]
 	return a.reshape(newshape)
