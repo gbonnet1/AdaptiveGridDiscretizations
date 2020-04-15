@@ -21,7 +21,7 @@ def as_field(u,shape,conditional=True,depth=None):
 		elif depth is None: return u.ndim>=ndim and u.shape[-ndim:]==shape
 		else: assert u.shape[depth:] in (tuple(),shape); return u.shape[depth:]==shape
 	if as_is(): return u
-	else: return ad.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)
+	else: return np.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)
 
 def common_field(arrays,depths,shape=tuple()):
 	if shape==tuple():

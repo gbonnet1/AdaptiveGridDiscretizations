@@ -77,7 +77,7 @@ class _spline_univariate:
 		A piecewise linear spline, defined over [-1,1].
 		"""
 		x=xa-xs
-		result = ad.zeros_like(x)
+		result = np.zeros_like(x)
 		seg=ad.asarray(np.floor(x+1))
 		
 		# relative interval [-1,0[
@@ -98,7 +98,7 @@ class _spline_univariate:
 		A piecewise quadratic spline function, defined over [-1,2]
 		"""
 		x=ad.asarray(xa-xs)
-		result = ad.zeros_like(x)
+		result = np.zeros_like(x)
 
 
 		# Which spline segment to use
@@ -131,7 +131,7 @@ class _spline_univariate:
 		A piecewise cubic spline function, defined over [-2,2]
 		"""
 		x=ad.asarray(xa-xs)
-		result = ad.zeros_like(x)
+		result = np.zeros_like(x)
 		s=self.shape-1
 
 		# Which spline segment to use
@@ -342,7 +342,7 @@ class UniformGridInterpolation:
 		# Separate treatment of interior and boundary points
 		if interior is None:
 			result_shape = self.oshape+x.shape[1:]
-			result = ad.zeros_like(x,shape = result_shape)
+			result = np.zeros_like(x,shape = result_shape)
 			y = (ad.remove_ad(x) - origin)/scale
 			interior_x = self.spline.interior(y)
 			boundary_x = np.logical_not(interior_x)

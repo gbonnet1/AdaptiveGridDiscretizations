@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_NonDiv\NonlinearMonotoneSecond2D.ipynb
+# Code automatically exported from notebook Notebooks_NonDiv/NonlinearMonotoneSecond2D.ipynb
 # Do not modify
 import sys; sys.path.append("../..") # Path to import agd
 
@@ -29,7 +29,7 @@ def SchemeNonMonotone(u,alpha,beta,bc,sqrt_relax=1e-6):
     residue = beta - alpha*lambda_max - lambda_min
     
     # Boundary conditions
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def SchemeSampling(u,diffs,beta,bc):
     # Tensor decomposition 
@@ -40,7 +40,7 @@ def SchemeSampling(u,diffs,beta,bc):
     residue = beta - (coefs*bc.Diff2(u,offsets)).sum(0).min(0)
     
     # Boundary conditions
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def Diff(alpha,theta):
     e0 = np.array((np.cos(theta),np.sin(theta)))
@@ -67,7 +67,7 @@ def SchemeSampling_Opt(u,diffs,beta,bc):
     result,_ = ad.apply(SchemeSampling_OptInner, u,bc.as_field(diffs),bc, envelope=True)
         
     # Boundary conditions
-    return ad.where(bc.interior, beta-result, u-bc.grid_values)
+    return np.where(bc.interior, beta-result, u-bc.grid_values)
 
 def MakeD(alpha):
     return np.moveaxis(0.5*np.array([
@@ -148,7 +148,7 @@ def MinimizeTrace(u,alpha,bc,sqrt_relax=1e-16):
 def SchemeConsistent(u,alpha,beta,bc):
     value,_ = MinimizeTrace(u,alpha,bc)
     residue = beta - value
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def MinimizeTrace_Opt(u,alpha,bc,oracle=None):
     if oracle is None:  return MinimizeTrace(u,alpha,bc)
@@ -163,7 +163,7 @@ def MinimizeTrace_Opt(u,alpha,bc,oracle=None):
 def SchemeConsistent_Opt(u,alpha,beta,bc):
     value,_ = ad.apply(MinimizeTrace_Opt,u,alpha,bc,envelope=True)
     residue = beta - value
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def Pucci_ad(u,alpha,x):
     """

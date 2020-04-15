@@ -4,7 +4,8 @@
 import numpy as np
 from .cupy_generic import cupy_init_kwargs,cupy_rebase
 from . import ad_generic
-from . import numpy_like as npl
+from . import cupy_support as npl
+from . import numpy_like
 from . import misc
 from . import Dense
 
@@ -27,7 +28,7 @@ class denseAD2(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = npl.asarray(value)
+		value = ad_generic.asarray(value)
 		if cls.cupy_based():
 			denseAD2_cupy = cupy_rebase(denseAD2)
 			obj = super(denseAD2_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
@@ -295,6 +296,9 @@ class denseAD2(np.ndarray):
 
 		return NotImplemented
 	
+	def __array_function__(self,func,types,args,kwargs):
+		return numpy_like._array_function_overload(self,func,types,args,kwargs)
+
 	# Static methods
 
 	# Support for +=, -=, *=, /=

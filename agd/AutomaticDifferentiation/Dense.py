@@ -5,7 +5,8 @@ import numpy as np
 from . import functional
 from . import ad_generic
 from .cupy_generic import from_cupy,cupy_init_kwargs,cupy_rebase
-from . import numpy_like as npl
+from . import cupy_support as npl
+from . import numpy_like
 from . import misc
 
 
@@ -28,7 +29,7 @@ class denseAD(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = npl.asarray(value)
+		value = ad_generic.asarray(value)
 		if cls.cupy_based():
 			denseAD_cupy = cupy_rebase(denseAD)
 			obj = super(denseAD_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
@@ -70,7 +71,7 @@ class denseAD(np.ndarray):
 		else: return self.view(np.ndarray)
 	def copy(self,order='C'):
 		return self.new(self.value.copy(order=order),self.coef.copy(order=order))
-
+	
 	# Representation 
 	def __iter__(self):
 		for value,coef in zip(self.value,self.coef):
@@ -266,6 +267,8 @@ class denseAD(np.ndarray):
 
 		return NotImplemented
 
+	def __array_function__(self,func,types,args,kwargs):
+			return numpy_like._array_function_overload(self,func,types,args,kwargs)
 
 	# Numerical 
 	def solve(self,shape_free=None,shape_bound=None):

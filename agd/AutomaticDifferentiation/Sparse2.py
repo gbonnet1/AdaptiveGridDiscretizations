@@ -5,7 +5,8 @@ import numpy as np
 from . import cupy_generic
 from .cupy_generic import cupy_init_kwargs,cupy_rebase
 from . import ad_generic
-from . import numpy_like as npl
+from . import cupy_support as npl
+from . import numpy_like
 from . import misc
 from . import Sparse
 from . import Dense2
@@ -32,7 +33,7 @@ class spAD2(np.ndarray):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = npl.asarray(value)
+		value = ad_generic.asarray(value)
 		if cls.cupy_based():
 			spAD2_cupy = cupy_rebase(spAD2)
 			obj = super(spAD2_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
@@ -381,6 +382,9 @@ class spAD2(np.ndarray):
 
 
 		return NotImplemented
+
+	def __array_function__(self,func,types,args,kwargs):
+		return numpy_like._array_function_overload(self,func,types,args,kwargs)
 
 	# Conversion
 	def bound_ad(self):

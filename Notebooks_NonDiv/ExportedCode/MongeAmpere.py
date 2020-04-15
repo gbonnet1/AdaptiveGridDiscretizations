@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_NonDiv\MongeAmpere.ipynb
+# Code automatically exported from notebook Notebooks_NonDiv/MongeAmpere.ipynb
 # Do not modify
 import sys; sys.path.append("../..") # Path to import agd
 
@@ -27,13 +27,13 @@ def SchemeNonMonotone(u,f,bc):
     residue = f - det
     
     # Boundary conditions
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def MALBR_H(d2u):
-    a,b,c = ad.sort(np.maximum(0.,d2u), axis=0)
+    a,b,c = np.sort(np.maximum(0.,d2u), axis=0)
 
     # General formula, handling infinite values separately
-    A,B,C = (ad.where(e==np.inf,0.,e) for e in (a,b,c))
+    A,B,C = (np.where(e==np.inf,0.,e) for e in (a,b,c))
     result = 0.5*(A*B+B*C+C*A)-0.25*(A**2+B**2+C**2)
     
     pos_inf = np.logical_or.reduce(d2u==np.inf)    
@@ -53,7 +53,7 @@ def SchemeMALBR(u,SB,f,bc):
     residue = f-MALBR_H(d2u).min(axis=0)
     
     # Boundary conditions
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def InvalidMALBR(u,SB,f,bc):
     residue = SchemeMALBR(u,SB,f,bc)
@@ -77,7 +77,7 @@ def SchemeMALBR_Opt(u,SB,f,bc):
     result,_ = ad.apply(SchemeMALBR_OptInner, u,bc.as_field(SB),bc, envelope=True)
         
     # Boundary conditions
-    return ad.where(bc.interior, f - result, u-bc.grid_values)
+    return np.where(bc.interior, f - result, u-bc.grid_values)
 
 def ConstrainedMaximize(Q,l,m):
     dim = l.shape[0]
@@ -141,7 +141,7 @@ def SchemeUniform(u,SB,f,bc):
     residue[mask] = np.max(l/m,axis=0).max(axis=0)[mask]
     
     # Boundary conditions
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def SchemeUniform_OptInner(u,SB,f,bc,oracle=None):
     # Use the oracle, if available, to select the active superbases only
@@ -177,7 +177,7 @@ def SchemeUniform_Opt(u,SB,f,bc):
     # Evaluate the maximum over the superbases using the envelope theorem
     residue,_ = ad.apply(SchemeUniform_OptInner, u,bc.as_field(SB),f,bc, envelope=True)
     
-    return ad.where(bc.interior,residue,u-bc.grid_values)
+    return np.where(bc.interior,residue,u-bc.grid_values)
 
 def Hessian_ad(u,x):
     x_ad = ad.Dense2.identity(constant=x,shape_free=(2,))

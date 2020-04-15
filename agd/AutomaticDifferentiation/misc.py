@@ -8,7 +8,8 @@ import operator
 from .functional import map_iterables,map_iterables2,pair
 from .cupy_generic import isndarray,from_cupy
 from .ad_generic import is_ad,remove_ad
-from . import numpy_like as npl
+from . import ad_generic
+from . import cupy_support as npl
 
 # ------- Ugly utilities -------
 def _tuple_first(a): 	return a[0] if isinstance(a,tuple) else a
@@ -48,7 +49,7 @@ def _set_shape_constant(shape=None,constant=None):
 		constant = np.full(shape,0.)
 	else:
 		if not isndarray(constant):
-			constant = npl.asarray(constant)
+			constant = ad_generic.asarray(constant)
 		if shape is not None and shape!=constant.shape: 
 			raise ValueError("Error : incompatible shape and constant")
 		else:
@@ -248,13 +249,8 @@ def true_divide(a,b,out=None,where=True):
 	else: result=_tuple_first(out); result[where]=a[where]/_getitem(b,where); return result
 
 
-def maximum(a,b): 	
-	from . import where
-	return where(a>b,a,b)
-def minimum(a,b): 	
-	from . import where
-	return where(a<b,a,b)
-
+def maximum(a,b): return np.where(a>b,a,b)
+def minimum(a,b): return np.where(a<b,a,b)
 
 def prod(arr,axis=None,dtype=None,out=None,keepdims=False,initial=None):
 	"""Attempt to reproduce numpy prod function. (Rather inefficiently, and I presume partially)"""
