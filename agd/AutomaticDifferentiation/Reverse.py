@@ -174,10 +174,6 @@ def empty(inputs=None,**kwargs):
 	rev = reverseAD(**kwargs)
 	return rev if inputs is None else (rev,rev.register(inputs))
 
-#	if inputs is None: return rev
-#	_inputs = tuple(rev.identity(constant=a) for a in inputs)
-#	return rev,_inputs
-
 # Elementary operators with adjoints
 
 def operator_like(inputs=None,co_output=None,**kwargs):

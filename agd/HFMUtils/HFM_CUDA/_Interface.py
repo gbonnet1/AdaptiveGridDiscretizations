@@ -30,7 +30,7 @@ class Interface(object):
 
 		# Needed for GetValue
 		self.hfmOut = {'keys':{
-		'used':['exportValues','origin','arrayOrdering'],
+		'used':['origin','arrayOrdering'],
 		'default':OrderedDict(),
 		'visited':[],
 		'help':OrderedDict(),
@@ -98,7 +98,7 @@ class Interface(object):
 		self.GetGeodesics()
 		self.FinalCheck()
 
-		return self.hfmOut
+		return (self.values,self.hfmOut) if self.extractValues else self.hfmOut
 
 	SetKernelTraits = _Kernel.SetKernelTraits
 	SetGeometry = _SetGeometry.SetGeometry
@@ -132,6 +132,10 @@ class Interface(object):
 
 	
 	def FinalCheck(self):
+		if self.GetValue('exportValues',False,help="Return the solution numerical values"):
+			self.hfmOut['values'] = self.values
+		self.extractValues = self.GetValue('extractValues',False,
+			help="Return the solution numerical values separately from other data")
 		self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
 		self.hfmOut['solverGPUTime'] = self.kernel_data['eikonal'].stats['time']
 		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys()) 

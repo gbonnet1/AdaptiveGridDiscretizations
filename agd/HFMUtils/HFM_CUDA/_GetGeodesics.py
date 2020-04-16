@@ -90,7 +90,7 @@ def GetGeodesics(self):
 		flow = self.kernel_data['flow']
 		flow_vector    = self.flow_vector
 		flow_weightsum = misc.block_squeeze(flow.args['flow_weightsum'],self.shape)
-		values = self.hfmOut['values'].astype(self.float_t)
+		values = self.values.astype(self.float_t)
 		args = (flow_vector,flow_weightsum,values,eucl)
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)
 

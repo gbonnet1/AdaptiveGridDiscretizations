@@ -27,12 +27,12 @@ def PostProcess(self):
 		if self.GetValue('values_float64',default=False,
 			help="Export values using the float64 data type"):
 			float64_t = np.dtype('float64').type
-			self.hfmOut['values'] = (values.astype(float64_t) 
+			self.values = (values.astype(float64_t) 
 				+ float64_t(self.multip_step) * valuesq)
 		else:
-			self.hfmOut['values'] = (values+valuesq.astype(self.float_t)*self.multip_step)
+			self.values = (values+valuesq.astype(self.float_t)*self.multip_step)
 	else:
-		self.hfmOut['values'] = values
+		self.values = values
 
 	# Compute the geodesic flow, if needed, and related quantities
 	shape_oi = self.shape_o+self.shape_i
@@ -72,14 +72,14 @@ def PostProcess(self):
 		if self.exportGeodesicFlow:
 			self.hfmOut['flow'] = - flow_vector * self.h_broadcasted
 	
-def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
+def SolveLinear(self,rhs,diag,indices,weights,chg,kernelName):
 	"""
 	A linear solver for the systems arising in automatic differentiation of the HFM.
 	"""
 
-#	print('solveLinear')
-#	print('diag\n',diag); print('indices\n',indices); print('weights\n',weights)
-#	print('rhs\n',rhs)
+	print('solveLinear')
+	print('diag\n',diag); print('indices\n',indices); print('weights\n',weights)
+	print('rhs\n',rhs)
 	data = self.kernel_data[kernelName]
 	eikonal = self.kernel_data['eikonal']
 
@@ -138,7 +138,10 @@ def SolveAD(self):
 	if not (self.forward_ad or self.reverse_ad): return
 	eikonal = self.kernel_data['eikonal']
 	flow = self.kernel_data['flow']
-	
+	traits = eikonal.traits
+	if traits.get('order2_macro') or traits.get('factor_macro'):
+		self.Warn("Eikonal AD ignores order2 and source factorization")
+
 	if eikonal.policy.bound_active_blocks:
 		dist = eikonal.args['values']
 		if self.multiprecision: 
@@ -155,15 +158,19 @@ def SolveAD(self):
 	if self.forward_ad:
 		rhs = misc.block_expand(self.rhs.gradient(),self.shape_i,
 			mode='constant',constant_values=np.nan)
-		valueVariation = self.SolveLinear(diag,indices,weights,rhs,dist,'forwardAD')
+		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
 		coef = np.moveaxis(misc.block_squeeze(valueVariation,self.shape),0,-1)
 #		self.hfmOut['valueVariation'] = coef
-		val = self.hfmOut['values']
-		self.hfmOut['values'] = ad.Dense.new(val,cp.asarray(coef,val.dtype))
+		val = self.values
+		self.values = ad.Dense.new(val,cp.asarray(coef,val.dtype))
 
 	if self.reverse_ad:
 		# Get the rhs
 		rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
+		if rhs.shape[:-1]!=self.shape: 
+			raise ValueError(f"Reverse AD rhs shape {rhs.shape} does not start with {self.shape}")
+		rhs = misc.block_expand(np.moveaxis(rhs,-1,0),self.shape_i,
+			mode='constant',constant_values=np.nan)
 
 		# Get the matrix structure
 		invalid_index = np.iinfo(self.int_t).max
@@ -172,7 +179,7 @@ def SolveAD(self):
 #		weightsT[indicesT==invalid_index]=0. # By default
 		print("SolveAD indicesT shape",indicesT.shape,weightsT.shape)
 
-		allSensitivity = self.SolveLinear(diag,indicesT,weightsT,rhs,-dist,'reverseAD')
+		allSensitivity = self.SolveLinear(rhs,diag,indicesT,weightsT,-dist,'reverseAD')
 		self.hfmOut['costSensitivity'] = misc.block_squeeze(allSensitivity,self.shape) #TODO : seedSensitivity
 
 

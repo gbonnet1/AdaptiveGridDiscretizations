@@ -29,13 +29,15 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
 n=7
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
+    'exportValues':1,
+#    'order':2,
 #    'verbosity':1,
     'seeds':[[0,0]],
 #    'kernel':"dummy",
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':2,
+    'nitermax_o':8,
 #    'tol':1e-8,
 #    'multiprecision':True,
 #    'values_float64':True,
@@ -51,9 +53,9 @@ hfmIn = HFMUtils.dictIn({
 #	'returns':'in_raw',
 #	'bound_active_blocks':True,
 	'traits':{
-#	'niter_i':8,'shape_i':(4,4),
+	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),
-	'niter_i':16,'shape_i':(8,8),
+#	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
 #	'niter_i':48,'shape_i':(24,24),
 #	'niter_i':64,'shape_i':(32,32),
@@ -88,7 +90,9 @@ if forwardAD:
 	hfmIn['cost'] = 1.+ad.Dense.identity(constant=cp.ones(1,dtype=np.float32) )
 else: 
 	hfmIn['cost']=1.
-	sens=cp.zeros(hfmIn['dims'].astype(int),dtype=np.float32)
+	nSens=1
+	shapeSens = tuple(hfmIn['dims'].astype(int))+(nSens,)
+	sens=cp.zeros(shapeSens,dtype=np.float32)
 	sens[-1,-1]=1.
 	hfmIn['sensitivity']=sens
 #xp.ones(hfmIn['dims'].astype(int),dtype='float32')
@@ -99,7 +103,10 @@ else:
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
 hfmOut = hfmIn.RunGPU()
 print('values\n',hfmOut['values'])
-if not forwardAD: print(hfmOut['costSensitivity'])
+if not forwardAD: 
+	costSens = hfmOut['costSensitivity']
+	print(costSens.shape)
+	print(costSens)
 
 #print(hfmOut['values'].shape)
 #print(hfmOut)
@@ -116,7 +123,6 @@ for key in ('traits','niter_o','solver','raiseOnNonConvergence','nitermax_o'):
 		hfmInCPU.pop(key,None)
 
 hfmInCPU.update({
-	'exportValues':1,
 #	'factoringMethod':'Static',
 #	'factoringPointChoice':'Key',
 })

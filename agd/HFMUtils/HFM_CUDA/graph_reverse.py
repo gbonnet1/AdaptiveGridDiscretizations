@@ -72,7 +72,7 @@ def graph_reverse(fwd,fwd_weight,
 		irev_mmax = max(irev_max,irev_mmax)
 #		print("graph reverse",irev_max," ",irev_mmax)
 
-		if irev_max==-1: return rev[:irev_mmax],rev_weight[:irev_mmax]
+		if irev_max==-1: return rev[:irev_mmax+1],rev_weight[:irev_mmax+1]
 		if irev_max==nrev: return graph_reverse(fwd,fwd_weight,invalid,2*nrev)
 
 #		print("rev ",rev)
