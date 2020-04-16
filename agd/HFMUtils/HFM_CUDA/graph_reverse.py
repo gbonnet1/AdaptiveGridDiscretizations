@@ -8,10 +8,10 @@ from . import cupy_module_helper
 from .cupy_module_helper import SetModuleConstant
 
 def graph_reverse(fwd,fwd_weight,
-	invalid=None,nrev=None,blockDim=1024):
+	invalid_index=None,nrev=None,blockDim=1024):
 	"""
 	Inverses a weighted graph. 
-	- invalid : special value to be ignored in fwd (defaults to Int_Max)
+	- invalid_index : special value to be ignored in fwd (defaults to Int_Max)
 	- nrev : expected max number of neighbors in reversed graph
 	- irev_t
 	Output : 
@@ -27,7 +27,7 @@ def graph_reverse(fwd,fwd_weight,
 	int_t = fwd.dtype.type
 	weight_t = fwd_weight.dtype.type
 
-	if invalid is None: invalid = np.iinfo(int_t).max
+	if invalid_index is None: invalid_index = np.iinfo(int_t).max
 	if nrev is None: nrev = 2*nfwd # Default guess, will be increased if needed
 	for dtype in (np.int8,np.int16,np.int32,np.int64):
 		if np.iinfo(dtype).max>=nrev:
@@ -35,7 +35,7 @@ def graph_reverse(fwd,fwd_weight,
 			break
 	else: raise ValueError("Impossible nrev")
 
-	rev = cp.full( (nrev,)+shape, invalid, dtype=int_t)
+	rev = cp.full( (nrev,)+shape, invalid_index, dtype=int_t)
 	rev_weight = cp.zeros( (nrev,)+shape, dtype=weight_t)
 	irev = cp.zeros( (nfwd,)+shape, dtype=irev_t)
 
@@ -43,7 +43,7 @@ def graph_reverse(fwd,fwd_weight,
 		'Int':int_t,
 		'weightT':weight_t,
 		'irevT':irev_t,
-		'invalid':(invalid,int_t)
+		'invalid':(invalid_index,int_t)
 	}
 
 	source = cupy_module_helper.traits_header(traits,integral_max=True)
@@ -56,7 +56,6 @@ def graph_reverse(fwd,fwd_weight,
 	cuoptions = ("-default-device", f"-I {cuda_path}") 
 
 	source="\n".join(source)
-	print(source)
 	module = cupy_module_helper.GetModule(source,cuoptions)
 	SetModuleConstant(module,'size_tot',size,int_t)
 	SetModuleConstant(module,'nfwd',nfwd,int_t)
@@ -65,25 +64,16 @@ def graph_reverse(fwd,fwd_weight,
 	cupy_kernel = module.get_function("GraphReverse")
 	gridDim = int(np.ceil(size/blockDim))
 
-#	print("fwd ",fwd)
 	irev_mmax = 0
-	for i in range(nrev):
+	for i in range(nrev): # By construction, at least one reverse index is set each iter
 		irev_max = np.max(irev)
 		irev_mmax = max(irev_max,irev_mmax)
-#		print("graph reverse",irev_max," ",irev_mmax)
 
 		if irev_max==-1: return rev[:irev_mmax+1],rev_weight[:irev_mmax+1]
-		if irev_max==nrev: return graph_reverse(fwd,fwd_weight,invalid,2*nrev)
+		if irev_max==nrev: # Some vertices have large reverse multiplicities
+			return graph_reverse(fwd,fwd_weight,invalid_index,2*nrev,blockDim=blockDim)
 
-#		print("rev ",rev)
 		cupy_kernel((gridDim,),(blockDim,),(fwd,rev,irev,fwd_weight,rev_weight))
-
-
-#		print("rev",rev)
-#		print("rev_weight",rev_weight)
-#		print("irev",irev)
-#		if i==1: raise
-
 
 
 

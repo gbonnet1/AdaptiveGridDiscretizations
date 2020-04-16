@@ -77,9 +77,6 @@ def SolveLinear(self,rhs,diag,indices,weights,chg,kernelName):
 	A linear solver for the systems arising in automatic differentiation of the HFM.
 	"""
 
-	print('solveLinear')
-	print('diag\n',diag); print('indices\n',indices); print('weights\n',weights)
-	print('rhs\n',rhs)
 	data = self.kernel_data[kernelName]
 	eikonal = self.kernel_data['eikonal']
 
@@ -135,7 +132,7 @@ def SolveAD(self):
 	"""
 	Forward and reverse differentiation of the HFM.
 	"""
-	if not (self.forward_ad or self.reverse_ad): return
+	if not (self.forwardAD or self.reverseAD): return
 	eikonal = self.kernel_data['eikonal']
 	flow = self.kernel_data['flow']
 	traits = eikonal.traits
@@ -155,7 +152,7 @@ def SolveAD(self):
 	indices = flow.args['flow_indices'] 
 	weights = flow.args['flow_weights']
 
-	if self.forward_ad:
+	if self.forwardAD:
 		rhs = misc.block_expand(self.rhs.gradient(),self.shape_i,
 			mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
@@ -164,7 +161,7 @@ def SolveAD(self):
 		val = self.values
 		self.values = ad.Dense.new(val,cp.asarray(coef,val.dtype))
 
-	if self.reverse_ad:
+	if self.reverseAD:
 		# Get the rhs
 		rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
 		if rhs.shape[:-1]!=self.shape: 
@@ -175,12 +172,20 @@ def SolveAD(self):
 		# Get the matrix structure
 		invalid_index = np.iinfo(self.int_t).max
 		indices[weights==0]=invalid_index
-		indicesT,weightsT = graph_reverse(indices,weights,invalid=invalid_index)
-#		weightsT[indicesT==invalid_index]=0. # By default
-		print("SolveAD indicesT shape",indicesT.shape,weightsT.shape)
+		indicesT,weightsT = graph_reverse(indices,weights,invalid_index=invalid_index)
+		# By default, weightsT[indicesT==invalid_index]=0
 
 		allSensitivity = self.SolveLinear(rhs,diag,indicesT,weightsT,-dist,'reverseAD')
-		self.hfmOut['costSensitivity'] = misc.block_squeeze(allSensitivity,self.shape) #TODO : seedSensitivity
+		allSensitivity = np.moveaxis(misc.block_squeeze(allSensitivity,self.shape),0,-1)
+		pos = tuple(self.seedIndices.T)
+		seedSensitivity = allSensitivity[pos]
+		allSensitivity[pos]=0
+		self.hfmOut['costSensitivity'] = allSensitivity #TODO : seedSensitivity
+
+		val,(row,col) = self.seedValues_rev.triplets()
+		seedSensitivity = ad.misc.spapply((val,(col,row)),seedSensitivity)
+		self.hfmOut['seedValueSensitivity'] = seedSensitivity
+
 
 
 """

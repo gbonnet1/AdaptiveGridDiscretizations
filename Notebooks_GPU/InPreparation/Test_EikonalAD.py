@@ -104,9 +104,8 @@ else:
 hfmOut = hfmIn.RunGPU()
 print('values\n',hfmOut['values'])
 if not forwardAD: 
-	costSens = hfmOut['costSensitivity']
-	print(costSens.shape)
-	print(costSens)
+	print(hfmOut['costSensitivity'][...,0])
+	print(hfmOut['seedValueSensitivity'][...,0])
 
 #print(hfmOut['values'].shape)
 #print(hfmOut)

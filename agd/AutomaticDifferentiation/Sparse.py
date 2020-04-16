@@ -328,8 +328,9 @@ class spAD(np.ndarray):
 
 	#Linear algebra
 	def triplets(self):
+		xp = cupy_generic.get_array_module(self.value)
 		coef = self.coef.flatten()
-		row = np.broadcast_to(_add_dim(np.arange(self.size).reshape(self.shape)), self.index.shape).flatten()
+		row = np.broadcast_to(_add_dim(xp.arange(self.size).reshape(self.shape)), self.index.shape).flatten()
 		column = self.index.flatten()
 
 		pos=coef!=0

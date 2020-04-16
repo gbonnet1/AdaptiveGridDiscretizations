@@ -40,6 +40,9 @@ def SetRHS(self):
 	seedRadius = self.GetValue('seedRadius',default=2. if self.factoringRadius>0. else 0.,
 		help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
+	self.reverseAD = self.HasValue('sensitivity')
+	if self.reverseAD: seedValues_rev=ad.Sparse.identity(constant=ad.remove_ad(seedValues))
+
 	if seedRadius==0.:
 		seedIndices = np.round(seeds).astype(int)
 	else:
@@ -49,11 +52,13 @@ def SetRHS(self):
 		neigh =  np.stack(cp.meshgrid( *aX, indexing='ij'),axis=-1)
 		neigh = neigh.reshape(-1,neigh.shape[-1])
 		neighValues = seedValues.repeat(len(neigh)//len(seeds)) # corrected below
+		if self.reverseAD: neighValues_rev = seedValues_rev.repeat(len(neigh)//len(seeds))
 
 		# Select neighbors which are close enough
 		close = ad.Optimization.norm(neigh-self.seed,axis=-1) < r
 		neigh = neigh[close,:]
 		neighValues = neighValues[close,:]
+		if self.reverseAD: neighValues_rev = neighValues_rev[close,:]
 
 		# Periodize, and select neighbors which are in the domain
 		nper = np.logical_not(self.periodic)
@@ -61,6 +66,7 @@ def SetRHS(self):
 			neigh[:,nper]<cp.array(self.shape)[nper]-0.5),axis=-1)
 		neigh = neigh[inRange,:]
 		neighValues = neighValues[inRange]
+		if self.reverseAD: neighValues_rev = neighValues_rev[inRange]
 		
 		self._CostMetric = self.metric.with_cost(self.cost)
 		# TODO : remove. No need to create this grid for our interpolation
@@ -72,6 +78,7 @@ def SetRHS(self):
 		metric0 = self.CostMetric(self.seed)
 		metric1 = self.CostMetric(neigh.T)
 		seedValues = neighValues+0.5*(metric0.norm(diff) + metric1.norm(diff))
+		if self.reverseAD: seedValues_rev = neighValues_rev+0.5*(metric0.norm(diff)+metric1.norm(diff))
 		seedIndices = neigh
 
 	rhs,seedValues = ad.common_cast(rhs,seedValues)
@@ -80,8 +87,12 @@ def SetRHS(self):
 	seedTags[pos] = True
 	eikonal.trigger = seedTags
 
+	self.forwardAD = ad.is_ad(rhs)
 	self.rhs = rhs
 	self.seedTags = seedTags
+	if self.reverseAD: 
+		self.seedValues_rev = seedValues_rev
+		self.seedIndices = seedIndices
 
 def SetArgs(self):
 	if self.verbosity>=1: print("Preparing the problem rhs (cost, seeds,...)")

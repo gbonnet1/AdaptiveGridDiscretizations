@@ -127,9 +127,7 @@ def SetKernel(self):
 	flow.policy.nitermax_o = 1
 	flow.policy.solver = 'global_iteration'
 
-	self.forward_ad = ad.is_ad(self.rhs)
-	self.reverse_ad = self.HasValue('sensitivity')
-	if self.forward_ad or self.reverse_ad:
+	if self.forwardAD or self.reverseAD:
 		for key in ('flow_weights','flow_weightsum','flow_indices'): 
 			flow.traits[key+"_macro"]=1
 	if self.hasTips: 

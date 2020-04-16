@@ -195,7 +195,7 @@ def spsolve(mat,rhs):
 	Solves a sparse linear system where the matrix is given as triplets.
 	"""
 	if from_cupy(mat[0]):
-		import cupy.cupyx.scipy.sparse as spmod
+		import cupy; spmod = cupy.cupyx.scipy.sparse
 		spmat = spmod.coo_matrix(mat)
 		return spmod.linalg.lsqr(spmat,rhs) # Only available solver
 	else:
@@ -214,7 +214,7 @@ def spapply(mat,rhs,crop_rhs=False):
 		size = 1+np.max(cols)
 		if rhs.shape[0]>size:
 			rhs = rhs[:size]
-	if from_cupy(rhs): import cupy.cupyx.scipy.sparse as spmod
+	if from_cupy(rhs): import cupy; spmod = cupy.cupyx.scipy.sparse
 	else: import scipy.sparse as spmod
 	return spmod.coo_matrix(mat).tocsr()*rhs
 
