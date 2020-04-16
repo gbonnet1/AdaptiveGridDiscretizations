@@ -193,7 +193,7 @@ __global__ void Update(
 
 	FLOW(
 	Scalar flow_weights[nact]; 
-	Int active_side[nsym];
+	NSYM(Int active_side[nsym];) // C does not tolerate zero-length arrays.
 	Int kmix=0; 
 	) 
 
@@ -203,7 +203,7 @@ __global__ void Update(
 		v_o MULTIP(,vq_o), v_i, 
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 		u_i MULTIP(,uq_i) 
-		FLOW(, flow_weights, active_side MIX(, &kmix) ) );
+		FLOW(, flow_weights NSYM(, active_side) MIX(, &kmix) ) );
 
 	#if strict_iter_o_macro
 	uNext_t[n_t] = u_i[n_i];
@@ -222,7 +222,7 @@ __global__ void Update(
 	if(isSeed){ // HFM leaves these fields to their (unspecified) initial state
 		for(Int k=0; k<nact; ++k){
 			flow_weights[k]=0; 
-			active_side[k]=0;}
+			NSYM(active_side[k]=0;)}
 		MIX(kmix=0;)
 	}
 
@@ -233,7 +233,7 @@ __global__ void Update(
 		FLOW_WEIGHTS(flow_weights_t[n_t+size_tot*k]=flow_weights[k];)
 		FLOW_WEIGHTSUM(flow_weightsum+=flow_weights[k];)
 		Int offset[ndim]; FLOW_INDICES(Int y_t[ndim];)
-		const Int eps = 2*active_side[k]-1;
+		const Int eps = NSYM( k<nsym ? (2*active_side[k]-1) : ) 1;
 		for(Int l=0; l<ndim; ++l){
 			offset[l] = eps*offsets[kmix*nact+k][l];
 			FLOW_INDICES(y_t[l] = x_t[l]+offset[l];)

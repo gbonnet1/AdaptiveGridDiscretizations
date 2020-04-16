@@ -22,7 +22,9 @@ def GetGeodesics(self):
 			'nymin_delay':geodesic_hlen-1,
 			'EuclT':np.uint8,
 			}
-		if any(self.periodic): traits['periodic'] = self.periodic
+		if any(self.periodic): 
+			traits['periodic'] = 1
+			traits['periodic_axes'] = self.periodic
 		traits.update(self.GetValue('geodesic_traits',default=traits,
 			help='Traits for the geodesic backtracking kernel') )
 		traits.update({ # Non-negotiable

@@ -29,12 +29,12 @@ void HFMNeighbors(const Int n_i,
 		const Scalar weights[nact],)
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
 	Scalar v[nact], MULTIP(Int vqmin[1],) ORDER2(bool order2[nact],)
-	Int order[nact] FLOW(, Int side[nsym] )){
+	Int order[nact] FLOW(NSYM(, Int side[nsym]) )){
 
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
 	MULTIP(Int vq[nact];)
-	ORDER2(NOFLOW(Int side[nsym];))
+	ORDER2(NOFLOW(NSYM(Int side[nsym];)))
 	for(Int k=0; k<nsym; ++k){
 		for(Int s=0; s<=1; ++s){
 			const Int ks = 2*k+s;
@@ -49,9 +49,9 @@ void HFMNeighbors(const Int n_i,
 			}
 
 			if(s==0) { 
-				v[k] = v_; MULTIP(vq[k] = vq_;) ORDER2_OR_FLOW(side[k] = 0;)
+				v[k] = v_; MULTIP(vq[k] = vq_;) ORDER2_OR_FLOW(NSYM(side[k] = 0;))
 			} else if( Greater(v[k] MULTIP(, vq[k]), v_ MULTIP(, vq_)) ){
-				v[k] = v_; MULTIP(vq[k] = vq_;) ORDER2_OR_FLOW(side[k] = 1;)
+				v[k] = v_; MULTIP(vq[k] = vq_;) ORDER2_OR_FLOW(NSYM(side[k] = 1;))
 			}
 		}
 	}
@@ -100,7 +100,7 @@ void HFMNeighbors(const Int n_i,
 
 	for(Int k=0; k<nact; ++k){
 		// Get the further neighbor value
-		const Int ks = k<nsym ? (2*k+side[k]) : (k+nsym);
+		const Int ks = NSYM( k<nsym ? (2*k+side[k]) : ) (k+nsym);
 		const Int w_i=v2_i[ks];
 		Scalar v2;
 		if(w_i>=0){
@@ -148,7 +148,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 	ORDER2(const Scalar v2_o[ntot], MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],)
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
 	Scalar * u_out MULTIP(,Int * uq_out) 
-	FLOW(, Scalar flow_weights[nact], Int active_side[nsym] ) 
+	FLOW(, Scalar flow_weights[nact] NSYM(, Int active_side[nsym]) ) 
 	){
 
 	// Get the value for the symmetric offsets 
@@ -163,7 +163,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i, weights,)
 		u_i MULTIP(,uq_i), 
 		v MULTIP(,vqmin) ORDER2(,order2),
-		order FLOW(, active_side) );
+		order FLOW(NSYM(, active_side)) );
 
 	if(debug_print && n_i==1){
 /*		printf("HFMUpdate ni : %i\n",n_i);
@@ -232,7 +232,7 @@ void HFMIter(const bool active, const Int n_i,
 	const Scalar v_o[ntotx], MULTIP(const Int vq_o[ntotx],) const Int v_i[ntotx], 
 	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) 
-	FLOW(, Scalar flow_weights[nact], Int active_side[nsym] MIX(, Int * kmix_) ) ){
+	FLOW(, Scalar flow_weights[nact] NSYM(, Int active_side[nsym]) MIX(, Int * kmix_) ) ){
 
 
 	Scalar u_i_new MIX(=mix_neutral(mix_is_min)); MULTIP(Int uq_i_new MIX(=0);)
@@ -241,9 +241,9 @@ void HFMIter(const bool active, const Int n_i,
 		if(active) {
 			NOMIX(Scalar & u_i_mix = u_i_new; MULTIP(Int & uq_i_mix = uq_i_new;)
 				FLOW(Scalar * const flow_weights_mix = flow_weights; 
-					 Int * const active_side_mix = active_side;) )
+					 NSYM(Int * const active_side_mix = active_side;)) )
 			MIX(Scalar u_i_mix; MULTIP(Int uq_i_mix;) 
-				FLOW(Scalar flow_weights_mix[nact]; Int active_side_mix[nsym];) )
+				FLOW(Scalar flow_weights_mix[nact]; NSYM(Int active_side_mix[nsym];)) )
 
 			for(Int kmix=0; kmix<nmix; ++kmix){
 				const Int s = kmix*ntot;
@@ -253,14 +253,14 @@ void HFMIter(const bool active, const Int n_i,
 					ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
 					u_i MULTIP(,uq_i),
 					&u_i_mix MULTIP(,&uq_i_mix) 
-					FLOW(, flow_weights_mix, active_side_mix)
+					FLOW(, flow_weights_mix NSYM(, active_side_mix))
 					);
 
 				MIX(if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
 					u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
 					FLOW(kmix_=kmix; 
 						for(Int k=0; k<nact; ++k){flow_weights[k]=flow_weights_mix[k];}
-						for(Int k=0; k<nsym; ++k){active_side[k]=active_side_mix[k];})
+						NSYM(for(Int k=0; k<nsym; ++k){active_side[k]=active_side_mix[k];}))
 				}) // Mix and better update
 			}
 		}
@@ -280,7 +280,7 @@ void HFMIter(const bool active, const Int n_i,
 				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 				u_i MULTIP(,uq_i),
 				&u_i_new MULTIP(,&uq_i_new) 
-				FLOW(, flow_weights, active_side)
+				FLOW(, flow_weights NSYM(, active_side))
 				);
 			if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
 										  u_i_new  MULTIP(,uq_i_new))) ) {

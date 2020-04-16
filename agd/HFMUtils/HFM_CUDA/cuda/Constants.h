@@ -68,6 +68,12 @@ __constant__ Scalar order2_threshold = 0.3;
 #define GEOM(...) 
 #endif
 
+#if true //nsym>0
+#define NSYM(...) __VA_ARGS__
+#else
+#define NSYM(...) 
+#endif
+
 // Get the parameters for curvature penalized models
 #if curvature_macro 
 
