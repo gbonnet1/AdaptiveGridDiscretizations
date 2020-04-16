@@ -30,9 +30,11 @@ const Int offsets[ndim][ndim] = {{1,0,0,0,0},{0,1,0,0,0},{0,0,1,0,0},{0,0,0,1,0}
 
 #if isotropic_macro
 __constant__ Scalar weights[ndim];
+void scheme(const Scalar weights[ndim], const Int offsets[ndim][ndim]){}
 #else // Isotropic model
 const Int geom_size = ndim;
-void scheme(const Scalar dual_costs2[ndim], Scalar weights[ndim], const Int offsets[ndim]){
+void scheme(const Scalar dual_costs2[ndim], 
+	Scalar weights[ndim], const Int offsets[ndim][ndim]){
 	copy_vV(dual_costs2,weights);}
 #endif
 

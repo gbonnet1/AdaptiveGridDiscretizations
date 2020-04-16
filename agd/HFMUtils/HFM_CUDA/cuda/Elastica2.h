@@ -23,7 +23,7 @@ const Int nfwd = nFejer*symdim; // Number of forward offsets
 
 void scheme(const Scalar params[geom_size],  Int x[ndim],
 	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
-	GET_SPEED_XI_KAPPA_THETA(params,x)
+	GET_XI_KAPPA_THETA(params,x)
 	const Scalar cT = cos(theta), sT = sin(theta);
 
 	for(Int l=0; l<nFejer; ++l){
@@ -32,7 +32,7 @@ void scheme(const Scalar params[geom_size],  Int x[ndim],
 		const Scalar v[ndim]={sP*cT,sP*sT,(sP*kappa+cP/xi)};
 
 		Selling_v(v, &weights[l*symdim], &offsets[l*symdim]);
-		const Scalar s = speed*speed*Fejer[l];
+		const Scalar s = Fejer[l];
 		for(int i=0; i<symdim; ++i) weights[l*symdim+i] *= s;
 	}
 }

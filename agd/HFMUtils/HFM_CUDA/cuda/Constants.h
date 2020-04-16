@@ -65,8 +65,7 @@ __constant__ Scalar order2_threshold = 0.3;
 // Get the parameters for curvature penalized models
 #if curvature_macro 
 
-const Int geom_size = 1 + xi_var_macro + kappa_var_macro + theta_var_macro;
-
+const Int geom_size = xi_var_macro + kappa_var_macro + theta_var_macro;
 #if xi_var_macro==0
 __constant__ Scalar xi;
 #endif
@@ -77,19 +76,25 @@ __constant__ Scalar kappa;
 
 const bool periodic_axes[3]={false,false,true};
 
-#define GET_SPEED_XI_KAPPA_THETA(params,x) { \
-Int k_=0;
-const Scalar speed = params[k_]; ++k_;
-#if xi_var_macro
-const Scalar xi = params[k_]; ++k;
-#endif
-#if kappa_var_macro
-const Scalar kappa = params[k_]; ++k;
-#endif
-#if theta_var_macro
-const Scalar theta = params[k_]; ++k;
-#else
-const Scalar theta = (2.*pi*x[2])/shape_tot[2];
+#define GET_XI_KAPPA_THETA(geom,x) { \
+Int k_=0; \
+#if xi_var_macro \
+const Scalar xi = params[k_]; ++k; \
+#endif \
+#if kappa_var_macro \
+const Scalar kappa = params[k_]; ++k; \
+#endif \
+#if theta_var_macro \
+const Scalar theta = params[k_]; ++k; \
+#else \
+const Scalar theta = (2.*pi*x[2])/shape_tot[2]; \
+#endif \
+} \
+
 #endif
 
+#if geom_size>0
+#define GEOM(...) __VA_ARGS__
+#else
+#define GEOM(...) 
 #endif

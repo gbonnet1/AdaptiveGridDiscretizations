@@ -86,8 +86,9 @@ def SetGeometry(self):
 			help="Deviation from horizontality, for the curvature penalized models")
 
 		# Scale h_base is taken care of through the 'cost' field
-		self.xi *= self.h_per
-		self.kappa /= self.h_per
+		h_ratio = self.h_per/self.h_base
+		self.xi *= self.h_ratio
+		self.kappa /= self.h_ratio
 		# Scalar entries are passed as module constants
 		self.geom = ad.array([e for e in (self.xi,self.kappa,self.theta) if e.ndim!=0])
 
@@ -98,7 +99,7 @@ def SetGeometry(self):
 
 		if self.model_=='Isotropic':
 			# No geometry field. Metric passed as a module constant
-			self.geom = cp.zeros((0,)+self.shape,dtype=self.float_t) 
+			self.geom = cp.zeros((0,)+self.shape,dtype=self.float_t)
 		elif self.model_=='Diagonal':
 			self.geom = self.dualMetric.costs**2
 		elif self.model_=='Riemann':

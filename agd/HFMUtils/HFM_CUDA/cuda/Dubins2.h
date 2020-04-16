@@ -13,7 +13,7 @@ const Int nfwd = symdim; // Number of forward offsets
 
 bool scheme(const Scalar params[geom_size],  Int x[ndim],
 	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
-	GET_SPEED_XI_KAPPA_THETA(params,x)
+	GET_XI_KAPPA_THETA(params,x)
 
 	const Scalar c = cos(theta), s=sin(theta);
 	const Scalar 
@@ -22,10 +22,6 @@ bool scheme(const Scalar params[geom_size],  Int x[ndim],
 		
 	Selling_v(vL,  weights,        offsets);
 	Selling_v(vR, &weights[nfwd], &offsets[nfwd]);
-
-	const Scalar speed2 = speed*speed;
-	for(Int k=0; k<ntotx; ++k){
-		weights[k]*=speed2;}
 
 	return true; // Returns mix_is_min
 }

@@ -10,7 +10,7 @@ const Int nfwd = 0; // Number of forward offsets
 
 void scheme(const Scalar params[geom_size],  Int x[ndim],
 	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
-	GET_SPEED_XI_KAPPA_THETA(params,x)
+	GET_XI_KAPPA_THETA(params,x)
 
 	const Scalar c = cos(theta), s=sin(theta);
 	const Scalar v[ndim] = {c,s,kappa};
@@ -30,9 +30,6 @@ void scheme(const Scalar params[geom_size],  Int x[ndim],
 		if(we*we >= ee*ww*(1-Selling_v_cosmin2)){
 			weights[k]=0;}
 	}
-
-	const Scalar speed2=speed*speed;
-	for(Int k=0; k<ntotx; ++k){weights[k]*=speed2;}
 }
 
 #include "Update.h"

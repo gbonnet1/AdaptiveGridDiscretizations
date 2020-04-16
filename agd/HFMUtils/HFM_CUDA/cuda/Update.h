@@ -48,14 +48,12 @@ __global__ void Update(
 	const bool isSeed = GetBool(seeds_t,n_t);
 	const Scalar rhs = rhs_t[n_t];
 
-	#ifndef isotropic_macro // No need to build the scheme in the isotropic case
-	Scalar geom[geom_size];
-	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];}
+	GEOM(Scalar geom[geom_size];
+	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];})
 	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 	ADAPTIVE_OFFSETS(Int offsets[nactx][ndim];)
 	MIX(const bool mix_is_min = )
-	scheme(geom, CURVATURE(x_t,) weights, offsets);
-	#endif
+	scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets);
 
 	DRIFT(
 	Scalar drift[ndim];
