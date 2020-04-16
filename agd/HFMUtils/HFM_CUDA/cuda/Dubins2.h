@@ -11,9 +11,12 @@ const Int nmix = 2;
 const Int nsym = 0; // Number of symmetric offsets
 const Int nfwd = symdim; // Number of forward offsets
 
-bool scheme(const Scalar params[geom_size],  Int x[ndim],
+#include "Constants.h"
+
+bool scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
-	GET_XI_KAPPA_THETA(params,x)
+	XI_VAR(Scalar xi;) KAPPA_VAR(Scalar kappa;) Scalar theta;
+	get_xi_kappa_theta(GEOM(geom,) x, XI_VAR(xi,) KAPPA_VAR(kappa,) theta);
 
 	const Scalar c = cos(theta), s=sin(theta);
 	const Scalar 

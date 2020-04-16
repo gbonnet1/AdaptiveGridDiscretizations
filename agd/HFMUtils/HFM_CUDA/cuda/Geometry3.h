@@ -54,10 +54,11 @@ void Selling_v(const Scalar v[ndim], Scalar weights[symdim], Int offsets[symdim]
 	Scalar m[symdim];
 	self_outer_relax_v(v,Selling_v_relax,m);	
 	Selling_m(m,weights,offsets);
+	const Scalar vv = scal_vv(v,v);
 
 	// Redirect offsets in the direction of v, and eliminate those which deviate too much.
 	for(Int k=0; k<symdim; ++k){
-		const Int * e = offsets[k]; // e[ndim]
+		Int * e = offsets[k]; // e[ndim]
 		const Scalar ve = scal_vv(v,e), ee = scal_vv(e,e);
 		if(ve*ve < vv*ee*Selling_v_cosmin2){weights[k]=0; continue;}
 		if(ve>0){neg_V(e);} // Note : we want ve<0.

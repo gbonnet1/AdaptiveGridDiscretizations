@@ -143,6 +143,24 @@ position dependent metric. */
 #define CURVATURE(...) 
 #endif
 
+#if curvature_macro
+
+const Int geom_size = xi_var_macro + kappa_var_macro + theta_var_macro;
+
+#if xi_var_macro
+#define XI_VAR(...) __VA_ARGS__
+#else
+#define XI_VAR(...) 
+#endif
+
+#if kappa_var_macro
+#define KAPPA_VAR(...) __VA_ARGS__
+#else
+#define KAPPA_VAR(...) 
+#endif
+
+#endif
+
 /** Apply periodic boundary conditions on some of the axes.*/
 #ifndef periodic_macro
 #define periodic_macro 0

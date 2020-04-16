@@ -87,10 +87,18 @@ def SetGeometry(self):
 
 		# Scale h_base is taken care of through the 'cost' field
 		h_ratio = self.h_per/self.h_base
-		self.xi *= self.h_ratio
-		self.kappa /= self.h_ratio
+		self.xi    *= h_ratio
+		self.kappa /= h_ratio
 		# Scalar entries are passed as module constants
-		self.geom = ad.array([e for e in (self.xi,self.kappa,self.theta) if e.ndim!=0])
+		geom = []
+		def is_var(e): return isinstance(e,cp.ndarray) and e.ndim>0
+		eikonal.traits['xi_var_macro']    = int(is_var(self.xi))
+		eikonal.traits['kappa_var_macro'] = int(is_var(self.kappa))
+		eikonal.traits['theta_var_macro'] = int(is_var(self.theta))
+
+		geom = [e for e in (self.xi,self.kappa,self.theta) if is_var(e)]
+		if len(geom)>0: self.geom = ad.array(geom)
+		else: self.geom = cp.zeros((0,)+self.shape, dtype=self.float_t)
 
 	else:
 		if self._metric is not None: self._metric = self._metric.with_costs(self.h)
@@ -147,7 +155,8 @@ def SetGeometry(self):
 		tol = self.GetValue('tol',default="_Dummy",array_float=True,
 			help="Convergence tolerance for the fixed point solver (determines atol, rtol)")
 		if isinstance(tol,str) and tol=="_Dummy":
-			cost_bound = self.metric.cost_bound() * ad.remove_ad(self.cost)
+			cost_bound = ad.remove_ad(self.cost)
+			if not self.isCurvature: cost_bound *= self.metric.cost_bound()
 			mean_cost_bound = np.mean(cost_bound)
 			float_resolution = np.finfo(self.float_t).resolution
 			tol = mean_cost_bound * float_resolution * 5.

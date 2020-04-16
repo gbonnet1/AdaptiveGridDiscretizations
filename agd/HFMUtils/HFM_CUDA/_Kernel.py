@@ -85,10 +85,6 @@ def SetKernel(self):
 	eikonal = self.kernel_data['eikonal']
 	policy = eikonal.policy
 	traits = eikonal.traits
-	if self.isCurvature:
-		traits['xi_var_macro'] = int(not np.isscalar(self.xi))
-		traits['kappa_var_macro'] = int(not np.isscalar(self.kappa))
-		traits['theta_var_macro'] = int(not np.isscalar(self.theta))
 	if self.periodic != self.periodic_default:
 		traits['periodic_macro']=1
 		traits['periodic_axes']=self.periodic
@@ -114,7 +110,6 @@ def SetKernel(self):
 
 	eikonal.source += model_source+self.cuda_date_modified
 	eikonal.module = GetModule(eikonal.source,self.cuoptions)
-
 	# ---- Produce a second kernel for computing the geodesic flow ---
 	flow = self.kernel_data['flow']
 	flow.traits = {

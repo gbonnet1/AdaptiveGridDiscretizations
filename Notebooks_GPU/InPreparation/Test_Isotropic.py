@@ -6,7 +6,6 @@ import cupy as xp
 import numpy as np
 import time
 from agd.AutomaticDifferentiation.Optimization import norm_infinity
-from packaging import version
 from agd import AutomaticDifferentiation as ad
 
 """

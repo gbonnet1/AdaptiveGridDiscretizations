@@ -57,7 +57,7 @@ def nact(self):
 	elif model.startswith('Dubins'):
 		return 2*symdim
 	elif model.startswith('Elastica'):
-		nFejer = self.solver_traits.get('nFejer_macro',5)
+		nFejer = self.kernel_data['eikonal'].traits.get('nFejer_macro',5)
 		return nFejer*symdim
 
 

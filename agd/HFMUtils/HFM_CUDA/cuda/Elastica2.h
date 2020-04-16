@@ -21,9 +21,12 @@ const Scalar wFejer[nFejer]={0.0527366, 0.179189, 0.264037, 0.330845, 0.346384, 
 const Int nsym = 0; // Number of symmetric offsets
 const Int nfwd = nFejer*symdim; // Number of forward offsets
 
-void scheme(const Scalar params[geom_size],  Int x[ndim],
+#include "Constants.h"
+
+void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
-	GET_XI_KAPPA_THETA(params,x)
+	XI_VAR(Scalar xi;) KAPPA_VAR(Scalar kappa;) Scalar theta;
+	get_xi_kappa_theta(GEOM(geom,) x, XI_VAR(xi,) KAPPA_VAR(kappa,) theta);
 	const Scalar cT = cos(theta), sT = sin(theta);
 
 	for(Int l=0; l<nFejer; ++l){
@@ -32,7 +35,7 @@ void scheme(const Scalar params[geom_size],  Int x[ndim],
 		const Scalar v[ndim]={sP*cT,sP*sT,(sP*kappa+cP/xi)};
 
 		Selling_v(v, &weights[l*symdim], &offsets[l*symdim]);
-		const Scalar s = Fejer[l];
+		const Scalar s = wFejer[l];
 		for(int i=0; i<symdim; ++i) weights[l*symdim+i] *= s;
 	}
 }

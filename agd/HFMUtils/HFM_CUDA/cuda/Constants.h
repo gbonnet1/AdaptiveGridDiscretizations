@@ -9,7 +9,7 @@ const Int ntot = 2*nsym + nfwd; // Total number of offsets in the scheme
 
 // Maximum or minimum of several schemes
 
-#if mix_macro==0
+#if nmix_macro==0
 const Int nmix = 1;
 const bool mix_is_min = true; // dummy value
 #endif
@@ -62,10 +62,15 @@ ORDER2(
 __constant__ Scalar order2_threshold = 0.3;
 )
 
+#if geom_size>0
+#define GEOM(...) __VA_ARGS__
+#else
+#define GEOM(...) 
+#endif
+
 // Get the parameters for curvature penalized models
 #if curvature_macro 
 
-const Int geom_size = xi_var_macro + kappa_var_macro + theta_var_macro;
 #if xi_var_macro==0
 __constant__ Scalar xi;
 #endif
@@ -76,25 +81,17 @@ __constant__ Scalar kappa;
 
 const bool periodic_axes[3]={false,false,true};
 
-#define GET_XI_KAPPA_THETA(geom,x) { \
-Int k_=0; \
-#if xi_var_macro \
-const Scalar xi = params[k_]; ++k; \
-#endif \
-#if kappa_var_macro \
-const Scalar kappa = params[k_]; ++k; \
-#endif \
-#if theta_var_macro \
-const Scalar theta = params[k_]; ++k; \
-#else \
-const Scalar theta = (2.*pi*x[2])/shape_tot[2]; \
-#endif \
-} \
+void get_xi_kappa_theta(
+	GEOM(const Scalar geom[geom_size],) const Int x[ndim],
+	XI_VAR(Scalar & xi,) KAPPA_VAR(Scalar & kappa,) Scalar & theta ){
+	GEOM(Int k=0;) 
+	XI_VAR(xi = geom[k]; ++k;)
+	KAPPA_VAR(kappa = geom[k]; ++k;)
+	#if theta_var_macro 
+	theta = geom[k]; ++k;
+	#else
+	theta = (2.*pi*x[2])/shape_tot[2]; 
+	#endif
+}
 
-#endif
-
-#if geom_size>0
-#define GEOM(...) __VA_ARGS__
-#else
-#define GEOM(...) 
 #endif
