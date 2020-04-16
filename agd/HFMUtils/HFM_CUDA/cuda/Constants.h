@@ -25,8 +25,8 @@ const Scalar pi = 3.14159265358979323846;
 // -------- Module constants ---------
 
 /// Tolerance for the fixed point solver.
-__constant__ Scalar tol;
-
+__constant__ Scalar atol;
+__constant__ Scalar rtol;
 
 #if multiprecision_macro
 __constant__ Scalar multip_step;

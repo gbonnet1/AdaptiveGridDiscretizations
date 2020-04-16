@@ -141,16 +141,21 @@ def SetGeometry(self):
 	self.cost = np.broadcast_to(self.cost,self.shape)
 
 	# Cost related parameters
-	tol = self.GetValue('tol',default="_Dummy",array_float=True,
-		help="Convergence tolerance for the fixed point solver")
-	if isinstance(tol,str) and tol=="_Dummy":
-		cost_bound = self.metric.cost_bound() * ad.remove_ad(self.cost)
-		mean_cost_bound = np.mean(cost_bound)
-		float_resolution = np.finfo(self.float_t).resolution
-		tol = mean_cost_bound * float_resolution * 5.
-		if not policy.multiprecision: tol *= np.sum(self.shape)
-		self.hfmOut['keys']['default']['tol']=self.float_t(float(tol))
-	policy.tol = tol
+	if self.HasValue('atol') and self.HasValue('rtol'): tol = None
+	else:
+		tol = self.GetValue('tol',default="_Dummy",array_float=True,
+			help="Convergence tolerance for the fixed point solver (determines atol, rtol)")
+		if isinstance(tol,str) and tol=="_Dummy":
+			cost_bound = self.metric.cost_bound() * ad.remove_ad(self.cost)
+			mean_cost_bound = np.mean(cost_bound)
+			float_resolution = np.finfo(self.float_t).resolution
+			tol = mean_cost_bound * float_resolution * 5.
+			self.hfmOut['keys']['default']['tol']=self.float_t(float(tol))
+	policy.atol = self.GetValue('atol',default=tol,array_float=True,
+		help="Absolute convergence tolerance for the fixed point solver")
+	rtol_default = 0. if policy.multiprecision else float_resolution * 5.
+	policy.rtol = self.GetValue('rtol',default=rtol_default, array_float=True,
+		help="Relative convergence tolerance for the fixed point solver")
 
 	if policy.bound_active_blocks:
 		policy.minChg_delta_min = self.GetValue(

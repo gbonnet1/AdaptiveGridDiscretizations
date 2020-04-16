@@ -249,12 +249,15 @@ __global__ void Update(
 	) // FLOW 
 	
 	// Find the smallest value which was changed.
-	const Scalar u_diff = abs(u_old - u_i[n_i] MULTIP( + (uq_old - uq_i[n_i]) * multip_step ) );
-	if( !(u_diff>tol) ){// Equivalent to u_diff<=tol, but Ignores NaNs 
-		u_i[n_i]=infinity();
-	} else {
-		MULTIP(u_i[n_i] += uq_i[n_i]*multip_step;) // Extended accuracy ditched from this point
-	}
+	const Scalar u_diff = 
+		abs(u_old - u_i[n_i] MULTIP( + (uq_old - uq_i[n_i]) * multip_step ) );
+	// Extended accuracy ditched from this point
+	MULTIP(u_i[n_i] += uq_i[n_i]*multip_step;)
+	const Scalar tol = atol + rtol*abs(u_i[n_i]);
+
+	// inf-inf naturally occurs on boundary, so ignore NaNs differences
+	if(isnan(u_diff) || u_diff<=tol){u_i[n_i] = infinity();}
+
 	__syncthreads(); // Get all values before reduction
 
 	Propagation::Finalize(

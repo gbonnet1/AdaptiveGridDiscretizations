@@ -3,6 +3,8 @@
 
 import numpy as np
 import cupy as cp
+from collections import OrderedDict
+
 from . import misc
 from . import kernel_traits
 from . import _solvers
@@ -38,7 +40,8 @@ def PostProcess(self):
 	ndim = self.ndim
 
 	flow = self.kernel_data['flow']
-	flow.policy.tol = np.inf # Not an iterative solver
+	flow.policy.atol = np.inf # Not an iterative solver, solution is already computed
+	flow.policy.rtol = 0.
 	if flow.traits.get('flow_weights_macro',False):
 		flow.args['flow_weights']   = cp.empty((nact,)+shape_oi,dtype=self.float_t)
 	if flow.traits.get('flow_weightsum_macro',False):
@@ -74,15 +77,22 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	A linear solver for the systems arising in automatic differentiation of the HFM.
 	"""
 
+#	print('solveLinear')
+#	print('diag\n',diag); print('indices\n',indices); print('weights\n',weights)
+#	print('rhs\n',rhs)
 	data = self.kernel_data[kernelName]
 	eikonal = self.kernel_data['eikonal']
 
 	# Set the linear solver traits
-	data.traits = {key:value for key,value in eikonal.traits.items() 
-		if key in ('ndim','shape_i','niter','pruning_macro','minchg_freeze_macro')}
-	data.traits.update({'nrhs':len(rhs),'nindex':len(indices)})
-	data.source = cupy_module_helper.traits_header(traits,join=True)+"\n"
+	data.traits = self.GetValue(kernelName+'_traits',default=dict())
+	data.traits.update({key:value for key,value in eikonal.traits.items() 
+		if key in ('shape_i','niter_i','periodic','pruning_macro','minchg_freeze_macro')})
+	data.traits.update({'ndim':self.ndim,'nrhs':len(rhs),'nindex':len(indices)})
+	data.source = cupy_module_helper.traits_header(data.traits,join=True,
+		size_of_shape=True,log2_size=True)+"\n"
 	data.source += '#include "LinearUpdate.h"\n'+self.cuda_date_modified
+
+#	print(data.traits,data.source)
 	data.module = cupy_module_helper.GetModule(data.source, self.cuoptions)
 	data.policy = eikonal.policy
 
@@ -90,15 +100,18 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	def SetCst(*args): cupy_module_helper.SetModuleConstant(data.module,*args)
 	SetCst('shape_o', self.shape_o,       self.int_t)
 	SetCst('size_o',  self.size_o,        self.int_t)
-	SetCst('size_tot',np.prod(self.shape),self.int_t)
+	SetCst('size_tot',np.prod(self.shape_o)*np.prod(self.shape_i),self.int_t)
 
 	float_res = np.finfo(self.float_t).resolution
-	if not hasattr(self,linear_atol):
-		self.linear_atol = self.GetValue('linear_atol',default=float_res*5,
-			help="Absolute convergence tolerance for the linear systems")
-	if not hasattr(self,linear_rtol):
+	if not hasattr(self,'linear_rtol'):
 		self.linear_rtol = self.GetValue('linear_rtol',default=float_res*5,
 			help="Relative convergence tolerance for the linear systems")
+	if not hasattr(self,'linear_atol'):
+		self.linear_atol = self.GetValue('linear_atol',default=None,
+			help="Absolute convergence tolerance for the linear systems")
+		if self.linear_atol is None: 
+			self.linear_rtol*np.mean(np.abs(rhs[np.isfinite(rhs)]))
+		self.hfmOut['keys']['default']['linear_atol']=self.linear_atol
 
 	SetCst('rtol',self.linear_rtol,self.float_t)
 	SetCst('atol',self.linear_atol,self.float_t)
@@ -112,6 +125,7 @@ def SolveLinear(self,diag,indices,weights,rhs,chg,kernelName):
 	# Call the kernel
 	data.args = OrderedDict({
 		'sol':sol,'rhs':rhs,'diag':diag,'indices':indices,'weights':weights})
+	if data.policy.bound_active_blocks: data.args['chg']=chg
 
 	self.Solve(kernelName)
 	return sol
@@ -123,6 +137,7 @@ def SolveAD(self):
 	"""
 	if not (self.forward_ad or self.reverse_ad): return
 	eikonal = self.kernel_data['eikonal']
+	flow = self.kernel_data['flow']
 	
 	if eikonal.policy.bound_active_blocks:
 		dist = eikonal.args['values']
@@ -130,19 +145,21 @@ def SolveAD(self):
 			dist += self.float_t(self.multip_step) * eikonal.args['valuesq']
 	else: dist=0.
 
-	diag = eikonal.args['flow_weightsum'].copy() # diagonal preconditioner
+	diag = flow.args['flow_weightsum'].copy() # diagonal preconditioner
 	self.boundary = diag==0. #seeds, or walls, or out of domain
 	diag[self.boundary]=1.
 	
-	indices = eikonal.args['flow_indices'] 
-	weights = eikonal.args['flow_weights']
+	indices = flow.args['flow_indices'] 
+	weights = flow.args['flow_weights']
 
 	if self.forward_ad:
 		rhs = misc.block_expand(self.rhs.gradient(),self.shape_i,
 			mode='constant',constant_values=np.nan)
-		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
-		self.hfmOut['valueVariation'] = valueVariation
-
+		valueVariation = self.SolveLinear(diag,indices,weights,rhs,dist,'forwardAD')
+		coef = np.moveaxis(misc.block_squeeze(valueVariation,self.shape),0,-1)
+#		self.hfmOut['valueVariation'] = coef
+		val = self.hfmOut['values']
+		self.hfmOut['values'] = ad.Dense.new(val,cp.asarray(coef,val.dtype))
 
 	if self.reverse_ad:
 		# Get the rhs
@@ -152,9 +169,11 @@ def SolveAD(self):
 		invalid_index = np.iinfo(self.int_t).max
 		indices[weights==0]=invalid_index
 		indicesT,weightsT = graph_reverse(indices,weights,invalid=invalid_index)
+#		weightsT[indicesT==invalid_index]=0. # By default
+		print("SolveAD indicesT shape",indicesT.shape,weightsT.shape)
 
-		allSensitivity = self.SolveLinear(rhs,diag,indicesT,weightsT,-dist,'reverseAD')
-		self.hfmOut['costSensitivity'] = allSensitivity #TODO : seedSensitivity
+		allSensitivity = self.SolveLinear(diag,indicesT,weightsT,rhs,-dist,'reverseAD')
+		self.hfmOut['costSensitivity'] = misc.block_squeeze(allSensitivity,self.shape) #TODO : seedSensitivity
 
 
 """

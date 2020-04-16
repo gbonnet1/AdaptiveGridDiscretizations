@@ -114,6 +114,7 @@ class Interface(object):
 	global_iteration = _solvers.global_iteration
 	adaptive_gauss_siedel_iteration = _solvers.adaptive_gauss_siedel_iteration
 	set_minChg_thres = _solvers.set_minChg_thres
+	SolveLinear = _PostProcess.SolveLinear
 
 
 	@property
@@ -133,7 +134,9 @@ class Interface(object):
 	def FinalCheck(self):
 		self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
 		self.hfmOut['solverGPUTime'] = self.kernel_data['eikonal'].stats['time']
-		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys())-set(self.hfmOut['keys']['used']))
+		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys()) 
+			-set(self.hfmOut['keys']['used']) # Used by interface
+			-{'array_float_caster'}) # Set by interface
 		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
 			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
 

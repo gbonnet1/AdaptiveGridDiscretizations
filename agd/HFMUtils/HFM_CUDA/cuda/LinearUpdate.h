@@ -9,13 +9,14 @@ systems solved using Gauss-Siedel iteration.
 */
 
 #ifndef Scalar_macro
-typedef float Scalar
+typedef float Scalar;
 #endif
 Scalar infinity(){return 1./0.;}
 
 #ifndef Int_macro
-typedef int Int
+typedef int Int;
 #endif
+typedef unsigned char BoolAtom;
 
 #ifndef minchg_freeze_macro
 #define minchg_freeze_macro 0
@@ -35,6 +36,26 @@ typedef int Int
 #define PRUNING(...) 
 #endif
 
+#ifndef periodic_macro
+#define periodic_macro 0
+#endif
+
+#if periodic_macro
+#define PERIODIC(...) __VA_ARGS__
+#else
+#define PERIODIC(...) 
+#endif
+
+#ifndef debug_print_macro
+const Int debug_print = 0;
+#endif
+
+__constant__ Int shape_o[ndim]; 
+__constant__ Int size_o;
+__constant__ Int size_tot;
+
+#include "Propagation.h" // Cannot include earlier
+
 #ifndef dummy_init_macro
 #define dummy_init_macro 1
 #endif
@@ -50,39 +71,26 @@ Scalar init(const Scalar x){
 Scalar init(const Scalar x){return x;}
 #endif
 
-/* // These constants should be defined when including the LinearUpdate.h file
-#ifndef nrhs_macro
-const Int nrhs=1;
-#endif
-
-#ifndef nindex_macro
-const Int nindex = 4; // Number of entries per matrix line
-#endif
-
-#ifndef ndim_macro
-const Int ndim=2;
-#endif
-
-#ifndef shape_i_macro
-const Int shape_i[ndim] = {8,8};
-const Int size_i = 64;
-const Int log2_size_i = 7;
-#endif
-
-#ifndef niter_macro
-const Int niter=16;
-#endif
-*/
-
-__constant__ Int shape_o; 
-__constant__ Int size_o;
-__constant__ Int size_tot;
 __constant__ Scalar atol;
 __constant__ Scalar rtol;
 
+
+/* // These constants should also be defined when including the LinearUpdate.h file
+const Int nrhs // Number of right hand sides
+const Int nindex // Number of entries per matrix line
+const Int ndim // Space dimension
+const Int niter_i // Number of local iterations
+
+const Int shape_i[ndim] = {8,8}; // Block dimension and related quantities
+const Int size_i = 64;
+const Int log2_size_i = 7;
+*/
+
+
+
 extern "C" {
 
-void __global__ Update(
+__global__ void Update(
 	Scalar * u_t, const Scalar * rhs_t, 
 	const Scalar * diag_t, const Int * index_t, const Scalar * weight_t,
 	MINCHG_FREEZE(const Scalar chg_t, const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
@@ -95,12 +103,14 @@ void __global__ Update(
 	if( Propagation::Abort(
 		updateList_o,PRUNING(updatePrev_o,) 
 		MINCHG_FREEZE(minChgPrev_o,updateNext_o)
-		x_o,&n_o) ){return;} // Also sets x_o, n_o
+		x_o,n_o) ){return;} // Also sets x_o, n_o
 
 	const Int n_i = threadIdx.x;
 	const Int n_t = n_o*size_i + n_i;
 
 	__shared__ Scalar u_i_[nrhs][size_i];
+	__shared__ Scalar chg_i[size_i]; // Used in the end
+
 	Scalar rhs_[nrhs];
 	Scalar u_old[nrhs];
 
@@ -113,18 +123,18 @@ void __global__ Update(
 	const Scalar diag = diag_t[n_t];
 	Int    v_i[nindex]; // Index of neighbor, if in the block
 	Scalar v_o_[nrhs][nindex]; // Value of neighbor, if outside the block
-	Scalar weight[nindex];
+	Scalar weight[nindex]; // Coefficient in the matrix
 
-	const Int v_i_inBlock = -1;
-	const Int v_i_invalid = -2;
+	const Int v_i_inBlock = -1; // 
+	const Int v_i_invalid = -2; // Disregard entry
 
 	for(Int k=0; k<nindex; ++k){
 		weight[k] = weight_t[k*size_tot + n_t];
 		if(weight[k]==0.) {v_i[k]=v_i_invalid; continue;}
 
-		index = index_t[k*size_tot + n_t];
-		if(ind/size_i == n_o){
-			v_i[k] = ind%size_i;
+		const Int index = index_t[k*size_tot + n_t];
+		if(index/size_i == n_o){
+			v_i[k] = index%size_i;
 		} else {
 			v_i[k] = v_i_inBlock;
 			for(Int irhs=0; irhs<nrhs; ++irhs){
@@ -133,19 +143,27 @@ void __global__ Update(
 
 	}
 
+	if(debug_print && n_i==0){
+		printf("in Linear update, n_i=%i\n",n_i);
+		printf("rhs : %f\n",rhs_[0]);
+		printf("diag %f, v_i=%i,%i,v_o=%f,%f,weight=%f,%f\n",
+			diag,v_i[0],v_i[1],v_o_[0][0],v_o_[0][1],weight[0],weight[1]);
+		printf("n_t %i, size_tot %i\n",n_t,size_tot);
+	}
+
 	__syncthreads();
 
 	// Gauss-Siedel iterations
-	for(Int iter=0; iter<niter; ++iter){
+	for(Int iter=0; iter<niter_i; ++iter){
 		for(Int irhs=0; irhs<nrhs; ++irhs){
-			Scalar * u_i = u_i[irhs];
-			Scalar rhs = rhs[irhs]
-			Scalar * v_o = v_o[irhs];
+			Scalar * u_i = u_i_[irhs];
+			const Scalar rhs = rhs_[irhs];
+			const Scalar * v_o = v_o_[irhs];
 
 			// Accumulate the weighted neighbor values
-			Scalar sum=0;
+			Scalar sum=rhs;
 			for(Int k=0; k<nindex; ++k){
-				const Scalar w_i = v_i[k];
+				const Int w_i = v_i[k];
 				if(w_i==v_i_invalid) {continue;}
 				const Scalar val = w_i==v_i_inBlock ? v_o[k] : u_i[w_i];
 				sum += weight[k] * val;
@@ -163,23 +181,27 @@ void __global__ Update(
 	for(Int irhs=0; irhs<nrhs; ++irhs){
 		const Scalar val = u_i_[irhs][n_i];
 		u_t[irhs*size_tot + n_t] = val;
-		old = u_old[irhs]
-		const Scalar tol = max(abs(val),abs(old))*rtol + atol;
+		const Scalar old = u_old[irhs];
+		const Scalar tol = abs(val)*rtol + atol;
 		changed = changed || abs(val - old) > tol;
 	}
 
-	MINCHG_FREEZE(
-	__shared__ Scalar chg_i[size_i];
-	chg_i[n_i] = changed ? chg_t[n_t] : infinity();
-	REDUCE_i(chg_i[n_i] = min(chg_i[n_i],chg_i[m_i]);)
-	__syncthreads()
-	)
+
+	chg_i[n_i] = changed ? 
+	#if minchg_freeze_macro
+	chg_t[n_t] // Changed blocks with large values will be temporarily freezed
+	#else
+	0. // Dummy finite value
+	#endif
+	: infinity();
+	__syncthreads();
 
 	Propagation::Finalize(
-		u_i, PRUNING(updateList_o,) 
-		minChgPrev, MINCHG_FREEZE(minChgNext_o, 
-		updatePrev_o,) updateNext_o,  
+		chg_i, PRUNING(updateList_o,) 
+		MINCHG_FREEZE(minChgPrev_o, minChgNext_o, updatePrev_o,) updateNext_o,  
 		x_o, n_o);
+
+
 
 } // LinearUpdate
 

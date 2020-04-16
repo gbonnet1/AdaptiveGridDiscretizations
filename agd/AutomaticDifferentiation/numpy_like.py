@@ -3,6 +3,7 @@
 
 import numpy as np
 import numbers
+import functools
 from .ad_generic import is_ad
 from . import ad_generic
 """
@@ -31,6 +32,7 @@ def implements_cupy_alt(numpy_function,exception):
 	"""Register an alternative to a numpy function only partially supported by cupy"""
 	def decorator(func):
 		cupy_alt_overloads[numpy_function] = (func,exception)
+		@functools.wraps(func)
 		def wrapper(*args,**kwargs):
 			try: return numpy_function(*args,**kwargs)
 			except exception: return func(*args,**kwargs)
@@ -93,7 +95,6 @@ def pad(array, pad_width, *args,**kwargs):
 		pad_width = ((pad_width[0],pad_width[0]),)
 	if len(pad_width)==1:
 		pad_width = pad_width*array.ndim
-	print(pad_width)
 	return array.pad(pad_width,*args,**kwargs)
 
 

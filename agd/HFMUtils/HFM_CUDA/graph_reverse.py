@@ -3,6 +3,7 @@
 
 import numpy as np
 import cupy as cp
+import os
 from . import cupy_module_helper
 from .cupy_module_helper import SetModuleConstant
 
@@ -55,6 +56,7 @@ def graph_reverse(fwd,fwd_weight,
 	cuoptions = ("-default-device", f"-I {cuda_path}") 
 
 	source="\n".join(source)
+	print(source)
 	module = cupy_module_helper.GetModule(source,cuoptions)
 	SetModuleConstant(module,'size_tot',size,int_t)
 	SetModuleConstant(module,'nfwd',nfwd,int_t)
@@ -63,15 +65,25 @@ def graph_reverse(fwd,fwd_weight,
 	cupy_kernel = module.get_function("GraphReverse")
 	gridDim = int(np.ceil(size/blockDim))
 
+#	print("fwd ",fwd)
 	irev_mmax = 0
-	while True:
+	for i in range(nrev):
 		irev_max = np.max(irev)
 		irev_mmax = max(irev_max,irev_mmax)
+#		print("graph reverse",irev_max," ",irev_mmax)
 
 		if irev_max==-1: return rev[:irev_mmax],rev_weight[:irev_mmax]
 		if irev_max==nrev: return graph_reverse(fwd,fwd_weight,invalid,2*nrev)
 
+#		print("rev ",rev)
 		cupy_kernel((gridDim,),(blockDim,),(fwd,rev,irev,fwd_weight,rev_weight))
+
+
+#		print("rev",rev)
+#		print("rev_weight",rev_weight)
+#		print("irev",irev)
+#		if i==1: raise
+
 
 
 

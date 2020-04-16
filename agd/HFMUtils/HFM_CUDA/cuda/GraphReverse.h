@@ -27,10 +27,12 @@ __constant__ Int size_tot;
 __constant__ Int nfwd;
 __constant__ Int nrev; // must be less than irevT_Max
 
+const Int debug_print=0; const Int n_test = 9;
+
 extern "C" {
 
 __global__ void GraphReverse(
-	const Int * fwd_t, Int * rev_t, irevT * irev_t
+	const Int * fwd_t, Int * rev_t, irevT * irev_t,
 	const weightT * fwd_weight_t, weightT * rev_weight_t){
 
 	const Int n_t = blockIdx.x*blockDim.x + threadIdx.x;
@@ -40,31 +42,36 @@ __global__ void GraphReverse(
 		const Int nfwd_t = n_t + ifwd*size_tot;
 
 		// Check if there is anything to do
-		const irevT irev = irev_t[nfwd_t];
+		irevT irev = irev_t[nfwd_t];
+
 		if(irev==irev_done) continue;
 		if(irev==nrev) continue; // Arrays need to be resized externally
 
 		const Int fwd = fwd_t[nfwd_t];
-		if(fwd==invalid) continue;
+		if(fwd==invalid) { 
+			irev_t[nfwd_t] = irev_done;
+			continue;}
 
 		// Check if the edge is already correctly inverted		
-		const Int nrev_t = n_t + irev*size_tot;
-		const Int rev = rev_t[nrev_t];
+		Int nrev_t = fwd + irev*size_tot;
+		Int rev = rev_t[nrev_t];
 
-		if(rev==fwd){ // Finish the work by copying the edge weight
+		if(rev==n_t){ // Finish the work by copying the edge weight
 			rev_weight_t[nrev_t] = fwd_weight_t[nfwd_t];
 			irev_t[nfwd_t] = irev_done;
 			continue;
 		}
 
 		// Find some place to copy
-		while(irev<nrev){
+		while(true){
 			if(rev==invalid){ // Empty place
-				rev_t[nrev_t] = fwd;
-				irev_t[nfwd_t] = rev;
+				rev_t[nrev_t] = n_t;
+				irev_t[nfwd_t] = irev;
 				break;
 			} else {
 				++irev;
+				if(irev==nrev){// Could not write data. Resize array externally
+					irev_t[nfwd_t]=nrev; break;} 
 				nrev_t+=size_tot;
 				rev = rev_t[nrev_t];
 			}

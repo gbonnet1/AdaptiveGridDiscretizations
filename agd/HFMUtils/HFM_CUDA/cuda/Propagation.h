@@ -6,6 +6,9 @@ This file implements the functions required to run an adaptive gauss-siedel solv
 
 */
 
+#include "Grid.h"
+#include "REDUCE_i.h"
+
 MINCHG_FREEZE(
 __constant__ Scalar minChgPrev_thres, minChgNext_thres; // Previous and next threshold for freezing
 )

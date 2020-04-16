@@ -1,37 +1,3 @@
-"""
-	self.cost_based = self.model.startswith('Isotropic') or self.isCurvature
-	if self.cost_based:
-		self.metric = self.GetValue('cost',None,verbosity=3,
-			help="Cost function for the minimal paths. cost = 1/speed.")
-		self.dualMetric = self.GetValue('speed',None,verbosity=3,
-			help="Speed function for the minimal paths. speed = 1/cost.")
-	else:
-
-# -------
-	self.costVariation = self.GetValue('costVariation',default=None,
-		help = "First order variation of the cost function "
-		"(defined as 1 in the case of an anisotropic metric)")
-	if self.cost_based: 
-		# These models internally only use the cost function, not the speed function
-		if self.metric is None: self.metric = self.dualMetric.dual()
-		self.dualMetric = None
-		if ad.is_ad(self.metric.cost):
-			assert self.costVariation is None
-			self.costVariation = self.metric.cost.coef
-			self.metric = Metrics.Isotropic(self.metric.cost.value)
-		# Internally, we always use a relative cost variation
-		if self.costVariation is not None:
-			self.costVariation/=cp.expand_dims(self.metric.cost,axis=-1)
-
-#------
-
-		# TODO : remove. No need to create this grid for our interpolation
-		grid = ad.array(np.meshgrid(*(cp.arange(s,dtype=self.float_t) 
-			for s in self.shape), indexing='ij')) # Adimensionized coordinates
-		self.metric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
-"""
-#--------
-
 import numpy as np
 import cupy as cp
 from .inf_convolution import inf_convolution
@@ -116,9 +82,6 @@ def SetRHS(self):
 
 	self.rhs = rhs
 	self.seedTags = seedTags
-#	self.seedValues = seedValues
-#	self.seedIndices = seedIndices		
-
 
 def SetArgs(self):
 	if self.verbosity>=1: print("Preparing the problem rhs (cost, seeds,...)")
@@ -135,7 +98,7 @@ def SetArgs(self):
 
 	# Set the RHS and seed tags
 	self.SetRHS()
-	eikonal.args['rhs'] = misc.block_expand(self.rhs,shape_i,
+	eikonal.args['rhs'] = misc.block_expand(ad.remove_ad(self.rhs),shape_i,
 		mode='constant',constant_values=np.inf)
 
 	if np.prod(self.shape_i)%8!=0:

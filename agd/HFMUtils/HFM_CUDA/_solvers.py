@@ -21,7 +21,8 @@ def Solve(self,name):
 	data.kernel = data.module.get_function("Update")
 	solver = data.policy.solver
 
-	SetModuleConstant(data.module,'tol',data.policy.tol,self.float_t)
+	SetModuleConstant(data.module,'atol',data.policy.atol,self.float_t)
+	SetModuleConstant(data.module,'rtol',data.policy.rtol,self.float_t)
 
 	#Check args
 	assert isinstance(data.args,collections.OrderedDict)
