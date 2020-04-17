@@ -141,11 +141,15 @@ def SetKernel(self):
 	flow.source += model_source+self.cuda_date_modified
 	flow.module = GetModule(flow.source,self.cuoptions)
 
+#	if self.isCurvature and self.precomputeStencil: # TODO
+#		stencil = self.kernel_data
+
+
 	# Set the constants
 	def SetCst(*args):
 		for module in (eikonal.module,flow.module): SetModuleConstant(module,*args)
 
-	float_t,int_t = self.float_t,self.int_t		
+	float_t,int_t = self.float_t,self.int_t
 
 	self.size_o = np.prod(self.shape_o)
 	SetCst('shape_o',self.shape_o,int_t)
@@ -178,11 +182,16 @@ def SetKernel(self):
 			"beyond which the second order scheme deactivates")
 		SetCst('order2_threshold',order2_threshold,float_t)		
 	
-	if self.model.startswith('Isotropic'):
+	if self.model_ =='Isotropic':
 		SetCst('weights', self.h**-2, float_t)
 	if self.isCurvature:
-		if self.xi.ndim==0:    SetCst('xi',   self.xi,   float_t)
-		if self.kappa.ndim==0: SetCst('kappa',self.kappa,float_t)
+		if traits['xi_var_macro']==0:    SetCst('ixi',  1./self.xi,float_t) # ixi = 1/xi
+		if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
+		if traits['theta_var_macro']==0: 
+			nTheta = self.shape[2];
+			theta = cp.arange(nTheta)*2.*np.pi/nTheta
+			SetCst('cosTheta_s',np.cos(theta),float_t)
+			SetCst('sinTheta_s',np.sin(theta),float_t)
 
 	# Set the kernel arguments
 	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,
@@ -197,4 +206,4 @@ def SetKernel(self):
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
 	flow.args = eikonal.args.copy() # Further arguments added later
 
-def PrecomputeStencil(self):
+#def PrecomputeStencil(self): #TODO

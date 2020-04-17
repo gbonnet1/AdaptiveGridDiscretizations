@@ -89,14 +89,16 @@ def SetGeometry(self):
 		h_ratio = self.h_per/self.h_base
 		self.xi    *= h_ratio
 		self.kappa /= h_ratio
-		# Scalar entries are passed as module constants
+		# Large arrays are passed as geometry data, and scalar entries as module constants
 		geom = []
 		def is_var(e): return isinstance(e,cp.ndarray) and e.ndim>0
 		eikonal.traits['xi_var_macro']    = int(is_var(self.xi))
 		eikonal.traits['kappa_var_macro'] = int(is_var(self.kappa))
 		eikonal.traits['theta_var_macro'] = int(is_var(self.theta))
+		if not is_var(self.theta): eikonal.traits['nTheta']=self.shape[2];
 
-		geom = [e for e in (self.xi,self.kappa,self.theta) if is_var(e)]
+		geom = [e for e in (1./self.xi,self.kappa,
+			np.cos(self.theta),np.sin(self.theta)) if is_var(e)]
 		if len(geom)>0: self.geom = ad.array(geom)
 		else: self.geom = cp.zeros((0,)+self.shape, dtype=self.float_t)
 

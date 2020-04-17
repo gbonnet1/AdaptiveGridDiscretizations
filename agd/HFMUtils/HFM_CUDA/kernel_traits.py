@@ -39,19 +39,19 @@ def nact(self):
 	"""
 	ndim = self.ndim
 	symdim = int( (ndim*(ndim+1))/2 )
-	model = self.model
+	model = self.model_
 
-	if model.startswith('Isotropic'):
+	if model=='Isotropic':
 		return ndim
-	elif model.startswith('Riemann') or model.startswith('Rander'):
+	elif model in ('Riemann','Rander'):
 		return symdim
-	elif model.startswith('ReedsShepp'):
+	elif model=='ReedsShepp':
 		return symdim
-	elif model.startswith('ReedsSheppForward'):
+	elif model=='ReedsSheppForward':
 		return symdim+1
-	elif model.startswith('Dubins'):
+	elif model=='Dubins':
 		return 2*symdim
-	elif model.startswith('Elastica'):
+	elif model=='Elastica':
 		nFejer = self.kernel_data['eikonal'].traits.get('nFejer_macro',5)
 		return nFejer*symdim
 

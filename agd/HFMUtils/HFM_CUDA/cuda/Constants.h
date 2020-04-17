@@ -66,7 +66,7 @@ __constant__ Scalar order2_threshold = 0.3;
 #if curvature_macro 
 
 #if xi_var_macro==0
-__constant__ Scalar xi;
+__constant__ Scalar ixi; // inverse of the xi parameter, penalizing curvature 
 #endif
 
 #if kappa_var_macro==0
@@ -75,16 +75,27 @@ __constant__ Scalar kappa;
 
 const bool periodic_axes[3]={false,false,true};
 
-void get_xi_kappa_theta(
+#if !theta_var_macro 
+// const Int nTheta must be defined in including file, and equal to shape_tot[2]
+__constant__ Scalar cosTheta_s[nTheta]; // cos(2*pi*i/nTheta)
+__constant__ Scalar sinTheta_s[nTheta]; // sin(...)
+#endif
+
+void get_ixi_kappa_theta(
 	GEOM(const Scalar geom[geom_size],) const Int x[ndim],
-	XI_VAR(Scalar & xi,) KAPPA_VAR(Scalar & kappa,) Scalar & theta ){
+	XI_VAR(Scalar & ixi,) KAPPA_VAR(Scalar & kappa,) 
+	Scalar & cosTheta, Scalar & sinTheta ){
 	GEOM(Int k=0;) 
-	XI_VAR(xi = geom[k]; ++k;)
+	XI_VAR(ixi = geom[k]; ++k;)
 	KAPPA_VAR(kappa = geom[k]; ++k;)
 	#if theta_var_macro 
-	theta = geom[k]; ++k;
+	cos_theta = geom[k]; ++k;
+	sin_theta = geom[k]; ++k;
 	#else
-	theta = (2.*pi*x[2])/shape_tot[2]; 
+	const Int iTheta = x[2];
+//	theta = (2.*pi*x[2])/shape_tot[2];  // Now using precomputed trigonometric tables
+	cosTheta = cosTheta_s[iTheta];
+	sinTheta = sinTheta_s[iTheta];
 	#endif
 }
 

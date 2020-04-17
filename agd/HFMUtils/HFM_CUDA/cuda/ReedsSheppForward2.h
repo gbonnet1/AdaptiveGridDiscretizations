@@ -12,16 +12,15 @@ const Int nfwd = symdim; // Number of forward offsets
 
 void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
-	XI_VAR(Scalar xi;) KAPPA_VAR(Scalar kappa;) Scalar theta;
-	get_xi_kappa_theta(GEOM(geom,) x, XI_VAR(xi,) KAPPA_VAR(kappa,) theta);
+	XI_VAR(Scalar ixi;) KAPPA_VAR(Scalar kappa;) 
+	Scalar cT, sT; // cos(theta), sin(theta)
+	get_ixi_kappa_theta(GEOM(geom,) x, XI_VAR(ixi,) KAPPA_VAR(kappa,) cT,sT);
 
-	weights[0]=1./(xi*xi);
+	weights[0]=ixi*ixi;
 	Int * offset = offsets[0];
 	offset[0]=0; offset[1]=0; offset[2]=1; // offsets[0]={0,0,1};
 
-	const Scalar c = cos(theta), s=sin(theta);
-	const Scalar v[ndim] = {c,s,kappa};
-
+	const Scalar v[ndim] = {cT,sT,kappa};
 	Selling_v(v, &weights[1], &offsets[1]);
 }
 

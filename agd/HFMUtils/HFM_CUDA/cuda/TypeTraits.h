@@ -157,7 +157,7 @@ position dependent metric. */
 
 #if curvature_macro
 
-#define geom_macro (xi_var_macro + kappa_var_macro + theta_var_macro)
+#define geom_macro (xi_var_macro + kappa_var_macro + 2*theta_var_macro)
 const Int geom_size = geom_macro;
 
 #if xi_var_macro
@@ -173,6 +173,17 @@ const Int geom_size = geom_macro;
 #endif
 
 #endif // curvature_macro
+
+/** Some discretization schemes may be exported to speed up iterations*/
+#ifndef export_scheme_macro
+#define export_scheme_macro 0
+#endif
+
+#if export_scheme_macro
+#define EXPORT_SCHEME(...) __VA_ARGS__
+#else
+#define EXPORT_SCHEME(...) 
+#endif
 
 /** Wether the model depends on local geometrical data, aside from the cost function.*/
 #ifndef geom_macro
