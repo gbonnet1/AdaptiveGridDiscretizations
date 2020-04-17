@@ -28,11 +28,11 @@ const Int nfwd = nFejer*symdim; // Number of forward offsets
 
 #if precomputed_scheme_macro
 // const int nTheta // Must be defined in including file
-__constant__ Scalar precomp_weights[nTheta][ntotx];
-__constant__ Scalar precomp_offsets[nTheta][ntotx][ndim];
+__constant__ Scalar precomp_weights[nTheta][nactx];
+__constant__ Scalar precomp_offsets[nTheta][nactx][ndim];
 #else
 void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
-	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
+	Scalar weights[nactx], Int offsets[nactx][ndim]){
 	XI_VAR(Scalar xi;) KAPPA_VAR(Scalar kappa;) Scalar theta;
 	get_xi_kappa_theta(GEOM(geom,) x, XI_VAR(xi,) KAPPA_VAR(kappa,) theta);
 	const Scalar cT = cos(theta), sT = sin(theta);

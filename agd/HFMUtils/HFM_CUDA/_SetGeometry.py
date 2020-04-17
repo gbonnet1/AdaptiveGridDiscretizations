@@ -176,14 +176,17 @@ def SetGeometry(self):
 	walls = self.GetValue('walls',default=None,help='Obstacles in the domain')
 	if walls is not None:
 		wallDist_t = np.uint8
-		wallDistBound = self.GetValue('wallsDistBound',default=15,
+		wallDistBound = self.GetValue('wallsDistBound',default=10,
 			help="Bound on the computed distance to the obstacles.\n"
 			"(Ideally a sharp upper bound on the stencil width.)")
-		wallDist = cp.full(self.shape, wallDistBound+1, dtype=wallDist_t)
+		wallDistMax_t = np.iinfo(wallDist_t).max
+		wallDist = cp.full(self.shape, wallDistMax_t, dtype=wallDist_t)
 		wallDist[walls]=0
 		l1Kernel = inf_convolution.distance_kernel(1,self.ndim,dtype=wallDist_t,ord=1)
 		wallDist = inf_convolution.inf_convolution(wallDist,l1Kernel,
 			niter=wallDistBound,periodic=self.periodic,overwrite=True)
-		self.wallDist = walls
+		# This value indicates 'far from wall', and visibility computation is bypassed
+		wallDist[wallDist>wallsDistBound] = wallDistMax_t 
+		self.wallDist = wallDist
 		eikonal.args['wallDist'] = misc.block_expand(wallDist,self.shape_i,
 			mode='constant',constant_values=np.iinfo(wallDist_t).max)

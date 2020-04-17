@@ -8,11 +8,11 @@ running on the GPU based on CUDA.
 
 /// Normalizes a multi-precision variable so that u is as small as possible
 MULTIP( 
-void Normalize(Scalar * u, Int * uq){
-	if( *u<multip_max ){
-		const Int n = Int(*u / multip_step);
-		*u -= n*multip_step;
-		*uq += n;
+void Normalize(Scalar & u, Int & uq){
+	if( u<multip_max ){
+		const Int n = Int(u / multip_step);
+		u -= n*multip_step;
+		uq += n;
 	} 
 } )
 
@@ -147,7 +147,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 	const Scalar v_o[ntot], MULTIP(const Int vq_o[ntot],) const Int v_i[ntot],
 	ORDER2(const Scalar v2_o[ntot], MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],)
 	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
-	Scalar * u_out MULTIP(,Int * uq_out) 
+	Scalar & u_out MULTIP(,Int & uq_out) 
 	FLOW(, Scalar flow_weights[nact] NSYM(, Int active_side[nsym]) ) 
 	){
 
@@ -178,7 +178,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 	const Int k=order[0];
 	const Scalar vmin = v[k]; 
 	if(vmin==infinity()){
-		*u_out = vmin; MULTIP(*uq_out=0;) 
+		u_out = vmin; MULTIP(uq_out=0;) 
 		FLOW(for(Int k=0; k<nact; ++k){flow_weights[k]=0.;})
 		return;
 	}
@@ -212,10 +212,10 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 	}
 */
 	const Scalar val = vmin+value;
-	*u_out = val; MULTIP(*uq_out = vqmin[0]; Normalize(u_out,uq_out); )
+	u_out = val; MULTIP(uq_out = vqmin[0]; Normalize(u_out,uq_out); )
 
 	FLOW(
-	if(*u_out==infinity()){
+	if(u_out==infinity()){
 		for(Int k=0; k<nact; ++k){flow_weights[k]=0;}
 		return;}
 	
@@ -252,7 +252,7 @@ void HFMIter(const bool active, const Int n_i,
 					v_o+s MULTIP(,vq_o+s), v_i+s,
 					ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
 					u_i MULTIP(,uq_i),
-					&u_i_mix MULTIP(,&uq_i_mix) 
+					u_i_mix MULTIP(,uq_i_mix) 
 					FLOW(, flow_weights_mix NSYM(, active_side_mix))
 					);
 
@@ -279,7 +279,7 @@ void HFMIter(const bool active, const Int n_i,
 				v_o MULTIP(,vq_o), v_i,
 				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 				u_i MULTIP(,uq_i),
-				&u_i_new MULTIP(,&uq_i_new) 
+				u_i_new MULTIP(,uq_i_new) 
 				FLOW(, flow_weights NSYM(, active_side))
 				);
 			if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),

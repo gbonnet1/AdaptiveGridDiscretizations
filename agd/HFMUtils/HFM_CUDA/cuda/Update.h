@@ -25,7 +25,7 @@ __global__ void Update(
 	FLOW_WEIGHTS(Scalar * flow_weights_t,) FLOW_WEIGHTSUM(Scalar * flow_weightsum_t,)
 	FLOW_OFFSETS(char * flow_offsets_t,) FLOW_INDICES(Int* flow_indices_t,) 
 	FLOW_VECTOR(Scalar * flow_vector_t,) 
-	EXPORT_SCHEME(
+	EXPORT_SCHEME(Scalar * weights_t, Int * offsets_t,)
 	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o 
 	){ 
 
@@ -44,10 +44,7 @@ __global__ void Update(
 
 	Int x_t[ndim];
 	for(int k=0; k<ndim; ++k){x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
-
 	const Int n_t = n_o*size_i + n_i;
-	const bool isSeed = GetBool(seeds_t,n_t);
-	const Scalar rhs = rhs_t[n_t];
 
 	#if curvature_macro && precomputed_scheme_macro
 	const Int iTheta = x_t[2];
@@ -61,6 +58,25 @@ __global__ void Update(
 	MIX(const bool mix_is_min = )
 	scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets);
 	#endif
+
+	EXPORT_SCHEME( 
+	#if curvature_macro
+		/* This precomputation step is intended for the curvature penalized
+		models, which have complicated stencils, yet usually depending on 
+		a single parameter : the angular coordinate.*/
+		if(x_t[0]==0 && x_t[1]==0){
+			const Int iTheta = x_t[2];
+			Scalar * weights_out = (Scalar (*)[nactx] weights_t)[iTheta];
+			Int * offsets_out [ndim]= (Int (*)[nactx][ndim] offsets_t)[iTheta];
+			for(Int i=0; i<nactx; ++i) {
+				weights_out[i]=weights[i];
+				for(Int j=0; j<ndim; ++j){
+					offsets_out[i][j] = offsets[i][j];
+			}
+		}
+	#endif
+	return;
+	)
 
 	DRIFT(
 	Scalar drift[ndim];
@@ -76,7 +92,9 @@ __global__ void Update(
 	uq_i[n_i] = uq_old;)
 
 	// Apply boundary conditions
-	if(isSeed){u_i[n_i]=rhs; MULTIP(uq_i[n_i]=0; Normalize(&u_i[n_i],&uq_i[n_i]);)}
+	const bool isSeed = GetBool(seeds_t,n_t);
+	const Scalar rhs = rhs_t[n_t];
+	if(isSeed){u_i[n_i]=rhs; MULTIP(uq_i[n_i]=0; Normalize(u_i[n_i],uq_i[n_i]);)}
 
 	WALLS(
 	__shared__ WallsT wallDist_i[size_i];

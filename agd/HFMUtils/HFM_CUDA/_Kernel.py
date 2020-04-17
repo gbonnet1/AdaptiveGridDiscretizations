@@ -155,6 +155,7 @@ def SetKernel(self):
 	SetCst('shape_tot',self.shape,int_t) # Used for periodicity
 	SetCst('size_tot', size_tot,  int_t) # Used for geom indexing
 
+
 	if policy.multiprecision:
 		# Choose power of two, significantly less than h
 		h = float(np.min(self.h))
@@ -195,3 +196,5 @@ def SetKernel(self):
 		'geom','drift','seedTags','rhs','wallDist')
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
 	flow.args = eikonal.args.copy() # Further arguments added later
+
+def PrecomputeStencil(self):

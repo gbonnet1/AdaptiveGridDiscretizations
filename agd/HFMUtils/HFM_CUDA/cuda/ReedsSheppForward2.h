@@ -11,7 +11,7 @@ const Int nfwd = symdim; // Number of forward offsets
 #include "Constants.h"
 
 void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
-	Scalar weights[ntotx], Int offsets[ntotx][ndim]){
+	Scalar weights[nactx], Int offsets[nactx][ndim]){
 	XI_VAR(Scalar xi;) KAPPA_VAR(Scalar kappa;) Scalar theta;
 	get_xi_kappa_theta(GEOM(geom,) x, XI_VAR(xi,) KAPPA_VAR(kappa,) theta);
 
