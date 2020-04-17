@@ -75,12 +75,17 @@ __constant__ Scalar kappa;
 
 const bool periodic_axes[3]={false,false,true};
 
-#if !theta_var_macro 
+#if !theta_var_macro && !precomputed_scheme_macro
 // const Int nTheta must be defined in including file, and equal to shape_tot[2]
 __constant__ Scalar cosTheta_s[nTheta]; // cos(2*pi*i/nTheta)
 __constant__ Scalar sinTheta_s[nTheta]; // sin(...)
 #endif
 
+#if precomputed_scheme_macro
+// const int nTheta // Must be defined in including file
+__constant__ Scalar precomp_weights[nTheta][nactx];
+__constant__ Scalar precomp_offsets[nTheta][nactx][ndim];
+#else
 void get_ixi_kappa_theta(
 	GEOM(const Scalar geom[geom_size],) const Int x[ndim],
 	XI_VAR(Scalar & ixi,) KAPPA_VAR(Scalar & kappa,) 
@@ -96,7 +101,7 @@ void get_ixi_kappa_theta(
 //	theta = (2.*pi*x[2])/shape_tot[2];  // Now using precomputed trigonometric tables
 	cosTheta = cosTheta_s[iTheta];
 	sinTheta = sinTheta_s[iTheta];
-	#endif
+	#endif // theta_var_macro
 }
-
-#endif
+#endif // precomputed_scheme_macro
+#endif // curvature_macro

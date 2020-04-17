@@ -13,7 +13,7 @@ const Int nsym = 0; // Number of symmetric offsets
 const Int nfwd = symdim; // Number of forward offsets
 
 #include "Constants.h"
-
+#if !precomputed_scheme_macro
 bool scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
 	XI_VAR(Scalar ixi;) KAPPA_VAR(Scalar kappa;) 
@@ -30,5 +30,5 @@ bool scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	// Maximum of a family of two schemes. -> take the minimal update among the two.
 	return true; // Returns mix_is_min
 }
-
+#endif
 #include "Update.h"

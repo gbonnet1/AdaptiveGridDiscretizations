@@ -37,10 +37,6 @@ const Int nfwd = nFejer*symdim; // Number of forward offsets
 #include "Constants.h"
 
 #if precomputed_scheme_macro
-// const int nTheta // Must be defined in including file
-__constant__ Scalar precomp_weights[nTheta][nactx];
-__constant__ Scalar precomp_offsets[nTheta][nactx][ndim];
-#else
 void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
 	XI_VAR(Scalar ixi;) KAPPA_VAR(Scalar kappa;) 

@@ -92,10 +92,13 @@ def SetGeometry(self):
 		# Large arrays are passed as geometry data, and scalar entries as module constants
 		geom = []
 		def is_var(e): return isinstance(e,cp.ndarray) and e.ndim>0
-		eikonal.traits['xi_var_macro']    = int(is_var(self.xi))
-		eikonal.traits['kappa_var_macro'] = int(is_var(self.kappa))
-		eikonal.traits['theta_var_macro'] = int(is_var(self.theta))
-		if not is_var(self.theta): eikonal.traits['nTheta']=self.shape[2];
+		traits = eikonal.traits
+		traits['xi_var_macro']    = int(is_var(self.xi))
+		traits['kappa_var_macro'] = int(is_var(self.kappa))
+		traits['theta_var_macro'] = int(is_var(self.theta))
+		if not is_var(self.theta): traits['nTheta']=self.shape[2];
+		if all(traits[e]==0 for e in ('xi_var_macro','kappa_var_macro','theta_var_macro')):
+			traits['precomputed_scheme_macro']=1
 
 		geom = [e for e in (1./self.xi,self.kappa,
 			np.cos(self.theta),np.sin(self.theta)) if is_var(e)]

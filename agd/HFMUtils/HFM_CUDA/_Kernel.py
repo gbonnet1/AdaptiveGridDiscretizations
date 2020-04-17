@@ -75,6 +75,7 @@ def SetKernelTraits(self):
 	self.size_i = np.prod(self.shape_i)
 	self.caster = lambda x : cp.asarray(x,dtype=self.float_t)
 	self.hfmIn['array_float_caster'] = self.caster
+	self.nscheme = kernel_traits.nscheme(self)
 
 def SetKernel(self):
 	"""
@@ -92,9 +93,9 @@ def SetKernel(self):
 	policy.count_updates = self.GetValue('count_updates',default=False,
 		help='Count the number of times each block is updated')
 
-
+	integral_max = policy.multiprecision # Int_Max needed for multiprecision to avoid overflow
 	eikonal.source = cupy_module_helper.traits_header(traits,
-		join=True,size_of_shape=True,log2_size=True,integral_max=True) + "\n"
+		join=True,size_of_shape=True,log2_size=True,integral_max=integral_max)+"\n"
 
 	if self.isCurvature: 
 		model_source = f'#include "{self.model}.h"\n'
@@ -137,13 +138,9 @@ def SetKernel(self):
 		(self.isCurvature and (self.unorientedTips is not None)))
 
 	flow.source = cupy_module_helper.traits_header(flow.traits,
-		join=True,size_of_shape=True,log2_size=True,integral_max=True) + "\n"
+		join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"
 	flow.source += model_source+self.cuda_date_modified
 	flow.module = GetModule(flow.source,self.cuoptions)
-
-#	if self.isCurvature and self.precomputeStencil: # TODO
-#		stencil = self.kernel_data
-
 
 	# Set the constants
 	def SetCst(*args):
@@ -192,6 +189,25 @@ def SetKernel(self):
 			theta = cp.arange(nTheta)*2.*np.pi/nTheta
 			SetCst('cosTheta_s',np.cos(theta),float_t)
 			SetCst('sinTheta_s',np.sin(theta),float_t)
+
+		if traits['precomputed_scheme_macro']:
+			# Precompute the curvature penalizing complex stencils
+			scheme_traits = {'xi_var_macro':0,'kappa_var_macro':0,'theta_var_macro':0,
+				'Scalar':float_t,'Int':int_t,'shape_i':self.shape_i}
+			scheme_source = cupy_module_helper.traits_header(scheme_traits,
+			join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"
+			scheme_source += model_source+self.cuda_date_modified
+			scheme_module = GetModule(scheme_source,self.cuoptions)
+			for args in ( ('shape_o',self.shape_o,int_t),('size_o',self.size_o,int_t),
+				('shape_tot',self.shape,int_t),('size_tot',size_tot,int_t) ):
+				SetModuleConstant(scheme_module,*args)
+			ntotx = self.nscheme['ntotx']
+			weights = cp.zeros((nTheta,ntotx),float_t)
+			offsets = cp.zeros((nTheta,ntotx,self.ndim),int_t)
+			dummy = cp.zeros((0,))
+			scheme_kernel
+
+
 
 	# Set the kernel arguments
 	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,

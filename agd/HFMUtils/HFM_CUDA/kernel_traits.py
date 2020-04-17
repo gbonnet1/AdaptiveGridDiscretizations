@@ -33,26 +33,33 @@ def default_traits(self):
 		raise ValueError("Unsupported model")
 	return traits
 
-def nact(self):
+def nscheme(self):
 	"""
-	Max number of active neighbors for an HFM model.
+	Provides the structure of the finite difference scheme used.
+	(number of symmmetric offsets, foward offsets, max or min of a number of schemes)
 	"""
 	ndim = self.ndim
 	symdim = int( (ndim*(ndim+1))/2 )
 	model = self.model_
 
-	if model=='Isotropic':
-		return ndim
-	elif model in ('Riemann','Rander'):
-		return symdim
-	elif model=='ReedsShepp':
-		return symdim
-	elif model=='ReedsSheppForward':
-		return symdim+1
-	elif model=='Dubins':
-		return 2*symdim
+	nsym=0 # Number of symmetric offsets
+	nfwd=0 # Number of forward offsets
+	nmix=1 # maximum or minimum of nmix schemes
+	if model=='Isotropic':              nsym = ndim
+	elif model in ('Riemann','Rander'): nsym = symdim
+	elif model=='ReedsShepp':           nsym = symdim
+	elif model=='ReedsSheppForward':    nsym = 1; nfwd = symdim
+	elif model=='Dubins':               nfwd = symdim; nmix = 2
 	elif model=='Elastica':
 		nFejer = self.kernel_data['eikonal'].traits.get('nFejer_macro',5)
-		return nFejer*symdim
+		nfwd = nFejer*symdim
+
+	nact = nsym+nfwd # max number of active offsets
+	ntot = 2*nsym+nfwd
+	nactx = nact*nmix
+	ntotx = ntot*nmix
+
+	return {'nsym':nsym,'nfwd':nfwd,'nmix':nmix,
+	'nact':nact,'ntot':ntot,'nactx':nactx,'ntotx':ntotx}
 
 

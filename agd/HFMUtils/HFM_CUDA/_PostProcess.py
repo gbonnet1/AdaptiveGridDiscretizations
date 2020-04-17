@@ -36,7 +36,7 @@ def PostProcess(self):
 
 	# Compute the geodesic flow, if needed, and related quantities
 	shape_oi = self.shape_o+self.shape_i
-	nact = kernel_traits.nact(self)
+	nact = self.nscheme['nact']
 	ndim = self.ndim
 
 	flow = self.kernel_data['flow']
