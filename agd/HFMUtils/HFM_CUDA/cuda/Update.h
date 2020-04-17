@@ -203,7 +203,7 @@ __global__ void Update(
 		v_o MULTIP(,vq_o), v_i, 
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 		u_i MULTIP(,uq_i) 
-		FLOW(, flow_weights NSYM(, active_side) MIX(, &kmix) ) );
+		FLOW(, flow_weights NSYM(, active_side) MIX(, kmix) ) );
 
 	#if strict_iter_o_macro
 	uNext_t[n_t] = u_i[n_i];

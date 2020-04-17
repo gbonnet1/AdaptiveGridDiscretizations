@@ -44,6 +44,18 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 #define NOMULTIP(...) __VA_ARGS__
 #endif
 
+/** Wether the finite differences scheme uses any symmetric offsets.
+(Possibly in addition to forward offsets.) */
+#ifndef nsym_macro
+#define nsym_macro 1
+#endif
+
+#if nsym_macro
+#define NSYM(...) __VA_ARGS__
+#else
+#define NSYM(...) 
+#endif
+
 /** Min or Max of a family of schemes*/
 #ifndef nmix_macro
 #define nmix_macro 0
@@ -145,7 +157,8 @@ position dependent metric. */
 
 #if curvature_macro
 
-const Int geom_size = xi_var_macro + kappa_var_macro + theta_var_macro;
+#define geom_macro (xi_var_macro + kappa_var_macro + theta_var_macro)
+const Int geom_size = geom_macro;
 
 #if xi_var_macro
 #define XI_VAR(...) __VA_ARGS__
@@ -159,6 +172,17 @@ const Int geom_size = xi_var_macro + kappa_var_macro + theta_var_macro;
 #define KAPPA_VAR(...) 
 #endif
 
+#endif // curvature_macro
+
+/** Wether the model depends on local geometrical data, aside from the cost function.*/
+#ifndef geom_macro
+#define geom_macro 1
+#endif
+
+#if geom_macro
+#define GEOM(...) __VA_ARGS__
+#else 
+#define GEOM(...)
 #endif
 
 /** Apply periodic boundary conditions on some of the axes.*/

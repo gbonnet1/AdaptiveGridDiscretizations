@@ -11,15 +11,11 @@ The implementation could be substantially optimized, by rearranging the data in 
 typedef int Int;
 #endif
 
-#ifndef ndim_macro
+/** The following constants need to be defined by the including file
 const Int ndim=2;
-#endif
-
-#ifndef shape_c_macro
 const Int shape_c[ndim] = {3,3};
 const Int size_c = 3*3;
-#endif
-
+*/
 __constant__ Int shape_tot[ndim];
 __constant__ Int size_tot; // product of shape_tot
 
@@ -72,7 +68,6 @@ InfConvolution(const T * input, T * output){
 	if(n_t>=size_tot) {return;}
 	Int x_t[ndim];
 	Grid::Position(n_t,shape_tot,x_t);
-
 	T result = T_Neutral;
 	// Access neighbor values, and perform the inf convolution
 	for(Int i_c=0; i_c<size_c; ++i_c){

@@ -232,7 +232,7 @@ void HFMIter(const bool active, const Int n_i,
 	const Scalar v_o[ntotx], MULTIP(const Int vq_o[ntotx],) const Int v_i[ntotx], 
 	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
 	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) 
-	FLOW(, Scalar flow_weights[nact] NSYM(, Int active_side[nsym]) MIX(, Int * kmix_) ) ){
+	FLOW(, Scalar flow_weights[nact] NSYM(, Int active_side[nsym]) MIX(, Int & kmix_) ) ){
 
 
 	Scalar u_i_new MIX(=mix_neutral(mix_is_min)); MULTIP(Int uq_i_new MIX(=0);)
@@ -261,7 +261,7 @@ void HFMIter(const bool active, const Int n_i,
 					FLOW(kmix_=kmix; 
 						for(Int k=0; k<nact; ++k){flow_weights[k]=flow_weights_mix[k];}
 						NSYM(for(Int k=0; k<nsym; ++k){active_side[k]=active_side_mix[k];}))
-				}) // Mix and better update
+				}) // Mix and better update value
 			}
 		}
 		__syncthreads();

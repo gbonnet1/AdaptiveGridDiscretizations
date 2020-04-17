@@ -6,6 +6,7 @@
 
 #ifdef isotropic_macro // We're using the same file for the anisotropic diagonal model
 #define adaptive_weights_macro 0
+#define geom_macro 0 // No geometry for the isotropic metric (only a cost function)
 #endif
 
 #include "TypeTraits.h"

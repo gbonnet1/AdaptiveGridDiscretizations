@@ -13,7 +13,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
 
 n=20; nTheta=60
 hfmIn = HFMUtils.dictIn({
-    'model':'Elastica2',
+    'model':'Dubins2',
     'seeds':cp.array([[0.,0.,np.pi]],dtype=np.float32),
     'exportValues':1,
     'cost':1,

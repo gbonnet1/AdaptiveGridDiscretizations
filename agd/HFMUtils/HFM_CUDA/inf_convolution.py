@@ -2,6 +2,7 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
+import cupy as cp
 import os
 from . import cupy_module_helper
 from .cupy_module_helper import SetModuleConstant
@@ -26,7 +27,7 @@ def distance_kernel(radius,ndim,dtype=np.float,ord=2,mult=1):
 	if np.dtype(dtype).kind in ('i','u'): dist = np.round(dist)
 	return dist.astype(dtype)
 
-def inf_convolution(arr,kernel,niter=1,periodic=False,
+def inf_convolution(arr,kernel,out=None,niter=1,periodic=False,
 	upper_saturation=None, lower_saturation=None, mix_is_min=True,
 	overwrite=False,block_size=1024):
 	"""
@@ -37,13 +38,17 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	- periodic (optional, bool or tuple of bool): axes using periodic boundary conditions.
 	- mix_is_min : if false, use sup_convolution instead
 	"""
+	if niter>=2 and not overwrite: arr=arr.copy()
+	arr = cp.ascontiguousarray(arr)
+
 	conv_t = arr.dtype.type
 	int_t = np.int32
 
 	traits = {
 		'T':conv_t,
 		'shape_c':kernel.shape,
-		'mix_is_min_macro':mix_is_min,
+		'mix_is_min_macro':int(mix_is_min),
+		'ndim':arr.ndim,
 		}
 
 	if upper_saturation is None: upper_saturation = dtype_sup(conv_t)
@@ -54,7 +59,9 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 	traits['T_Inf']=(lower_saturation,conv_t)
 
 	if not isinstance(periodic,tuple): periodic = (periodic,)*arr.ndim
-	if any(periodic): traits['periodic'] = periodic
+	if any(periodic): 
+		traits['periodic_macro'] = 1
+		traits['periodic_axes'] = periodic
 
 	cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 	date_modified = cupy_module_helper.getmtime_max(cuda_path)
@@ -73,15 +80,12 @@ def inf_convolution(arr,kernel,niter=1,periodic=False,
 
 	cupy_kernel = module.get_function("InfConvolution")
 
-	if niter>=2 and not overwrite: arr=arr.copy()
-	xp = ad.cupy_generic.get_array_module(arr)
-	arr = xp.ascontiguousarray(arr)
-	out = np.empty_like(arr)
 	if out is None: out = np.empty_like(arr)
 	else: assert out.dtype==arr.dtype and out.size==arr.size and out.flags['C_CONTIGUOUS']
+	grid_size = int(np.ceil(arr.size/block_size))
 
 	for i in range(niter):
-		cupy_kernel((arr.size,),(block_size,),(arr,out))
+		cupy_kernel((grid_size,),(block_size,),(arr,out))
 		arr,out = out,arr
 
 	return arr

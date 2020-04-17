@@ -25,9 +25,11 @@ raise
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
-n=50
+n=8
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
+    'exportValues':1,
+
 #    'verbosity':1,
     'seeds':[[0,0]],
 #    'kernel':"dummy",
@@ -48,7 +50,7 @@ hfmIn = HFMUtils.dictIn({
 #	'factoringRadius':10000,
 #	'seedRadius':2,
 #	'returns':'in_raw',
-	'bound_active_blocks':True,
+#	'bound_active_blocks':True,
 	'traits':{
 	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),
@@ -58,9 +60,9 @@ hfmIn = HFMUtils.dictIn({
 #	'niter_i':64,'shape_i':(32,32),
 #   'debug_print':1,
 #    'niter_i':1,
-    'strict_iter_i_macro':1,
-	'pruning_macro':1,
-	'strict_iter_o_macro':1,
+#    'strict_iter_i_macro':1,
+#	'pruning_macro':1,
+#	'strict_iter_o_macro':1,
     },
 })
 
@@ -100,11 +102,11 @@ if len(hfmOut['values'])<22: print(hfmOut['values'])
 #Comparison with CPU.
 
 hfmInCPU = hfmIn.copy()
-for key in ('traits','niter_o','solver','raiseOnNonConvergence','nitermax_o'): 
+for key in ('traits','niter_o','solver','raiseOnNonConvergence','nitermax_o',
+	'array_float_caster'): 
 		hfmInCPU.pop(key,None)
 
 hfmInCPU.update({
-	'exportValues':1,
 #	'factoringMethod':'Static',
 #	'factoringPointChoice':'Key',
 })

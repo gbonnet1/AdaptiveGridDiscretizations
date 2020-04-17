@@ -59,20 +59,24 @@ def GetGeodesics(self):
 		nGeodesics=len(self.tips)
 
 		# Prepare the euclidean distance to seed estimate (for stopping criterion)
-		eucl_bound = self.GetValue('geodesic_targetTolerance',default=6.,
+		eucl_bound_default = 12 if self.isCurvature else 6
+		eucl_bound = self.GetValue('geodesic_targetTolerance',default=eucl_bound_default,
 			help="Tolerance, in pixels, for declaring a seed as reached.")
 		eucl_t = geodesic.traits['EuclT']
-		eucl = np.zeros_like(self.seedTags,dtype=eucl_t)
 		eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
 		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
-		eucl[np.logical_not(self.seedTags)] = eucl_max
+		eucl = np.full_like(self.seedTags,eucl_max,dtype=eucl_t)
+		eucl[self.seedTags] = 0
 		eucl_mult = 5 if eucl_integral else 1
 		eucl_kernel = inf_convolution.distance_kernel(radius=1,ndim=self.ndim,
 			dtype=eucl_t,mult=eucl_mult)
-		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,
+		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,periodic=self.periodic,
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
 		eucl=cp.ascontiguousarray(eucl)
+		self.hfmOut['eucl']=eucl
+		self.hfmOut['eucl_kernel']=eucl_kernel
+		self.hfmOut['seedTags']=self.seedTags
 
 		# Run the geodesic ODE solver
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
