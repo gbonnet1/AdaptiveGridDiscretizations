@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_GPU/Isotropic_Repro.ipynb
+# Code automatically exported from notebook Notebooks_GPU\Isotropic_Repro.ipynb
 # Do not modify
 import sys; sys.path.append("../..") # Path to import agd
 
@@ -54,7 +54,10 @@ def RunCompare(gpuIn,check=True,variants=None,**kwargs):
     print(f"Solver time (s). GPU : {gpuTime}, CPU : {cpuTime}. Device acceleration : {cpuTime/gpuTime}")
     
     # Check consistency 
-    cpuVals = cpuOut['values']; gpuVals = gpuOut['values'].get()
+    cpuVals = cpuOut['values'].copy(); gpuVals = gpuOut['values'].get()
+    # Inf is a legitimate value in the presence of e.g. obstacles
+    commonInfs = np.logical_and(np.isinf(cpuVals),np.isinf(gpuVals)) 
+    cpuVals[commonInfs]=0; gpuVals[commonInfs]=0
     print("Max |gpuValues-cpuValues| : ", norm_infinity(gpuVals-cpuVals))
     
     if check is True: assert np.allclose(gpuVals,cpuVals,atol=1e-5,rtol=1e-4)

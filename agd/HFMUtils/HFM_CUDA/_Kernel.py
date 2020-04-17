@@ -89,6 +89,9 @@ def SetKernel(self):
 		traits['periodic_macro']=1
 		traits['periodic_axes']=self.periodic
 	if self.model_=='Isotropic': traits['isotropic_macro']=1
+	policy.count_updates = self.GetValue('count_updates',default=False,
+		help='Count the number of times each block is updated')
+
 
 	eikonal.source = cupy_module_helper.traits_header(traits,
 		join=True,size_of_shape=True,log2_size=True,integral_max=True) + "\n"

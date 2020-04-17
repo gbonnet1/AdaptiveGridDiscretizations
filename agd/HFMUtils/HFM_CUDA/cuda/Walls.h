@@ -15,7 +15,9 @@ Int divRoundClosest(const Int n, const Int d){
 
 bool Visible(const Int v[ndim], 
 	const Int x_t[ndim], const WallT * wallsDist_t,
-	const Int x_i[ndim], const WallT   wallsDist_i[size_i], const Int n_i){
+	const Int x_i[ndim], const WallT   wallsDist_i[size_i]){
+	const Int n_i = threadIdx.x;
+	if(wallDist_i[n_i]==WallT_Max) return true;
 
 	// L1 norm of the vector will be compared with L1 distance to the walls.
 	Int vl1 = 0; for(Int i=0; i<ndim; ++i) {vl1 += abs(v[i]);}

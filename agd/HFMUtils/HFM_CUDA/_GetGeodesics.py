@@ -12,14 +12,18 @@ def GetGeodesics(self):
 		geodesic_step = self.GetValue('geodesic_step',default=0.25,
 			help='Step size, in pixels, for the geodesic ODE solver')
 
-		geodesic_hlen = int(8*np.sqrt(self.ndim)/geodesic_step)
-		geodesic_hlen = self.GetValue('geodesic_hlen',default=geodesic_hlen,
-			help="History length for the geodesic solver, for termination error criteria")
+		eucl_delay = int(np.sqrt(self.ndim)/geodesic_step)
+		eucl_delay = self.GetValue('geodesic_PastSeed_delay',default=eucl_delay,
+			help="Delay, in iterations, for the 'PastSeed' stopping criterion of the "
+			"geodesic ODE solver") # Likely in curvature penalized models
+		nymin_delay = int(8.*np.sqrt(self.ndim)/geodesic_step)
+		nymin_delay = self.GetValue('geodesic_Stationnary_delay',default=nymin_delay,
+			help="Delay, in iterations, for the 'Stationnary' stopping criterion of the "
+			"geodesic ODE solver") # Rather unlikely
 
 		traits = { # Suggested defaults
-			'hlen':geodesic_hlen,
-			'eucl_delay':geodesic_hlen-1,
-			'nymin_delay':geodesic_hlen-1,
+			'eucl_delay':int(eucl_delay),
+			'nymin_delay':int(nymin_delay),
 			'EuclT':np.uint8,
 			}
 		if any(self.periodic): 

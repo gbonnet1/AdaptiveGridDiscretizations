@@ -102,6 +102,9 @@ def adaptive_gauss_siedel_iteration(self,data):
 	update_o = cp.ascontiguousarray(trigger.astype(np.uint8))
 	policy = data.policy
 	nitermax_o = policy.nitermax_o
+	if policy.count_updates:
+		nupdate_o = cp.zeros(self.shape_o,dtype=self.int_t)
+		data.stats["nupdate_o"]=nupdate_o
 
 	"""Pruning drops the complexity from N+eps*N^(1+1/d) to N, where N is the number 
 	of points and eps is a small but positive constant related with the block size. 
@@ -153,6 +156,7 @@ def adaptive_gauss_siedel_iteration(self,data):
 		for niter_o in range(nitermax_o):
 			updateList_o = cp.ascontiguousarray(cp.flatnonzero(update_o), dtype=self.int_t)
 #			print(update_o.astype(int)); print()
+			if policy.count_updates: nupdate_o += update_o
 			update_o.fill(0)
 			if updateList_o.size==0: return niter_o
 #			for key,value in self.block.items(): print(key,type(value))

@@ -54,21 +54,15 @@ __constant__ Scalar causalityTolerance = 4;
 __constant__ Scalar geodesicStep = 0.25;
 __constant__ Scalar weight_threshold = 0.05;
 
-#ifndef hlen_macro
-const Int hlen = 20; // History length (a small periodic history of computations is kept)
-#endif
+/** The following constants must be defined. 
+They are related with the sensitivity of the PastSeed and Stationnary stopping criteria
+respectively
+const Int eucl_delay 
+const Int nymin_delay
+*/
 
-#ifndef eucl_delay_macro
-const Int eucl_delay = hlen-1; // Used in PastSeed stopping  criterion
-#else
-//STATIC_ASSERT(eucl_delay<hlen,"eucl_delay must be strictly less than history length hlen")
-#endif
-
-#ifndef nymin_delay_macro
-const Int nymin_delay = hlen-1; // Used in Stationnary stropping criterion
-#else
-//STATIC_ASSERT(nymin_delay<hlen,"nymin_delay must be strictly less than history length hlen")
-#endif
+// History length, used for the above delayed stopping criteria
+const Int hlen = 1 + (eucl_delay<nymin_delay ? nymin_delay : eucl_delay); //max(eucl_delay,nymin_delay)+1;
 
 #ifndef debug_print_macro
 const Int debug_print = 0;

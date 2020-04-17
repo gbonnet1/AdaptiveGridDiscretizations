@@ -25,6 +25,7 @@ __global__ void Update(
 	FLOW_WEIGHTS(Scalar * flow_weights_t,) FLOW_WEIGHTSUM(Scalar * flow_weightsum_t,)
 	FLOW_OFFSETS(char * flow_offsets_t,) FLOW_INDICES(Int* flow_indices_t,) 
 	FLOW_VECTOR(Scalar * flow_vector_t,) 
+	EXPORT_SCHEME(
 	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o 
 	){ 
 
@@ -48,12 +49,18 @@ __global__ void Update(
 	const bool isSeed = GetBool(seeds_t,n_t);
 	const Scalar rhs = rhs_t[n_t];
 
+	#if curvature_macro && precomputed_scheme_macro
+	const Int iTheta = x_t[2];
+	const Scalar * weights       = precomp_weights[iTheta];
+	const Scalar * offsets[ndim] = precomp_offsets[iTheta];
+	#else
 	GEOM(Scalar geom[geom_size];
 	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];})
 	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 	ADAPTIVE_OFFSETS(Int offsets[nactx][ndim];)
 	MIX(const bool mix_is_min = )
 	scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets);
+	#endif
 
 	DRIFT(
 	Scalar drift[ndim];

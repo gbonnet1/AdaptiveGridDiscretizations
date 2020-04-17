@@ -15,7 +15,7 @@ void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	XI_VAR(Scalar xi;) KAPPA_VAR(Scalar kappa;) Scalar theta;
 	get_xi_kappa_theta(GEOM(geom,) x, XI_VAR(xi,) KAPPA_VAR(kappa,) theta);
 
-	weights[0]=1./xi;
+	weights[0]=1./(xi*xi);
 	Int * offset = offsets[0];
 	offset[0]=0; offset[1]=0; offset[2]=1; // offsets[0]={0,0,1};
 
