@@ -23,9 +23,9 @@ __global__ void Update(
 	const BoolPack * seeds_t, const Scalar * rhs_t, WALLS(wallDist_t,)
 	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
 	FLOW_WEIGHTS(Scalar * flow_weights_t,) FLOW_WEIGHTSUM(Scalar * flow_weightsum_t,)
-	FLOW_OFFSETS(char * flow_offsets_t,) FLOW_INDICES(Int* flow_indices_t,) 
+	FLOW_OFFSETS(OffsetT * flow_offsets_t,) FLOW_INDICES(Int* flow_indices_t,) 
 	FLOW_VECTOR(Scalar * flow_vector_t,) 
-	EXPORT_SCHEME(Scalar * weights_t, Int * offsets_t,)
+	EXPORT_SCHEME(Scalar * weights_t, OffsetT * offsets_t,)
 	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o 
 	){ 
 
@@ -37,24 +37,32 @@ __global__ void Update(
 		MINCHG_FREEZE(minChgPrev_o,minChgNext_o,updateNext_o,)
 		x_o,n_o) ){return;} // Also sets x_o, n_o
 
-
 	const Int n_i = threadIdx.x;
 	Int x_i[ndim];
 	Grid::Position(n_i,shape_i,x_i);
 
 	Int x_t[ndim];
-	for(int k=0; k<ndim; ++k){x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
+	for(Int k=0; k<ndim; ++k){x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
 	const Int n_t = n_o*size_i + n_i;
 
 	#if curvature_macro && precomputed_scheme_macro
 	const Int iTheta = x_t[2];
-	const Scalar * weights       = precomp_weights[iTheta];
-	const Scalar * offsets[ndim] = precomp_offsets[iTheta];
+	const Scalar * weights      = precomp_weights_s[iTheta];
+	const OffsetT (* offsets)[ndim] = precomp_offsets_s[iTheta];
+//	if(n_i==0){printf("Hi there %i,%f,%i",iTheta,weights[0],offsets[0][0]);}
+	MIX(const bool mix_is_min=true;) // Dubins2
+
+//	Int offsets[*][ndim] = precomp_offsets[iTheta];
+//	const auto offsets = precomp_offsets[iTheta];
+//	Int offsets_test [nactx][ndim];
+//	typedef (const Int (*)[ndim]) offsets_type;
+//	offsets_type offsets= offsets_test; // = precomp_offsets[iTheta];
+//	const (Int (*)[ndim]) offsets = offsets_test; //precomp_offsets[iTheta];
 	#else
 	GEOM(Scalar geom[geom_size];
 	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];})
 	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
-	ADAPTIVE_OFFSETS(Int offsets[nactx][ndim];)
+	ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
 	MIX(const bool mix_is_min = )
 	scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets);
 	#endif
@@ -64,16 +72,15 @@ __global__ void Update(
 		/* This precomputation step is intended for the curvature penalized
 		models, which have complicated stencils, yet usually depending on 
 		a single parameter : the angular coordinate.*/
-		if(x_t[0]==0 && x_t[1]==0){
-			const Int iTheta = x_t[2];
-			Scalar * weights_out = (Scalar (*)[nactx] weights_t)[iTheta];
-			Int * offsets_out [ndim]= (Int (*)[nactx][ndim] offsets_t)[iTheta];
+		if(threadIdx.x==0&& blockIdx.x==0){
+			printf("offsets0 %i,%i,%i\n",offsets[0][0],offsets[0][1],offsets[0][2]);}
+		const Int iTheta = x_t[2];
+		if(x_t[0]==0 && x_t[1]==0 && iTheta<nTheta){
 			for(Int i=0; i<nactx; ++i) {
-				weights_out[i]=weights[i];
+				weights_t[iTheta*nactx+i]=weights[i];
 				for(Int j=0; j<ndim; ++j){
-					offsets_out[i][j] = offsets[i][j];
-			}
-		}
+					offsets_t[(iTheta*nactx+i)*ndim+j] = offsets[i][j];}}
+		} // if curvature_macro
 	#endif
 	return;
 	)
@@ -136,7 +143,7 @@ __global__ void Update(
 	Int koff=0,kv=0; 
 	for(Int kmix=0; kmix<nmix; ++kmix){
 	for(Int kact=0; kact<nact; ++kact){
-		const Int * e = offsets[koff]; // e[ndim]
+		const OffsetT * e = offsets[koff]; // e[ndim]
 		++koff;
 		SHIFT(
 			Scalar fact[2]; ORDER2(Scalar fact2[2];)
@@ -147,7 +154,7 @@ __global__ void Update(
 
 		for(Int s=0; s<2; ++s){
 			if(s==0 && kact>=nsym) continue;
-			Int offset[ndim];
+			OffsetT offset[ndim];
 			const Int eps=2*s-1; // direction of offset
 			mul_kv(eps,e,offset);
 
@@ -164,12 +171,12 @@ __global__ void Update(
 			add_vv(offset,x_t,y_t);
 			add_vv(offset,x_i,y_i);
 
-			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) )  {
+			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)))  {
 				v_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v_o[kv] = fact[s];)
 			} else {
 				v_i[kv] = -1;
-				if(Grid::InRange_per(y_t,shape_tot) ) {
+				if(Grid::InRange_per(y_t,shape_tot)) {
 					const Int ny_t = Grid::Index_tot(y_t);
 					v_o[kv] = u_t[ny_t] SHIFT(+fact[s]);
 					MULTIP(vq_o[kv] = uq_t[ny_t];)

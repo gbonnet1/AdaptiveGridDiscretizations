@@ -47,7 +47,7 @@ def PostProcess(self):
 	if flow.traits.get('flow_weightsum_macro',False):
 		flow.args['flow_weightsum'] = cp.empty(shape_oi,dtype=self.float_t)
 	if flow.traits.get('flow_offsets_macro',False):
-		flow.args['flow_offsets']   = cp.empty((ndim,nact,)+shape_oi,dtype=np.int8)
+		flow.args['flow_offsets']   = cp.empty((ndim,nact,)+shape_oi,dtype=self.offset_t)
 	if flow.traits.get('flow_indices_macro',False):
 		flow.args['flow_indices']   = cp.empty((nact,)+shape_oi,dtype=self.int_t)
 	if flow.traits.get('flow_vector_macro',False):

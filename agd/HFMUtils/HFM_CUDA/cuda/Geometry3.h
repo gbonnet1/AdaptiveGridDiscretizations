@@ -12,7 +12,7 @@ const Int iterReducedMax = 6;
 const Int Selling_permutations[iterReducedMax][ndim+1] = { 
 	{0,1,2,3},{0,2,1,3},{0,3,1,2},{1,2,0,3},{1,3,0,2},{2,3,0,1}};
 
-void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
+void obtusesuperbase(const Scalar m[symdim], OffsetT sb[ndim+1][ndim]){
 	canonicalsuperbase(sb);
 	for(Int iter=0, iterReduced=0; 
 		iter<Selling_maxiter && iterReduced < iterReducedMax; 
@@ -31,8 +31,8 @@ void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 }
 
 // Selling decomposition of a tensor
-void Selling_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
-	Int sb[ndim+1][ndim];
+void Selling_m(const Scalar m[symdim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
+	OffsetT sb[ndim+1][ndim];
 	obtusesuperbase(m,sb);
 	for(Int r=0; r<symdim; ++r){
 		const Int * perm = Selling_permutations[r];
@@ -48,7 +48,7 @@ __constant__ Scalar Selling_v_relax = 0.01; // Relaxation parameter for Selling_
 __constant__ Scalar Selling_v_cosmin2 = 2./3.; // Relaxation parameter for Selling_v.
 
 // Based on selling decomposition, with some relaxation, reorienting of offsets, and pruning of weights
-void Selling_v(const Scalar v[ndim], Scalar weights[symdim], Int offsets[symdim][ndim]){
+void Selling_v(const Scalar v[ndim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
 
 	// Build and decompose the relaxed self outer product of v
 	Scalar m[symdim];
@@ -58,10 +58,20 @@ void Selling_v(const Scalar v[ndim], Scalar weights[symdim], Int offsets[symdim]
 
 	// Redirect offsets in the direction of v, and eliminate those which deviate too much.
 	for(Int k=0; k<symdim; ++k){
-		Int * e = offsets[k]; // e[ndim]
+		OffsetT * e = offsets[k]; // e[ndim]
 		const Scalar ve = scal_vv(v,e), ee = scal_vv(e,e);
 		if(ve*ve < vv*ee*Selling_v_cosmin2){weights[k]=0; continue;}
+		if(threadIdx.x==0 && blockIdx.x==0 && k==0){
+			printf("--hi there v=%f,%f,%f\n",v[0],v[1],v[2]);
+			printf("offsets[0] o=%i,%i,%i\n",offsets[0][0],offsets[0][1],offsets[0][2]);
+		}
+
 		if(ve>0){neg_V(e);} // Note : we want ve<0.
+		if(threadIdx.x==0 && blockIdx.x==0 && k==0){
+		printf("++hi there v=%f,%f,%f\n",v[0],v[1],v[2]);
+		printf("offsets[0] o=%i,%i,%i\n",offsets[0][0],offsets[0][1],offsets[0][2]);
+		}
+
 	}
 }
 )

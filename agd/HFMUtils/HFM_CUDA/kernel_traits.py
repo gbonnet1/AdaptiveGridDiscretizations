@@ -9,8 +9,9 @@ def default_traits(self):
 	(self is an instance of the class Interface from file interface.py)
 	"""
 	traits = {
-	'Scalar':np.float32,
-	'Int':   np.int32,
+	'Scalar': np.float32,
+	'Int':    np.int32,
+	'OffsetT':np.int32,
 	'multiprecision_macro':0,
 	'pruning_macro':0,
 	}

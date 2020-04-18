@@ -83,8 +83,8 @@ __constant__ Scalar sinTheta_s[nTheta]; // sin(...)
 
 #if precomputed_scheme_macro
 // const int nTheta // Must be defined in including file
-__constant__ Scalar precomp_weights[nTheta][nactx];
-__constant__ Scalar precomp_offsets[nTheta][nactx][ndim];
+__constant__ Scalar  precomp_weights_s[nTheta][nactx];
+__constant__ OffsetT precomp_offsets_s[nTheta][nactx][ndim];
 #else
 void get_ixi_kappa_theta(
 	GEOM(const Scalar geom[geom_size],) const Int x[ndim],

@@ -19,8 +19,8 @@ void copy_vV(const T x[ndim], T out[ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i];}} 
 
 /// Sum 
-template<typename T>
-void add_vv(const T x[ndim], const T y[ndim], T out[ndim]){
+template<typename Tx,typename Ty,typename Tout>
+void add_vv(const Tx x[ndim], const Ty y[ndim], Tout out[ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i]+y[i];}}
 
 template<typename T>
@@ -55,8 +55,8 @@ template<typename T>
 void mul_kV(const T k, T v[ndim]){
 	for(Int i=0; i<ndim; ++i){v[i]*=k;}}
 
-template<typename T>
-void mul_kv(const T k, const T v[ndim], T out[ndim]){
+template<typename Tk,typename Tv,typename Tout>
+void mul_kv(const Tk k, const Tv v[ndim], Tout out[ndim]){
 	for(Int i=0; i<ndim; ++i){out[i] = k * v[i];}}
 
 void div_Vk(Scalar v[ndim], const Scalar k){
@@ -135,7 +135,8 @@ void self_outer_relax_v(const Scalar x[ndim], const Scalar relax, Scalar m[ndim]
 	}
 }
 
-void canonicalsuperbase(Int sb[ndim+1][ndim]){
+template<typename T>
+void canonicalsuperbase(T sb[ndim+1][ndim]){
 	for(Int i=0; i<ndim; ++i){
 		for(Int j=0; j<ndim; ++j){
 			sb[i][j]= (i==j);

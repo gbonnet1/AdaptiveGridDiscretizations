@@ -69,8 +69,9 @@ def SetKernelTraits(self):
 			"(bound_active_blocks, pruning)")
 
 	policy.strict_iter_o = traits.get('strict_iter_o_macro',0)
-	self.float_t = np.dtype(traits['Scalar']).type
-	self.int_t   = np.dtype(traits['Int']   ).type
+	self.float_t  = np.dtype(traits['Scalar'] ).type
+	self.int_t    = np.dtype(traits['Int']    ).type
+	self.offset_t = np.dtype(traits['OffsetT']).type
 	self.shape_i = traits['shape_i']
 	self.size_i = np.prod(self.shape_i)
 	self.caster = lambda x : cp.asarray(x,dtype=self.float_t)
@@ -108,7 +109,7 @@ def SetKernel(self):
 	self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 	date_modified = cupy_module_helper.getmtime_max(self.cuda_path)
 	self.cuda_date_modified = f"// Date cuda code last modified : {date_modified}\n"
-	self.cuoptions = ("-default-device", f"-I {self.cuda_path}"
+	self.cuoptions = ("-default-device", f"-I {self.cuda_path}",
 		) + self.GetValue('cuoptions',default=tuple(),
 		help="Options passed via cupy.RawKernel to the cuda compiler")
 
@@ -182,31 +183,47 @@ def SetKernel(self):
 	if self.model_ =='Isotropic':
 		SetCst('weights', self.h**-2, float_t)
 	if self.isCurvature:
-		if traits['xi_var_macro']==0:    SetCst('ixi',  1./self.xi,float_t) # ixi = 1/xi
-		if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
-		if traits['theta_var_macro']==0: 
-			nTheta = self.shape[2];
-			theta = cp.arange(nTheta)*2.*np.pi/nTheta
-			SetCst('cosTheta_s',np.cos(theta),float_t)
-			SetCst('sinTheta_s',np.sin(theta),float_t)
-
+		nTheta = self.shape[2];
+		theta = cp.arange(nTheta)*2.*np.pi/nTheta
+		
 		if traits['precomputed_scheme_macro']:
 			# Precompute the curvature penalizing complex stencils
-			scheme_traits = {'xi_var_macro':0,'kappa_var_macro':0,'theta_var_macro':0,
-				'Scalar':float_t,'Int':int_t,'shape_i':self.shape_i}
-			scheme_source = cupy_module_helper.traits_header(scheme_traits,
+			offset_t=self.offset_t
+			scheme = self.kernel_data['scheme']
+			scheme.traits = {'xi_var_macro':0,'kappa_var_macro':0,'theta_var_macro':0,
+				'Scalar':float_t,'Int':int_t,'OffsetT':offset_t,
+				'shape_i':self.shape_i,'nTheta':nTheta,'nFejer_macro':traits.get('nFejer_macro',5),
+				'niter_i':1,'export_scheme_macro':1}
+			scheme.source = cupy_module_helper.traits_header(scheme.traits,
 			join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"
-			scheme_source += model_source+self.cuda_date_modified
-			scheme_module = GetModule(scheme_source,self.cuoptions)
+			scheme.source += model_source+self.cuda_date_modified
+			scheme.module = GetModule(scheme.source,self.cuoptions)
 			for args in ( ('shape_o',self.shape_o,int_t),('size_o',self.size_o,int_t),
-				('shape_tot',self.shape,int_t),('size_tot',size_tot,int_t) ):
-				SetModuleConstant(scheme_module,*args)
-			ntotx = self.nscheme['ntotx']
-			weights = cp.zeros((nTheta,ntotx),float_t)
-			offsets = cp.zeros((nTheta,ntotx,self.ndim),int_t)
-			dummy = cp.zeros((0,))
-			scheme_kernel
+				('shape_tot',self.shape,int_t),('size_tot',size_tot,int_t),
+				('ixi',  1./self.xi,float_t), ('kappa',self.kappa,float_t),
+				('cosTheta_s',np.cos(theta),float_t), ('sinTheta_s',np.sin(theta),float_t)):
+				SetModuleConstant(scheme.module,*args)
+			nactx = self.nscheme['nactx']
+			weights = cp.ascontiguousarray(cp.zeros((nTheta,nactx),float_t))
+			offsets = cp.ascontiguousarray(cp.zeros((nTheta,nactx,self.ndim),offset_t))
+			updateList_o = cp.arange(int(np.ceil(nTheta/self.shape_i[2])),dtype=int_t)
+			dummy = cp.array(0,dtype=float_t) #; weights[0,0]=1; offsets[0,0,0]=2
+			scheme.kernel = scheme.module.get_function("Update")
+			# args : u_t,geom_t,seeds_t,rhs_t,..,..,..,updateNext_o
+			args=(dummy,dummy,dummy,dummy,weights,offsets,updateList_o,dummy)
+			scheme.kernel((updateList_o.size,),(self.size_i,),args)
+			SetCst('precomp_weights_s',weights,float_t)
+			SetCst('precomp_offsets_s',offsets,offset_t)
+			self.hfmOut.update({'scheme_weights':weights,'scheme_offsets':offsets})
 
+#			print(weights)
+#			print(offsets)
+		else: # Not a precomputed scheme
+			if traits['xi_var_macro']==0:    SetCst('ixi',  1./self.xi,float_t) # ixi = 1/xi
+			if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
+			if traits['theta_var_macro']==0: 
+				SetCst('cosTheta_s',np.cos(theta),float_t)
+				SetCst('sinTheta_s',np.sin(theta),float_t)
 
 
 	# Set the kernel arguments

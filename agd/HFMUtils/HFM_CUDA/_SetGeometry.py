@@ -159,11 +159,11 @@ def SetGeometry(self):
 	else:
 		tol = self.GetValue('tol',default="_Dummy",array_float=True,
 			help="Convergence tolerance for the fixed point solver (determines atol, rtol)")
+		float_resolution = np.finfo(self.float_t).resolution
 		if isinstance(tol,str) and tol=="_Dummy":
 			cost_bound = ad.remove_ad(self.cost)
 			if not self.isCurvature: cost_bound *= self.metric.cost_bound()
 			mean_cost_bound = np.mean(cost_bound)
-			float_resolution = np.finfo(self.float_t).resolution
 			tol = mean_cost_bound * float_resolution * 5.
 			self.hfmOut['keys']['default']['tol']=self.float_t(float(tol))
 	policy.atol = self.GetValue('atol',default=tol,array_float=True,

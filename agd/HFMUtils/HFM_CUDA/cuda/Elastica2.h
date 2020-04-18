@@ -13,12 +13,29 @@
 
 const Int nFejer = nFejer_macro;
 
-// Fejer weights are for one dimensional quadrature on [-pi/2,pi/2] with cosine weight
-// Array suffix _s indicates stencil data.
-//def cos_sin_table(n): // Generate the cosine and sine tables
-//    angles = (np.arange(n)+0.5)*np.pi/n
-//    return np.cos(angles),np.sin(angles)
-#if nFejer_macro==5
+/*Fejer weights are for one dimensional quadrature on [-pi/2,pi/2] with cosine weight
+ Array suffix _s indicates stencil data.
+// Generate the cosine and sine tables
+np.set_printoptions(edgeitems=30, linewidth=100000,formatter=dict(float=lambda x: "%5.9g" % x))
+def cos_sin_table(n): 
+    angles = (np.arange(n)+0.5)*np.pi/n
+    return np.cos(angles),np.sin(angles)*/
+#if nFejer_macro==2
+const Scalar wFejer_s[nFejer]={1.,1.};
+const Scalar cosPhi_s[nFejer]={0.707106781, -0.707106781};
+const Scalar sinPhi_s[nFejer]={0.707106781, 0.707106781};
+
+#elif nFejer_macro==3
+const Scalar wFejer_s[nFejer]={0.444444, 1.11111, 0.444444};
+const Scalar cosPhi_s[nFejer]={0.866025404, 0., -0.866025404};
+const Scalar sinPhi_s[nFejer]={0.5,     1,   0.5};
+
+#elif nFejer_macro==4
+const Scalar wFejer_s[nFejer]={0.264298, 0.735702, 0.735702, 0.264298};
+const Scalar cosPhi_s[nFejer]={0.923879533, 0.382683432, -0.382683432, -0.923879533};
+const Scalar sinPhi_s[nFejer]={0.382683432, 0.923879533, 0.923879533, 0.382683432};
+
+#elif nFejer_macro==5
 const Scalar wFejer_s[nFejer]={0.167781, 0.525552, 0.613333, 0.525552, 0.167781};
 const Scalar cosPhi_s[nFejer]={0.951056516, 0.587785252, 0., -0.587785252, -0.951056516};
 const Scalar sinPhi_s[nFejer]={0.309016994, 0.809016994, 1., 0.809016994, 0.309016994};
@@ -36,9 +53,9 @@ const Int nfwd = nFejer*symdim; // Number of forward offsets
 
 #include "Constants.h"
 
-#if precomputed_scheme_macro
+#if !precomputed_scheme_macro
 void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
-	Scalar weights[nactx], Int offsets[nactx][ndim]){
+	Scalar weights[nactx], OffsetT offsets[nactx][ndim]){
 	XI_VAR(Scalar ixi;) KAPPA_VAR(Scalar kappa;) 
 	Scalar cT, sT; // cos(theta), sin(theta)
 	get_ixi_kappa_theta(GEOM(geom,) x, XI_VAR(ixi,) KAPPA_VAR(kappa,) cT, sT);
@@ -50,8 +67,14 @@ void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 		const Scalar v[ndim]={sP*cT,sP*sT,(sP*kappa+cP*ixi)};
 
 		Selling_v(v, &weights[l*symdim], &offsets[l*symdim]);
+
+		if(threadIdx.x==0 && blockIdx.x==0){
+		printf("hi there v=%f,%f,%f\n",v[0],v[1],v[2]);
+		printf("offsets[0] o=%i,%i,%i\n",offsets[l*symdim][0],offsets[l*symdim][1],offsets[l*symdim][2]);
+		}
+
 		const Scalar s = wFejer_s[l];
-		for(int i=0; i<symdim; ++i) weights[l*symdim+i] *= s;
+		for(Int i=0; i<symdim; ++i) weights[l*symdim+i] *= s;
 	}
 }
 #endif

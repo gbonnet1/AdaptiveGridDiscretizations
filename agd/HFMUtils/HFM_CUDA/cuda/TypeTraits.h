@@ -13,9 +13,9 @@ typedef int Int;
 const Int Int_Max = 2147483647;
 #endif
 
-/// Ceil of the division of positive numbers
-//Int ceil_div(Int num, Int den){return (num+den-1)/den;}
-
+#ifndef OffsetT_macro
+typedef int OffsetT;
+#endif
 
 typedef unsigned char BoolPack;
 typedef unsigned char BoolAtom;
