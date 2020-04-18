@@ -366,5 +366,11 @@ and weights in the anisotropic case.*/
 #define WALLS(...) 
 #endif
 
+/** Method used for sorting the values before the update*/
+#ifndef merge_sort_macro
+#define merge_sort_macro 0
+#endif
 
-
+#ifndef network_sort_macro
+#define network_sort_macro 0
+#endif

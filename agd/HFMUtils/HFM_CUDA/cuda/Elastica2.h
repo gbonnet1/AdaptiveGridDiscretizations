@@ -67,12 +67,6 @@ void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 		const Scalar v[ndim]={sP*cT,sP*sT,(sP*kappa+cP*ixi)};
 
 		Selling_v(v, &weights[l*symdim], &offsets[l*symdim]);
-
-		if(threadIdx.x==0 && blockIdx.x==0){
-		printf("hi there v=%f,%f,%f\n",v[0],v[1],v[2]);
-		printf("offsets[0] o=%i,%i,%i\n",offsets[l*symdim][0],offsets[l*symdim][1],offsets[l*symdim][2]);
-		}
-
 		const Scalar s = wFejer_s[l];
 		for(Int i=0; i<symdim; ++i) weights[l*symdim+i] *= s;
 	}
