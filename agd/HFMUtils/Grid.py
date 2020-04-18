@@ -21,7 +21,7 @@ def GetCorners(params):
 	origin = params['origin'] if 'origin' in params.keys() else [0.]*dim
 	if params['model'] in SEModels:
 		origin = np.append(origin,[0]*(dim-len(origin)))		
-		hTheta = 2*np.pi/dims[-1]
+		hTheta = 2*np.pi/dims[-1] # TODO : unoriented ReedsShepp models
 		h[-1]=hTheta; origin[-1]=-hTheta/2;
 		if dim==5: h[-2]=hTheta; origin[-2]=-hTheta/2;
 	caster = array_float_caster(params)
