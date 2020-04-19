@@ -373,6 +373,11 @@ class spAD(np.ndarray):
 	# Static methods
 
 	# Support for +=, -=, *=, /=
+	def __iadd__(self,other): return misc.add(self,other,out=self,where=True)
+	def __isub__(self,other): return misc.subtract(self,other,out=self,where=True)
+	def __imul__(self,other): return misc.multiply(self,other,out=self,where=True)
+	def __itruediv__(self,other): return misc.true_divide(self,other,out=self,where=True)
+
 	@staticmethod
 	def add(*args,**kwargs): return misc.add(*args,**kwargs)
 	@staticmethod

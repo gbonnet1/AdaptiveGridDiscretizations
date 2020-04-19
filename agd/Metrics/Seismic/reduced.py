@@ -43,8 +43,10 @@ class Reduced(ImplicitBase):
 		l,q,c = params
 		v2 = v**2
 		result = lp.dot_VV(l,v2) - 1.
+		print(type(result))
 		if q is not None:
 			result += lp.dot_VAV(v2,q,v2)*s
+		print(type(q),type(lp.dot_VAV(v2,q,v2)),type(result))
 		if c is not None:
 			assert self.vdim==3
 			result += v2.prod()*(c*s**2)

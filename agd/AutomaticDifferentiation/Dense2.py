@@ -88,11 +88,11 @@ class denseAD2(np.ndarray):
 
 	# Operators
 	def __add__(self,other):
+		print('in add')
 		if self.is_ad(other):
 			return self.new(self.value+other.value,_add_coef(self.coef1,other.coef1),_add_coef(self.coef2,other.coef2))
 		else:
 			return self.new(self.value+other, self.coef1, self.coef2, broadcast_ad=True)
-
 	def __sub__(self,other):
 		if self.is_ad(other):
 			return self.new(self.value-other.value,_add_coef(self.coef1,-other.coef1),_add_coef(self.coef2,-other.coef2))
@@ -250,7 +250,7 @@ class denseAD2(np.ndarray):
 
 	# See https://docs.scipy.org/doc/numpy/reference/ufuncs.html
 	def __array_ufunc__(self,ufunc,method,*inputs,**kwargs):
-
+		print('in ufunc')
 		# Return an np.ndarray for piecewise constant functions
 		if ufunc in [
 		# Comparison functions
@@ -308,6 +308,11 @@ class denseAD2(np.ndarray):
 	# Static methods
 
 	# Support for +=, -=, *=, /=
+	def __iadd__(self,other): return misc.add(self,other,out=self,where=True)
+	def __isub__(self,other): return misc.subtract(self,other,out=self,where=True)
+	def __imul__(self,other): return misc.multiply(self,other,out=self,where=True)
+	def __itruediv__(self,other): return misc.true_divide(self,other,out=self,where=True)
+
 	@staticmethod
 	def add(*args,**kwargs): return misc.add(*args,**kwargs)
 	@staticmethod
