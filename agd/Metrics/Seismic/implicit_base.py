@@ -6,7 +6,7 @@ from ... import AutomaticDifferentiation as ad
 from ... import LinearParallel as lp
 from ... import FiniteDifferences as fd
 from ..base import Base
-
+import copy
 
 class ImplicitBase(Base):
 	"""
@@ -34,11 +34,11 @@ class ImplicitBase(Base):
 			return lp.dot_AV(lp.transpose(a),self._gradient(lp.dot_AV(a,v)))
 
 	def inv_transform(self,a):
-		self._to_common_field(a.shape[2:])
-		if self.inverse_transformation is None:
-			self.inverse_transformation = a
-		else:
-			self.inverse_transformation = lp.dot_AA(self.inverse_transformation,a)
+		other = copy.copy(self)
+		other._to_common_field(a.shape[2:])
+		if other.inverse_transformation is None: other.inverse_transformation = a
+		else: other.inverse_transformation = lp.dot_AA(other.inverse_transformation,a)
+		return other
 
 	def is_topographic(self,a=None):
 		if a is None: a = self.inverse_transformation
@@ -106,7 +106,7 @@ def sequential_quadratic(v,f,niter,x=None,params=tuple(),relax=tuple()):
 	relax : relaxation parameters to be used in a preliminary path following phase.
 	params : to be passed to evaluated function. Special treatment if ad types.
 	"""
-	if x is None: x=np.zeros(v.shape)
+	if x is None: x=np.zeros_like(v)
 	x_ad = ad.Dense2.identity(constant=x,shape_free=(len(x),))
 
 	# Fixed point iterations 
@@ -128,7 +128,7 @@ def sequential_quadratic(v,f,niter,x=None,params=tuple(),relax=tuple()):
 	if adtype:
 		shape_bound = x.shape[1:]
 		params_dis = tuple(ad.disassociate(value,shape_bound=shape_bound) 
-			if isinstance(value,np.ndarray) else value for value in params)
+			if ad.cupy_generic.isndarray(value) else value for value in params)
 		x_ad = ad.Dense2.identity(constant=ad.disassociate(x,shape_bound=shape_bound))
 
 		f_ad = f(x_ad,params_dis,0.)

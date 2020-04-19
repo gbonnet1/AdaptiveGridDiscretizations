@@ -121,6 +121,8 @@ def SetGeometry(self):
 			self.geom = Metrics.Riemann(self.metric.m).dual().flatten()
 			if self.drift is None: self.drift = self.float_t(0.)
 			self.drift += self.metric.w
+		elif self.model_ == 'TTI':
+			self.geom = self.metric.flatten()
 
 	eikonal.args['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
 		self.shape_i,mode='constant',constant_values=np.inf,contiguous=True)

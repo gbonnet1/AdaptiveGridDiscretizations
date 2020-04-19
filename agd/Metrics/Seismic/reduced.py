@@ -43,10 +43,8 @@ class Reduced(ImplicitBase):
 		l,q,c = params
 		v2 = v**2
 		result = lp.dot_VV(l,v2) - 1.
-		print(type(result))
 		if q is not None:
 			result += lp.dot_VAV(v2,q,v2)*s
-		print(type(q),type(lp.dot_VAV(v2,q,v2)),type(result))
 		if c is not None:
 			assert self.vdim==3
 			result += v2.prod()*(c*s**2)
@@ -115,11 +113,12 @@ class Reduced(ImplicitBase):
 	
 	def flatten(self):
 		assert(self.is_TTI()) # Only the TTI type is handle by HFM
-		quad = (np.zeros( (2,2)+self.shape) # Note the factor 2, used in HFM
+		quad = (ad.cupy_support.zeros_like(self.linear, (2,2)+self.shape) # Note the factor 2, used in HFM
 			if self.quadratic is None else 2.*self.quadratic[0:2,0:2])
-		trans = (fd.as_field(np.eye(self.vdim),self.shape,conditional=False) 
+		xp = ad.cupy_generic.get_array_module(self.linear)
+		trans = (fd.as_field(xp.eye(self.vdim),self.shape,conditional=False) 
 			if self.inverse_transformation is None else self.inverse_transformation)
-		return ad.concatenate(
+		return np.concatenate(
 			(self.linear[0:2],misc.flatten_symmetric_matrix(quad),
 				trans.reshape((self.vdim**2,)+self.shape)),
 			axis=0)

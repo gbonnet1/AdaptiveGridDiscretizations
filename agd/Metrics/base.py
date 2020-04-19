@@ -141,7 +141,7 @@ class Base:
 		return self.rotate(lp.rotation(*args,**kwargs))
 
 	def with_costs(self,costs):
-		a = cps.zeros_like(costs,(len(costs),)+costs.shape)
+		a = cps.zeros_like(costs,shape=(len(costs),)+costs.shape)
 		for i,cost in enumerate(costs): a[i,i] = cost
 		return self.inv_transform(a)
 

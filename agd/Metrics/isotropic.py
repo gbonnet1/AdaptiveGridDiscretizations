@@ -54,7 +54,7 @@ class Isotropic(Base):
 	@property
 	def shape(self): return self.cost.shape
 	
-	def rotate(self,a):     return self
+	def rotate(self,a): return self
 	def with_cost(self,cost): return Isotropic(cost*self.cost)
 
 	def flatten(self):      return self.cost

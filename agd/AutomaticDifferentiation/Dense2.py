@@ -88,7 +88,6 @@ class denseAD2(np.ndarray):
 
 	# Operators
 	def __add__(self,other):
-		print('in add')
 		if self.is_ad(other):
 			return self.new(self.value+other.value,_add_coef(self.coef1,other.coef1),_add_coef(self.coef2,other.coef2))
 		else:
@@ -250,7 +249,6 @@ class denseAD2(np.ndarray):
 
 	# See https://docs.scipy.org/doc/numpy/reference/ufuncs.html
 	def __array_ufunc__(self,ufunc,method,*inputs,**kwargs):
-		print('in ufunc')
 		# Return an np.ndarray for piecewise constant functions
 		if ufunc in [
 		# Comparison functions
