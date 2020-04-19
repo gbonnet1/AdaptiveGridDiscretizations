@@ -61,17 +61,7 @@ void Selling_v(const Scalar v[ndim], Scalar weights[symdim], OffsetT offsets[sym
 		OffsetT * e = offsets[k]; // e[ndim]
 		const Scalar ve = scal_vv(v,e), ee = scal_vv(e,e);
 		if(ve*ve < vv*ee*Selling_v_cosmin2){weights[k]=0; continue;}
-		if(threadIdx.x==0 && blockIdx.x==0 && k==0){
-			printf("--hi there v=%f,%f,%f\n",v[0],v[1],v[2]);
-			printf("offsets[0] o=%i,%i,%i\n",offsets[0][0],offsets[0][1],offsets[0][2]);
-		}
-
 		if(ve>0){neg_V(e);} // Note : we want ve<0.
-		if(threadIdx.x==0 && blockIdx.x==0 && k==0){
-		printf("++hi there v=%f,%f,%f\n",v[0],v[1],v[2]);
-		printf("offsets[0] o=%i,%i,%i\n",offsets[0][0],offsets[0][1],offsets[0][2]);
-		}
-
 	}
 }
 )

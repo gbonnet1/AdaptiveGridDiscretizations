@@ -20,10 +20,13 @@ hfmIn = HFMUtils.dictIn({
     'cost':1,
     'xi':0.4,
 #    'nitermax_o':1,
-    'traits':{'OffsetT':np.int32}
+    'traits':{
+    	'OffsetT':np.int32,
+    	'merge_sort_macro':1
+    	}
 })
 hfmIn.SetRect([[-1,1],[-1,1]],dimx=n+1,sampleBoundary=True)
 hfmIn['dims'] = np.append(hfmIn['dims'],nTheta)
 
 hfmOut=hfmIn.RunGPU()
-print(hfmOut['scheme_offsets'][0])
+#print(hfmOut['scheme_offsets'][0])
