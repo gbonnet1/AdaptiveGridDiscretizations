@@ -28,11 +28,13 @@ def default_traits(self):
 	elif model in ('Dubins2','Elastica2'):
 		# Small shape, single iteration, since stencils are too wide anyway
 		traits.update({'shape_i':(4,4,2),'niter_i':1})
-		if model=='Elastica2': traits['merge_sort_macro']=1
 	elif ndim==3:
 		traits.update({'shape_i':(4,4,4),'niter_i':12,})
 	else:
 		raise ValueError("Unsupported model")
+
+	if model=='Elastica2': traits['merge_sort_macro']=1
+	if model.startswith('TTI'): traits.update({'nmix':10,'nmix_macro':1})
 	return traits
 
 def nscheme(self):

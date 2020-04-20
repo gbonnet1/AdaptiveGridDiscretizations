@@ -122,7 +122,7 @@ def SetGeometry(self):
 			if self.drift is None: self.drift = self.float_t(0.)
 			self.drift += self.metric.w
 		elif self.model_ == 'TTI':
-			self.geom = self.metric.flatten()
+			self.geom = self.metric.flatten(transposed_transformation=True)
 
 	eikonal.args['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
 		self.shape_i,mode='constant',constant_values=np.inf,contiguous=True)
@@ -164,7 +164,7 @@ def SetGeometry(self):
 		float_resolution = np.finfo(self.float_t).resolution
 		if isinstance(tol,str) and tol=="_Dummy":
 			cost_bound = ad.remove_ad(self.cost)
-			if not self.isCurvature: cost_bound *= self.metric.cost_bound()
+			if not self.isCurvature: cost_bound = cost_bound*self.metric.cost_bound()
 			mean_cost_bound = np.mean(cost_bound)
 			tol = mean_cost_bound * float_resolution * 5.
 			self.hfmOut['keys']['default']['tol']=self.float_t(float(tol))
@@ -197,3 +197,4 @@ def SetGeometry(self):
 		self.wallDist = wallDist
 		eikonal.args['wallDist'] = misc.block_expand(wallDist,self.shape_i,
 			mode='constant',constant_values=np.iinfo(wallDist_t).max)
+

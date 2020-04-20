@@ -178,10 +178,11 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 		v MULTIP(,vqmin) ORDER2(,order2),
 		order FLOW(NSYM(, active_side)) );
 
+
 	if(debug_print && n_i==1){
 /*		printf("HFMUpdate ni : %i\n",n_i);
-		printf("v : %f %f\n",v[0],v[1]);
-		printf("order : %i %i\n",order[0],order[1]);*/
+		printf("v : %f %f %f\n",v[0],v[1],v[2]);
+		printf("order : %i %i %i\n",order[0],order[1],order[2]);*/
 /*		printf("multip_step %f, multip_max %f\n",multip_step,multip_max);
 		printf("vq : %i %i\n",vq[0],vq[1]);*/
 	}
@@ -248,9 +249,9 @@ void HFMIter(const bool active, const Int n_i,
 	FLOW(, Scalar flow_weights[nact] NSYM(, Int active_side[nsym]) MIX(, Int & kmix_) ) ){
 
 
-	Scalar u_i_new MIX(=mix_neutral(mix_is_min)); MULTIP(Int uq_i_new MIX(=0);)
 	if(strict_iter_i_macro || nmix>1){
 	for(int i=0; i<niter_i; ++i){
+		Scalar u_i_new MIX(=mix_neutral(mix_is_min)); MULTIP(Int uq_i_new MIX(=0);)
 		if(active) {
 			NOMIX(Scalar & u_i_mix = u_i_new; MULTIP(Int & uq_i_mix = uq_i_new;)
 				FLOW(Scalar * const flow_weights_mix = flow_weights; 
@@ -268,7 +269,10 @@ void HFMIter(const bool active, const Int n_i,
 					u_i_mix MULTIP(,uq_i_mix) 
 					FLOW(, flow_weights_mix NSYM(, active_side_mix))
 					);
-
+				if(debug_print && n_i==2){
+					printf("u_i_mix %f, u_i_new %f, u_i %f\n",u_i_mix,u_i_new, u_i[n_i]);
+//					printf("weights %f,%f,%f\n",weights[kmix*nact],weights[kmix*nact+1],weights[kmix*nact+2]);
+				}
 				MIX(if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
 					u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
 					FLOW(kmix_=kmix; 
@@ -286,6 +290,7 @@ void HFMIter(const bool active, const Int n_i,
 
 	} else { // without strict_iter_i
 	for(int i=0; i<niter_i; ++i){
+		Scalar u_i_new; MULTIP(Int uq_i_new;)
 		if(active) {
 			HFMUpdate(
 				n_i, rhs, weights,

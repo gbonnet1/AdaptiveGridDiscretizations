@@ -50,6 +50,15 @@ class Reduced(ImplicitBase):
 			result += v2.prod()*(c*s**2)
 		return result
 
+	def cost_bound(self):
+		"""
+		Upper bound on norm(u), for any unit vector u.
+		"""
+		cst = np.max(self.linear,axis=0) # Ignoring quadratic and cubic for now
+		if self.inverse_transformation is not None: # Frobenius norm upper bounds operator norm 
+			cst *= (self.inverse_transformation**2).sum(axis=(0,1))
+		return np.sqrt(cst)
+
 	def _dual_params(self,*args,**kwargs):
 		return fd.common_field((self.linear,self.quadratic,self.cubic),(1,2,0),*args,**kwargs)
 
@@ -111,13 +120,18 @@ class Reduced(ImplicitBase):
 	def model_HFM(self):
 		return f"TTI{self.vdim}"
 	
-	def flatten(self):
+	def flatten(self,transposed_transformation=False):
 		assert(self.is_TTI()) # Only the TTI type is handle by HFM
-		quad = (ad.cupy_support.zeros_like(self.linear, (2,2)+self.shape) # Note the factor 2, used in HFM
-			if self.quadratic is None else 2.*self.quadratic[0:2,0:2])
+		if self.quadratic is None: 
+			quad = ad.cupy_support.zeros_like(self.linear, (2,2)+self.shape)
+		else: quad = 2.*self.quadratic[0:2,0:2] # Note the factor 2, used in HFM
+
 		xp = ad.cupy_generic.get_array_module(self.linear)
-		trans = (fd.as_field(xp.eye(self.vdim),self.shape,conditional=False) 
-			if self.inverse_transformation is None else self.inverse_transformation)
+		if self.inverse_transformation is None: 
+			trans = fd.as_field(xp.eye(self.vdim),self.shape,conditional=False) 
+		else: trans = self.inverse_transformation
+		if transposed_transformation: trans = lp.transpose(lp.inverse(trans))
+
 		return np.concatenate(
 			(self.linear[0:2],misc.flatten_symmetric_matrix(quad),
 				trans.reshape((self.vdim**2,)+self.shape)),

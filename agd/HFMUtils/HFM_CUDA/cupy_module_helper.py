@@ -69,7 +69,7 @@ def traits_header(traits,
 		if key.endswith('macro'):
 			source.append(f"#define {key} {traits[key]}")
 			continue
-		else:
+		elif (key+'_macro') not in traits:
 			source.append(f"#define {key}_macro")
 
 		if isinstance(value,numbers.Integral):

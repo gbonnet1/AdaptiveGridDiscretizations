@@ -109,6 +109,18 @@ __global__ void Update(
 	__syncthreads();
 	)
 
+	if(debug_print && n_i==1){
+		for(Int i=0; i<nmix; ++i){
+			printf("weights %f,%f,%f,\n", weights[i*nact],weights[i*nact+1],weights[i*nact+2]);
+			printf("offsets %i,%i, %i,%i, %i,%i\n",
+				offsets[i*nact][0],offsets[i*nact][1],
+				offsets[i*nact+1][0],offsets[i*nact+1][1],
+				offsets[i*nact+2][0],offsets[i*nact+2][1]);
+		}
+		printf("rhs %f\n",rhs);
+	}
+
+
 /*	if(debug_print && n_i==0 && n_o==size_o-1){
 //		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
 //		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
