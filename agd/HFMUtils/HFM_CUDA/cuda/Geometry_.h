@@ -152,6 +152,7 @@ Scalar coef_m(const Scalar m[symdim], const Int i, const Int j){
     return (i_*(i_+1))/2+j_;
 }
 
+/// Dot product of symmetric matrix times vector
 void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar out[ndim]){
 	fill_kV(Scalar(0),out);
 	Int k=0; 
@@ -163,3 +164,11 @@ void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar out[ndim]){
 		}
 	}
 }
+
+/// Matrix vector product
+void dot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar out[ndim]){
+	for(Int i=0; i<ndim; ++i) out[i] = scal_vv(a[i],x);}
+/// Transposed matrix vector product
+void tdot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar out[ndim]){
+	fill_kV(Scalar(0),out);
+	for(Int i=0; i<ndim; ++i) {for(Int j=0; j<ndim; ++j) out[i] += a[j][i]*x[j];}}
