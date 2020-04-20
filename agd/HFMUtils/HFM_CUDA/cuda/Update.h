@@ -109,7 +109,7 @@ __global__ void Update(
 	__syncthreads();
 	)
 
-	if(debug_print && n_i==1){
+/*	if(debug_print && n_i==1){
 		for(Int i=0; i<nmix; ++i){
 			printf("weights %f,%f,%f,\n", weights[i*nact],weights[i*nact+1],weights[i*nact+2]);
 			printf("offsets %i,%i, %i,%i, %i,%i\n",
@@ -119,7 +119,7 @@ __global__ void Update(
 		}
 		printf("rhs %f\n",rhs);
 	}
-
+*/
 
 /*	if(debug_print && n_i==0 && n_o==size_o-1){
 //		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
@@ -133,10 +133,10 @@ __global__ void Update(
 		printf("scal : %f\n",scal_vmv(offsets[1],geom_,offsets[2]) );
 	}*/
 
-	if(debug_print && n_o==1 && n_i==3){
+/*	if(debug_print && n_o==1 && n_i==3){
 		printf("isSeed %i, u_old %f, u_i[n_i] %f\n",isSeed,u_old,u_i[n_i]);
 	}
-
+*/
 
 	FACTOR(
 	Scalar x_rel[ndim]; // Relative position wrt the seed.

@@ -30,8 +30,8 @@ hfmIn_Constant = HFMUtils.dictIn({
     'seeds':xp.array([[0.,0.]]),
     'factoringMethod':'Static',
     'nitermax_o':1,
-#    'factoringRadius':20,
-#    'seedRadius':0,
+    'factoringRadius':10,
+#    'seedRadius':2,
     'order':2,
     'traits':{'debug_print':1},
     'raiseOnNonConvergence':False
