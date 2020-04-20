@@ -14,25 +14,25 @@ for(Int i=0; i<niter; ++i){
 
 namespace golden_search {
 
-const Scalar phi = (sqrt(5.)-1.)/2, psi = 1.-phi, delta = psi*psi/(phi-psi);
+const Scalar phi = 0.6180339887498949; // (sqrt(5.)-1.)/2;
+const Scalar psi = 0.3819660112501051; // 1.-phi;
 
 void init(const Scalar x[2], Scalar y[2]){
 	y[0] = phi*x[0]+psi*x[1];
-	y[1] = psi*x[1]+phi*x[1];
+	y[1] = psi*x[0]+phi*x[1];
 }
 // returns the position where value needs to be updated
-Int step(Scalar x[2], Scalar v[2], const bool mix_is_min=True){
+Int step(Scalar x[2], Scalar v[2], const bool mix_is_min=true){
+	const Scalar dx = x[1]-x[0];
 	if(mix_is_min == (v[0]<v[1])){
-		const Scalar x0 = x[0];
-		x[0]-=(x[1]-x[0])*delta
-		x[1]=x0;
+		x[1]=x[0];
 		v[1]=v[0];
+		x[0]-=dx*phi;
 		return 0; 
 	} else {
-		const Scalar x1 = x[1];
-		x[1]+=(x[1]-x[0])*delta;
-		x[0]=x1;
+		x[0]=x[1];
 		v[0]=v[1];
+		x[1]+=dx*phi;
 		return 1;
 	}
 }

@@ -143,27 +143,27 @@ bool scheme(const Scalar geom[geom_size],
 	return mix_is_min;
 }
 
+#include "GoldenSearch.h"
 
 FACTOR(
-#include "GoldenSearch.h"
 #ifndef niter_golden_search_macro
-const Int niter_golden_search = 6;
+const Int niter_golden_search = 8;
 #endif
 
 namespace dim2 {
 
 /// Compute the norm associated with the tangent ellipsoid of parameter v
 Scalar _tti_norm(const Scalar l[2], const Scalar q[3], const tti_data_t & data, 
-	const Scalar s[2], Scalar v, Scalar diag[2]){
+	const Scalar s[2], const Scalar v, Scalar diag[2]){
 	const Scalar u = solve2_above(-2+2*data.L[1]*v+data.Q[2]*v*v, 
 		data.L[0]+data.Q[1]*v, data.Q[0], abs(v));
 	const Scalar x[2] = {(u+v)/2,(u-v)/2};
 	grad_ratio(l,q,x,diag);
 	diag[0]=1./diag[0]; diag[1]=1./diag[1];
-	return scal_vv(s,diag);
+	return sqrt(scal_vv(s,diag));
 }
 
-/// Compute the norm after transformation by A
+/// Compute the norm after transformation by A, by optimizing over tangent ellipsoids
 Scalar _tti_norm(const Scalar l[2], const Scalar q[3], const tti_data_t & data,
 	const Scalar s[2], Scalar diag[2]){
 
@@ -173,25 +173,34 @@ Scalar _tti_norm(const Scalar l[2], const Scalar q[3], const tti_data_t & data,
 	Scalar values[2] = {
 		_tti_norm(l,q,data,s,mid[0],diag_[0]), 
 		_tti_norm(l,q,data,s,mid[1],diag_[1])}; 
-	const bool mix_is_min det_vv(diag_[0],diag_[1])>0; 
+	const bool mix_is_min = det_vv(diag_[0],diag_[1])<=0; 
 	Int next;
 	for(Int i=0; i<niter_golden_search; ++i){
 		next = golden_search::step(mid,values,mix_is_min);
-		values[next] = _tti_norm(l,q,data,mid[next],diag);}
+		values[next] = _tti_norm(l,q,data,s,mid[next],diag);}
+/*	if(debug_print && threadIdx.x==2){
+		printf("mid %f,%f\n",mid[0],mid[1]);
+		printf("bounds %f,%f\n",bounds[0],bounds[1]);
+	}*/
 	return values[next];
 }
 } //namespace dim2
 
-Scalar tti_norm(const Scalar l[2], const Scalar q[3], const tti_data_t & data,
-	const Scalar A[ndim][ndim], const Scalar x[ndim], Scalar * gradient=nullptr){
+Scalar tti_norm(const Scalar l[2], const Scalar q[3], const dim2::tti_data_t & data,
+	const Scalar A[ndim][ndim], const Scalar x[ndim], Scalar * gradient=NULL){
 	Scalar Ax[ndim]; dot_av(A,x,Ax);
-	Scalar s[2] = {Ax[0]*Ax[0],Ax[1]*Ax[1];}
+	Scalar s[2] = {Ax[0]*Ax[0],Ax[1]*Ax[1]};
 	if(ndim==3) {s[1]+=Ax[ndim-1]*Ax[ndim-1];}
 
-	const Scalar norm = tti_norm(l,q,data,s,diag);
-	if(gradient!=nullptr) {
-		for(Int i=0; i<ndim; ++i) {Ax[i]*=diag[min(i,2)];}
+	Scalar diag[2];
+	const Scalar norm = _tti_norm(l,q,data,s,diag);
+	if(gradient!=NULL) {
+		for(Int i=0; i<ndim; ++i) {Ax[i]*=diag[min(i,2)]/norm;}
 		tdot_av(A,Ax,gradient);}
+
+/*	if(debug_print && threadIdx.x==1 && gradient!=NULL){
+		printf("s %f,%f, diag %f,%f\n",s[0],s[1],diag[0],diag[1]);
+	}*/
 	return norm;
 }
 
@@ -200,8 +209,8 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim],
 	const Scalar * l = factor_metric; // linear[2]
 	const Scalar * q = factor_metric + 2; // quadratic[dim2::symdim]
 	const Scalar * A_ = factor_metric + (2+dim2::symdim); // transform[ndim * ndim]
-	const Scalar (* A)[ndim] = A_;
-	tti_data_t data; tti_data_init(l,q,data);
+	const Scalar (* A)[ndim] = (const Scalar (*)[ndim]) A_;
+	dim2::tti_data_t data; tti_data_init(l,q,data);
 
 	Scalar grad[ndim];
 	const Scalar Nx = tti_norm(l,q,data,A, x, grad);
@@ -210,11 +219,18 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim],
 	const Scalar Nxpe = tti_norm(l,q,data,A,xpe); 
 	const Scalar Nxme = tti_norm(l,q,data,A,xme); 
 
+
 /*	if(debug_print && threadIdx.x==0){
 		printf("A = %f,%f,%f,%f \n",A[0],A[1],A[2],A[3]);}*/
 
 	fact[0] = -grad_e + Nx - Nxme; 
 	fact[1] =  grad_e + Nx - Nxpe; 
+
+/*	if(debug_print && threadIdx.x == 8+2){
+		printf("x %f,%f, Nx %f, grad %f,%f\n",x[0],x[1],Nx,grad[0],grad[1]);
+		printf("xme %f,%f, Nxme %f, e %i,%i, fact %f\n",xme[0],xme[1],Nxme,e[0],e[1],fact[0]);
+	}*/
+
 
 	ORDER2(
 	Scalar xpe2[ndim],xme2[ndim]; add_vv(xpe,e,xpe2); sub_vv(xme,e,xme2);
@@ -224,6 +240,6 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim],
 	fact2[1] = 2*fact[1]-(Nx - 2*Nxpe + Nxpe2); 
 	)
 }
-)
+) // FACTOR
 
 #include "Update.h"

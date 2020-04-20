@@ -269,10 +269,6 @@ void HFMIter(const bool active, const Int n_i,
 					u_i_mix MULTIP(,uq_i_mix) 
 					FLOW(, flow_weights_mix NSYM(, active_side_mix))
 					);
-				if(debug_print && n_i==2){
-					printf("u_i_mix %f, u_i_new %f, u_i %f\n",u_i_mix,u_i_new, u_i[n_i]);
-//					printf("weights %f,%f,%f\n",weights[kmix*nact],weights[kmix*nact+1],weights[kmix*nact+2]);
-				}
 				MIX(if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
 					u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
 					FLOW(kmix_=kmix; 

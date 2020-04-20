@@ -28,12 +28,16 @@ hfmIn_Constant = HFMUtils.dictIn({
     'arrayOrdering':'RowMajor',
     'exportValues':1,
     'seeds':xp.array([[0.,0.]]),
-    'factoringMethod':'Static',
+#    'factoringMethod':'Static',
     'nitermax_o':1,
     'factoringRadius':10,
+    'nitermax_o':1,
 #    'seedRadius':2,
     'order':2,
-    'traits':{'debug_print':1},
+    'traits':{
+        'debug_print':1,
+        'nmix':2,
+    },
     'raiseOnNonConvergence':False
 #    'tips':[[x,y] for y in HFMUtils.CenteredLinspace(-1,1,6) 
 #                    for x in HFMUtils.CenteredLinspace(-1,1,6)],
@@ -43,11 +47,16 @@ hfmIn_Constant = HFMUtils.dictIn({
 hfmIn_Constant.SetRect(sides=[[0,1],[0,1]],dimx=n+1,sampleBoundary=True) # Define the domain
 X = hfmIn_Constant.Grid() # Horizontal and vertical axis
 
-metric = Reduced(xp.array([1.,1]),0.*xp.array([[0,0.1],[0.1,0.]])) #.rotate_by(xp.array(0.5)) #Linear and quadratic part
+quad = xp.array([[0.5,0.1],[0.1,-0.2]])
+#quad = xp.array([[0,0.1],[0.1,0.]])
+metric = Reduced(xp.array([1.,2.]),quad).rotate_by(xp.array(0.5)) #Linear and quadratic part
 hfmIn_Constant['metric'] = metric
 
 metric.cost_bound()
 
 hfmOut = hfmIn_Constant.RunGPU()
 
-print(hfmOut['values'][0,:])
+h=hfmIn_Constant['gridScale']
+for x in (cp.array((-1,3)),cp.array((1,2))):
+    print(f"x={x},norm={metric.norm(x)*h},grad={metric.gradient(x)*h}")
+print("values",hfmOut['values'][0,:])
