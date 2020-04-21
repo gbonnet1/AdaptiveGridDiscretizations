@@ -31,7 +31,8 @@ void obtusesuperbase_m(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 }
 
 // Selling decomposition of a symmetric positive definite matrix
-// Note : 3=symdim=ndim+1=nsym=nact=nactx
+// Note : 3=symdim=ndim+1=decompdim
+const Int decompdim = symdim;
 void decomp_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
 	Int sb[ndim+1][ndim];
 	obtusesuperbase_m(m,sb);

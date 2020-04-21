@@ -33,7 +33,7 @@ void copy_aA(const T a[ndim][ndim], Tout out[__restrict__ ndim][ndim]){
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j) out[i][j] = a[i][j];}}
 
 template<typename T, typename Tout>
-void round_aA(const T a[ndim][ndim], Tout out[__restrict__ ndim][ndim]){
+void round_a(const T a[ndim][ndim], Tout out[__restrict__ ndim][ndim]){
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j) out[i][j] = round(a[i][j]);}}
 
 template<typename T> 
@@ -201,7 +201,8 @@ void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar out[__restrict_
 }
 
 /// Matrix vector product
-void dot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar out[__restrict__ ndim]){
+template<typename Ta,typename Tx,typename Tout>
+void dot_av(const Ta a[ndim][ndim], const Tx x[ndim], Tout out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i) out[i] = scal_vv(a[i],x);}
 /// Transposed matrix vector product
 void tdot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar out[__restrict__ ndim]){

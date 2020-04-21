@@ -1,7 +1,7 @@
 // Matrix determinant ! In dimension <=3 !
 template<typename T>
 T det_a(const T a[ndim][ndim]){
-	if(ndim==1) {return a(0, 0);}
+	if(ndim==1) {return a[0][0];}
 	else if (ndim==2) {return a[0][0]*a[1][1] - a[1][0]*a[0][1];}
 	else if (ndim==3) {
 		T det=0;
@@ -12,12 +12,12 @@ T det_a(const T a[ndim][ndim]){
 
 }
 
-void div_kA(const Scalar k, Scalar __restrict__ out[ndim][ndim]){
+void div_kA(const Scalar k, Scalar out[ __restrict__ ndim][ndim]){
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j){out[i][j]/=k;}}}
 
 //Matrix inversion
 template<typename T>
-void inv_a(const T a[ndim][ndim], Scalar __restrict__ out[ndim][ndim]){
+void inv_a(const T a[ndim][ndim], Scalar out[__restrict__ ndim][ndim]){
 	if(ndim==1){
 		out[0][0]=T(1);
 	} else if(ndim==2) { // transposed comatrix
@@ -35,14 +35,14 @@ void inv_a(const T a[ndim][ndim], Scalar __restrict__ out[ndim][ndim]){
 		// Gauss pivot
 		Scalar m[ndim][ndim], b[ndim][ndim];
 		copy_aA(a,m);
-		identity_A(b)
+		identity_A(b);
 		Int i2j[ndim], j2i[ndim]; 
-		fill_v(i2j,-1);; fill_v(j2i,-1);
+		fill_kV(-1,i2j);; fill_kV(-1,j2i);
 		for(int j=0; j<ndim; ++j){
 			// Get largest coefficient in column
 			T cMax = 0;
 			int iMax=0;
-			for(int i=0; i<n; ++i){
+			for(int i=0; i<ndim; ++i){
 				if(i2j[i]>=0) continue;
 				const T c = m[i][j];
 				if(abs(c)>abs(cMax)){
@@ -54,7 +54,7 @@ void inv_a(const T a[ndim][ndim], Scalar __restrict__ out[ndim][ndim]){
 			
 			const Scalar invcMax = 1./cMax;
 			// Remove line from other lines, while performing likewise on b
-			for(int i=0; i<n; ++i){
+			for(int i=0; i<ndim; ++i){
 				if(i2j[i]>=0) continue;
 				const Scalar r = m[i][j]*invcMax;
 				for(int k=j+1; k<ndim; ++k){m[i][k]-=m[iMax][k]*r;}
@@ -64,9 +64,9 @@ void inv_a(const T a[ndim][ndim], Scalar __restrict__ out[ndim][ndim]){
 		// Solve remaining triangular system
 		for(int j=ndim-1; j>=0; --j){
 			const int i=j2i[j];
-			for(int l=0; l<VR; ++l){
+			for(int l=0; l<ndim; ++l){
 				out[j][l]=b[i][l];
-				for(int k=j+1; k<n; ++k) {out[j][l]-=out[k][l]*m[i][k];}
+				for(int k=j+1; k<ndim; ++k) {out[j][l]-=out[k][l]*m[i][k];}
 				out[j][l]/=m[i][j];
 			}
 		}

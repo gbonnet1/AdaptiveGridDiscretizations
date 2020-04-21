@@ -21,12 +21,12 @@ hfmIn = HFMUtils.dictIn({
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':1,
+#    'nitermax_o':1,
 #    'tol':5*1e-7,
 #    'multiprecision':True,
 #    'values_float64':True,
 	'exportValues':True,
-
+	'factoringRadius':10,
 #    'help':['nitermax_o','traits'],
 	'dims':np.array([n]*ndim),
 	'origin':[-0.5]*ndim,
@@ -52,11 +52,14 @@ hfmIn = HFMUtils.dictIn({
 #    'nonzero_untidy_kwargs':{'log2_size_i':8,'size2_i':256},
 })
 
-
 hfmIn['metric'] = Metrics.Riemann(cp.eye(ndim,dtype=np.float32))
 hfmOut = hfmIn.RunGPU()
 if n<=5: print(hfmOut['values'])
 
+exact = ad.Optimization.norm(hfmIn.Grid(),axis=0,ord=2)
+print(norm_infinity(exact-hfmOut['values']))
+
+"""
 cpuIn = hfmIn.copy()
 for key in ('traits','array_float_caster'): cpuIn.pop(key)
 cpuIn['metric'] = np.array(cpuIn['metric'].to_HFM().get(),dtype=np.float64)
@@ -65,3 +68,4 @@ cpuOut = cpuIn.Run()
 diff = cpuOut['values']-hfmOut['values'].get()
 print("LInf error: ",np.max(np.abs(diff)))
 if n<=20: print(diff)
+"""

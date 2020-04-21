@@ -5,6 +5,7 @@
 #include "TypeTraits.h"
 const Int ndim=4;
 #include "Geometry_.h"
+#include "Inverse_.h"
 
 namespace Voronoi {
 
@@ -49,37 +50,10 @@ const uchar iw1[37] = {48,51,112,51,67,83,115,131,19,35,48,80,115,128,16,32,64,9
 const uchar stop1 [5]= {133,32,8,66,21};
 
 const small * neigh_vertex_[2] = {neigh_vertex0,neigh_vertex1};
-//typedef const small * neigh_chgT[ndim*ndim];
-//const neigh_chgT neigh_chg_[2] = {neigh_chg0,neigh_chg1};
+typedef const small (*arr_smallMatT)[ndim][ndim]; 
+const arr_smallMatT neigh_chg_[2] = {(arr_smallMatT)neigh_chg0,(arr_smallMatT)neigh_chg1};
 const uchar * iw_[2]   = {iw0,iw1};
 const uchar * stop_[2] = {stop0,stop1};
-
-struct SimplexStateT {
-	Scalar m[symdim];
-	Scalar a[ndim][ndim];
-	Int vertex;
-	Scalar objective;
-//	m(m0),a(MatrixType::Identity()),vertex(-1),objective(infinity){}; 
-};
-
-
-void SetNeighbor(SimplexStateT & state,const Int neigh){
-	// Record the new change of coordinates
-	const small * neigh_chg_flat = state.vertex==0 ? neigh_chg0[neigh] : neigh_chg1[neigh];
-	//typedef (const small (*)[ndim]) smallMatrixT;
-	typedef const small (*smallMatrixT)[ndim];
-	const small (* neigh_chg)[ndim] = (smallMatrixT) neigh_chg_flat;
-	Scalar a[ndim][ndim];  copy_aA(neigh_chg,a); //copy_aA(neigh_chg_[state.vertex][neigh],a);
-	Scalar sa[ndim][ndim]; copy_aA(state.a,sa); 
-	dot_aa(a,sa,state.a);
-	
-	// Apply it to the reduced positive definite matrix
-	Scalar sm[symdim]; copy_mM(state.m,sm); 
-	Scalar ta[ndim][ndim]; trans_a(a,ta);
-	gram_am(ta,sm,state.m);
-
-	state.vertex = neigh_vertex_[state.vertex][neigh];
-}
 
 const small coef0[symdim*symdim] = {1,1,0,1,0,0,1,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,-1,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0};
 const small support0[kktdim][ndim] = {
@@ -95,21 +69,14 @@ const small support1[kktdim][ndim] = {
 	{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1},{1,0,-1,0},{1,-1,0,0},
 		{0,1,0,-1},{0,1,-1,0},{0,0,1,-1},{1,0,-1,1},{1,-1,0,1},{1,-1,-1,1}
 	};
-const small * coef_[2]={coef0,coef1};
-const (small (*)[ndim]) support_[2] = {support0,support1};
+typedef const small (*coefT)[symdim]; // small[symdim][symdim]
+const coefT coef_[2]={(coefT)coef0,(coefT)coef1};
+typedef const small (*supportT)[ndim]; // small[kktdim][ndim]
+const supportT support_[2] = {support0,support1};
 
-
-void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]){
-	const small coef = coef_[state.vertex];
-	const small support = support_[state.vertex];
-
-	dim10::dot_av(coef,state.m,weights);
-	Scalar aInv_[ndim][ndim]; inv_a(state.a,aInv_);
-	Int aInv[ndim][ndim]; round_a(aInv_,aInv); // The inverse is known to have integer entries
-	for(int i=0; i<kktdim; ++i){dot_av(aInv,support[i],offsets[i]);}
-
+void KKT_Correct(const Int vertex, Scalar weights[kktdim]){
 	// A bit of post processing is needed to get non-negative weights
-	if(state.vertex==1){
+	if(vertex==1){
 		for(int i=symdim; i<kktdim; ++i){weights[i] = 0.;}
 	} else {
 		// Compute a non-negative solution
@@ -126,7 +93,7 @@ void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kk
 		// Indeed, this triangle is mapped to the space of decompositions by a linear map with small integer entries. As a result, the angles are bounded away from zero.
 		// (The triangle cannot degenerate to a segment.)
 		const Scalar c[2] = { (2*l0+u01-l1)/3., (2*l1+u01-l0)/3.};
-		const ScalarType mc01 = -(c[0]+c[1]);
+		const Scalar mc01 = -(c[0]+c[1]);
 		weights[0]+=c[1];
 		weights[1]+=c[0];
 		weights[2]+=mc01;
@@ -142,55 +109,6 @@ void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kk
 	}
 }
 
-// ----- Dimension generic functions --------
-
-void decomp_m(const Scalar m[symdim],Scalar weights[kktdim],OffsetT offsets[kktdim][ndim]){
-	SimplexStateT state;
-	copy_mM(m,state.m);
-	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j){state.a[i][j]=(i==j);
-	FirstGuess(state);
-	for(Int i=0; i<maxiter; ++i){if(!BetterNeighbor(state)){break;}}
-	KKT(state,weights,offsets);
-}
-
-void FirstGuess(SimplexStateType & state){
-	state.objective = infinity(); 
-	for(int ivertex=0; ivertex<nvertex; ++ivertex){
-		const ScalarType obj = scal_mm(state.m,vertex_[ivertex]);
-		if(obj>=state.objective) continue;
-		state.vertex=vertex;
-		state.objective=obj;
-	}
-}
-
-/** Returns a better neighbor, with a lower energy, for Voronoi's reduction.
-If none exists, returns false*/
-bool BetterNeighbor(SimplexStateType & state){
-	const small * iw   = iw_[state.vertex];
-	const small * stop = stop_[state.vertex];
-	ScalarType obj  = state.objective;
-	ScalarType bestObj=obj;
-	int k=0, bestK = -1;
-	small * stopIt=stop; Int stop8=0;
-	for(small * iwIt=iw; iwIt!=iw; ++iwIt, ++stop8){
-		if(stop8==8){stop8=0; ++stopIt;}
-		small s = *iwIt;
-		const int ind = int(s >> 4);
-		s = s & 15;
-		const ScalarType wei = Scalar(s) - Scalar(s>=2 ? 1: 2);
-		obj += wei*state.m[ind];
-		if(!(((*stopIt)>>stop8)&1)) continue;
-		if(obj<bestObj) {
-			bestObj=obj;
-			bestK=k;}
-		++k;
-	}
-	if(bestK==-1) return false;
-	state.objective=bestObj; // Note : roundoff error could be an issue ?
-	SetNeighbor(state,bestK); // neighs[bestK]
-	return true;
-}
-
-
-
 } // namespace Voronoi
+
+#include "Voronoi_.h"
