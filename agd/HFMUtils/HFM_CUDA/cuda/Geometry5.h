@@ -3,7 +3,7 @@
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 #include "TypeTraits.h"
-const Int ndim=4;
+const Int ndim=5;
 #include "Geometry_.h"
 #include "Inverse_.h"
 
@@ -13,10 +13,10 @@ namespace Voronoi {
 
 // We implement below Voronoi's reduction of four dimensional positive definite matrices.
 const Int maxiter=100;
-const Int kktdim=12; // Number of support vectors in Voronoi's decomposition
+const Int kktdim=20; // Number of support vectors in Voronoi's decomposition
 typedef char small; // Small type to avoid overusing memory
 typedef unsigned char uchar;
-const Int nvertex = 2;
+const Int nvertex = 3;
 const small vertex_[nvertex][symdim] = { // The two four dimensional perfect forms
 	{2, 1, 2, 1, 1, 2, 0, 1, 1, 2},
 	{2, 1, 2, 1, 1, 2, 1, 1, 1, 2}

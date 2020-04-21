@@ -3,6 +3,11 @@ for Voronoi's first reduction of quadratic forms.*/
 
 namespace Voronoi {
 
+namespace dim_symdim {
+	const Int ndim=symdim;
+	#include "Geometry_.h"
+}
+
 struct SimplexStateT {
 	Scalar m[symdim];
 	Scalar a[ndim][ndim];
@@ -32,7 +37,7 @@ void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kk
 	const coefT coef       = coef_[state.vertex]; // coef[symdim][symdim]
 	const supportT support = support_[state.vertex]; // support[kktdim][ndim]
 
-	dim10::dot_av(coef,state.m,weights);
+	dim_symdim::dot_av(coef,state.m,weights);
 	Scalar aInv_[ndim][ndim]; inv_a(state.a,aInv_);
 	Int aInv[ndim][ndim]; round_a(aInv_,aInv); // The inverse is known to have integer entries
 	for(int i=0; i<kktdim; ++i){dot_av(aInv,support[i],offsets[i]);}
