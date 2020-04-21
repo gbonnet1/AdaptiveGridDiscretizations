@@ -51,60 +51,70 @@ const arr_smallMatT neigh_chg_[2] = {(arr_smallMatT)neigh_chg0,(arr_smallMatT)ne
 const uchar * iw_[2]   = {iw0,iw1};
 const uchar * stop_[2] = {stop0,stop1};
 
-const small coef0[symdim*symdim] = {1,1,0,1,0,0,1,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,-1,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0};
-const small support0[kktdim][ndim] = {
-		{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1},{1,0,0,-1},
-		{1,0,-1,0},{1,-1,0,0},{0,1,0,-1},{0,1,-1,0},{0,0,1,-1},
-		{0,0,0,0},{0,0,0,0}
-	};
-const small coef1[symdim*symdim] = {1,1,0,1,0,0,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0
+const small coef0[symdim*symdim] = {1,1,0,1,0,0,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0
 		,0,1,1,1,1,0,1,0,0,0,0,0,0,0,0,1,1,1,0,0,0,-1,0,0,-1,0,0,0,0,
 		-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,-1,0,0,0,0,0,0
 		,0,0,0,0,0,-1,0,-1,0,0,0,0,0,0,0,1,0,0,0};
-const small support1[kktdim][ndim] = {
+const small support0[kktdim][ndim] = {
 	{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1},{1,0,-1,0},{1,-1,0,0},
 		{0,1,0,-1},{0,1,-1,0},{0,0,1,-1},{1,0,-1,1},{1,-1,0,1},{1,-1,-1,1}
+	};
+const small coef1[symdim*symdim] = {1,1,0,1,0,0,1,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,-1,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0};
+const small support1[kktdim][ndim] = {
+		{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1},{1,0,0,-1},
+		{1,0,-1,0},{1,-1,0,0},{0,1,0,-1},{0,1,-1,0},{0,0,1,-1},
+		{0,0,0,0},{0,0,0,0}
 	};
 typedef const small (*coefT)[symdim]; // small[symdim][symdim]
 const coefT coef_[2]={(coefT)coef0,(coefT)coef1};
 typedef const small (*supportT)[ndim]; // small[kktdim][ndim]
 const supportT support_[2] = {support0,support1};
 
-void KKT_Correct(const Int vertex, Scalar weights[kktdim]){
-	// A bit of post processing is needed to get non-negative weights
+void KKT(const Int vertex, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]){
+	const coefT coef       = coef_[state.vertex]; // coef[symdim][symdim]
+	const supportT support = support_[state.vertex]; // support[kktdim][ndim]
+
+	dim_symdim::dot_av(coef,state.m,weights);
+	Scalar aInv_[ndim][ndim]; inv_a(state.a,aInv_);
+	Int aInv[ndim][ndim]; round_a(aInv_,aInv); // The inverse is known to have integer entries
+	for(int i=0; i<kktdim; ++i){dot_av(aInv,support[i],offsets[i]);}
+
 	if(vertex==1){
 		for(int i=symdim; i<kktdim; ++i){weights[i] = 0.;}
-	} else {
-		// Compute a non-negative solution
-		const Scalar
-		l0 = -min(min(min(0.,weights[1]),weights[4]),weights[8]),
-		l1 = -min(min(min(0.,weights[0]),weights[3]),weights[7]),
-		u01= min(min(min(weights[2],weights[5]),weights[6]),weights[9]);
-		
-		// Triangle of decompositions is defined by the inequalities c0>=l0, c1>=l1, c0+c1<=u01
-		// Check that non-empty //assert(l0+l1<=u01);
-		
-		// Vertices are (l0,l1), (l0,u01-l0), (u01-l1,l1)
-		// We use their use the barycenter
-		// Indeed, this triangle is mapped to the space of decompositions by a linear map with small integer entries. As a result, the angles are bounded away from zero.
-		// (The triangle cannot degenerate to a segment.)
-		const Scalar c[2] = { (2*l0+u01-l1)/3., (2*l1+u01-l0)/3.};
-		const Scalar mc01 = -(c[0]+c[1]);
-		weights[0]+=c[1];
-		weights[1]+=c[0];
-		weights[2]+=mc01;
-		weights[3]+=c[1];
-		weights[4]+=c[0];
-		weights[5]+=mc01;
-		weights[6]+=mc01;
-		weights[7]+=c[1];
-		weights[8]+=c[0];
-		weights[9]+=mc01;
-		weights[10]=c[0];
-		weights[11]=c[1];
+		return;
 	}
+	// vertex == 0
+	// A bit of post processing is needed to get non-negative weights
+	const Scalar
+	l0 = -min(min(min(0.,weights[1]),weights[4]),weights[8]),
+	l1 = -min(min(min(0.,weights[0]),weights[3]),weights[7]),
+	u01= min(min(min(weights[2],weights[5]),weights[6]),weights[9]);
+	
+	// Triangle of decompositions is defined by the inequalities c0>=l0, c1>=l1, c0+c1<=u01
+	// Check that non-empty //assert(l0+l1<=u01);
+	
+	// Vertices are (l0,l1), (l0,u01-l0), (u01-l1,l1)
+	// We use their use the barycenter
+	// Indeed, this triangle is mapped to the space of decompositions by a linear map with small integer entries. As a result, the angles are bounded away from zero.
+	// (The triangle cannot degenerate to a segment.)
+	const Scalar c[2] = { (2*l0+u01-l1)/3., (2*l1+u01-l0)/3.};
+	const Scalar mc01 = -(c[0]+c[1]);
+	weights[0]+=c[1];
+	weights[1]+=c[0];
+	weights[2]+=mc01;
+	weights[3]+=c[1];
+	weights[4]+=c[0];
+	weights[5]+=mc01;
+	weights[6]+=mc01;
+	weights[7]+=c[1];
+	weights[8]+=c[0];
+	weights[9]+=mc01;
+	weights[10]=c[0];
+	weights[11]=c[1];
+	
 }
 
 } // namespace Voronoi
 
+const Int decompdim = Voronoi::kktdim;
 #include "Voronoi_.h"

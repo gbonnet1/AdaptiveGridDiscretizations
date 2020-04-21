@@ -15,7 +15,6 @@ Naming conventions :
 - lower case : input
 - upper case : output (terminal output may be omitted)
 
-
 IMPORTANT : NO-ALIAS ASSUMPTION ! Outputs are assumed to be __restrict__.
 */
 

@@ -33,6 +33,7 @@ void SetNeighbor(SimplexStateT & state,const Int neigh){
 	state.vertex = neigh_vertex_[state.vertex][neigh];
 }
 
+/*
 void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]){
 	const coefT coef       = coef_[state.vertex]; // coef[symdim][symdim]
 	const supportT support = support_[state.vertex]; // support[kktdim][ndim]
@@ -44,7 +45,7 @@ void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kk
 
 	KKT_Correct(state.vertex,weights);
 }
-
+*/
 
 void FirstGuess(SimplexStateT & state){
 	state.objective = 1./0.; 
@@ -87,8 +88,6 @@ bool BetterNeighbor(SimplexStateT & state){
 
 
 } // namespace Voronoi
-
-const Int decompdim = Voronoi::kktdim;
 
 void decomp_m(const Scalar m[symdim],Scalar weights[decompdim],OffsetT offsets[decompdim][ndim]){
 	using namespace Voronoi;
