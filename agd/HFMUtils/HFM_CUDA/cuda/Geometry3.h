@@ -44,7 +44,7 @@ void obtusesuperbase_m(const Scalar m[symdim], OffsetT sb[ndim+1][ndim]){
 // Selling decomposition of a positive definite matrix
 void decomp_m(const Scalar m[symdim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
 	OffsetT sb[ndim+1][ndim];
-	obtusesuperbase(m,sb);
+	obtusesuperbase_m(m,sb);
 	for(Int r=0; r<symdim; ++r){
 		const Int * perm = Selling_permutations[r];
 		const Int i=perm[0],j=perm[1],k=perm[2],l=perm[3];

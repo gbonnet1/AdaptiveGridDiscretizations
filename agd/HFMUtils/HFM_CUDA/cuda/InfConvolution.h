@@ -62,7 +62,7 @@ __constant__ T kernel_c[size_c];
 
 extern "C" {
 __global__ void 
-InfConvolution(const T * input, T * output){
+InfConvolution(const T * __restrict__ input, T * __restrict__ output){
 	// Get the position where the work is to be done.
 	const Int n_t = blockIdx.x*blockDim.x + threadIdx.x;
 	if(n_t>=size_tot) {return;}

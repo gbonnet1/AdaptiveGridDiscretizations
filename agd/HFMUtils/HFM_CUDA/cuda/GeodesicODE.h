@@ -118,9 +118,11 @@ Outputs :
  - stop : ODE stopping criterion (if any)
 */
 ODEStop::Enum NormalizedFlow(
-	const Scalar * flow_vector_t,const Scalar * flow_weightsum_t,const Scalar * dist_t, 
+	const Scalar * __restrict__ flow_vector_t,
+	const Scalar * __restrict__ flow_weightsum_t,
+	const Scalar * __restrict__ dist_t, 
 	const Scalar x[ndim], Scalar flow[ndim],
-	Int xq[ndim], Int * nymin, Scalar * dist_threshold,
+	Int xq[ndim], Int & nymin, Scalar & dist_threshold,
 	Scalar flow_cache[ncorners][ndim], Scalar dist_cache[ncorners]){
 
 	ODEStop::Enum result = ODEStop::Continue;
@@ -183,18 +185,18 @@ ODEStop::Enum NormalizedFlow(
 	const Int ny = Grid::Index(yq,shape_tot);
 
 	// Set the distance threshold
-	if(ny!=*nymin){
-		*nymin=ny;
+	if(ny!=nymin){
+		nymin=ny;
 		const Scalar flow_weightsum = flow_weightsum_t[ny];
 		if(flow_weightsum==0.){result=ODEStop::AtSeed;}
-		*dist_threshold=dist_min+causalityTolerance/flow_weightsum;
+		dist_threshold=dist_min+causalityTolerance/flow_weightsum;
 	}
 
 
 	// Perform the interpolation, and its normalization
 	fill_kV(Scalar(0),flow);
 	for(Int icorner=0; icorner<ncorners; ++icorner){
-		if(dist_cache[icorner]>=*dist_threshold) {continue;}
+		if(dist_cache[icorner]>=dist_threshold) {continue;}
 		madd_kvV(weights[icorner],flow_cache[icorner],flow);
 	}
 	// Not that a proper interpolation would require dividing by the weights sum
@@ -252,7 +254,7 @@ __global__ void GeodesicODE(
 		stop = NormalizedFlow(
 			flow_vector_t,flow_weightsum_t,dist_t,
 			x,flow,
-			xq,&nymin,&dist_threshold,
+			xq,nymin,dist_threshold,
 			flow_cache,dist_cache);
 
 		if(debug_print && tid==0){
@@ -282,7 +284,7 @@ __global__ void GeodesicODE(
 		stop = NormalizedFlow(
 			flow_vector_t,flow_weightsum_t,dist_t,
 			xMid,flow,
-			xq,&nymin,&dist_threshold,
+			xq,nymin,dist_threshold,
 			flow_cache,dist_cache);
 		if(stop!=ODEStop::Continue){break;}
 

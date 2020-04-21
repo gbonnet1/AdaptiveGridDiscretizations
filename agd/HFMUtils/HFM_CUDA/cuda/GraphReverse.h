@@ -32,8 +32,8 @@ const Int debug_print=0; const Int n_test = 9;
 extern "C" {
 
 __global__ void GraphReverse(
-	const Int * fwd_t, Int * rev_t, irevT * irev_t,
-	const weightT * fwd_weight_t, weightT * rev_weight_t){
+	const Int * __restrict__ fwd_t, Int * __restrict__ rev_t, irevT * __restrict__ irev_t,
+	const weightT * __restrict__ fwd_weight_t, weightT * __restrict__ rev_weight_t){
 
 	const Int n_t = blockIdx.x*blockDim.x + threadIdx.x;
 	if(n_t >= size_tot){return;}

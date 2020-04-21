@@ -14,7 +14,7 @@ Int divRoundClosest(const Int n, const Int d){
   return ((n < 0) ^ (d < 0)) ? ((n - d/2)/d) : ((n + d/2)/d);}
 
 bool Visible(const Int v[ndim], 
-	const Int x_t[ndim], const WallT * wallsDist_t,
+	const Int x_t[ndim], const WallT * __restrict__ wallsDist_t,
 	const Int x_i[ndim], const WallT   wallsDist_i[size_i]){
 	const Int n_i = threadIdx.x;
 	if(wallDist_i[n_i]==WallT_Max) return true;
