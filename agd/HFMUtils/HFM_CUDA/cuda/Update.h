@@ -18,15 +18,29 @@
 extern "C" {
 
 __global__ void Update(
-	Scalar * u_t, MULTIP(Int * uq_t,) STRICT_ITER_O(Scalar * uNext_t, MULTIP(Int * uqNext_t,) )
-	const Scalar * geom_t, DRIFT(const Scalar * drift_t,) 
-	const BoolPack * seeds_t, const Scalar * rhs_t, WALLS(wallDist_t,)
-	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o,)
-	FLOW_WEIGHTS(Scalar * flow_weights_t,) FLOW_WEIGHTSUM(Scalar * flow_weightsum_t,)
-	FLOW_OFFSETS(OffsetT * flow_offsets_t,) FLOW_INDICES(Int* flow_indices_t,) 
-	FLOW_VECTOR(Scalar * flow_vector_t,) 
-	EXPORT_SCHEME(Scalar * weights_t, OffsetT * offsets_t,)
-	Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) BoolAtom * updateNext_o 
+	// Value function (problem unknown)
+	STRICT_ITER_O(const) Scalar * __restrict__ u_t, MULTIP(const Int * __restrict__ uq_t,) 
+	STRICT_ITER_O(Scalar * __restrict__ uNext_t, MULTIP(Int * __restrict__ uqNext_t,))
+
+	// Problem data
+	const Scalar * __restrict__ geom_t, DRIFT(const Scalar * __restrict__ drift_t,) 
+	const BoolPack * __restrict__ seeds_t, const Scalar * __restrict__ rhs_t, 
+	WALLS(const WallsT * __restrict__ wallDist_t,)
+
+	// Causality based freezing
+	MINCHG_FREEZE(const Scalar * __restrict__ minChgPrev_o, Scalar * __restrict__ minChgNext_o,)
+
+	// Exports
+	FLOW_WEIGHTS(  Scalar  * __restrict__ flow_weights_t,) 
+	FLOW_WEIGHTSUM(Scalar  * __restrict__ flow_weightsum_t,)
+	FLOW_OFFSETS(  OffsetT * __restrict__ flow_offsets_t,) 
+	FLOW_INDICES(  Int     * __restrict__ flow_indices_t,) 
+	FLOW_VECTOR(   Scalar  * __restrict__ flow_vector_t,) 
+	EXPORT_SCHEME(Scalar * __restrict__ weights_t, OffsetT * __restrict__ offsets_t,)
+
+	// where to update
+	Int * __restrict__ updateList_o, 
+	PRUNING(BoolAtom * __restrict__ updatePrev_o,) BoolAtom * __restrict__ updateNext_o 
 	){ 
 
 	__shared__ Int x_o[ndim];

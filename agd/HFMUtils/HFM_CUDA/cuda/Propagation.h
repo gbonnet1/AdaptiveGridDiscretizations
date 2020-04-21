@@ -32,8 +32,9 @@ void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * update
 		updateNext_o[Grid::Index_per(neigh_o,shape_o)]=1 PRUNING(+n_i);}
 }
 
-bool Abort(Int * updateList_o, PRUNING(BoolAtom * updatePrev_o,) 
-MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o, BoolAtom * updateNext_o,) 
+bool Abort(Int * __restrict__ updateList_o, PRUNING(BoolAtom * __restrict__ updatePrev_o,) 
+MINCHG_FREEZE(const Scalar * __restrict__ minChgPrev_o, Scalar * __restrict__ minChgNext_o,
+ BoolAtom * __restrict__ updateNext_o,) 
 Int x_o[ndim], Int & n_o){
 
 	const Int n_i = threadIdx.x;
@@ -98,9 +99,9 @@ Int x_o[ndim], Int & n_o){
 }
 	
 void Finalize(
-	Scalar chg_i[size_i], PRUNING(Int * updateList_o,) 
-	MINCHG_FREEZE(const Scalar * minChgPrev_o, Scalar * minChgNext_o, 
-	const BoolAtom * updatePrev_o,) BoolAtom * updateNext_o,  
+	Scalar chg_i[size_i], PRUNING(Int * __restrict__ updateList_o,) 
+	MINCHG_FREEZE(const Scalar * __restrict__ minChgPrev_o, Scalar * __restrict__ minChgNext_o, 
+	const BoolAtom * __restrict__ updatePrev_o,) BoolAtom * __restrict__ updateNext_o,  
 	Int x_o[ndim], Int n_o
 	){
 	const Int n_i = threadIdx.x;
