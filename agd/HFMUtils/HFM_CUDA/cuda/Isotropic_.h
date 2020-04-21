@@ -40,6 +40,8 @@ void scheme(const Scalar dual_costs2[ndim],
 #endif
 
 FACTOR(
+#include "Constants.h"
+#include "EuclideanFactor.h"
 /** Returns the perturbations involved in the factored fast marching method.
 Input : x= relative position w.r.t the seed, e finite difference offset.*/
 void factor_sym(const Scalar x[ndim], const Int e[ndim], 

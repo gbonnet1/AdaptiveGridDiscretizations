@@ -3,18 +3,6 @@ for Voronoi's first reduction of quadratic forms.*/
 
 namespace Voronoi {
 
-namespace dim_symdim {
-	const Int ndim=symdim;
-	#include "Geometry_.h"
-}
-
-struct SimplexStateT {
-	Scalar m[symdim];
-	Scalar a[ndim][ndim];
-	Int vertex;
-	Scalar objective;
-//	m(m0),a(MatrixType::Identity()),vertex(-1),objective(infinity){}; 
-};
 
 void SetNeighbor(SimplexStateT & state,const Int neigh){
 	// Record the new change of coordinates
@@ -33,6 +21,7 @@ void SetNeighbor(SimplexStateT & state,const Int neigh){
 	state.vertex = neigh_vertex_[state.vertex][neigh];
 }
 
+void KKT(const SimplexStateT & state, Scalar weights[decompdim], OffsetT offsets[decompdim][ndim]);
 /*
 void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]){
 	const coefT coef       = coef_[state.vertex]; // coef[symdim][symdim]

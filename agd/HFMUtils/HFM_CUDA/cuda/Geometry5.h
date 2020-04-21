@@ -2,14 +2,30 @@
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
+
 #include "TypeTraits.h"
 const Int ndim=5;
 #include "Geometry_.h"
 #include "Inverse_.h"
 #include "NetworkSort.h"
+
+#define CUDA_DEVICE // Do not include <math.h>
 #include "LinProg/Siedel_Hohmeyer_LinProg.h"
 
 namespace Voronoi {
+
+/** This code is adapted from the c++ code in the CPU HFM library*/
+namespace dim_symdim {
+	const Int ndim=symdim;
+	#include "Geometry_.h"
+}
+
+struct SimplexStateT {
+	Scalar m[symdim];
+	Scalar a[ndim][ndim];
+	Int vertex;
+	Scalar objective;
+};
 
 /** This code is adapted from the c++ code in the CPU HFM library*/
 
@@ -80,7 +96,7 @@ const small neigh_chg1[symdim][ndim*ndim] = {
 };
 
 const small neigh_vertex2[symdim] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; 
-const small neigh_chg1[symdim][ndim*ndim] = {
+const small neigh_chg2[symdim][ndim*ndim] = {
 {0,0,0,-1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,-1,-1,-1,0,1},{0,-1,0,0,0,1,0,0,0,0,0,1,-1,0,0,-1,0,0,1,0,-1,-1,0,0,1},{1,0,0,0,0,-1,0,0,0,1,0,0,0,-1,0,0,1,0,0,-1,1,0,1,0,-1},{-1,0,0,0,0,0,1,0,0,0,1,0,-1,0,0,0,-1,0,1,0,-1,-1,0,0,1},{1,0,0,0,0,-1,0,0,1,0,0,0,0,0,-1,0,1,0,-1,0,1,0,1,-1,0},{-1,0,0,0,0,1,-1,0,0,0,0,0,1,0,0,0,0,-1,1,0,-1,0,-1,0,1},{0,1,0,0,0,-1,0,0,0,0,0,0,-1,0,0,0,-1,0,1,0,0,0,0,0,1},{1,0,0,0,0,-1,0,0,1,0,0,-1,0,0,0,0,0,1,-1,0,0,0,-1,0,1},{-1,0,0,0,0,1,0,1,-1,0,0,1,0,0,0,0,-1,0,1,0,-1,0,-1,0,1},{1,0,0,0,0,-1,0,0,1,0,0,0,-1,0,0,0,1,0,-1,0,0,-1,0,0,1},{0,0,1,0,0,-1,0,0,0,0,0,-1,0,0,0,0,0,-1,1,0,0,0,0,0,1},{1,0,0,0,0,-1,0,0,0,1,0,0,-1,0,0,0,1,0,0,-1,0,-1,0,1,0},{-1,0,0,1,0,1,0,0,0,0,0,1,0,-1,0,0,0,1,-1,0,-1,-1,-1,1,1},{0,-1,0,1,0,-1,0,0,0,0,1,0,0,-1,0,0,1,1,-1,0,0,-1,-1,1,1},{1,0,0,0,0,0,-1,0,0,0,0,0,-1,0,0,-1,0,0,1,0,0,0,0,0,1}
 };
 
@@ -90,14 +106,14 @@ const uchar iw0[866] = {64,163,128,66,113,130,161,65,113,130,162,67,128,115,131,
 const uchar stop0[109] = {70,124,32,240,254,30,160,160,0,3,34,2,91,83,101,77,217,148,37,128,2,180,109,211,132,63,100,217,182,69,211,182,77,248,211,38,99,109,66,64,200,214,216,38,241,71,178,13,89,214,182,177,109,77,19,254,36,219,144,109,91,22,0,17,17,17,9,130,64,65,1,222,223,3,1,129,247,247,0,5,216,154,42,107,42,147,38,27,16,17,120,8,127,127,127,136,8,127,127,136,8,127,127,127,8,239,221,189,2};
 const uchar iw1[61] = {19,35,67,115,179,16,32,64,99,131,147,176,211,96,112,128,144,163,179,195,227,51,67,83,131,160,176,208,224,3,19,64,80,99,128,163,192,0,16,48,96,160,208,48,211,51,176,128,179,16,131,19,192,112,195,115,160,64,163,67,96};
 const uchar stop1 [8]= {16,16,16,16,16,84,85,21};
-const uchar iw1[57] = {18,50,66,209,3,64,96,160,211,0,67,99,176,192,227,35,48,112,163,195,224,32,51,96,128,147,179,16,83,99,115,144,192,64,80,131,195,115,208,112,179,19,48,131,176,128,211,195,208,16,67,99,192,96,163,160,211};
+const uchar iw2[57] = {18,50,66,209,3,64,96,160,211,0,67,99,176,192,227,35,48,112,163,195,224,32,51,96,128,147,179,16,83,99,115,144,192,64,80,131,195,115,208,112,179,19,48,131,176,128,211,195,208,16,67,99,192,96,163,160,211};
 const uchar stop2[8] = {8,65,16,4,81,81,81,1};
 
-const small * neigh_vertex_[2] = {neigh_vertex0,neigh_vertex1};
+const small * neigh_vertex_[3] = {neigh_vertex0,neigh_vertex1,neigh_vertex2};
 typedef const small (*arr_smallMatT)[ndim][ndim]; 
-const arr_smallMatT neigh_chg_[2] = {(arr_smallMatT)neigh_chg0,(arr_smallMatT)neigh_chg1};
-const uchar * iw_[2]   = {iw0,iw1};
-const uchar * stop_[2] = {stop0,stop1};
+const arr_smallMatT neigh_chg_[3] = {(arr_smallMatT)neigh_chg0,(arr_smallMatT)neigh_chg1,(arr_smallMatT)neigh_chg2};
+const uchar * iw_[3]   = {iw0,iw1,iw2};
+const uchar * stop_[3] = {stop0,stop1,stop2};
 
 const small coef0[symdim*symdim] = {
 	1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,
@@ -187,11 +203,11 @@ const small support2[symdim][ndim] = {
 //	{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}
 };
 typedef const small (*coefT)[symdim]; // small[symdim][symdim]
-const coefT coef_[2]={(coefT)coef0,(coefT)coef1};
+const coefT coef_[3]={(coefT)coef0,(coefT)coef1,(coefT)coef2};
 typedef const small (*supportT)[ndim]; // small[kktdim][ndim]
-const supportT support_[2] = {support0,support1};
+const supportT support_[3] = {support0,support1,support2};
 
-void KKT(const Int vertex, Scalar weights[symdim], OffsetT offsets[kktdim][ndim]){
+void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
 
 	const coefT coef       = coef_[state.vertex]; // coef[symdim][symdim]
 	const supportT support = support_[state.vertex]; // support[kktdim][ndim]
@@ -199,11 +215,17 @@ void KKT(const Int vertex, Scalar weights[symdim], OffsetT offsets[kktdim][ndim]
 	Scalar aInv_[ndim][ndim]; inv_a(state.a,aInv_);
 	Int aInv[ndim][ndim]; round_a(aInv_,aInv); // The inverse is known to have integer entries
 
+	if(debug_print && threadIdx.x==0){
+		printf("state.vertex %i, state.m ", state.vertex);
+		for(Int j=0; j<symdim; ++j) printf(" %f",state.m[j]);
+		printf("\n");
+	}
+
 	// A bit of post processing is needed to get non-negative weights
-	if(vertex>=1){
+	if(state.vertex>=1){
 		dim_symdim::dot_av(coef,state.m,weights);
 		for(int i=0; i<kktdim; ++i){dot_av(aInv,support[i],offsets[i]);}
-		if(vertex==2){div_Vk(weights,2.);}
+		if(state.vertex==2){div_Vk(weights,2.);}
 		return;
 	}
 	// vertex==0
@@ -243,8 +265,8 @@ void KKT(const Int vertex, Scalar weights[symdim], OffsetT offsets[kktdim][ndim]
 		// projective component positive
 		{0,0,0,0,0,1}
 	};
-	Scalar sol[symdim];
-	dim_symdim::dot_av(coef,state.m,weights_);
+	Scalar sol[kktdim];
+	dim_symdim::dot_av(coef,state.m,sol); // Last 5 entries purposedly uninitialized
 	Scalar maxSol = 0; 
 	for(Int i=0; i<symdim; ++i) maxSol = max(maxSol,abs(sol[i]));
 	for(int i=0; i<symdim; ++i){halves[i][5] = sol[i]/maxSol;}
@@ -260,26 +282,37 @@ void KKT(const Int vertex, Scalar weights[symdim], OffsetT offsets[kktdim][ndim]
 	int next[max_size] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21};
 	int prev[max_size] = {BadIndex,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
 	
-	flinprog(&halves[0][0], 0, m, n_vec, d_vec, d, opt, work, next, prev, max_size);
+	slinprog(&halves[0][0], 0, m, n_vec, d_vec, d, opt, work, next, prev, max_size);
 	
 	// TODO : check that status is correct
 	// Get the solution, and find the non-zero weights, which should be positive.
-	const Scalar coef[5] = {
-		opt[0]/opt[5],opt[1]/opt[5],opt[2]/opt[5],opt[3]/opt[5],opt[4]/opt[5]};
+	// kktdim - symdim = 5
+	const Scalar linsol[5] = {opt[0]/opt[5],opt[1]/opt[5],opt[2]/opt[5],opt[3]/opt[5],opt[4]/opt[5]};
+
+	if(debug_print && threadIdx.x==0){
+		printf("sol "); for(Int i=0; i<symdim; ++i) printf(" %f", sol[i]);printf("\n");
+		printf("linsol "); for(Int i=0; i<symdim; ++i) printf(" %f", linsol[i]);printf("\n");
+	}
+
 	for(int i=0; i<symdim; ++i){
 		Scalar s=0; 
-		for(int j=0; j<5; ++j) {s+=coef[j]*halves[i][j];}
+		for(int j=0; j<5; ++j) {s+=linsol[j]*halves[i][j];}
 		s*=maxSol;
 		sol[i]+=s;
 	}
-	for(int i=0; i<5; ++i){weights[15+i] = maxSol*coef[i];}
+	for(int i=0; i<5; ++i){sol[15+i] = maxSol*linsol[i];}
 	
 	// We only need to exclude the 5 smallest elements. For simplicity, we sort all.
-	Int ord[20];
-	merge_sort<20>(weights,ord);
+	Int ord[kktdim]; 
+	merge_sort<kktdim>(sol,ord);
+	if(debug_print && threadIdx.x==0){
+		printf("sol "); for(Int i=0; i<kktdim; ++i) printf(" %f", sol[i]);printf("\n");
+		printf("ord "); for(Int i=0; i<kktdim; ++i) printf(" %i", ord[i]);printf("\n");
+	}
+
 
 	for(int i=0; i<symdim; ++i){
-		const int j=ord[i+5];
+		const int j=ord[i+5]; 
 		weights[i] = sol[j];
 		dot_av(aInv,support[j],offsets[i]);
 	} // for i

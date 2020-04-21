@@ -13,7 +13,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
     formatter=dict(float=lambda x: "%5.3g" % x))
 
 
-n=4; ndim=4
+n=4; ndim=5
 hfmIn = HFMUtils.dictIn({
     'model':f'Riemann{ndim}',
 #    'verbosity':1,
@@ -36,8 +36,11 @@ hfmIn = HFMUtils.dictIn({
 #	'factoringRadius':10000,
 #	'seedRadius':2,
 #	'returns':'in_raw',
+
 	'traits':{
-	'niter_i':8,'shape_i':(4,)*ndim,
+	'debug_print':0,
+	'shape_i':(2,)*ndim,'niter_i':10,
+#	'niter_i':8,'shape_i':(4,)*ndim,
 #	'niter_i':1,'shape_i':(8,8),
 #	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
@@ -53,6 +56,10 @@ hfmIn = HFMUtils.dictIn({
 })
 
 hfmIn['metric'] = Metrics.Riemann(cp.eye(ndim,dtype=np.float32))
+if False:
+	hfmIn['model'] = f'Isotropic{ndim}'
+	hfmIn.pop('metric')
+
 hfmOut = hfmIn.RunGPU()
 if n<=5: print(hfmOut['values'])
 

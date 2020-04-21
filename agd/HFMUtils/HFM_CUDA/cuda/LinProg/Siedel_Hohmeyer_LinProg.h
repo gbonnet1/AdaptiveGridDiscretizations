@@ -21,6 +21,7 @@
 #define Siedel_Hohmeyer_LinProg_h
 
 //#define DOUBLE // Define this macro for double 
+#define CUDA_DEVICE // Do not include math.h
 
 #include "lp.h"
 #include "localmath.h"

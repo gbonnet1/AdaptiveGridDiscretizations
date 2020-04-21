@@ -36,6 +36,8 @@ def default_traits(self):
 		traits.update({'shape_i':(4,4,4),'niter_i':12,})
 	elif ndim==4:
 		traits.update({'shape_i':(4,4,4,4),'niter_i':16,})
+	elif ndim==5:
+		traits.update({'shape_i':(2,2,2,2,2),'niter_i':10,})
 	else:
 		raise ValueError("Unsupported model")
 

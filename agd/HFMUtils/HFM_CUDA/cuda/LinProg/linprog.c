@@ -7,7 +7,10 @@
  * as long as this notice is preserved.  All standard disclaimers apply.
  *       
  */
+#ifndef CUDA_DEVICE
 #include <math.h>
+#endif
+
 #include "lp.h"
 #include "localmath.h"
 

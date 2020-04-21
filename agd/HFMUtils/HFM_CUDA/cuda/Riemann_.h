@@ -9,6 +9,8 @@
 #include "Geometry3.h"
 #elif (ndim_macro == 4)
 #include "Geometry4.h"
+#elif (ndim_macro == 5)
+#include "Geometry5.h"
 #endif
 
 const Int nsym = decompdim; // Number of symmetric offsets
@@ -19,7 +21,14 @@ const Int factor_size = symdim;
 #include "Constants.h"
 
 void scheme(const Scalar dual_metric[symdim], Scalar weights[nsym], Int offsets[nsym][ndim]){
-	decomp_m(dual_metric,weights,offsets);}
+	decomp_m(dual_metric,weights,offsets);
+	if(debug_print && threadIdx.x==0){
+		for(Int i=0; i<nsym; ++i){
+			printf("weight %f, offset %i,%i,%i,%i,%i\n",weights[i],
+				offsets[i][0],offsets[i][1],offsets[i][2],offsets[i][3],offsets[i][4] );
+		}
+	}
+}
 
 FACTOR(
 #include "EuclideanFactor.h"

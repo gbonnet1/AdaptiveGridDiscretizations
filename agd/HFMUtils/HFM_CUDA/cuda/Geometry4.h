@@ -10,6 +10,18 @@ const Int ndim=4;
 namespace Voronoi {
 
 /** This code is adapted from the c++ code in the CPU HFM library*/
+namespace dim_symdim {
+	const Int ndim=symdim;
+	#include "Geometry_.h"
+}
+
+struct SimplexStateT {
+	Scalar m[symdim];
+	Scalar a[ndim][ndim];
+	Int vertex;
+	Scalar objective;
+};
+
 
 // We implement below Voronoi's reduction of four dimensional positive definite matrices.
 const Int maxiter=100;
@@ -70,7 +82,7 @@ const coefT coef_[2]={(coefT)coef0,(coefT)coef1};
 typedef const small (*supportT)[ndim]; // small[kktdim][ndim]
 const supportT support_[2] = {support0,support1};
 
-void KKT(const Int vertex, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]){
+void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]){
 	const coefT coef       = coef_[state.vertex]; // coef[symdim][symdim]
 	const supportT support = support_[state.vertex]; // support[kktdim][ndim]
 
@@ -79,7 +91,7 @@ void KKT(const Int vertex, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]
 	Int aInv[ndim][ndim]; round_a(aInv_,aInv); // The inverse is known to have integer entries
 	for(int i=0; i<kktdim; ++i){dot_av(aInv,support[i],offsets[i]);}
 
-	if(vertex==1){
+	if(state.vertex==1){
 		for(int i=symdim; i<kktdim; ++i){weights[i] = 0.;}
 		return;
 	}
@@ -116,5 +128,5 @@ void KKT(const Int vertex, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]
 
 } // namespace Voronoi
 
-const Int decompdim = Voronoi::kktdim;
+const Int decompdim = 12;
 #include "Voronoi_.h"
