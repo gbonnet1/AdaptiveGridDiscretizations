@@ -8,7 +8,7 @@ const Int ndim=2;
 
 /// Perpendicular vector, in dimension two. Caution : assume x and out are distinct.
 template<typename T>
-void perp_v(const T x[2], T __restrict__ out[2]){ 
+void perp_v(const T x[2], T out[__restrict__ 2]){ 
 	out[0]=-x[1];
 	out[1]= x[0];
 }

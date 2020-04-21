@@ -138,7 +138,7 @@ bool scheme(const Scalar geom[geom_size],
 		const Scalar * diag = diag_s[kmix]; // diag[2];
 		Scalar D[symdim];
 		for(Int i=0; i<symdim; ++i) {D[i] = diag[0]*D0[i] + diag[1]*D1[i];} 
-		Selling_m(D, weights+kmix*symdim, offsets+kmix*symdim);
+		decomp_m(D, weights+kmix*symdim, offsets+kmix*symdim);
 	}
 	return mix_is_min;
 }

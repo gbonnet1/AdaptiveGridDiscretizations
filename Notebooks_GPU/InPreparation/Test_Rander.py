@@ -22,7 +22,7 @@ hfmIn = HFMUtils.dictIn({
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':3,
+#    'nitermax_o':3,
 #    'tol':5*1e-7,
 #    'multiprecision':True,
 #    'values_float64':True,

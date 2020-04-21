@@ -59,7 +59,7 @@ hfmOut = hfmIn.RunGPU()
 if n<=20: print(hfmOut['values'])
 
 cpuIn = hfmIn.copy()
-cpuIn.pop('traits')
+for key in ('traits','array_float_caster'): cpuIn.pop(key)
 cpuIn['metric'] = np.array(cpuIn['metric'].get(),dtype=np.float64)
 cpuOut = cpuIn.Run()
 

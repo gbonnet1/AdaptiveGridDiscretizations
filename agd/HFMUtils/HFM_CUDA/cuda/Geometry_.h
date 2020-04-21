@@ -21,15 +21,15 @@ IMPORTANT : NO-ALIAS ASSUMPTION ! Outputs are assumed to be __restrict__.
 
 // ------ Copies and casts -----
 template<typename T>
-void copy_vV(const T x[ndim], T __restrict__ out[ndim]){
+void copy_vV(const T x[ndim], T out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i];}} 
 
 template<typename T, typename Tout>
-void copy_aA(const T a[ndim][ndim], Tout __restrict__ out[ndim][ndim]){
+void copy_aA(const T a[ndim][ndim], Tout out[__restrict__ ndim][ndim]){
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j) out[i][j] = a[i][j];}}
 
-template<typename Ta, typename Tout>
-void round_aA(const T a[ndim][ndim], Tout __restrict__ out[ndim][ndim]){
+template<typename T, typename Tout>
+void round_aA(const T a[ndim][ndim], Tout out[__restrict__ ndim][ndim]){
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j) out[i][j] = round(a[i][j]);}}
 
 template<typename T> 
@@ -40,27 +40,27 @@ void zero_M(T out[symdim]){for(Int i=0; i<symdim; ++i){out[i]=0;}}
 
 template<typename T>
 void zero_A(T out[ndim][ndim]){
-	for(Int i=0; i<ndim; ++i){for(Int j=0;j<ndim; ++j) a[i][j]=0;}}
+	for(Int i=0; i<ndim; ++i){for(Int j=0;j<ndim; ++j) out[i][j]=0;}}
 
 // ------ vector algebra -----
 
 /// Sum 
 template<typename Tx,typename Ty,typename Tout>
-void add_vv(const Tx x[ndim], const Ty y[ndim], Tout __restrict__ out[ndim]){
+void add_vv(const Tx x[ndim], const Ty y[ndim], Tout out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i]+y[i];}}
 
 template<typename T>
-void add_vV(const T x[ndim], T __restrict__ y[ndim]){
+void add_vV(const T x[ndim], T y[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){y[i]+=x[i];}}
 
 /// Difference
 template<typename Tx, typename Ty, typename Tout>
-void sub_vv(const Tx x[ndim], const Ty y[ndim], Tout __restrict__ out[ndim]){
+void sub_vv(const Tx x[ndim], const Ty y[ndim], Tout out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i]-y[i];}}
 
 /// Opposite vector
 template<typename T>
-void neg_v(const T x[ndim], T __restrict__ out[ndim]){
+void neg_v(const T x[ndim], T out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=-x[i];}}
 
 template<typename T>
@@ -68,26 +68,26 @@ void neg_V(T x[ndim]){
 	for(Int i=0; i<ndim; ++i){x[i]=-x[i];}}
 
 template<typename T>
-void fill_kV(const T k, T __restrict__ v[ndim]){
+void fill_kV(const T k, T v[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){v[i]=k;}}
 
 template<typename T>
-void mul_kV(const T k, T __restrict__ v[ndim]){
+void mul_kV(const T k, T v[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){v[i]*=k;}}
 
 template<typename Tk,typename Tv,typename Tout>
-void mul_kv(const Tk k, const Tv v[ndim], Tout __restrict__ out[ndim]){
+void mul_kv(const Tk k, const Tv v[ndim], Tout out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){out[i] = k * v[i];}}
 
-void div_Vk(Scalar __restrict__ v[ndim], const Scalar k){
+void div_Vk(Scalar v[__restrict__ ndim], const Scalar k){
 	const Scalar l=1./k; mul_kV(l,v);}
 
 template<typename T>
-void madd_kvv(const T k, const T x[ndim], const T y[ndim], T __restrict__ out[ndim]){
+void madd_kvv(const T k, const T x[ndim], const T y[ndim], T out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=k*x[i]+y[i];}}
 
 template<typename T>
-void madd_kvV(const T k, const T x[ndim], T __restrict__ y[ndim]){
+void madd_kvV(const T k, const T x[ndim], T y[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){y[i]+=k*x[i];} }
 
 // ----------- Scalar products -----------
@@ -127,7 +127,7 @@ Scalar scal_vdv(const Tx x[ndim], const Scalar diag[ndim], const Ty y[ndim]){
 
 // Frobenius scalar product of two matrices
 template<typename Tx, typename Ty>
-Scalar scal_mm(const T mx[symdim],const T my[symdim]){
+Scalar scal_mm(const Tx mx[symdim],const Ty my[symdim]){
 	Scalar result=0; 
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
@@ -138,7 +138,7 @@ Scalar scal_mm(const T mx[symdim],const T my[symdim]){
 
 // -------- Outer products -------
 
-void self_outer_v(const Scalar x[ndim], Scalar __restrict__ m[ndim]){
+void self_outer_v(const Scalar x[ndim], Scalar m[__restrict__ ndim]){
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
 		for(Int j=0; j<=i; ++j){
@@ -149,7 +149,7 @@ void self_outer_v(const Scalar x[ndim], Scalar __restrict__ m[ndim]){
 }
 
 void self_outer_relax_v(const Scalar x[ndim], const Scalar relax, 
-	Scalar __restrict__ m[ndim]){
+	Scalar m[__restrict__ ndim]){
 	const Scalar eps = scal_vv(x,x)*relax;
 	Int k=0;
 	for(Int i=0; i<ndim; ++i){
@@ -184,7 +184,7 @@ Scalar coef_m(const Scalar m[symdim], const Int i, const Int j){
 }
 
 /// Dot product of symmetric matrix times vector
-void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar __restrict__ out[ndim]){
+void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar out[__restrict__ ndim]){
 	fill_kV(Scalar(0),out);
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
@@ -197,32 +197,32 @@ void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar __restrict__ ou
 }
 
 /// Matrix vector product
-void dot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar __restrict__ out[ndim]){
+void dot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i) out[i] = scal_vv(a[i],x);}
 /// Transposed matrix vector product
-void tdot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar __restrict__ out[ndim]){
+void tdot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar out[__restrict__ ndim]){
 	fill_kV(Scalar(0),out);
 	for(Int i=0; i<ndim; ++i) {for(Int j=0; j<ndim; ++j) out[i] += a[j][i]*x[j];}}
 
 /// Matrix transposition
-void trans_a(const Scalar a[ndim][ndim], Scalar __restrict__ out[ndim][ndim]){
+void trans_a(const Scalar a[ndim][ndim], Scalar out[__restrict__ ndim][ndim]){
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j) out[i][j]=a[j][i];}}
 
 /// Matrix-Matrix product
 void dot_aa(const Scalar a[ndim][ndim], const Scalar b[ndim][ndim], 
-	Scalar __restrict__ out[ndim][ndim]){
+	Scalar out[__restrict__ ndim][ndim]){
 	zero_A(out);
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j){for(Int k=0; k<ndim; ++k){
-		out[i][k]+=a[i][j]*b[j][k];}
+		out[i][k]+=a[i][j]*b[j][k];}}}
 }
 
 void gram_am(const Scalar a[ndim][ndim], const Scalar m[symdim], 
-	Scalar __restrict__ out[symdim]){
+	Scalar out[__restrict__ symdim]){
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
 		Scalar mai[ndim]; dot_mv(m,a[i],mai);
 		for(Int j=0; j<ndim; ++j){
-			out[k] = dot_vv(a[j],mai);
+			out[k] = scal_vv(a[j],mai);
 			++k;}
 	}
 }

@@ -6,9 +6,9 @@
 const Int ndim=3;
 #include "Geometry_.h"
 
-/// Cross product, in dimension three. Caution : assumes out is dstinct from x and y.
+/// Cross product, in dimension three. 
 template<typename Tx, typename Ty, typename Tout=Tx>
-void cross_vv(const Tx x[3], const Ty y[3], Tout out[3]){
+void cross_vv(const Tx x[3], const Ty y[3], Tout out[__restrict__ 3]){
 	for(Int i=0; i<3; ++i){
 		const Int j=(i+1)%3, k=(i+2)%3;
 		out[i]=x[j]*y[k]-x[k]*y[j];
