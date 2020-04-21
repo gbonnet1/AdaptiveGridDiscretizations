@@ -14,7 +14,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
     formatter=dict(float=lambda x: "%5.3g" % x))
 
 
-n=4; ndim=5
+n=4; ndim=4
 hfmIn = HFMUtils.dictIn({
     'model':f'Riemann{ndim}',
 #    'verbosity':1,
@@ -22,12 +22,12 @@ hfmIn = HFMUtils.dictIn({
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':1,
+#    'nitermax_o':1,
 #    'tol':5*1e-7,
 #    'multiprecision':True,
 #    'values_float64':True,
 	'exportValues':True,
-	'factoringRadius':10,
+#	'factoringRadius':10,
 #    'help':['nitermax_o','traits'],
 	'dims':np.array([n]*ndim),
 	'origin':[-0.5]*ndim,
@@ -74,9 +74,9 @@ hfmOut = hfmIn.RunGPU()
 #if n<=5: print(hfmOut['values'])
 
 exact = ad.Optimization.norm(hfmIn.Grid(),axis=0,ord=2)
-print(norm_infinity(exact-hfmOut['values']))
+print("difference to exact",norm_infinity(exact-hfmOut['values']))
 
-"""
+
 cpuIn = hfmIn.copy()
 for key in ('traits','array_float_caster'): cpuIn.pop(key)
 cpuIn['metric'] = np.array(cpuIn['metric'].to_HFM().get(),dtype=np.float64)
@@ -85,4 +85,3 @@ cpuOut = cpuIn.Run()
 diff = cpuOut['values']-hfmOut['values'].get()
 print("LInf error: ",np.max(np.abs(diff)))
 if n<=20: print(diff)
-"""

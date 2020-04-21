@@ -15,18 +15,8 @@ void SetNeighbor(SimplexStateT & state,const Int neigh){
 	
 	// Apply it to the reduced positive definite matrix
 	Scalar sm[symdim]; copy_mM(state.m,sm); 
-//	Scalar ta[ndim][ndim]; trans_a(a,ta);
 	tgram_am(a,sm,state.m);
 
-	if(debug_print && threadIdx.x==0){
-		printf("a\n");
-		for(Int i=0; i<ndim; ++i){
-			for(Int j=0; j<ndim;++j){
-				printf(" %f",a[i][j]);
-			} 
-			printf("\n");
-		}
-	}
 	state.vertex = neigh_vertex_[state.vertex][neigh];
 }
 
@@ -78,14 +68,6 @@ bool BetterNeighbor(SimplexStateT & state){
 			bestObj=obj;
 			bestK=k;}
 		++k;
-	}
-	if(debug_print && threadIdx.x==0){
-		printf("state.vertex %i\n",state.vertex);
-		printf("state.m"); for(int i=0; i<symdim; ++i) printf(" %f",state.m[i]); printf("\n");
-		printf("Found a better neighbor ? %i \n", bestK);
-		printf("obj %f\n",obj);
-		printf("state.objective %f\n",state.objective);
-		printf("bestObj %f\n",bestObj);
 	}
 	if(bestK==-1) return false;
 	state.objective=bestObj; // Note : roundoff error could be an issue ?

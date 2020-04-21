@@ -216,12 +216,6 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 	Scalar aInv_[ndim][ndim]; inv_a(state.a,aInv_);
 	Int aInv[ndim][ndim]; round_a(aInv_,aInv); // The inverse is known to have integer entries
 
-	if(debug_print && threadIdx.x==0){
-		printf("state.vertex %i, state.m ", state.vertex);
-		for(Int j=0; j<symdim; ++j) printf(" %f",state.m[j]);
-		printf("\n");
-	}
-
 	// A bit of post processing is needed to get non-negative weights
 	if(state.vertex>=1){
 		dim_symdim::dot_av(coef,state.m,weights);
@@ -289,12 +283,6 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 	// Get the solution, and find the non-zero weights, which should be positive.
 	// kktdim - symdim = 5
 	const Scalar linsol[5] = {opt[0]/opt[5],opt[1]/opt[5],opt[2]/opt[5],opt[3]/opt[5],opt[4]/opt[5]};
-
-	if(debug_print && threadIdx.x==0){
-		printf("sol "); for(Int i=0; i<symdim; ++i) printf(" %f", sol[i]);printf("\n");
-		printf("linsol "); for(Int i=0; i<5; ++i)   printf(" %f", linsol[i]);printf("\n");
-	}
-
 	for(int i=0; i<symdim; ++i){
 		Scalar s=0; 
 		for(int j=0; j<5; ++j) {s+=linsol[j]*halves[i][j];}
@@ -306,12 +294,6 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 	// We only need to exclude the 5 smallest elements. For simplicity, we sort all.
 	Int ord[kktdim]; 
 	merge_sort<kktdim>(sol,ord);
-	if(debug_print && threadIdx.x==0){
-		printf("sol "); for(Int i=0; i<kktdim; ++i) printf(" %f", sol[i]);printf("\n");
-		printf("ord "); for(Int i=0; i<kktdim; ++i) printf(" %i", ord[i]);printf("\n");
-	}
-
-
 	for(int i=0; i<symdim; ++i){
 		const int j=ord[i+5]; 
 		weights[i] = sol[j];

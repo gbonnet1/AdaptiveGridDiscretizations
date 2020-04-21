@@ -22,20 +22,6 @@ const Int factor_size = symdim;
 
 void scheme(const Scalar dual_metric[symdim], Scalar weights[nsym], Int offsets[nsym][ndim]){
 	decomp_m(dual_metric,weights,offsets);
-	if(debug_print && threadIdx.x==0){
-		for(Int i=0; i<nsym; ++i){
-			printf("weight %f, offset %i,%i,%i,%i,%i\n",weights[i],
-				offsets[i][0],offsets[i][1],offsets[i][2],offsets[i][3],offsets[i][4] );
-		}
-
-		Scalar repro[symdim]; Voronoi::dim_symdim::fill_kV(Scalar(0),repro);
-		for(Int i=0; i<nsym; ++i){
-			Scalar outer[symdim]; self_outer_v(offsets[i],outer);
-			Voronoi::dim_symdim::madd_kvV(weights[i],outer,repro);
-		}
-		printf("dual_metric"); for(Int i=0; i<symdim; ++i) printf(" %f",dual_metric[i]); printf("\n");
-		printf("repro      "); for(Int i=0; i<symdim; ++i) printf(" %f",repro[i]); printf("\n");
-	}
 }
 
 FACTOR(
