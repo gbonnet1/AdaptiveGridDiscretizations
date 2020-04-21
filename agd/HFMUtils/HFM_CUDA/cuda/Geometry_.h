@@ -24,6 +24,10 @@ template<typename T>
 void copy_vV(const T x[ndim], T out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i];}} 
 
+template<typename T>
+void copy_mM(const T m[symdim], T out[__restrict__ symdim]){
+	for(Int i=0; i<symdim; ++i){out[i]=m[i];}} 
+
 template<typename T, typename Tout>
 void copy_aA(const T a[ndim][ndim], Tout out[__restrict__ ndim][ndim]){
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j) out[i][j] = a[i][j];}}

@@ -7,6 +7,8 @@
 #include "Geometry2.h"
 #elif (ndim_macro == 3)
 #include "Geometry3.h"
+#elif (ndim_macro == 4)
+#include "Geometry4.h"
 #endif
 
 const Int nsym = symdim; // Number of symmetric offsets

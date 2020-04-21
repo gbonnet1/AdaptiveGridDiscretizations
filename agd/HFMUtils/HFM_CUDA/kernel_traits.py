@@ -23,13 +23,19 @@ def default_traits(self):
 		#Large shape, many iterations, to take advantage of block based causality
 		traits.update({'shape_i':(24,24),'niter_i':48,})
 	elif ndim==2: traits.update({'shape_i':(8,8),'niter_i':16,})
+
+	# Curvature penalized models get special treatment
 	elif model in ('ReedsShepp2','ReedsSheppForward2'): 
 		traits.update({'shape_i':(4,4,4),'niter_i':6})
 	elif model in ('Dubins2','Elastica2'):
 		# Small shape, single iteration, since stencils are too wide anyway
 		traits.update({'shape_i':(4,4,2),'niter_i':1})
+
+
 	elif ndim==3:
 		traits.update({'shape_i':(4,4,4),'niter_i':12,})
+	elif ndim==4:
+		traits.update({'shape_i':(4,4,4,4),'niter_i':16,})
 	else:
 		raise ValueError("Unsupported model")
 
