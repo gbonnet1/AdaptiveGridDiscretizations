@@ -9,15 +9,24 @@ void SetNeighbor(SimplexStateT & state,const Int neigh){
 //	const small * neigh_chg_flat = state.vertex==0 ? neigh_chg0[neigh] : neigh_chg1[neigh];
 //	typedef const small (*smallMatrixT)[ndim];
 //	const small (* neigh_chg)[ndim] = (smallMatrixT) neigh_chg_flat;
-	Scalar a[ndim][ndim];  copy_aA(neigh_chg_[state.vertex][neigh],a); //copy_aA(neigh_chg_[state.vertex][neigh],a);
+	Scalar a[ndim][ndim];  copy_aA(neigh_chg_[state.vertex][neigh],a); 
 	Scalar sa[ndim][ndim]; copy_aA(state.a,sa); 
 	dot_aa(a,sa,state.a);
 	
 	// Apply it to the reduced positive definite matrix
 	Scalar sm[symdim]; copy_mM(state.m,sm); 
-	Scalar ta[ndim][ndim]; trans_a(a,ta);
-	gram_am(ta,sm,state.m);
+//	Scalar ta[ndim][ndim]; trans_a(a,ta);
+	tgram_am(a,sm,state.m);
 
+	if(debug_print && threadIdx.x==0){
+		printf("a\n");
+		for(Int i=0; i<ndim; ++i){
+			for(Int j=0; j<ndim;++j){
+				printf(" %f",a[i][j]);
+			} 
+			printf("\n");
+		}
+	}
 	state.vertex = neigh_vertex_[state.vertex][neigh];
 }
 
@@ -50,23 +59,33 @@ void FirstGuess(SimplexStateT & state){
 If none exists, returns false*/
 bool BetterNeighbor(SimplexStateT & state){
 	const uchar * iw   = iw_[state.vertex];
+	const uchar * iwend = iw+iwlen_[state.vertex];
 	const uchar * stop = stop_[state.vertex];
 	Scalar obj  = state.objective;
 	Scalar bestObj=obj;
 	int k=0, bestK = -1;
 	const uchar * stopIt=stop; Int stop8=0;
-	for(const uchar * iwIt=iw; iwIt!=iw; ++iwIt, ++stop8){
+	for(const uchar * iwIt=iw; iwIt!=iwend; ++iwIt, ++stop8){
 		if(stop8==8){stop8=0; ++stopIt;}
 		uchar s = *iwIt;
 		const int ind = int(s >> 4);
 		s = s & 15;
 		const Scalar wei = Scalar(s) - Scalar(s>=2 ? 1: 2);
 		obj += wei*state.m[ind];
+
 		if(!(((*stopIt)>>stop8)&1)) continue;
 		if(obj<bestObj) {
 			bestObj=obj;
 			bestK=k;}
 		++k;
+	}
+	if(debug_print && threadIdx.x==0){
+		printf("state.vertex %i\n",state.vertex);
+		printf("state.m"); for(int i=0; i<symdim; ++i) printf(" %f",state.m[i]); printf("\n");
+		printf("Found a better neighbor ? %i \n", bestK);
+		printf("obj %f\n",obj);
+		printf("state.objective %f\n",state.objective);
+		printf("bestObj %f\n",bestObj);
 	}
 	if(bestK==-1) return false;
 	state.objective=bestObj; // Note : roundoff error could be an issue ?

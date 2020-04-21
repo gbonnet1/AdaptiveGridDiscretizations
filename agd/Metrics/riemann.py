@@ -75,20 +75,20 @@ class Riemann(Base):
 		# Eigenvector normalization
 		nu = ad.Optimization.norm(u,ord=2,axis=0)
 		mask = nu>0
-		if not u.flags.writeable: u = u.copy()
 		u[:,mask] /= nu[mask]
 
-		ident = fd.as_field(np.eye(len(u)),cost_parallel.shape,conditional=False)
+		xp = ad.cupy_generic.get_array_module(u)
+		ident = fd.as_field(xp.eye(len(u),dtype=u.dtype),cost_parallel.shape,conditional=False)
 
 		m = (cost_parallel**2-cost_orthogonal**2) * lp.outer_self(u) + cost_orthogonal**2 * ident
 		return (cls(m),u) if ret_u else cls(m)
 
 	@classmethod
-	def from_diagonal(cls,*args):
-		args = ad.asarray(args)
-		z = np.zeros(args[0].shape)
-		vdim = len(args)
-		arr = ad.asarray([[z if i!=j else args[i] for i in range(vdim)] for j in range(vdim)])
+	def from_diagonal(cls,diag):
+		diag = ad.asarray(diag)
+		z = np.zeros_like(diag[0])
+		vdim = len(diag)
+		arr = ad.asarray([[z if i!=j else diag[i] for i in range(vdim)] for j in range(vdim)])
 		return cls(arr)
 
 	@classmethod

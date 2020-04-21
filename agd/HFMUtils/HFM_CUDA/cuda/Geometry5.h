@@ -112,6 +112,7 @@ const uchar stop2[8] = {8,65,16,4,81,81,81,1};
 const small * neigh_vertex_[3] = {neigh_vertex0,neigh_vertex1,neigh_vertex2};
 typedef const small (*arr_smallMatT)[ndim][ndim]; 
 const arr_smallMatT neigh_chg_[3] = {(arr_smallMatT)neigh_chg0,(arr_smallMatT)neigh_chg1,(arr_smallMatT)neigh_chg2};
+const int iwlen_[3]={866,61,57};
 const uchar * iw_[3]   = {iw0,iw1,iw2};
 const uchar * stop_[3] = {stop0,stop1,stop2};
 
@@ -204,7 +205,7 @@ const small support2[symdim][ndim] = {
 };
 typedef const small (*coefT)[symdim]; // small[symdim][symdim]
 const coefT coef_[3]={(coefT)coef0,(coefT)coef1,(coefT)coef2};
-typedef const small (*supportT)[ndim]; // small[kktdim][ndim]
+typedef const small (*supportT)[ndim]; // small[kktdim or symdim][ndim]
 const supportT support_[3] = {support0,support1,support2};
 
 void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
@@ -291,7 +292,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 
 	if(debug_print && threadIdx.x==0){
 		printf("sol "); for(Int i=0; i<symdim; ++i) printf(" %f", sol[i]);printf("\n");
-		printf("linsol "); for(Int i=0; i<symdim; ++i) printf(" %f", linsol[i]);printf("\n");
+		printf("linsol "); for(Int i=0; i<5; ++i)   printf(" %f", linsol[i]);printf("\n");
 	}
 
 	for(int i=0; i<symdim; ++i){

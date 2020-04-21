@@ -9,6 +9,7 @@ from agd.AutomaticDifferentiation.Optimization import norm_infinity
 from agd import AutomaticDifferentiation as ad
 from agd import Metrics
 
+def caster(arr): return cp.asarray(arr,dtype=np.float32) # array_float_caster
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
@@ -21,7 +22,7 @@ hfmIn = HFMUtils.dictIn({
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-#    'nitermax_o':1,
+    'nitermax_o':1,
 #    'tol':5*1e-7,
 #    'multiprecision':True,
 #    'values_float64':True,
@@ -38,7 +39,7 @@ hfmIn = HFMUtils.dictIn({
 #	'returns':'in_raw',
 
 	'traits':{
-	'debug_print':0,
+	'debug_print':1,
 	'shape_i':(2,)*ndim,'niter_i':10,
 #	'niter_i':8,'shape_i':(4,)*ndim,
 #	'niter_i':1,'shape_i':(8,8),
@@ -55,13 +56,22 @@ hfmIn = HFMUtils.dictIn({
 #    'nonzero_untidy_kwargs':{'log2_size_i':8,'size2_i':256},
 })
 
-hfmIn['metric'] = Metrics.Riemann(cp.eye(ndim,dtype=np.float32))
+#hfmIn['metric'] = Metrics.Riemann(cp.eye(ndim,dtype=np.float32))
+#hfmIn['metric'] = Metrics.Riemann.from_diagonal(cp.array((1,2,3,4,5),dtype=np.float32))
+#x=np.array((1,2,3,4,5),dtype=np.float32)
+#print(x.flags,"WRITEABLE")
+
+#hfmIn['metric'] = Metrics.Riemann.needle(1+cp.arange(ndim,dtype=np.float32),caster(0.1),caster(1.))
+hfmIn['metric'] = Metrics.Riemann.needle(cp.array((0.1,7.3,2.4,5.8,1.6)[:ndim],dtype=np.float32),caster(1.),caster(0.1))
+
+print(hfmIn['metric'].m)
+
 if False:
 	hfmIn['model'] = f'Isotropic{ndim}'
 	hfmIn.pop('metric')
 
 hfmOut = hfmIn.RunGPU()
-if n<=5: print(hfmOut['values'])
+#if n<=5: print(hfmOut['values'])
 
 exact = ad.Optimization.norm(hfmIn.Grid(),axis=0,ord=2)
 print(norm_infinity(exact-hfmOut['values']))

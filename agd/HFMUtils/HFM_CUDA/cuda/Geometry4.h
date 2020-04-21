@@ -60,6 +60,7 @@ const uchar stop1 [5]= {133,32,8,66,21};
 const small * neigh_vertex_[2] = {neigh_vertex0,neigh_vertex1};
 typedef const small (*arr_smallMatT)[ndim][ndim]; 
 const arr_smallMatT neigh_chg_[2] = {(arr_smallMatT)neigh_chg0,(arr_smallMatT)neigh_chg1};
+const int iwlen_[2]={129,37};
 const uchar * iw_[2]   = {iw0,iw1};
 const uchar * stop_[2] = {stop0,stop1};
 
