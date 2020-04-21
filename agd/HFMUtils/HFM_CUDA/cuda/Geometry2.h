@@ -6,8 +6,16 @@
 const Int ndim=2;
 #include "Geometry_.h"
 
+/// Perpendicular vector, in dimension two. Caution : assume x and out are distinct.
+template<typename T>
+void perp_v(const T x[2], T __restrict__ out[2]){ 
+	out[0]=-x[1];
+	out[1]= x[0];
+}
+
+// Computation of an obtuse superbase of a positive definite matrix, by Selling's algorithm
 const Int Selling_maxiter=50;
-void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
+void obtusesuperbase_m(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 	canonicalsuperbase(sb);
 	const Int iterReducedMax = 3;
 	for(Int iter=0, iterReduced=0; 
@@ -22,25 +30,14 @@ void obtusesuperbase(const Scalar m[symdim], Int sb[ndim+1][ndim]){
 	}
 }
 
+// Selling decomposition of a symmetric positive definite matrix
 // Note : 3=symdim=ndim+1=nsym=nact=nactx
-void Selling_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
+void decomp_m(const Scalar m[symdim], Scalar weights[symdim], Int offsets[symdim][ndim]){
 	Int sb[ndim+1][ndim];
-	obtusesuperbase(m,sb);
+	obtusesuperbase_m(m,sb);
 	for(Int r=0; r<symdim; ++r){
 		const Int i=r, j = (r+1)%3, k=(r+2)%3;
 		weights[r] = max(0., - scal_vmv(sb[i],m,sb[j]));
 		perp_v(sb[k],offsets[r]);
 	}
 }
-
-/* Constants of the following type must be defined.
-#ifndef shape_i_macro
-const Int shape_i[ndim] = {24,24}; // Shape of a single block
-const Int size_i = 24*24; // Product of shape_i
-const Int log2_size_i = 10; // Upper bound on log_2(size_i)
-#endif
-
-#ifndef niter_i_macro
-const Int niter_i = 48;
-#endif
-*/

@@ -24,8 +24,8 @@ bool scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	vL[ndim]={cT,sT,kappa+ixi},
 	vR[ndim]={cT,sT,kappa-ixi};
 		
-	Selling_v(vL,  weights,        offsets);
-	Selling_v(vR, &weights[nfwd], &offsets[nfwd]);
+	decomp_v(vL,  weights,        offsets);
+	decomp_v(vR, &weights[nfwd], &offsets[nfwd]);
 
 	// Maximum of a family of two schemes. -> take the minimal update among the two.
 	return true; // Returns mix_is_min

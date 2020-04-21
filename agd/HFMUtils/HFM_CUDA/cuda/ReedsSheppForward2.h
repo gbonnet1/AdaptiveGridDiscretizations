@@ -21,7 +21,7 @@ void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 	offset[0]=0; offset[1]=0; offset[2]=1; // offsets[0]={0,0,1};
 
 	const Scalar v[ndim] = {cT,sT,kappa};
-	Selling_v(v, &weights[1], &offsets[1]);
+	decomp_v(v, &weights[1], &offsets[1]);
 }
 #endif
 #include "Update.h"

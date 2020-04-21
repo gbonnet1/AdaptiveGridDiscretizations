@@ -22,7 +22,7 @@ void scheme(GEOM(const Scalar params[geom_size],)  Int x[ndim],
 	Scalar m[symdim];
 	self_outer_relax_v(v,Selling_v_relax,m);
 	m[5] = max(m[5], v[2]*v[2] + ixi*ixi);
-	Selling_m(m,weights,offsets);
+	decomp_m(m,weights,offsets);
 
 	// Prune offsets which deviate too much
 	const Scalar w[ndim] = {v[1],-v[0],0}; // cross product of v and {0,0,1}

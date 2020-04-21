@@ -66,7 +66,7 @@ void scheme(GEOM(const Scalar params[geom_size],) Int x[ndim],
 		const Scalar cP = cosPhi_s[l], sP = sinPhi_s[l];
 		const Scalar v[ndim]={sP*cT,sP*sT,(sP*kappa+cP*ixi)};
 
-		Selling_v(v, &weights[l*symdim], &offsets[l*symdim]);
+		decomp_v(v, &weights[l*symdim], &offsets[l*symdim]);
 		const Scalar s = wFejer_s[l];
 		for(Int i=0; i<symdim; ++i) weights[l*symdim+i] *= s;
 	}

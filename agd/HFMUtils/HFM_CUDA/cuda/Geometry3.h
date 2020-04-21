@@ -6,13 +6,24 @@
 const Int ndim=3;
 #include "Geometry_.h"
 
+/// Cross product, in dimension three. Caution : assumes out is dstinct from x and y.
+template<typename Tx, typename Ty, typename Tout=Tx>
+void cross_vv(const Tx x[3], const Ty y[3], Tout out[3]){
+	for(Int i=0; i<3; ++i){
+		const Int j=(i+1)%3, k=(i+2)%3;
+		out[i]=x[j]*y[k]-x[k]*y[j];
+	}
+}
+
+
 const Int Selling_maxiter=100;
 // the first two elements of these permutations range among all possible pairs
 const Int iterReducedMax = 6;
 const Int Selling_permutations[iterReducedMax][ndim+1] = { 
 	{0,1,2,3},{0,2,1,3},{0,3,1,2},{1,2,0,3},{1,3,0,2},{2,3,0,1}};
 
-void obtusesuperbase(const Scalar m[symdim], OffsetT sb[ndim+1][ndim]){
+// Computation of an obtuse superbase of a positive definite matrix, by Selling's algorithm
+void obtusesuperbase_m(const Scalar m[symdim], OffsetT sb[ndim+1][ndim]){
 	canonicalsuperbase(sb);
 	for(Int iter=0, iterReduced=0; 
 		iter<Selling_maxiter && iterReduced < iterReducedMax; 
@@ -30,8 +41,8 @@ void obtusesuperbase(const Scalar m[symdim], OffsetT sb[ndim+1][ndim]){
 	}
 }
 
-// Selling decomposition of a tensor
-void Selling_m(const Scalar m[symdim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
+// Selling decomposition of a positive definite matrix
+void decomp_m(const Scalar m[symdim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
 	OffsetT sb[ndim+1][ndim];
 	obtusesuperbase(m,sb);
 	for(Int r=0; r<symdim; ++r){
@@ -42,26 +53,6 @@ void Selling_m(const Scalar m[symdim], Scalar weights[symdim], OffsetT offsets[s
 	}
 }
 
-
 CURVATURE(
-__constant__ Scalar Selling_v_relax = 0.01; // Relaxation parameter for Selling_v. 
-__constant__ Scalar Selling_v_cosmin2 = 2./3.; // Relaxation parameter for Selling_v.
-
-// Based on selling decomposition, with some relaxation, reorienting of offsets, and pruning of weights
-void Selling_v(const Scalar v[ndim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
-
-	// Build and decompose the relaxed self outer product of v
-	Scalar m[symdim];
-	self_outer_relax_v(v,Selling_v_relax,m);	
-	Selling_m(m,weights,offsets);
-	const Scalar vv = scal_vv(v,v);
-
-	// Redirect offsets in the direction of v, and eliminate those which deviate too much.
-	for(Int k=0; k<symdim; ++k){
-		OffsetT * e = offsets[k]; // e[ndim]
-		const Scalar ve = scal_vv(v,e), ee = scal_vv(e,e);
-		if(ve*ve < vv*ee*Selling_v_cosmin2){weights[k]=0; continue;}
-		if(ve>0){neg_V(e);} // Note : we want ve<0.
-	}
-}
+#include "Decomp_v_.h"
 )
