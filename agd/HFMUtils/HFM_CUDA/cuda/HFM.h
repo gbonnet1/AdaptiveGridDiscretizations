@@ -28,12 +28,15 @@ bool Greater(const Scalar u MULTIP(, const Int uq), const Scalar v MULTIP(, cons
 
 // --- Gets all the neighbor values ---
 void HFMNeighbors(const Int n_i, 
-	const Scalar v_o[ntot],   MULTIP(const Int vq_o[ntot],) const Int v_i[ntot], 
-	ORDER2(const Scalar v2_o[ntot],   MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],
-		const Scalar weights[nact],)
-	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
-	Scalar v[nact], MULTIP(Int vqmin[1],) ORDER2(bool order2[nact],)
-	Int order[nact] FLOW(NSYM(, Int side[nsym]) )){
+	const Scalar v_o[__restrict__ ntot],   MULTIP(const Int vq_o[__restrict__ ntot],) 
+	const Int v_i[__restrict__ ntot], 
+	ORDER2(const Scalar v2_o[__restrict__ ntot],   MULTIP(const Int vq2_o[__restrict__ ntot],) 
+		const Int v2_i[__restrict__ ntot], const Scalar weights[__restrict__ nact],)
+	const Scalar u_i[__restrict__ size_i], MULTIP(const Int uq_i[__restrict__ size_i],)
+	Scalar v[__restrict__ nact], MULTIP(Int & vqmin,) // The neighbor values
+	ORDER2(bool order2[__restrict__ nact],) // Wether the second order scheme is used
+	Int order[__restrict__ nact] // The order in which the neighbor values are sorted
+	FLOW(NSYM(, Int side[__restrict__ nsym]) )){
 
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
@@ -75,19 +78,19 @@ void HFMNeighbors(const Int n_i,
 
 	// Find the minimum value for the multi-precision int, and account for it
 	MULTIP(
-	*vqmin = Int_Max;
+	vqmin = Int_Max;
 	for(Int k=0; k<nact; ++k){
 		if(v[k]<infinity()){
-			*vqmin = min(*vqmin,vq[k]);}
+			vqmin = min(vqmin,vq[k]);}
 	}
 
 	for(Int k=0; k<nact; ++k){
-		v[k] += (vq[k]-*vqmin)*multip_step;}
+		v[k] += (vq[k]-vqmin)*multip_step;}
 	)
 
 	ORDER2(
 	// Set the threshold for second order accuracy
-	const Scalar u0 = u_i[n_i] MULTIP(+ (uq_i[n_i] - *vqmin)*multip_step);
+	const Scalar u0 = u_i[n_i] MULTIP(+ (uq_i[n_i] - vqmin)*multip_step);
 
 	#if order2_threshold_weighted_macro
 	Scalar diff1_sum = 0.,diff1_sum2=0.;
@@ -109,9 +112,9 @@ void HFMNeighbors(const Int n_i,
 		Scalar v2;
 		if(w_i>=0){
 			// Drift alone only affects first order
-			v2 = u_i[w_i] MULTIP(+ (uq_i[w_i]-*vqmin)*multip_step) FACTOR(+v2_o[ks]); 
+			v2 = u_i[w_i] MULTIP(+ (uq_i[w_i]-vqmin)*multip_step) FACTOR(+v2_o[ks]); 
 		} else {
-			v2 = v2_o[ks] MULTIP(+ (vq2_o[ks]-*vqmin)*multip_step);
+			v2 = v2_o[ks] MULTIP(+ (vq2_o[ks]-vqmin)*multip_step);
 		}
 
 		// Compute the second order difference, and compare
@@ -156,18 +159,20 @@ void HFMNeighbors(const Int n_i,
 
 
 /// --------- Eulerian fast marching update operator -----------
-void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
-	const Scalar v_o[ntot], MULTIP(const Int vq_o[ntot],) const Int v_i[ntot],
-	ORDER2(const Scalar v2_o[ntot], MULTIP(const Int vq2_o[ntot],) const Int v2_i[ntot],)
-	const Scalar u_i[size_i], MULTIP(const Int uq_i[size_i],)
+void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[__restrict__ nact],
+	const Scalar v_o[__restrict__ ntot], MULTIP(const Int vq_o[__restrict__ ntot],) 
+	const Int v_i[__restrict__ ntot],
+	ORDER2(const Scalar v2_o[__restrict__ ntot],MULTIP(const Int vq2_o[__restrict__ ntot],) 
+		const Int v2_i[__restrict__ ntot],)
+	const Scalar u_i[__restrict__ size_i], MULTIP(const Int uq_i[__restrict__ size_i],)
 	Scalar & u_out MULTIP(,Int & uq_out) 
-	FLOW(, Scalar flow_weights[nact] NSYM(, Int active_side[nsym]) ) 
+	FLOW(, Scalar flow_weights[__restrict__ nact] NSYM(, Int active_side[__restrict__ nsym])) 
 	){
 
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
 	Scalar v[nact]; 
-	MULTIP(Int vqmin[1];) // shared value vqmin
+	MULTIP(Int vqmin;) // shared value vqmin
 	ORDER2(bool order2[nact];) // Wether second order is active for this neighbor
 	Int order[nact];
 
@@ -226,7 +231,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 	}
 */
 	const Scalar val = vmin+value;
-	u_out = val; MULTIP(uq_out = vqmin[0]; Normalize(u_out,uq_out); )
+	u_out = val; MULTIP(uq_out = vqmin; Normalize(u_out,uq_out); )
 
 	FLOW(
 	if(u_out==infinity()){
@@ -242,11 +247,14 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[nact],
 }
 
 void HFMIter(const bool active, const Int n_i, 
-	const Scalar rhs, MIX(const bool mix_is_min,) const Scalar weights[nactx],
-	const Scalar v_o[ntotx], MULTIP(const Int vq_o[ntotx],) const Int v_i[ntotx], 
-	ORDER2(const Scalar v2_o[ntotx], MULTIP(const Int vq2_o[ntotx],) const Int v2_i[ntotx],)
-	Scalar u_i[size_i] MULTIP(, Int uq_i[size_i]) 
-	FLOW(, Scalar flow_weights[nact] NSYM(, Int active_side[nsym]) MIX(, Int & kmix_) ) ){
+	const Scalar rhs, MIX(const bool mix_is_min,) const Scalar weights[__restrict__ nactx],
+	const Scalar v_o[__restrict__ ntotx], MULTIP(const Int vq_o[__restrict__ ntotx],) 
+	const Int v_i[__restrict__ ntotx], 
+	ORDER2(const Scalar v2_o[__restrict__ ntotx], MULTIP(const Int vq2_o[__restrict__ ntotx],) 
+		const Int v2_i[__restrict__ ntotx],)
+	Scalar u_i[__restrict__ size_i] MULTIP(, Int uq_i[__restrict__ size_i]) 
+	FLOW(, Scalar flow_weights[__restrict__ nact] NSYM(, Int active_side[__restrict__ nsym]) 
+		MIX(, Int & kmix_) ) ){
 
 
 	if(strict_iter_i_macro || nmix>1){

@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_GPU\Isotropic_Repro.ipynb
+# Code automatically exported from notebook Isotropic_Repro.ipynb
 # Do not modify
 import sys; sys.path.append("../..") # Path to import agd
 
@@ -20,25 +20,26 @@ plt = ad.functional.decorate_module_functions(plt,cugen.cupy_get_args)
 HFMUtils.dictIn.RunSmart = cugen.cupy_get_args(HFMUtils.RunSmart,dtype64=True,iterables=(dict,Metrics.Base))
 #RunSmart = cugen.cupy_get_args(RunSmart,dtype64=True,iterables=(dict,Metrics.Base))
 
-factor_variants = [
-    {}, # Default
-    {"seedRadius":2.}, # Spread seed information
-    {"factorizationRadius":10,'factorizationPointChoice':'Key'} # Source factorization
-]
-multip_variants = [
-    {'multiprecision':False}, # Default
-    {'multiprecision':True}, # Reduces roundoff errors
-]
+variants_basic = (
+    [{},{"seedRadius":2.}], # Spread seed information ?
+    [{},{'multiprecision':True}] # Reduce floating point roundoff errors
+)
 
-def RunCompare(gpuIn,check=True,variants=None,**kwargs):
+variants_ext = (
+    [{},{'order':2}], # second order scheme ?
+    [{},{"seedRadius":2.},{"factoringRadius":10.,'factoringPointChoice':'Key'}], # source factorization ?
+    [{},{'multiprecision':True}] # Reduce floating point roundoff errors
+)
+
+def RunCompare(gpuIn,check=True,check_ratio=0,variants=None,**kwargs):
     # Dispatch the common variants if requested
+    if isinstance(variants,str): variants = {'basic':variants_basic,'ext':variants_ext}[variants]
     if variants:
-        order2 = kwargs.get('order',1)==2 or gpuIn.get('order',1)==2
-        for fact in (factor_variants[0],factor_variants[2]) if order2 else factor_variants:
-            for multip in multip_variants:
-                print(f"\n--- Variant with {fact} and {multip} ---")
-                RunCompare(gpuIn,check,**fact,**multip,**kwargs)
-        return # variants
+        for variant in variants[0]:
+            RunCompare(gpuIn,check=check,check_ratio=check_ratio,variants=variants[1:],**kwargs,**variant)
+        return
+
+    if kwargs: print("\n",f"--- Variant {kwargs} ---")
 
     # Run the CPU and GPU solvers
     gpuIn = gpuIn.copy(); gpuIn.update(kwargs)
@@ -62,7 +63,7 @@ def RunCompare(gpuIn,check=True,variants=None,**kwargs):
     
     if check is True: assert np.allclose(gpuVals,cpuVals,atol=1e-5,rtol=1e-4)
     elif check is False: pass
-    else: assert norm_infinity(gpuVals-cpuVals)<check
+    else: assert np.sum(np.abs(gpuVals-cpuVals)>check)<=check_ratio*gpuVals.size
 
     return gpuOut,cpuOut
 

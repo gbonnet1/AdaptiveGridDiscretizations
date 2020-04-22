@@ -47,7 +47,7 @@ class Diagonal(Base):
 		if isinstance(metric,cls): return metric
 		iso = Isotropic.from_cast(metric)
 		shape = (iso.vdim,) + iso.shape
-		return cls(ad.broadcast_to(iso.cost,shape))
+		return cls(np.broadcast_to(iso.cost,shape))
 
 	def __iter__(self):
 		yield self.costs

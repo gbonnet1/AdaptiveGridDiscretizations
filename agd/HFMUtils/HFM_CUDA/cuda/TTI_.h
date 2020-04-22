@@ -124,6 +124,13 @@ bool diags(const Scalar l[2], const Scalar q[3], Scalar diag_s[nmix][2]){
 
 bool scheme(const Scalar geom[geom_size], 
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
+/*	Scalar h = 0.001; // Debug code for profiling...
+	Scalar mat_m[3]={1.*h*h,1.*h*h,1.5*h*h}; 
+	for(Int kmix=0; kmix<nmix; ++kmix){
+//		if(kmix==nmix-1){mat_m[0] = 1.+Scalar(kmix)/nmix;}
+		decomp_m(mat_m,weights+kmix*symdim, offsets+kmix*symdim);}
+	return true;*/
+
 	const Scalar * linear = geom; // linear[2]
 	const Scalar * quadratic = geom + 2; // quadratic[dim2::symdim]
 	const Scalar * transform = geom + (2+dim2::symdim); // transform[ndim * ndim]
