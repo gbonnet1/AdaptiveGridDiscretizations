@@ -50,12 +50,9 @@ __constant__ Scalar factor_radius2;
 // Input: absolute position of point. 
 // Output: wether factor happens here, and relative position of point.
 bool factor_rel(const Int x_abs[ndim], Scalar x_rel[ndim]){
-	Scalar r2 = 0.;
-	for(Int k=0; k<ndim; ++k){
-		x_rel[k] = x_abs[k]-factor_origin[k];
-		r2+=x_rel[k]*x_rel[k];
-	}
-	return r2 < factor_radius2;}
+	sub_vv(x_abs,factor_origin,x_rel);
+	return norm2_v(x_rel) < factor_radius2;
+}
 #endif
 
 ORDER2(

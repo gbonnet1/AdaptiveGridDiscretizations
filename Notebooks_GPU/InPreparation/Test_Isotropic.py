@@ -25,7 +25,7 @@ raise
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
-n=8
+n=10
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
     'exportValues':1,
@@ -35,10 +35,10 @@ hfmIn = HFMUtils.dictIn({
 #    'kernel':"dummy",
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
-#    'raiseOnNonConvergence':False,
-#    'nitermax_o':5,
+    'raiseOnNonConvergence':False,
+    'nitermax_o':200,
 #    'tol':1e-8,
-#    'multiprecision':True,
+    'multiprecision':False,
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
@@ -47,12 +47,12 @@ hfmIn = HFMUtils.dictIn({
 	'gridScale':1.,
 #	'order':2,
 #	'order2_threshold':0.3,
-	'factoringRadius':10000,
-#	'seedRadius':2,
+	'factoringRadius':1000,
+#	'seedRadius':np.sqrt(5)-0.01,
 #	'returns':'in_raw',
 #	'bound_active_blocks':True,
 	'traits':{
-	'niter_i':8,'shape_i':(4,4),
+#	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),
 #	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
@@ -66,17 +66,23 @@ hfmIn = HFMUtils.dictIn({
     },
 })
 
-if False:
+if True:
+	n=8
+	ndim=3
 	hfmIn.update({
-		'model':'Isotropic3',
-		'dims':np.array((200,200,200)),
-		'seeds':[[0,0,0]],
-		'origin':[-0.5,-0.5,-0.5]
+		'model':f'Isotropic{ndim}',
+#		'dims':np.array((n,n,n)),
+		'seeds':[[0.]*ndim],
+		'seedRadius':2.5,
+#		'seeds':[[0.,0.,0.]],
+#		'origin':[-0.5,-0.5,-0.5]
 		})
-	hfmIn['traits'].update({
-		'niter_i':12,
-		'shape_i':(4,4,4),
-		})
+#	hfmIn['traits'].update({
+#		'niter_i':12,
+#		'shape_i':(4,4,4),
+#		})
+	hfmIn.SetRect([[0,1]]*ndim,dimx=n+1,sampleBoundary=True)
+	print(hfmIn)
 
 
 #print(f"Corners {hfmIn.Corners}")
@@ -96,7 +102,7 @@ hfmOut = hfmIn.RunGPU()
 
 
 
-if len(hfmOut['values'])<22: print(hfmOut['values'])
+if len(hfmOut['values'])<32: print(hfmOut['values'])
 #print(f"niter_o : {hfmOut['niter_o']}")
 
 #Comparison with CPU.

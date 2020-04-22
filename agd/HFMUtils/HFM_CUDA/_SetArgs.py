@@ -37,7 +37,9 @@ def SetRHS(self):
 			help="First order variation of the seed values",array_float=True)
 		if seedValueVariation is not None:
 			seedValues = ad.Dense.new(seedValues,seedValueVariation.T)
-	seedRadius = self.GetValue('seedRadius',default=2. if self.factoringRadius>0. else 0.,
+	seedRadius_default = {2:1.8, 3:2.5, 4:3.5, 5:2.5}[self.ndim]
+	seedRadius = self.GetValue('seedRadius',
+		default=seedRadius_default if self.factoringRadius>0. else 0.,
 		help="Spread the seeds over a radius given in pixels, so as to improve accuracy.")
 
 	self.reverseAD = self.HasValue('sensitivity')

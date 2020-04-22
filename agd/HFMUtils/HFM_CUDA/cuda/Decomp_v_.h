@@ -6,13 +6,13 @@ In particular, decomp_m must be defined.
 __constant__ Scalar decomp_v_relax = 0.01; // Relaxation parameter for Selling_v. 
 __constant__ Scalar decomp_v_cosmin2 = 2./3.; // Relaxation parameter for Selling_v.
 
-// Based on selling decomposition, with some relaxation, reorienting of offsets, and pruning of weights
-void Selling_v(const Scalar v[ndim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
+// Based on Selling decomposition, with some relaxation, reorienting of offsets, and pruning of weights
+void decomp_v(const Scalar v[ndim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
 
 	// Build and decompose the relaxed self outer product of v
 	Scalar m[symdim];
 	self_outer_relax_v(v,decomp_v_relax,m);	
-	Selling_m(m,weights,offsets);
+	decomp_m(m,weights,offsets);
 	const Scalar vv = scal_vv(v,v);
 
 	// Redirect offsets in the direction of v, and eliminate those which deviate too much.

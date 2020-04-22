@@ -28,6 +28,7 @@ const Int offsets[ndim][ndim] = {{1,0,0,0,0},{0,1,0,0,0},{0,0,1,0,0},{0,0,0,1,0}
 #endif
 
 #include "Geometry_.h"
+#include "Constants.h" // Needed for factor, and cannot put safely inside FACTOR(...) Macro
 
 #if isotropic_macro
 __constant__ Scalar weights[ndim];
@@ -40,7 +41,6 @@ void scheme(const Scalar dual_costs2[ndim],
 #endif
 
 FACTOR(
-#include "Constants.h"
 #include "EuclideanFactor.h"
 /** Returns the perturbations involved in the factored fast marching method.
 Input : x= relative position w.r.t the seed, e finite difference offset.*/

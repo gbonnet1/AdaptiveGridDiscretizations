@@ -172,9 +172,8 @@ __global__ void Update(
 		const OffsetT * e = offsets[koff]; // e[ndim]
 		++koff;
 		SHIFT(
-			Scalar fact[2]; ORDER2(Scalar fact2[2];)
-			FACTOR( factor_sym(x_rel,e,fact ORDER2(,fact2)) );
-			NOFACTOR( for(Int l=0; l<2; ++l){fact[l]=0; ORDER2(fact2[l]=0;)} )
+			Scalar fact[2]={0.,0.}; ORDER2(Scalar fact2[2]={0.,0.};)
+			FACTOR( if(factors){factor_sym(x_rel,e,fact ORDER2(,fact2));} )
 			DRIFT( const Scalar s = scal_vv(drift,e); fact[0] +=s; fact[1]-=s; )
 			)
 
