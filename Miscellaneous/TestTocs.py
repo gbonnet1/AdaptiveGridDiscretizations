@@ -67,6 +67,7 @@ def TestToc(dirname,filename,**kwargs):
 	'Notebooks_NonDiv':	"## Volume: Non-divergence form PDEs",
 	'Notebooks_FMM':	"",
 	'Notebooks_Repro':	"## Volume: Reproducible research",
+	'Notebooks_GPU':    "## Volume : GPU accelerated methods",
 	}[dirname]
 
 	if line0!=line0_ref:

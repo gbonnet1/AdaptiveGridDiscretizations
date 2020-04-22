@@ -65,7 +65,7 @@ VolumeFilenames = {
 "SubsetRd","FiniteDifferences"
 ],
 "Repro":["PucciMongeAmpere"],
-"GPU":["Isotropic_Repro","Riemann_Repro","Rander_Repro"],
+"GPU":["Isotropic_Repro","Riemann_Repro","Rander_Repro","Curvature_Repro","Flow_Repro"],
 }
 
 RepositoryDescription = """**Github repository** to run and modify the examples on your computer.

@@ -20,7 +20,7 @@ void scheme(GEOM(const Scalar params[geom_size],)  Int x[ndim],
 
 	// Build the relaxed self outer product of v
 	Scalar m[symdim];
-	self_outer_relax_v(v,Selling_v_relax,m);
+	self_outer_relax_v(v,decomp_v_relax,m);
 	m[5] = max(m[5], v[2]*v[2] + ixi*ixi);
 	decomp_m(m,weights,offsets);
 
@@ -30,7 +30,7 @@ void scheme(GEOM(const Scalar params[geom_size],)  Int x[ndim],
 	for(Int k=0; k<symdim; ++k){
 		const Int * e = offsets[k]; // e[ndim]
 		const Scalar we = scal_vv(w,e), ee = scal_vv(e,e);
-		if(we*we >= ee*ww*(1-Selling_v_cosmin2)){
+		if(we*we >= ee*ww*(1-decomp_v_cosmin2)){
 			weights[k]=0;}
 	}
 }
