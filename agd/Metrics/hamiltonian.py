@@ -218,8 +218,7 @@ class Hamiltonian(object):
 				q=q.reshape(self.shape_free+(size_bound,))
 				p=p.reshape(self.shape_free+(size_bound,))
 		dq,dp = self.flow(q,p)
-		return ad.concatenate((dq,dp),axis=0).flatten()
-#		return ad.concatenate(self.flow(qp[:d],qp[d:]),axis=0)
+		return np.concatenate((dq,dp),axis=0).flatten()
 
 	def integrate(self,q,p,scheme,niter,T=1,path=False):
 		"""

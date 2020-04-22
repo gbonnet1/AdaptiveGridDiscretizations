@@ -3,6 +3,7 @@
 
 import numpy as np
 import itertools
+import copy
 
 from .. import misc
 from ..riemann import Riemann
@@ -59,7 +60,7 @@ class Hooke(ImplicitBase):
 			return hooke
 		else: 
 			inv_trans= self.inverse_transformation.reshape((self.vdim**2,)+self.shape)
-			return ad.concatenate((hooke,inv_trans),axis=0)
+			return np.concatenate((hooke,inv_trans),axis=0)
 
 	@classmethod
 	def expand(cls,arr):
@@ -160,14 +161,16 @@ class Hooke(ImplicitBase):
 
 
 	def rotate(self,r):
+		other = copy.copy(self)
 		hooke,r = common_field((self.hooke,r),(2,2))
 		Voigt,Voigti = self._Voigt,self._Voigti
-		self.hooke = ad.array([ [ [
+		other.hooke = ad.array([ [ [
 			hooke[Voigt[i,j],Voigt[k,l]]*r[ii,i]*r[jj,j]*r[kk,k]*r[ll,l]
 			for (i,j,k,l) in itertools.product(range(self.vdim),repeat=4)]
 			for (ii,jj) in Voigti] 
 			for (kk,ll) in Voigti]
 			).sum(axis=2)
+		return other
 
 	@staticmethod
 	def _Mandel_factors(vdim,shape=tuple(),a=np.sqrt(2)):
