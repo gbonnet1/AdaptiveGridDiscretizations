@@ -41,7 +41,7 @@ def Solve(self,name):
 	kernel_time = time.time() - kernel_start # TODO : use cuda event ...
 
 	# Report
-	if verb: print(f"GPU kernel {name} ran for {kernel_time} seconds, "
+	if verb: print(f"GPU kernel {name} ran for {kernel_time} seconds,"
 		f" and {niter_o} iterations.")
 
 	data.stats.update({
