@@ -36,15 +36,15 @@ hfmIn = HFMUtils.dictIn({
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':200,
+    'nitermax_o':1,
 #    'tol':1e-8,
     'multiprecision':False,
 #    'values_float64':True,
 
-#    'help':['nitermax_o','traits'],
 	'dims':np.array((n,n)),
 	'origin':[-0.5,-0.5],
 	'gridScale':1.,
+
 #	'order':2,
 #	'order2_threshold':0.3,
 	'factoringRadius':1000,
@@ -52,6 +52,7 @@ hfmIn = HFMUtils.dictIn({
 #	'returns':'in_raw',
 #	'bound_active_blocks':True,
 	'traits':{
+	'niter_i':10,
 #	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),
 #	'niter_i':16,'shape_i':(8,8),
@@ -60,20 +61,20 @@ hfmIn = HFMUtils.dictIn({
 #	'niter_i':64,'shape_i':(32,32),
 #   'debug_print':1,
 #    'niter_i':1,
-#    'strict_iter_i_macro':1,
+    'strict_iter_i_macro':1,
 #	'pruning_macro':1,
 #	'strict_iter_o_macro':1,
     },
 })
 
 if True:
-	n=8
-	ndim=3
+	n=4
+	ndim=2
 	hfmIn.update({
 		'model':f'Isotropic{ndim}',
 #		'dims':np.array((n,n,n)),
 		'seeds':[[0.]*ndim],
-		'seedRadius':2.5,
+		'seedRadius':0.5,
 #		'seeds':[[0.,0.,0.]],
 #		'origin':[-0.5,-0.5,-0.5]
 		})

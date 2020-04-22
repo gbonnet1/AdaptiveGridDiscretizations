@@ -112,7 +112,7 @@ def SetGeometry(self):
 
 		if self.model_=='Isotropic':
 			# No geometry field. Metric passed as a module constant
-			self.geom = cp.zeros((0,)+self.shape,dtype=self.float_t)
+			self.geom = cp.array(0.,dtype=self.float_t)
 		elif self.model_=='Diagonal':
 			self.geom = self.dualMetric.costs**2
 		elif self.model_=='Riemann':

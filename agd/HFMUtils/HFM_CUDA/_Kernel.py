@@ -171,7 +171,8 @@ def SetKernel(self):
 		SetCst('factor_origin', self.seed,              float_t) # Single seed only
 		factor_metric = ad.remove_ad(self.CostMetric(self.seed).to_HFM())
 		# The drift part of a Rander metric can be ignored for factorization purposes 
-		if self.model.startswith('Rander'): factor_metric = factor_metric[:-self.ndim]
+		if self.model_=='Rander': factor_metric = factor_metric[:-self.ndim]
+		elif self.model_=='Isotropic': factor_metric = factor_metric**2 
 		SetCst('factor_metric',factor_metric,float_t)
 
 	if self.order==2:
