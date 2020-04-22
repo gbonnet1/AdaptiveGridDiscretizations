@@ -25,7 +25,7 @@ raise
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
-n=10
+n=20
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
     'exportValues':1,
@@ -36,7 +36,7 @@ hfmIn = HFMUtils.dictIn({
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
-    'nitermax_o':1,
+#    'nitermax_o':1,
 #    'tol':1e-8,
     'multiprecision':False,
 #    'values_float64':True,
@@ -47,12 +47,12 @@ hfmIn = HFMUtils.dictIn({
 
 #	'order':2,
 #	'order2_threshold':0.3,
-	'factoringRadius':1000,
+	'factoringRadius':10.,
 #	'seedRadius':np.sqrt(5)-0.01,
 #	'returns':'in_raw',
 #	'bound_active_blocks':True,
 	'traits':{
-	'niter_i':10,
+#	'niter_i':10,
 #	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),
 #	'niter_i':16,'shape_i':(8,8),
@@ -67,7 +67,7 @@ hfmIn = HFMUtils.dictIn({
     },
 })
 
-if True:
+if False:
 	n=4
 	ndim=2
 	hfmIn.update({
@@ -142,4 +142,4 @@ if False: # Riemannian code
 #import agd.HFMUtils.HFM_CUDA.solvers as solvers
 #x = np.array([[1,1],[0,0]])
 #print(solvers.neighbors(x,(3,3)))
-if len(hfmOut['values'])<20: print(hfmOut['values'].get() - hfmOutCPU['values'])
+if len(hfmOut['values'])<=20: print(hfmOut['values'].get() - hfmOutCPU['values'])
