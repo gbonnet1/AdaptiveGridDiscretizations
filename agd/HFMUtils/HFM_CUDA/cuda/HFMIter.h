@@ -6,6 +6,7 @@ This file implements the of a block of values, in the HFM algorithm.
 */
 
 #include "HFM.h"
+#include "EqSeq.h"
 
 void HFMIter(const bool active, 
 	const Scalar rhs, MIX(const bool mix_is_min,) const Scalar weights[__restrict__ nactx],
@@ -98,7 +99,7 @@ void HFMIter(const bool active,
 		if(mix_is_min){
 			/* Use an equidistributed sequence of updates if iter is even,
 			or the best previously seen update otherwise.*/
-			if(iter_i%2==0){ kmix = farthest_seq<nmix>[(iter_i/2)%nmix];}
+			if(iter_i%2==0){ kmix = eqseq<nmix>[(iter_i/2)%nmix];}
 			else {           kmix = k_min;}
 		} else {
 			/* Try all possibilities first, then use what gave the largest result */
