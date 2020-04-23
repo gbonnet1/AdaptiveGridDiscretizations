@@ -27,7 +27,7 @@ bool Greater(const Scalar u MULTIP(, const Int uq), const Scalar v MULTIP(, cons
 }
 
 // --- Gets all the neighbor values ---
-void HFMNeighbors(const Int n_i, 
+void HFMNeighbors(
 	const Scalar v_o[__restrict__ ntot],   MULTIP(const Int vq_o[__restrict__ ntot],) 
 	const Int v_i[__restrict__ ntot], 
 	ORDER2(const Scalar v2_o[__restrict__ ntot],   MULTIP(const Int vq2_o[__restrict__ ntot],) 
@@ -37,6 +37,7 @@ void HFMNeighbors(const Int n_i,
 	ORDER2(bool order2[__restrict__ nact],) // Wether the second order scheme is used
 	Int order[__restrict__ nact] // The order in which the neighbor values are sorted
 	FLOW(NSYM(, Int side[__restrict__ nsym]) )){
+	const Int n_i = threadIdx.x;
 
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
@@ -159,7 +160,7 @@ void HFMNeighbors(const Int n_i,
 
 
 /// --------- Eulerian fast marching update operator -----------
-void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[__restrict__ nact],
+void HFMUpdate(const Scalar rhs, const Scalar weights[__restrict__ nact],
 	const Scalar v_o[__restrict__ ntot], MULTIP(const Int vq_o[__restrict__ ntot],) 
 	const Int v_i[__restrict__ ntot],
 	ORDER2(const Scalar v2_o[__restrict__ ntot],MULTIP(const Int vq2_o[__restrict__ ntot],) 
@@ -168,7 +169,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[__restrict_
 	Scalar & u_out MULTIP(,Int & uq_out) 
 	FLOW(, Scalar flow_weights[__restrict__ nact] NSYM(, Int active_side[__restrict__ nsym])) 
 	){
-
+	const Int n_i = threadIdx.x;
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
 	Scalar v[nact]; 
@@ -176,7 +177,7 @@ void HFMUpdate(const Int n_i, const Scalar rhs, const Scalar weights[__restrict_
 	ORDER2(bool order2[nact];) // Wether second order is active for this neighbor
 	Int order[nact];
 
-	HFMNeighbors(n_i,
+	HFMNeighbors(
 		v_o MULTIP(,vq_o), v_i,
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i, weights,)
 		u_i MULTIP(,uq_i), 

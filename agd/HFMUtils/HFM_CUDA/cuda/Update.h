@@ -255,7 +255,7 @@ __global__ void Update(
 	) 
 
 	// Compute and save the values
-	HFMIter(!isSeed, n_i, 
+	HFMIter(!isSeed, 
 		rhs, MIX(mix_is_min,) weights,
 		v_o MULTIP(,vq_o), v_i, 
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)

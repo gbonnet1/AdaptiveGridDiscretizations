@@ -7,7 +7,7 @@ This file implements the of a block of values, in the HFM algorithm.
 
 #include "HFM.h"
 
-void HFMIter(const bool active, const Int n_i, 
+void HFMIter(const bool active, 
 	const Scalar rhs, MIX(const bool mix_is_min,) const Scalar weights[__restrict__ nactx],
 	const Scalar v_o[__restrict__ ntotx], MULTIP(const Int vq_o[__restrict__ ntotx],) 
 	const Int v_i[__restrict__ ntotx], 
@@ -16,7 +16,7 @@ void HFMIter(const bool active, const Int n_i,
 	Scalar u_i[__restrict__ size_i] MULTIP(, Int uq_i[__restrict__ size_i]) 
 	FLOW(, Scalar flow_weights[__restrict__ nact] NSYM(, Int active_side[__restrict__ nsym]) 
 		MIX(, Int & kmix_) ) ){
-
+	const Int n_i = threadIdx.x;
 
 	if(strict_iter_i_macro || nmix>1){
 	for(int i=0; i<niter_i; ++i){
@@ -31,7 +31,7 @@ void HFMIter(const bool active, const Int n_i,
 			for(Int kmix=0; kmix<nmix; ++kmix){
 				const Int s = kmix*ntot;
 				HFMUpdate(
-					n_i, rhs, weights+kmix*nact,
+					rhs, weights+kmix*nact,
 					v_o+s MULTIP(,vq_o+s), v_i+s,
 					ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
 					u_i MULTIP(,uq_i),
@@ -58,7 +58,7 @@ void HFMIter(const bool active, const Int n_i,
 		Scalar u_i_new; MULTIP(Int uq_i_new;)
 		if(active) {
 			HFMUpdate(
-				n_i, rhs, weights,
+				rhs, weights,
 				v_o MULTIP(,vq_o), v_i,
 				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 				u_i MULTIP(,uq_i),
