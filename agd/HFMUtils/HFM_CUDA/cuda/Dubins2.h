@@ -3,8 +3,7 @@
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 #define nsym_macro 0 // Only forward offsets
-#define nmix_macro 1 // Maximum of a family of two schemes. 
-const Int nmix = 2;
+#define nmix_macro 2 // Maximum of a family of two schemes. 
 
 #define curvature_macro 1
 #include "Geometry3.h"

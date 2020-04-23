@@ -8,11 +8,8 @@ const Int nact = nsym + nfwd; // maximum number of simulatneously active offsets
 const Int ntot = 2*nsym + nfwd; // Total number of offsets in the scheme
 
 // Maximum or minimum of several schemes
-
-#if nmix_macro==0
-const Int nmix = 1;
-const bool mix_is_min = true; // dummy value
-#endif
+const Int nmix = nmix_macro;
+NOMIX(const bool mix_is_min = true;) // dummy value
 
 const Int nactx = nmix * nact;
 const Int ntotx = nmix * ntot;  

@@ -4,7 +4,7 @@
 
 #include "Constants.h"
 #include "Grid.h"
-#include "HFM.h"
+#include "HFMIter.h"
 #include "REDUCE_i.h"
 #include "GetBool.h"
 #include "Propagation.h"

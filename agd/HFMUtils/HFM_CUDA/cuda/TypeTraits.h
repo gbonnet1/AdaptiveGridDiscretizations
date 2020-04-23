@@ -56,12 +56,12 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 #define NSYM(...) 
 #endif
 
-/** Min or Max of a family of schemes*/
+/** Number of schemes of which we take the max of min*/
 #ifndef nmix_macro
-#define nmix_macro 0
+#define nmix_macro 1
 #endif
 
-#if nmix_macro
+#if nmix_macro >= 2
 #define MIX(...) __VA_ARGS__
 #define NOMIX(...) 
 #else
@@ -73,7 +73,7 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 within a block to be stored separately and synced at the end of 
 each iteration*/
 #ifndef strict_iter_i_macro
-#define strict_iter_i_macro (multiprecision_macro || nmix_macro)
+#define strict_iter_i_macro (multiprecision_macro || (nmix_macro >= 2) )
 #endif
 
 /** strict_iter_o_macro causes a similar behavior, but for the global iterations */ 
