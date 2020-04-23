@@ -1,10 +1,81 @@
-/* This file implements efficient sorting methods for small array sizes.
+/* This file implements efficient sorting methods for small array sizes, 2<=n<=64.
+(Longer sizes can easily be achieved using more merging steps.)
 Note that these sorting methods are intended to be used on a single thread, hence
 we do not attempt to extract parallelism.*/
 
-/* This function is intended for 16<n<=32. It performs two network sorts, and then merges 
-the results*/
+namespace NetworkSort {
+
+template<Int n, Int rec = (n>16)+(n>32)+(n>64)+(n>128)+(n>256) > struct Sorter;
+
+/** The function intended for use. Output : ordering of the input values. */
+template<Int n> void sort(const Scalar values[n], Int order[n]){
+	Sorter<n>::Run(values,order);}
+
+// All below is implementation detail
+
 template<Int n> void network_sort(const Scalar values[n], Int order[n]);
+
+template<Int n0, Int n1, Int n=n0+n1> 
+void merge(const Scalar values[n], const Int source[n], Int dest[n]){
+	const Int * beg0 = source; const Int *end0 = source+n0;
+	const Int * beg1 = end0;   const Int *end1 = source+n;
+	for(Int i=0; i<n; ++i){
+		if(beg0==end0 || (beg1!=end1 && values[*beg0]>values[*beg1]) ){
+			  *dest=*beg1; ++beg1;}
+		else {*dest=*beg0; ++beg0;}
+		++dest;
+	}
+}
+
+
+template<Int n> struct Sorter<n,0> {
+	static void Run(const Scalar values[n], Int order[n]){
+		for(Int i=0; i<n; ++i){order[i]=i;}
+		_Run(values, order);}
+	static void _Run(const Scalar values[n], Int order[n]){
+		network_sort<n>(values, order);}
+};
+template<Int n> struct Sorter<n,1> {
+	static void Run(const Scalar values[n], Int order[n]){
+		Int tmp[n]; for(Int i=0; i<n; ++i){tmp[i]=i;}
+		_Run(values, tmp, order);}
+	static void _Run(const Scalar values[n], Int source[n], Int dest[n]){
+		const Int n0=n/2; const Int n1=n-n0;
+		Sorter<n0,0>::_Run(values,source);
+		Sorter<n1,0>::_Run(values,source+n0);
+		merge<n0,n1>(values, source, dest);
+	}
+};
+template<Int n> struct Sorter<n,2> {
+	static void Run(const Scalar values[n], Int order[n]){
+		Int tmp[n];
+		for(Int i=0; i<n; ++i){order[i]=i;}
+		_Run(values, order, tmp);}
+	static void _Run(const Scalar values[n], Int order[n], Int tmp[n]){
+		const Int n0=n/2; const Int n1=n-n0;
+		Sorter<n0,1>::_Run(values,order,tmp);
+		Sorter<n1,1>::_Run(values,order+n0,tmp+n0);
+		merge<n0,n1>(values, tmp, order);
+	}
+};
+
+template<Int n> struct Sorter<n,3> {
+	static void Run(const Scalar values[n], Int order[n]){
+		Int tmp[n]; for(Int i=0; i<n; ++i){tmp[i]=i;}
+		_Run(values, tmp, order);}
+	static void _Run(const Scalar values[n], Int source[n], Int dest[n]){
+		const Int n0=n/2; const Int n1=n-n0;
+		Sorter<n0,2>::_Run(values,source,dest); // dist is used as tmp
+		Sorter<n1,2>::_Run(values,source+n0,dest+n0);
+		merge<n0,n1>(values, source, dest);
+	}
+};
+
+/*
+Sorter<n,4> similar to Sorter<n,2> except for recursive call to Sorter<n,3>
+Sorter<n,5> similar to Sorter<n,3> except for recursive call to Sorter<n,4>
+ */
+
 
 template<Int n> void merge_sort(const Scalar values[n], Int order[n]){
 	const Int n0=n/2; const Int n1=n-n0;
@@ -351,3 +422,4 @@ ORDER_SWAP(6,8);ORDER_SWAP(10,12);ORDER_SWAP(3,5);ORDER_SWAP(7,9);
 ORDER_SWAP(3,4);ORDER_SWAP(5,6);ORDER_SWAP(7,8);ORDER_SWAP(9,10);ORDER_SWAP(11,12);
 ORDER_SWAP(6,7);ORDER_SWAP(8,9);}
 
+}

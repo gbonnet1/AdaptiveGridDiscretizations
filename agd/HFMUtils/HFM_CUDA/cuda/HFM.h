@@ -6,9 +6,7 @@ This file implements common rountines for HFM-type fast marching methods
 running on the GPU based on CUDA.
 */
 
-#if network_sort_macro || merge_sort_macro
 #include "NetworkSort.h"
-#endif
 
 /// Normalizes a multi-precision variable so that u is as small as possible
 MULTIP( 
@@ -133,7 +131,9 @@ void HFMNeighbors(
 	}
 	)
 
-	// Sort the neighbor values
+	NetworkSort::sort<nact>(v,order);
+
+/*	// Sort the neighbor values
 	#if !merge_sort_macro
 	for(Int k=0; k<nact; ++k) {order[k]=k;}
 	#endif
@@ -155,6 +155,7 @@ void HFMNeighbors(
 		}
 	}
 	#endif
+	*/
 
 } // HFMNeighbors
 

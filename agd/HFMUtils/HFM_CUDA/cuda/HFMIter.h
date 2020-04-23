@@ -85,18 +85,11 @@ void HFMIter(const bool active,
 	// Adaptive choice of kmix based on the DECREASING values assumption.
 	FLOW("nmix_adaptive_macro should be deactivated with flow computation")
 
+	Scalar u_i_new=u_i[n_i]; MULTIP(Int uq_i_new=uq_i[n_i];)
 	// Variables used only if mix_is_min == true (minimum of a family of schemes)
-	Int k_min; Scalar u_min=infinity(); MULTIP(Int uq_min=0;)
-
+	Int k_min=nmix/2; 
 	// Variables used only if mix_is_min == false (maximum of a family of schemes)
-	Scalar u_max[nmix]; MULTIP(Int uq_max[nmix];) 
-	Int order_max[nmix];
-	if(!mix_is_min){
-		for(Int kmix=0; kmix<nmix; ++kmix){
-			u_max[kmix] = -infinity(); MULTIP(uq_max[kmix]=0;) 
-			order_max[kmix]=kmix;
-		}
-	}
+	Scalar u_max[nmix]; MULTIP(Int uq_max[nmix];) Int order_max[nmix];
 
 	for(Int iter_i=0; iter_i<niter_i; ++iter_i){
 		if(active){
@@ -113,6 +106,7 @@ void HFMIter(const bool active,
 			else {           kmix = order_max[nmix-1];}
 		}
 
+		Scalar u_i_mix; MULTIP(Int uq_i_mix;) 
 		const Int s = kmix*ntot;
 		HFMUpdate(
 			rhs, weights+kmix*nact,
@@ -122,40 +116,47 @@ void HFMIter(const bool active,
 			u_i_mix MULTIP(,uq_i_mix) 
 			);
 
-		if(mix_is_min){
-			// Anything smaller is good to take
+		if(mix_is_min){ // Min of schemes.
+			// Anything smaller than previously computed values is good to take
 			if(Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
 				u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
-				k_min = kmin;
+				k_min = kmix;
 			} 
-		} else {
+		} else { // Max of schemes.
 			if(iter_i<nmix){ 
 				u_max[iter_i] = u_i_mix; MULTIP(uq_min[iter_i] = uq_i_mix;)
-				if(iter_i==nmix-1){ // Sort the values
+				if(iter_i==nmix-1){ // Sort the values on the last time
 					#if multip_macro // Sorting methods do not accept multiprecision
 					Int uq_ref=Int_Max;
 					for(Int i=0; i<nmix; ++i){uq_ref = min(uq_ref,uq_max[i]);}
 					Scalar u_max_abs[nmix];
 					for(Int i=0; i<nmix; ++i){
-						u_max_abs[i] = u_max[i]+(uq_max[i]-uq_max)*multip_step;}
-					sort<nmix>(u_max_abs,order_max);
+						u_max_abs[i] = u_max[i]+(uq_max[i]-uq_ref)*multip_step;}
+					NetworkSort::sort<nmix>(u_max_abs,order_max);
 					#else
-					sort<nmix>(u_max,order_max);
+					NetworkSort::sort<nmix>(u_max,order_max);
 					#endif
 				}
-			} else {
-				// Insert the new value in the sorted list
-				TODO
-			}
-		}
-		if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
-			u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
-		} // Mix and better update value
-
-
-
-		} // active
+			} else { 
+				/* Insert the new value in the sorted list, and take the new top value 
+				for update*/
+				u_max[kmix]=u_i_mix; MULTIP(uq_max[kmix]=uq_i_mix;)
+				for(Int i=nmix-2; i>=0; --i){
+					const Int j = order_max[i];
+					if(Greater(u_i_mix, MULTIP(uq_i_mix,) u_max[j] MULTIP(,uq_max[j]))){
+						order_max[i+1]=kmix; break;
+					} else { 
+						order_max[i+1]=j;
+					}
+				const Int j=order_max[nmix-1];
+				u_i_new = u_max[j]; MIX(uq_i_new = uq_max[j];)
+				}
+			} // Min/Max of schemes
+		} // if active
 		__syncthreads()
+		u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
+		__syncthreads();
+
 	}
 
 
