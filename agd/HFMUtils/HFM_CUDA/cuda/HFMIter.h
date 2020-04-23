@@ -18,59 +18,148 @@ void HFMIter(const bool active,
 		MIX(, Int & kmix_) ) ){
 	const Int n_i = threadIdx.x;
 
-	if(strict_iter_i_macro || nmix>1){
-	for(int i=0; i<niter_i; ++i){
-		Scalar u_i_new MIX(=mix_neutral(mix_is_min)); MULTIP(Int uq_i_new MIX(=0);)
-		if(active) {
-			NOMIX(Scalar & u_i_mix = u_i_new; MULTIP(Int & uq_i_mix = uq_i_new;)
-				FLOW(Scalar * const flow_weights_mix = flow_weights; 
-					 NSYM(Int * const active_side_mix = active_side;)) )
-			MIX(Scalar u_i_mix; MULTIP(Int uq_i_mix;) 
-				FLOW(Scalar flow_weights_mix[nact]; NSYM(Int active_side_mix[nsym];)) )
 
-			for(Int kmix=0; kmix<nmix; ++kmix){
-				const Int s = kmix*ntot;
-				HFMUpdate(
-					rhs, weights+kmix*nact,
-					v_o+s MULTIP(,vq_o+s), v_i+s,
-					ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
-					u_i MULTIP(,uq_i),
-					u_i_mix MULTIP(,uq_i_mix) 
-					FLOW(, flow_weights_mix NSYM(, active_side_mix))
-					);
-				MIX(if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
-					u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
-					FLOW(kmix_=kmix; 
-						for(Int k=0; k<nact; ++k){flow_weights[k]=flow_weights_mix[k];}
-						NSYM(for(Int k=0; k<nsym; ++k){active_side[k]=active_side_mix[k];}))
-				}) // Mix and better update value
-			}
-		}
-		__syncthreads();
-		if(active DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
-										u_i_new  MULTIP(,uq_i_new)))) {
-			u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
-		__syncthreads();
-	} // for niter_i
+	#if ! nmix_adaptive_macro // Simple iteration 
 
-	} else { // without strict_iter_i
-	for(int i=0; i<niter_i; ++i){
-		Scalar u_i_new; MULTIP(Int uq_i_new;)
-		if(active) {
+	for(int iter_i=0; iter_i<niter_i; ++iter_i){
+
+	#if strict_iter_i_macro // Always on if MULTIP or NMIX are on. 
+
+	Scalar u_i_new MIX(=mix_neutral(mix_is_min)); MULTIP(Int uq_i_new MIX(=0);)
+	if(active) {
+		NOMIX(Scalar & u_i_mix = u_i_new; MULTIP(Int & uq_i_mix = uq_i_new;)
+			FLOW(Scalar * const flow_weights_mix = flow_weights; 
+				 NSYM(Int * const active_side_mix = active_side;)) )
+		MIX(Scalar u_i_mix; MULTIP(Int uq_i_mix;) 
+			FLOW(Scalar flow_weights_mix[nact]; NSYM(Int active_side_mix[nsym];)) )
+
+		for(Int kmix=0; kmix<nmix; ++kmix){
+			const Int s = kmix*ntot;
 			HFMUpdate(
-				rhs, weights,
-				v_o MULTIP(,vq_o), v_i,
-				ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
+				rhs, weights+kmix*nact,
+				v_o+s MULTIP(,vq_o+s), v_i+s,
+				ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
 				u_i MULTIP(,uq_i),
-				u_i_new MULTIP(,uq_i_new) 
-				FLOW(, flow_weights NSYM(, active_side))
+				u_i_mix MULTIP(,uq_i_mix) 
+				FLOW(, flow_weights_mix NSYM(, active_side_mix))
 				);
-			if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
-										  u_i_new  MULTIP(,uq_i_new))) ) {
-				u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
+			MIX(if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
+				u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
+				FLOW(kmix_=kmix; 
+					for(Int k=0; k<nact; ++k){flow_weights[k]=flow_weights_mix[k];}
+					NSYM(for(Int k=0; k<nsym; ++k){active_side[k]=active_side_mix[k];}))
+			}) // Mix and better update value
 		}
-		__syncthreads();
+	}
+	__syncthreads();
+	if(active DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
+									u_i_new  MULTIP(,uq_i_new)))) {
+		u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
+	__syncthreads();
+
+	#else // Without strict_iter_i
+	MIX("strict_iter_i is needed with mix")
+	MULTIP("strict_iter_i is needed with multip")
+
+	if(active) {
+		Scalar u_i_new; MULTIP(Int uq_i_new;)
+		HFMUpdate(
+			rhs, weights,
+			v_o MULTIP(,vq_o), v_i,
+			ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
+			u_i MULTIP(,uq_i),
+			u_i_new MULTIP(,uq_i_new) 
+			FLOW(, flow_weights NSYM(, active_side))
+			);
+		if(true DECREASING(&& Greater(u_i[n_i] MULTIP(,uq_i[n_i]),
+									  u_i_new  MULTIP(,uq_i_new))) ) {
+			u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
+	}
+	__syncthreads();
+
+	#endif // strict_iter_i
+
+	} // for 0<=iter_i<niter_i
+
+	#else // nmix_adaptive_macro, 
+	// Adaptive choice of kmix based on the DECREASING values assumption.
+	FLOW("nmix_adaptive_macro should be deactivated with flow computation")
+
+	// Variables used only if mix_is_min == true (minimum of a family of schemes)
+	Int k_min; Scalar u_min=infinity(); MULTIP(Int uq_min=0;)
+
+	// Variables used only if mix_is_min == false (maximum of a family of schemes)
+	Scalar u_max[nmix]; MULTIP(Int uq_max[nmix];) 
+	Int order_max[nmix];
+	if(!mix_is_min){
+		for(Int kmix=0; kmix<nmix; ++kmix){
+			u_max[kmix] = -infinity(); MULTIP(uq_max[kmix]=0;) 
+			order_max[kmix]=kmix;
+		}
 	}
 
-	} // strict_iter_i
+	for(Int iter_i=0; iter_i<niter_i; ++iter_i){
+		if(active){
+		// Select the parameter used for the next update
+		Int kmix;
+		if(mix_is_min){
+			/* Use an equidistributed sequence of updates if iter is even,
+			or the best previously seen update otherwise.*/
+			if(iter_i%2==0){ kmix = farthest_seq<nmix>[(iter_i/2)%nmix];}
+			else {           kmix = k_min;}
+		} else {
+			/* Try all possibilities first, then use what gave the largest result */
+			if(iter_i<nmix){ kmix = iter_i;}
+			else {           kmix = order_max[nmix-1];}
+		}
+
+		const Int s = kmix*ntot;
+		HFMUpdate(
+			rhs, weights+kmix*nact,
+			v_o+s MULTIP(,vq_o+s), v_i+s,
+			ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
+			u_i MULTIP(,uq_i),
+			u_i_mix MULTIP(,uq_i_mix) 
+			);
+
+		if(mix_is_min){
+			// Anything smaller is good to take
+			if(Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
+				u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
+				k_min = kmin;
+			} 
+		} else {
+			if(iter_i<nmix){ 
+				u_max[iter_i] = u_i_mix; MULTIP(uq_min[iter_i] = uq_i_mix;)
+				if(iter_i==nmix-1){ // Sort the values
+					#if multip_macro // Sorting methods do not accept multiprecision
+					Int uq_ref=Int_Max;
+					for(Int i=0; i<nmix; ++i){uq_ref = min(uq_ref,uq_max[i]);}
+					Scalar u_max_abs[nmix];
+					for(Int i=0; i<nmix; ++i){
+						u_max_abs[i] = u_max[i]+(uq_max[i]-uq_max)*multip_step;}
+					sort<nmix>(u_max_abs,order_max);
+					#else
+					sort<nmix>(u_max,order_max);
+					#endif
+				}
+			} else {
+				// Insert the new value in the sorted list
+				TODO
+			}
+		}
+		if(mix_is_min==Greater(u_i_new MULTIP(,uq_i_new), u_i_mix MULTIP(,uq_i_mix) ) ){
+			u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)
+		} // Mix and better update value
+
+
+
+		} // active
+		__syncthreads()
+	}
+
+
+
+	#endif
+
 }
