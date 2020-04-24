@@ -123,17 +123,30 @@ void HFMIter(const bool active,
 			u_i MULTIP(,uq_i),
 			u_max[kmix] MULTIP(,uq_max[kmix]) 
 			);
-		Int i; 
-		for(i=nmix-2; i>=0; --i){
+		// Insertion sort of kmix
+		{
+		const Scalar * values = u_max; Int * order = order_max;
+		for(Int i=nmix-2; i>=0; --i){ORDER_SWAP(i,i+1);}
+/*		if(debug_print && n_i==4){
+			for(Int i=0; i<nmix; ++i){printf(" %f",u_max[order_max[i]]);}
+			for(Int i=0; i<nmix; ++i){printf(" %i",order_max[i]);}
+			printf(" updated : %i\n",kmix);
+		}*/
 
+		}
+/*		Int i; 
+		for(i=nmix-2; i>=0; --i){
 			const Int j = order_max[i];
 			if(Greater(u_max[j], MULTIP(uq_max[j],) u_max[kmix] MULTIP(,uq_max[kmix]))){
 				order_max[i+1]=j;
 			} else {break;}
 		}
-		order_max[i+1]=kmix; 
-		STRICT_ITER_I(__syncthreads());
-		if(active){u_i[n_i]=u_max[kmix]; MIX(uq_i[n_i]=uq_max[kmix];)}
+		order_max[i+1]=kmix; */
+//		STRICT_ITER_I(__syncthreads());
+		{
+		const Int kmix = order_max[nmix-1];
+		if(active && u_max[kmix]<u_i[n_i]){u_i[n_i]=u_max[kmix]; MULTIP(uq_i[n_i]=uq_max[kmix];)}
+		}
 		__syncthreads();
 	}
 
@@ -222,12 +235,13 @@ void HFMIter(const bool active,
 				}
 			} // Min/Max of schemes
 		} // if active
-		*/
+		
 		__syncthreads();
 		u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)
 		__syncthreads();
 
 	} // for iter_i
+	*/
 
 	#endif // nmix_adaptive_macro
 

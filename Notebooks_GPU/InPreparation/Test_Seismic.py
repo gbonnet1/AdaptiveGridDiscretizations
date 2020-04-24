@@ -29,12 +29,15 @@ hfmIn_Constant = HFMUtils.dictIn({
     'exportValues':1,
     'seeds':xp.array([[0.,0.]]),
 #    'factoringMethod':'Static',
-    'nitermax_o':1,
+    'nitermax_o':100,
     'factoringRadius':10,
 #    'seedRadius':2,
-    'order':2,
+#    'order':2,
     'traits':{
         'debug_print':1,
+        'niter_i':35,
+#        'nmix_adaptive_macro':0,
+#        'niter_i':50,
 #        'nmix':2,
     },
     'raiseOnNonConvergence':False
