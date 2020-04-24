@@ -12,7 +12,7 @@ known as tilted transversally isotropic, and arising in seismology.
 
 /** The following constant must be defined in including file.
 // Number of schemes of which to take the minimum or maximum.
-const Int nmix
+#define nmix_macro (??)
 */
 
 #if (ndim_macro == 2)

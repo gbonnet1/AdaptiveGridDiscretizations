@@ -47,7 +47,7 @@ hfmIn = HFMUtils.dictIn({
 
 #	'order':2,
 #	'order2_threshold':0.3,
-	'factoringRadius':10.,
+	'factoringRadius':100,
 #	'seedRadius':np.sqrt(5)-0.01,
 #	'returns':'in_raw',
 #	'bound_active_blocks':True,

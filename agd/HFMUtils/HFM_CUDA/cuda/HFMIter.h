@@ -19,8 +19,11 @@ void HFMIter(const bool active,
 		MIX(, Int & kmix_) ) ){
 	const Int n_i = threadIdx.x;
 
+	if(debug_print && n_i==1){
+		printf("nmix adaptive : %i\n", nmix_adaptive_macro);
+	}
 
-	#if ! nmix_adaptive_macro // Simple iteration 
+	#if nmix_adaptive_macro==0 // Simple iteration 
 
 	for(int iter_i=0; iter_i<niter_i; ++iter_i){
 
@@ -86,25 +89,73 @@ void HFMIter(const bool active,
 	// Adaptive choice of kmix based on the DECREASING values assumption.
 	FLOW("nmix_adaptive_macro should be deactivated with flow computation")
 
+	if(debug_print && n_i==1){
+		printf("Entering iterations %i\n",niter_i);
+	}
+
 	Scalar u_i_new=u_i[n_i]; MULTIP(Int uq_i_new=uq_i[n_i];)
 	// Variables used only if mix_is_min == true (minimum of a family of schemes)
-	Int k_min=nmix/2; 
+	Int k_min=nmix/2; const Int * eqseq = EqSeq::eqseq<nmix>();
 	// Variables used only if mix_is_min == false (maximum of a family of schemes)
 	Scalar u_max[nmix]; MULTIP(Int uq_max[nmix];) Int order_max[nmix];
+	for(Int kmix=0; kmix<nmix; ++kmix){
+		u_max[kmix]=u_i_new; MULTIP(uq_max[kmix]=uq_i_new;) order_max[kmix]=kmix;}
 
+/*	for(Int kmix=0; kmix<nmix; ++kmix){
+		const Int s = kmix*ntot;
+		HFMUpdate(
+			rhs, weights+kmix*nact,
+			v_o+s MULTIP(,vq_o+s), v_i+s,
+			ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
+			u_i MULTIP(,uq_i),
+			u_max[kmix] MULTIP(,uq_max[kmix]) 
+			);
+	}
+	__syncthreads();
+	NetworkSort::sort<nmix>(u_max,order_max);*/
+	for(Int iter_i=0; iter_i<niter_i; ++iter_i){
+		const Int kmix = order_max[nmix-1];
+		const Int s = kmix*ntot;
+		HFMUpdate(
+			rhs, weights+kmix*nact,
+			v_o+s MULTIP(,vq_o+s), v_i+s,
+			ORDER2(v2_o+s MULTIP(,vq2_o+s), v2_i+s,)
+			u_i MULTIP(,uq_i),
+			u_max[kmix] MULTIP(,uq_max[kmix]) 
+			);
+		Int i; 
+		for(i=nmix-2; i>=0; --i){
+
+			const Int j = order_max[i];
+			if(Greater(u_max[j], MULTIP(uq_max[j],) u_max[kmix] MULTIP(,uq_max[kmix]))){
+				order_max[i+1]=j;
+			} else {break;}
+		}
+		order_max[i+1]=kmix; 
+		STRICT_ITER_I(__syncthreads());
+		if(active){u_i[n_i]=u_max[kmix]; MIX(uq_i[n_i]=uq_max[kmix];)}
+		__syncthreads();
+	}
+
+
+/*
 	for(Int iter_i=0; iter_i<niter_i; ++iter_i){
 		if(active){
 		// Select the parameter used for the next update
 		Int kmix;
 		if(mix_is_min){
-			/* Use an equidistributed sequence of updates if iter is even,
-			or the best previously seen update otherwise.*/
-			if(iter_i%2==0){ kmix = eqseq<nmix>[(iter_i/2)%nmix];}
+			//Use an equidistributed sequence of updates if iter is even,
+			// or the best previously seen update otherwise.
+			if(iter_i%2==0){ kmix = eqseq[(iter_i/2)%nmix];}
 			else {           kmix = k_min;}
 		} else {
-			/* Try all possibilities first, then use what gave the largest result */
+			// Try all possibilities first, then use what gave the largest result 
 			if(iter_i<nmix){ kmix = iter_i;}
 			else {           kmix = order_max[nmix-1];}
+		}
+
+		if(debug_print && n_i==4){
+			printf("kmix %i\n",kmix);
 		}
 
 		Scalar u_i_mix; MULTIP(Int uq_i_mix;) 
@@ -125,7 +176,7 @@ void HFMIter(const bool active,
 			} 
 		} else { // Max of schemes.
 			if(iter_i<nmix){ 
-				u_max[iter_i] = u_i_mix; MULTIP(uq_min[iter_i] = uq_i_mix;)
+				u_max[iter_i] = u_i_mix; MULTIP(uq_max[iter_i] = uq_i_mix;)
 				if(iter_i==nmix-1){ // Sort the values on the last time
 					#if multip_macro // Sorting methods do not accept multiprecision
 					Int uq_ref=Int_Max;
@@ -139,29 +190,45 @@ void HFMIter(const bool active,
 					#endif
 				}
 			} else { 
-				/* Insert the new value in the sorted list, and take the new top value 
-				for update*/
+				// Insert the new value in the sorted list,
+				// and take the new top value 
+				for update
+				if(debug_print && n_i==4){
+					for(Int i=0; i<nmix; ++i){printf(" %f",u_max[order_max[i]]);}
+					for(Int i=0; i<nmix; ++i){printf(" %i",order_max[i]);}
+					printf("\n");
+				}
+
 				u_max[kmix]=u_i_mix; MULTIP(uq_max[kmix]=uq_i_mix;)
-				for(Int i=nmix-2; i>=0; --i){
+				Int i;
+				for(i=nmix-2; i>=0; --i){
 					const Int j = order_max[i];
-					if(Greater(u_i_mix, MULTIP(uq_i_mix,) u_max[j] MULTIP(,uq_max[j]))){
-						order_max[i+1]=kmix; break;
-					} else { 
+					if(Greater(u_max[j], MULTIP(uq_max[j],) u_i_mix MULTIP(,uq_i_mix))){
 						order_max[i+1]=j;
-					}
+					} else {break;}
+				}
+				order_max[i+1]=kmix; 
+
+				if(debug_print && n_i==4){
+					for(Int i=0; i<nmix; ++i){printf(" %f",u_max[order_max[i]]);}
+					for(Int i=0; i<nmix; ++i){printf(" %i",order_max[i]);}
+					printf("\n");
+				}
 				const Int j=order_max[nmix-1];
-				u_i_new = u_max[j]; MIX(uq_i_new = uq_max[j];)
+				//u_i_mix = u_max[j]; MULTIP(uq_i_mix=uq_max[j];)
+				//if(Greater(u_i_new,MULTIP(uq_i_new,)u_i_mix MULTIP(,uq_i_mix))){
+				//	u_i_new=u_i_mix; MULTIP(uq_i_new=uq_i_mix;)}
+				u_i_new = u_max[j]; MULTIP(uq_i_new = uq_max[j];)
 				}
 			} // Min/Max of schemes
 		} // if active
-		__syncthreads()
-		u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)}
+		*/
+		__syncthreads();
+		u_i[n_i]=u_i_new; MULTIP(uq_i[n_i] = uq_i_new;)
 		__syncthreads();
 
-	}
+	} // for iter_i
 
-
-
-	#endif
+	#endif // nmix_adaptive_macro
 
 }

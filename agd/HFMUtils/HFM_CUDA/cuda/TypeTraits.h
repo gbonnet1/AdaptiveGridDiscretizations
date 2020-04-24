@@ -336,7 +336,7 @@ to take effect.
 /* The maximum of minimum of a number of schemes can be computed in an efficient 
 adaptive manner. However, this is only for the solving phase, not the flow computation. */
 #ifndef nmix_adaptive_macro
-#define nmix_adaptive_macro (nmix>2 && ! flow_macro)
+#define nmix_adaptive_macro (nmix_macro>2 && ! flow_macro)
 #endif
 
 /** Isotropic and diagonal metrics have special treatment, since they and offsets,

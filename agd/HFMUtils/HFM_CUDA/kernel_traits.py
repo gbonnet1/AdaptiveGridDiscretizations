@@ -42,7 +42,7 @@ def default_traits(self):
 		raise ValueError("Unsupported model")
 
 	if model=='Elastica2': traits['merge_sort_macro']=1
-	if model.startswith('TTI'): traits.update({'nmix':7,'nmix_macro':1})
+	if model.startswith('TTI'): traits.update({'nmix_macro':7})
 	return traits
 
 def nscheme(self):

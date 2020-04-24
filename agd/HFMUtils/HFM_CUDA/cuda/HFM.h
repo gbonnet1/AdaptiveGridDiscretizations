@@ -35,7 +35,6 @@ void HFMNeighbors(
 	ORDER2(bool order2[__restrict__ nact],) // Wether the second order scheme is used
 	Int order[__restrict__ nact] // The order in which the neighbor values are sorted
 	FLOW(NSYM(, Int side[__restrict__ nsym]) )){
-	const Int n_i = threadIdx.x;
 
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
@@ -89,6 +88,7 @@ void HFMNeighbors(
 
 	ORDER2(
 	// Set the threshold for second order accuracy
+	const Int n_i = threadIdx.x;
 	const Scalar u0 = u_i[n_i] MULTIP(+ (uq_i[n_i] - vqmin)*multip_step);
 
 	#if order2_threshold_weighted_macro
