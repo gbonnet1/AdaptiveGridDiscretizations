@@ -133,30 +133,6 @@ void HFMNeighbors(
 
 	NetworkSort::sort<nact>(v,order);
 
-/*	// Sort the neighbor values
-	#if !merge_sort_macro
-	for(Int k=0; k<nact; ++k) {order[k]=k;}
-	#endif
-
-	#if network_sort_macro
-	network_sort<nact>(v,order);
-	#elif merge_sort_macro
-	merge_sort<nact>(v,order);
-	#else // Default to bubble sort 
-	for(Int k=nact-1; k>=1; --k){
-		for(Int r=0; r<k; ++r){
-			const Int i=order[r], j=order[r+1];
-			if( v[i] > v[j] ){ 
-				// swap( order[k], order[k+1] )
-				const Int s = order[r];
-				order[r] = order[r+1];
-				order[r+1] = s;
-			}
-		}
-	}
-	#endif
-	*/
-
 } // HFMNeighbors
 
 
@@ -184,16 +160,6 @@ void HFMUpdate(const Scalar rhs, const Scalar weights[__restrict__ nact],
 		u_i MULTIP(,uq_i), 
 		v MULTIP(,vqmin) ORDER2(,order2),
 		order FLOW(NSYM(, active_side)) );
-
-
-	if(debug_print && n_i==1){
-/*		printf("HFMUpdate ni : %i\n",n_i);
-		printf("v : %f %f %f\n",v[0],v[1],v[2]);
-		printf("order : %i %i %i\n",order[0],order[1],order[2]);*/
-/*		printf("multip_step %f, multip_max %f\n",multip_step,multip_max);
-		printf("vq : %i %i\n",vq[0],vq[1]);*/
-	}
-
 
 	// Compute the update
 	const Int k=order[0];
@@ -226,12 +192,6 @@ void HFMUpdate(const Scalar rhs, const Scalar weights[__restrict__ nact],
 		value = (b+sdelta)/a;
 	}
 
-/*
-	if(debug_print && n_i==17){
-		printf("value %f, vmin %f\n",value,vmin);
-		printf("v_o %f,%f,%f, v_i %i,%i,%i,",v_o[0],v_o[1],v_o[2]);
-	}
-*/
 	const Scalar val = vmin+value;
 	u_out = val; MULTIP(uq_out = vqmin; Normalize(u_out,uq_out); )
 

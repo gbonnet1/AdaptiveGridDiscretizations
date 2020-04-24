@@ -63,15 +63,7 @@ __global__ void Update(
 	const Int iTheta = x_t[2];
 	const Scalar * weights      = precomp_weights_s[iTheta];
 	const OffsetT (* offsets)[ndim] = precomp_offsets_s[iTheta];
-//	if(n_i==0){printf("Hi there %i,%f,%i",iTheta,weights[0],offsets[0][0]);}
 	MIX(const bool mix_is_min=true;) // Dubins2
-
-//	Int offsets[*][ndim] = precomp_offsets[iTheta];
-//	const auto offsets = precomp_offsets[iTheta];
-//	Int offsets_test [nactx][ndim];
-//	typedef (const Int (*)[ndim]) offsets_type;
-//	offsets_type offsets= offsets_test; // = precomp_offsets[iTheta];
-//	const (Int (*)[ndim]) offsets = offsets_test; //precomp_offsets[iTheta];
 	#else
 	GEOM(Scalar geom[geom_size];
 	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];})
@@ -122,35 +114,6 @@ __global__ void Update(
 	wallDist_i[n_i] = wallDist_t[n_t];
 	__syncthreads();
 	)
-
-/*	if(debug_print && n_i==1){
-		for(Int i=0; i<nmix; ++i){
-			printf("weights %f,%f,%f,\n", weights[i*nact],weights[i*nact+1],weights[i*nact+2]);
-			printf("offsets %i,%i, %i,%i, %i,%i\n",
-				offsets[i*nact][0],offsets[i*nact][1],
-				offsets[i*nact+1][0],offsets[i*nact+1][1],
-				offsets[i*nact+2][0],offsets[i*nact+2][1]);
-		}
-		printf("rhs %f\n",rhs);
-	}
-*/
-
-/*	if(debug_print && n_i==0 && n_o==size_o-1){
-//		printf("shape %i,%i\n",shape_tot[0],shape_tot[1]);
-//		for(int k=0; k<size_i; ++k){printf("%f ",u_i[k]);}
-		printf("ntotx %i, ntot %i, nsym %i, nactx_ %i, geom_size %\n",ntotx,ntot,nsym,nactx_);
-		for(int k=0; k<nactx; ++k){
-			printf("k=%i, offset=(%i,%i), weight=%f\n",k,offsets[k][0],offsets[k][1],weights[k]);
-		}
-		printf("geom : %f,%f,%f\n",geom_[0],geom_[1],geom_[2]);
-		printf("size_tot : %i\n",size_tot);
-		printf("scal : %f\n",scal_vmv(offsets[1],geom_,offsets[2]) );
-	}*/
-
-/*	if(debug_print && n_o==1 && n_i==3){
-		printf("isSeed %i, u_old %f, u_i[n_i] %f\n",isSeed,u_old,u_i[n_i]);
-	}
-*/
 
 	FACTOR(
 	Scalar x_rel[ndim]; // Relative position wrt the seed.
@@ -238,15 +201,6 @@ __global__ void Update(
 
 	
 	__syncthreads(); // __shared__ u_i
-/*
-	if(debug_print && n_i==17 && n_o==3){
-		printf("hi there, before HFM\n");
-		printf("v_o %f,%f,%f, v_i %i,%i,%i,\n",v_o[0],v_o[1],v_o[2]);
-		DRIFT(printf("drift %f,%f\n", drift[0],drift[1]);)
-//		printf("geom %f,%f,%f\n",geom[0],geom[1],geom[2]);
-		printf("weights %f,%f,%f\n",weights[0],weights[1],weights[2]);
-		printf("isSeed %i\n",isSeed);
-	}*/
 
 	FLOW(
 	Scalar flow_weights[nact]; 
@@ -271,11 +225,6 @@ __global__ void Update(
 	#endif
 
 	FLOW( // Extract and export the geodesic flow
-/*	if(debug_print && n_i==0){
-		printf("Hello, world !");
-		printf("flow_weights %f,%f\n",flow_weights[0],flow_weights[1]);
-		printf("active_side %i,%i\n",active_side[0],active_side[1]);
-			}*/
 	if(isSeed){ // HFM leaves these fields to their (unspecified) initial state
 		for(Int k=0; k<nact; ++k){
 			flow_weights[k]=0; 

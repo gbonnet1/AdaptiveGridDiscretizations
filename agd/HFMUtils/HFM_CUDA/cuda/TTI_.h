@@ -100,22 +100,6 @@ bool diags(const Scalar l[2], const Scalar q[3], Scalar diag_s[nmix][2]){
 		x[0] = (u+v)/2; x[1] = (u-v)/2;
 	} 
 	for(Int i=0; i<nmix; ++i){grad_ratio(l,q,x_s[i],diag_s[i]);}
-
-/*	if(debug_print && threadIdx.x==0){
-		printf("niter_i %i",niter_i);
-		printf("SetDiags l=%f,%f, q=%f,%f,%f\n",l[0],l[1],q[0],q[1],q[2]);
-		printf("a=%f,b=%f\n",a,b);
-		printf("L %f,%f\n",L[0],L[1]);
-		const bool mix_is_min = det_vv(diag_s[0],diag_s[nmix-1])>0;
-		printf("mix_is_min %i, mix_neutral %f\n",mix_is_min,mix_neutral(mix_is_min));
-		printf("det_vv(diag_s[0],diag_s[nmix-1]) %f\n",det_vv(diag_s[0],diag_s[nmix-1]));
-		for(Int i=0.; i<nmix; ++i){
-			printf("x_s %f,%f ",x_s[i][0],x_s[i][1]);
-			printf("diag_s %f,%f ",diag_s[i][0],diag_s[i][1]);
-			printf("f(x_s[i]) %f \n",2*scal_vv(l,x_s[i])+scal_vmv(x_s[i],q,x_s[i]));
-		}
-	}*/
-
 	return det_vv(diag_s[0],diag_s[nmix-1])>0;
 }
 
@@ -124,13 +108,6 @@ bool diags(const Scalar l[2], const Scalar q[3], Scalar diag_s[nmix][2]){
 
 bool scheme(const Scalar geom[geom_size], 
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
-/*	Scalar h = 0.001; // Debug code for profiling...
-	Scalar mat_m[3]={1.*h*h,1.*h*h,1.5*h*h}; 
-	for(Int kmix=0; kmix<nmix; ++kmix){
-//		if(kmix==nmix-1){mat_m[0] = 1.+Scalar(kmix)/nmix;}
-		decomp_m(mat_m,weights+kmix*symdim, offsets+kmix*symdim);}
-	return true;*/
-
 	const Scalar * linear = geom; // linear[2]
 	const Scalar * quadratic = geom + 2; // quadratic[dim2::symdim]
 	const Scalar * transform = geom + (2+dim2::symdim); // transform[ndim * ndim]
@@ -185,10 +162,6 @@ Scalar _tti_norm(const Scalar l[2], const Scalar q[3], const tti_data_t & data,
 	for(Int i=0; i<niter_golden_search; ++i){
 		next = golden_search::step(mid,values,mix_is_min);
 		values[next] = _tti_norm(l,q,data,s,mid[next],diag);}
-/*	if(debug_print && threadIdx.x==2){
-		printf("mid %f,%f\n",mid[0],mid[1]);
-		printf("bounds %f,%f\n",bounds[0],bounds[1]);
-	}*/
 	return values[next];
 }
 } //namespace dim2
@@ -204,10 +177,6 @@ Scalar tti_norm(const Scalar l[2], const Scalar q[3], const dim2::tti_data_t & d
 	if(gradient!=NULL) {
 		for(Int i=0; i<ndim; ++i) {Ax[i]*=diag[min(i,1)]/norm;}
 		tdot_av(A,Ax,gradient);}
-
-/*	if(debug_print && threadIdx.x==1 && gradient!=NULL){
-		printf("s %f,%f, diag %f,%f\n",s[0],s[1],diag[0],diag[1]);
-	}*/
 	return norm;
 }
 
@@ -226,18 +195,8 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim],
 	const Scalar Nxpe = tti_norm(l,q,data,A,xpe); 
 	const Scalar Nxme = tti_norm(l,q,data,A,xme); 
 
-
-/*	if(debug_print && threadIdx.x==0){
-		printf("A = %f,%f,%f,%f \n",A[0],A[1],A[2],A[3]);}*/
-
 	fact[0] = -grad_e + Nx - Nxme; 
 	fact[1] =  grad_e + Nx - Nxpe; 
-
-/*	if(debug_print && threadIdx.x == 8+2){
-		printf("x %f,%f, Nx %f, grad %f,%f\n",x[0],x[1],Nx,grad[0],grad[1]);
-		printf("xme %f,%f, Nxme %f, e %i,%i, fact %f\n",xme[0],xme[1],Nxme,e[0],e[1],fact[0]);
-	}*/
-
 
 	ORDER2(
 	Scalar xpe2[ndim],xme2[ndim]; add_vv(xpe,e,xpe2); sub_vv(xme,e,xme2);
