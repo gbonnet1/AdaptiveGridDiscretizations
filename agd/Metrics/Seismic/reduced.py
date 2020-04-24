@@ -291,13 +291,14 @@ class Reduced(ImplicitBase):
 	def from_Hooke(cls,metric):
 		"""
 		Generate reduced algebraic form from full Hooke tensor.
-		Warning : Hooke to Reduced conversion requires that some 
-		coefficients of the Hooke tensor vanish, and may induce approximations.
+		!! Warning !!  Hooke to Reduced conversion requires that some 
+		coefficients of the Hooke tensor vanish, which is currently not checked,
+		and may induce approximations.
 		"""
 		from .hooke import Hooke
 		hooke = metric.hooke
 		
-		assert(metric.is_reduced_VTI(metric))
+		#assert(metric.is_reduced_VTI(metric)) #TODO
 	
 		if metric.vdim==2:
 
