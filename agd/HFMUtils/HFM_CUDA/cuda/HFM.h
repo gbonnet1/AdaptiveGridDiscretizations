@@ -146,7 +146,6 @@ void HFMUpdate(const Scalar rhs, const Scalar weights[__restrict__ nact],
 	Scalar & u_out MULTIP(,Int & uq_out) 
 	FLOW(, Scalar flow_weights[__restrict__ nact] NSYM(, Int active_side[__restrict__ nsym])) 
 	){
-	const Int n_i = threadIdx.x;
 	// Get the value for the symmetric offsets 
 	// (minimal value among the right and left neighbors)
 	Scalar v[nact]; 

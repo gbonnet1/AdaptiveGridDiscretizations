@@ -98,7 +98,13 @@ class Interface(object):
 		self.GetGeodesics()
 		self.FinalCheck()
 
-		return (self.values,self.hfmOut) if self.extractValues else self.hfmOut
+		if self.extractValues or self.retself:
+			retval = [self.hfmOut]
+			if self.extractValues: retval.insert(0,self.values)
+			if self.retself: retval.append(self)
+			return retval
+		else:
+			return self.hfmOut
 
 	SetKernelTraits = _Kernel.SetKernelTraits
 	SetGeometry = _SetGeometry.SetGeometry
@@ -136,6 +142,8 @@ class Interface(object):
 			self.hfmOut['values'] = self.values
 		self.extractValues = self.GetValue('extractValues',False,
 			help="Return the solution numerical values separately from other data")
+		self.retself = self.GetValue('retself',False,
+			help="Return the class instance that did the work")
 		self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
 		self.hfmOut['solverGPUTime'] = self.kernel_data['eikonal'].stats['time']
 		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys()) 

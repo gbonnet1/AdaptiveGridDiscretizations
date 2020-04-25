@@ -91,6 +91,7 @@ def SetKernel(self):
 		traits['periodic_macro']=1
 		traits['periodic_axes']=self.periodic
 	if self.model_=='Isotropic': traits['isotropic_macro']=1
+	if 'wallDist' in eikonal.args: traits['walls_macro']=1
 	policy.count_updates = self.GetValue('count_updates',default=False,
 		help='Count the number of times each block is updated')
 
@@ -238,6 +239,8 @@ def SetKernel(self):
 	argnames = ('values','valuesq','valuesNext','valuesqNext',
 		'geom','drift','seedTags','rhs','wallDist')
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
+	print(eikonal.args.keys())
+#	print(eikonal.args['wallDist'].dtype)
 	flow.args = eikonal.args.copy() # Further arguments added later
 
 #def PrecomputeStencil(self): #TODO

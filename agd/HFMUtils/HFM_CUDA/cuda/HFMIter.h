@@ -6,7 +6,6 @@ This file implements the of a block of values, in the HFM algorithm.
 */
 
 #include "HFM.h"
-#include "EqSeq.h"
 
 void HFMIter(const bool active, 
 	const Scalar rhs, MIX(const bool mix_is_min,) const Scalar weights[__restrict__ nactx],

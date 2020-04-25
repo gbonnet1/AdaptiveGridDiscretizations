@@ -8,6 +8,7 @@
 #include "REDUCE_i.h"
 #include "GetBool.h"
 #include "Propagation.h"
+#include "Walls.h"
 
 /* Array suffix convention : 
  arr_t : shape_tot (Total domain shape)
@@ -25,7 +26,7 @@ __global__ void Update(
 	// Problem data
 	const Scalar * __restrict__ geom_t, DRIFT(const Scalar * __restrict__ drift_t,) 
 	const BoolPack * __restrict__ seeds_t, const Scalar * __restrict__ rhs_t, 
-	WALLS(const WallsT * __restrict__ wallDist_t,)
+	WALLS(const WallT * __restrict__ wallDist_t,)
 
 	// Causality based freezing
 	MINCHG_FREEZE(const Scalar * __restrict__ minChgPrev_o, Scalar * __restrict__ minChgNext_o,)
@@ -110,7 +111,7 @@ __global__ void Update(
 	if(isSeed){u_i[n_i]=rhs; MULTIP(uq_i[n_i]=0; Normalize(u_i[n_i],uq_i[n_i]);)}
 
 	WALLS(
-	__shared__ WallsT wallDist_i[size_i];
+	__shared__ WallT wallDist_i[size_i];
 	wallDist_i[n_i] = wallDist_t[n_t];
 	__syncthreads();
 	)
@@ -147,13 +148,19 @@ __global__ void Update(
 			mul_kv(eps,e,offset);
 
 			WALLS(
-			const bool visible = Visible(offset, x_t,wallDist_t, x_i,wallDist_i,n_i);
+			const bool visible = Visible(offset, x_t,wallDist_t, x_i,wallDist_i);
+			if(debug_print && n_i==3+3*8){
+				printf("offset %i,%i, x_t %i,%i, visible %i ",
+					offset[0],offset[1],x_t[0],x_t[1], visible);
+				printf("wallDist_i %i, %i, %i, %i\n",
+					wallDist_i[n_i],wallDist_i[n_i+8],wallDist_i[n_i+2*8],wallDist_i[n_i+3*8]);
+			}
 			if(!visible){
 				v_i[kv]=-1; ORDER2(v2_i[kv]=-1;)
 				v_o[kv]=infinity(); ORDER2(v2_o[kv]=infinity();)
 				MULTIP(vq_o[kv]=0;  ORDER2(vq2_o[kv]=0;) )
-				continue;}
-			)
+				{++kv; continue;}
+			})
 
 			Int y_t[ndim], y_i[ndim]; // Position of neighbor. 
 			add_vv(offset,x_t,y_t);
@@ -199,7 +206,10 @@ __global__ void Update(
 	} // for kact
 	} // for kmix
 
-	
+	if(debug_print && n_i==3+3*8){
+		printf("v_i %i,%i,%i,%i\n", v_i[0],v_i[1],v_i[2],v_i[3]);
+		printf("v_o %f,%f,%f,%f\n", v_o[0],v_o[1],v_o[2],v_o[3]);
+	}
 	__syncthreads(); // __shared__ u_i
 
 	FLOW(

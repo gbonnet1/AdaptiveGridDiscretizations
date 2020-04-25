@@ -69,8 +69,10 @@ def GetGeodesics(self):
 		eucl_t = geodesic.traits['EuclT']
 		eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
 		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
-		eucl = np.full_like(self.seedTags,eucl_max,dtype=eucl_t)
-		eucl[self.seedTags] = 0
+		# Note: self.seedTags includes the walls, which we do not want here, hence trigger
+		seeds = self.kernel_data['eikonal'].trigger
+		eucl = np.full_like(seeds,eucl_max,dtype=eucl_t)
+		eucl[seeds] = 0
 		eucl_mult = 5 if eucl_integral else 1
 		eucl_kernel = inf_convolution.distance_kernel(radius=1,ndim=self.ndim,
 			dtype=eucl_t,mult=eucl_mult)
@@ -78,9 +80,6 @@ def GetGeodesics(self):
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
 		eucl=cp.ascontiguousarray(eucl)
-		self.hfmOut['eucl']=eucl
-		self.hfmOut['eucl_kernel']=eucl_kernel
-		self.hfmOut['seedTags']=self.seedTags
 
 		# Run the geodesic ODE solver
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
