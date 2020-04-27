@@ -35,7 +35,7 @@ on the markdown front-end : it may apply to all the following characters, on onl
 Prefer \\mathrm.
 """
 
-def TestMath(filepath,update=False,show=False):
+def TestMath(filepath,show=False):
 	with open(filepath, encoding='utf8') as data_file:
 		data = json.load(data_file)
 	def showcell(cell):
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 #	TestToc("Notebooks_Algo","Dense")
 #	TestTocs("Notebooks_Algo")
 #	TestTocss()
-	kwargs = {"update":False,"show":False}
+	kwargs = {"show":False}
 	for key in sys.argv[1:]:
 		assert key[:2]=="--" and key[2:] in kwargs
 		kwargs[key[2:]]=True
