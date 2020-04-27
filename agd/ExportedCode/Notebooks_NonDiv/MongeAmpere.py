@@ -1,11 +1,10 @@
-# Code automatically exported from notebook Notebooks_NonDiv\MongeAmpere.ipynb
+# Code automatically exported from notebook Notebooks_NonDiv/MongeAmpere.ipynb
 # Do not modify
-import sys; sys.path.append("../..") # Path to import agd
 
-from agd import Selling
-from agd import Domain
-from agd import LinearParallel as lp
-from agd import AutomaticDifferentiation as ad
+from ... import Selling
+from ... import Domain
+from ... import LinearParallel as lp
+from ... import AutomaticDifferentiation as ad
 from agd.Plotting import savefig; #savefig.dirName = "Figures/MongeAmpere"
 
 import numpy as np

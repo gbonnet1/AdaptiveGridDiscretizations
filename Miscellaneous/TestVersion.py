@@ -12,10 +12,20 @@ def CheckVersion(filename,version_line,version_start,version_end,new_version=Non
 	assert line.endswith(version_end)
 	current_version = line[len(version_start):-len(version_end)]
 	print(f"Current version in file {filename} : {current_version}")
-	if new_version is not None:
+	if new_version is None: 
+		return current_version
+	else: 
 		content[version_line] = f"{version_start}{new_version}{version_end}"
 		with open(filename,'w',encoding='utf8') as file:
 			file.write(''.join(content))
+		return new_version
+
+def Main(new_version=None):
+	assert all(x in "0123456789." for x in new_version)
+	v1 = CheckVersion("conda.recipe/setup.py",7,"	version='","',\n",new_version)
+	v2 = CheckVersion("conda.recipe/meta.yaml",2,"  version: ","\n",new_version)
+	assert v1==v2
+	return v1
 
 if __name__ == "__main__":
 
@@ -23,8 +33,3 @@ if __name__ == "__main__":
 	for key in sys.argv[1:]:
 		if key.startswith("--new_version="):
 			new_version = key[len("--new_version="):]
-			assert all(x in "0123456789." for x in new_version)
-
-	# setup.py
-	CheckVersion("conda.recipe/setup.py",7,"	version='","',\n",new_version)
-	CheckVersion("conda.recipe/meta.yaml",2,"  version: ","\n",new_version)

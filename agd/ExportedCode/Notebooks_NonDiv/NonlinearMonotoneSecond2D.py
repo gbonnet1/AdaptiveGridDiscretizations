@@ -1,11 +1,10 @@
-# Code automatically exported from notebook Notebooks_NonDiv\NonlinearMonotoneSecond2D.ipynb
+# Code automatically exported from notebook Notebooks_NonDiv/NonlinearMonotoneSecond2D.ipynb
 # Do not modify
-import sys; sys.path.append("../..") # Path to import agd
 
-from agd import Selling
-from agd import LinearParallel as lp
-from agd import AutomaticDifferentiation as ad
-from agd import Domain
+from ... import Selling
+from ... import LinearParallel as lp
+from ... import AutomaticDifferentiation as ad
+from ... import Domain
 from agd.Plotting import savefig; #savefig.dirName = "Figures/NonlinearMonotoneSecond2D"
 
 import numpy as np
