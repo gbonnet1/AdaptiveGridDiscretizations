@@ -26,7 +26,7 @@ def ExportCode(inFName,outFName,update=False,show=False):
 		data = json.load(data_file)
 	output = [
 		f"# Code automatically exported from notebook {inFName}\n",
-		"# Do not modify\n\n"]
+		"# Do not modify\n"]
 	nAlgo = 0
 	for c in data['cells']:
 		if 'tags' in c['metadata'] and 'ExportCode' in c['metadata']['tags']:
@@ -41,14 +41,22 @@ def ExportCode(inFName,outFName,update=False,show=False):
 			output_previous = output_file.readlines()
 	except FileNotFoundError:
 		output_previous=[""]
-	if output_previous==output: return
-	print(f"Changes in code tagged for export in file {inFName}")
-	if show:
-		for line in difflib.unified_diff(output_previous,output,
-			fromfile=inFName+'_previous',tofile=inFName):
-			print(line)
-#		print("--- New code ---\n", output, 
-#			  "--- Old code ---\n", output_previous)
+
+	changes_found=False
+	for prev,new in zip(output_previous,output):
+		if prev.rstrip()!=new.rstrip(): 
+			changes_found=True
+			if show:
+				print('--- Difference found ---')
+				print([prev])
+				print([new])
+	if not changes_found: return
+	else: print(f"Changes in code tagged for export in file {inFName}")
+
+#if show:
+#		for line in difflib.unified_diff(output_previous,output,
+#			fromfile=inFName+'_previous',tofile=inFName):
+#			print(line)
 	if update:
 		print("Exporting ", nAlgo, " code cells from notebook ", inFName, " in file ", outFName)
 		with open(outFName,'w+', encoding='utf8') as output_file:

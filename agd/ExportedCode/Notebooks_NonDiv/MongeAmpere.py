@@ -1,6 +1,5 @@
 # Code automatically exported from notebook Notebooks_NonDiv/MongeAmpere.ipynb
 # Do not modify
-
 from ... import Selling
 from ... import Domain
 from ... import LinearParallel as lp

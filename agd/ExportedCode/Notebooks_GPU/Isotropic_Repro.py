@@ -1,6 +1,5 @@
 # Code automatically exported from notebook Notebooks_GPU/Isotropic_Repro.ipynb
 # Do not modify
-
 import cupy as cp
 import numpy as np
 import itertools
