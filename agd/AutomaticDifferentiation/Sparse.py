@@ -318,8 +318,7 @@ class spAD(Base.baseAD):
 # -------- End of class spAD -------
 
 # -------- Factory methods -----
-@functools.wraps(spAD.__init__)
-def new(*args,**kwargs): return spAD(*args,**kwargs)
+new = Base._new(spAD)
 
 def identity(shape=None,constant=None,shift=0):
 	shape,constant = misc._set_shape_constant(shape,constant)

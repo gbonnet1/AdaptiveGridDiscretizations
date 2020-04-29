@@ -25,7 +25,7 @@ raise
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
-n=20
+n=8
 hfmIn = HFMUtils.dictIn({
     'model':'Isotropic2',
     'exportValues':1,
@@ -48,7 +48,7 @@ hfmIn = HFMUtils.dictIn({
 #	'order':2,
 #	'order2_threshold':0.3,
 	'factoringRadius':100,
-#	'seedRadius':np.sqrt(5)-0.01,
+	'seedRadius':2., #np.sqrt(5)-0.01,
 #	'returns':'in_raw',
 #	'bound_active_blocks':True,
 	'traits':{

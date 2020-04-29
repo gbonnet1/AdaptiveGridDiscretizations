@@ -4,8 +4,9 @@ import functools
 import operator
 
 from . import numpy_like as npl
-from .ad_generic import is_ad
-from .cupy_generic import isndarray
+from .ad_generic import is_ad,asarray
+from . import cupy_generic
+from . import functional
 # Elementary functions and their derivatives
 # No implementation of arctan2, or hypot, which have two args
 class Taylor1: # first order Taylor expansions
@@ -45,7 +46,7 @@ class Taylor2: # second order Taylor expansions of classical functions
 	def arctanh(x): y=1./(1-x**2); return (np.arctanh(x),y,2.*x*y**2)
 
 def _tuple_first(a): 	return a[0] if isinstance(a,tuple) else a
-def _getitem(a,where):  return a if (where is True and not isndarray(a)) else a[where]
+def _getitem(a,where):  return a if (where is True and not cupy_generic.isndarray(a)) else a[where]
 
 def add(a,b,out=None,where=True): 
 	if out is None: return a+b if is_ad(a) else b+a
@@ -67,6 +68,14 @@ def maximum(a,b): return np.where(a>b,a,b)
 def minimum(a,b): return np.where(a<b,a,b)
 
 class baseAD:
+
+	def _init_cupy(self):
+		if self.cupy_based():
+			import cupy as cp
+			baseAD_cupy = functional.class_rebase(baseAD,(cp.ndarray,),"baseAD_cupy")
+			x = cp.array([np.nan],dtype=np.float32)
+			super(baseAD_cupy,self).__init__(**cupy_generic.cupy_init_kwargs(x))
+
 	@property
 	def shape(self): return self.value.shape
 	@property
@@ -241,3 +250,17 @@ class baseAD:
 		return out
 
 
+# ---- cupy ad needs cp.ndarray as base class ----
+
+def _new(cls):
+	@functools.wraps(cls.__init__)
+	def new(value,*args,**kwargs): 
+		value = asarray(value)
+		if cupy_generic.from_cupy(value):
+			import cupy as cp
+			baseAD_cupy = functional.class_rebase(baseAD,(cp.ndarray,),"baseAD_cupy")
+			cls_cupy = functional.class_rebase(cls,(baseAD_cupy,),cls.__name__+"_cupy")
+			return cls_cupy(value,*args,**kwargs)
+		else:
+			return cls(value,*args,**kwargs)
+	return new

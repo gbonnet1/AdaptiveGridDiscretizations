@@ -218,8 +218,6 @@ def SetKernel(self):
 			SetCst('precomp_offsets_s',offsets,offset_t)
 			self.hfmOut.update({'scheme_weights':weights,'scheme_offsets':offsets})
 
-#			print(weights)
-#			print(offsets)
 		else: # Not a precomputed scheme
 			if traits['xi_var_macro']==0:    SetCst('ixi',  1./self.xi,float_t) # ixi = 1/xi
 			if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
@@ -239,7 +237,6 @@ def SetKernel(self):
 	argnames = ('values','valuesq','valuesNext','valuesqNext',
 		'geom','drift','seedTags','rhs','wallDist')
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
-	print(eikonal.args.keys())
 #	print(eikonal.args['wallDist'].dtype)
 	flow.args = eikonal.args.copy() # Further arguments added later
 

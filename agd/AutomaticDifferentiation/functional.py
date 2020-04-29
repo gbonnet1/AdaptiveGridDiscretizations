@@ -135,10 +135,9 @@ def from_module(x,module_name):
 
 def is_adtype(t):
 	return (t.__module__.startswith('agd.AutomaticDifferentiation.') 
-		and t.__name__ in ('denseAD','denseAD2','spAD','spAD2'))
-# The following code looks more natural but induces cyclid module dependencies
-#	return t in (Sparse.spAD, Dense.denseAD, Sparse2.spAD2, Dense2.denseAD2)
-
+		and t.__name__ in ('denseAD','denseAD2','spAD','spAD2',
+			'denseAD_cupy','denseAD2_cupy','spAD_cupy','spAD2_cupy'))
+	
 def is_ad(data,iterables=tuple()):
 	"""
 	Returns None if no ad variable found, or the adtype if one is found.

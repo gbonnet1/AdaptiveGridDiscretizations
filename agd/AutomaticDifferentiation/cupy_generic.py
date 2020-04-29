@@ -124,3 +124,11 @@ def set_output_dtype32(f,silent=False,iterables=(tuple,)):
 		return functional.map_iterables(caster,output,iterables=iterables)
 
 	return wrapper
+
+def cupy_init_kwargs(x):
+	"""
+	Returns the parameters necessary to generate a copy of x.
+	"""
+	x = get_array_module(x).ascontiguousarray(x)
+	return {'shape':x.shape,'dtype':x.dtype,
+		'memptr':x.data,'strides':x.strides,'order':'C'}

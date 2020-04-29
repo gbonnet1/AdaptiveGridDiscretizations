@@ -336,8 +336,7 @@ def _flatten_nlast(a,n):
 	return a.reshape(s[:-n]+(np.prod(s[-n:]),))
 
 # -------- Factory method -----
-@functools.wraps(spAD2.__init__)
-def new(*args,**kwargs): return spAD2(*args,**kwargs)
+new = Base._new(spAD2)
 
 def identity(*args,**kwargs):
 	arr = Sparse.identity(*args,**kwargs)

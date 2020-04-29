@@ -28,6 +28,7 @@ class denseAD(Base.baseAD):
 		self.value = ad_generic.asarray(value)
 		self.coef = (npl.zeros_like(value,shape=self.shape+(0,)) if coef is None 
 			else misc._test_or_broadcast_ad(coef,self.shape,broadcast_ad) )
+		self._init_cupy()
 
 	@classmethod
 	def order(cls): return 1
@@ -180,8 +181,9 @@ class denseAD(Base.baseAD):
 
 # -------- Factory methods -----
 
-@functools.wraps(denseAD.__init__)
-def new(*args,**kwargs): return denseAD(*args,**kwargs)
+new = Base._new(denseAD)
+#@functools.wraps(denseAD.__init__)
+#def new(*args,**kwargs): return denseAD(*args,**kwargs)
 
 def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,0)):
 	"""

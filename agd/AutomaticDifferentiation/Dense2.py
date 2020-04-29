@@ -193,8 +193,7 @@ class denseAD2(Base.baseAD):
 
 # -------- Factory method -----
 
-@functools.wraps(denseAD2.__init__)
-def new(*args,**kwargs): return denseAD2(*args,**kwargs)
+new = Base._new(denseAD2)
 
 def identity(*args,**kwargs):
 	arr = Dense.identity(*args,**kwargs)
