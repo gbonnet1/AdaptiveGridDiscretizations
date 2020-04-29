@@ -154,15 +154,15 @@ def is_ad(data,iterables=tuple()):
 	for value in rec_iter(data,iterables): check(type(value))
 	return adtype
 
-# # ------ CRTP ------
+ # ------ CRTP ------
 
-# #Example : class_rebase(cls,(cupy_module().ndarray,),cls.__name__+'_cupy')
-# def class_rebase(cls,bases,rebased_name): 
-# 	if not isinstance(bases,tuple): bases = (bases,)
-# 	if cls.__bases__ == bases: return cls
-# 	key = (cls,bases)
-# 	if key not in class_rebase.generated:
-# 		class_rebase.generated[key]=type(rebased_name,bases,dict(cls.__dict__))
-# 	return class_rebase.generated[key]
+#Example : class_rebase(cls,(cupy_module().ndarray,),cls.__name__+'_cupy')
+def class_rebase(cls,bases,rebased_name): 
+	if not isinstance(bases,tuple): bases = (bases,)
+	if cls.__bases__ == bases: return cls
+	key = (cls,bases)
+	if key not in class_rebase.generated:
+		class_rebase.generated[key]=type(rebased_name,bases,dict(cls.__dict__))
+	return class_rebase.generated[key]
 
-# class_rebase.generated = {}
+class_rebase.generated = {}
