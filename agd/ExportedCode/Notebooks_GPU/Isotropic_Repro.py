@@ -11,7 +11,6 @@ from ... import AutomaticDifferentiation as ad
 from ... import Metrics
 import agd.AutomaticDifferentiation.cupy_generic as cugen
 norm_infinity = ad.Optimization.norm_infinity
-#from agd.HFMUtils import RunGPU,RunSmart
 
 cp = ad.functional.decorate_module_functions(cp,cugen.set_output_dtype32) # Use float32 and int32 types in place of float64 and int64
 plt = ad.functional.decorate_module_functions(plt,cugen.cupy_get_args)

@@ -147,6 +147,7 @@ class Base:
 
 	def with_speeds(self,speeds): return self.with_costs(1./speeds)
 	def with_cost(self,cost): 
+		cost = ad.asarray(cost)
 		costs = np.broadcast_to(cost,(self.vdim,)+cost.shape)
 		return self.with_costs(costs)
 	def with_speed(self,speed): return self.with_cost(1/speed)

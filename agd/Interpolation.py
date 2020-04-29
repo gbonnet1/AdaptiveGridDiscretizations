@@ -348,8 +348,9 @@ class UniformGridInterpolation:
 			boundary_result = self(x[:,boundary_x],False)
 
 			result_shape = self.oshape+x.shape[1:]
-			#numpy zeros_like has a bug for empty shapes
-			if result_shape==tuple(): result = cps.zeros_like(interior_result.reshape(-1)[0])
+			if result_shape==tuple(): #numpy zeros_like has a bug for empty shapes
+				some_result = interior_result if interior_result.size>0 else boundary_result
+				result = cps.zeros_like(some_result.reshape(-1)[0])
 			else: result = cps.zeros_like(interior_result,shape=result_shape)
 
 			try:

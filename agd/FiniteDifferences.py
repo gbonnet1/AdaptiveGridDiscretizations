@@ -27,6 +27,7 @@ def common_field(arrays,depths,shape=tuple()):
 	if shape==tuple():
 		for arr,depth in zip(arrays,depths):
 			if arr is None: continue
+			arr=ad.asarray(arr)
 			shape = arr.shape[depth:]
 			if shape!=tuple(): break
 	return tuple(None if arr is None else as_field(arr,shape,depth=depth) 
