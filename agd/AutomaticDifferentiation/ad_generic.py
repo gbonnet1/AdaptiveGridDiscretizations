@@ -58,6 +58,7 @@ def common_cast(*args):
 	Casts to ndarray if no argument is an AD type. 
 	Usage : recommended when using array scalars with AD information.
 	"""
+	return args
 	args = tuple(array(x) for x in args)
 	common_type = None
 	for x in args: 
@@ -75,6 +76,7 @@ def left_operand(data,iterables=tuple()):
 	This operation is REQUIRED when the right operand is an array scalar with AD content 
 	(due to a bug/feature in numpy operator precedence and casting rules). Harmless otherwise.
 	"""
+	return data
 	if np.isscalar(data) and not isinstance(data,np.ndarray): 
 		return np.array(data)
 	return data

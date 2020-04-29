@@ -350,9 +350,10 @@ class UniformGridInterpolation:
 
 			result_shape = self.oshape+x.shape[1:]
 			#numpy zeros_like has a bug for empty shapes
-			if result_shape==tuple(): result = np.zeros_like(x.reshape(-1)[0])
+			if result_shape==tuple(): result = cps.zeros_like(x.reshape(-1)[0])
 			else: result = cps.zeros_like(x,shape=result_shape)
-			result=type(interior_result)(result)
+			adtype = ad.is_ad((interior_result,boundary_result),iterables=(tuple,))
+			if adtype: result=adtype(result)
 
 			try:
 				result[...,interior_x] = interior_result
