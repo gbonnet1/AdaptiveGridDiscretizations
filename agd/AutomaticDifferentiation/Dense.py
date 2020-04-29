@@ -180,7 +180,7 @@ class denseAD(Base.baseAD):
 
 # -------- Factory methods -----
 
-#new = ad_generic._new(denseAD) # Factory function
+@functools.wraps(denseAD.__init__)
 def new(*args,**kwargs): return denseAD(*args,**kwargs)
 
 def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,0)):
