@@ -125,7 +125,7 @@ def MinimizeTrace(u,alpha,bc,sqrt_relax=1e-16):
     
     # Optimality condition for the trigonometric polynomial in the interior
     value = coefs[0] - np.sqrt(np.maximum(coefs[1]**2+coefs[2]**2,sqrt_relax))
-    coefs_ = np.array(coefs) # removed AD information
+    coefs_ = ad.remove_ad(coefs) # removed AD information
     angle = np.arctan2(-coefs_[2],-coefs_[1])/2.
     angle[angle<0]+=np.pi
     

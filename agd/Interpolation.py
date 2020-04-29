@@ -7,7 +7,6 @@ import scipy.linalg
 
 from . import AutomaticDifferentiation as ad
 from .AutomaticDifferentiation import cupy_support as cps
-lo = ad.left_operand
 
 
 """
@@ -352,8 +351,7 @@ class UniformGridInterpolation:
 			#numpy zeros_like has a bug for empty shapes
 			if result_shape==tuple(): result = cps.zeros_like(x.reshape(-1)[0])
 			else: result = cps.zeros_like(x,shape=result_shape)
-			adtype = ad.is_ad((interior_result,boundary_result),iterables=(tuple,))
-			if adtype: result=adtype(result)
+			result,interior_result,boundary_result = ad.common_cast(result,interior_result,boundary_result)
 
 			try:
 				result[...,interior_x] = interior_result
@@ -398,7 +396,7 @@ class UniformGridInterpolation:
 		# Spline weights
 		weight = self.spline(y,ys)
 
-		return (lo(coef)*weight).sum(axis=ondim)
+		return (coef*weight).sum(axis=ondim)
 
 	def set_values(self,values):
 		self.coef = self.make_coefs(values)

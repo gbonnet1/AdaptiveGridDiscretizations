@@ -2,10 +2,10 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
+import functools
 from . import functional
 from . import ad_generic
 from . import cupy_generic
-from .cupy_generic import cupy_init_kwargs,cupy_rebase
 from . import cupy_support as cps
 from . import numpy_like as npl
 from . import misc

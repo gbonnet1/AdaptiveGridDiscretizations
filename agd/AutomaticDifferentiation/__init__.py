@@ -14,7 +14,7 @@ from . import Reverse2
 from . import Optimization
 from . import ad_specific
 
-from .ad_generic import array,asarray,is_ad,remove_ad,common_cast,left_operand,min_argmin, \
+from .ad_generic import array,asarray,is_ad,remove_ad,common_cast,min_argmin, \
 	max_argmax,disassociate,associate,apply_linear_mapping,apply_linear_inverse,precision
 
 from .ad_specific import simplify_ad,apply,compose

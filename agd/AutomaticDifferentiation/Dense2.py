@@ -2,7 +2,7 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
-from .cupy_generic import cupy_init_kwargs,cupy_rebase
+import functools
 from . import ad_generic
 from . import numpy_like as npl
 from . import cupy_support as cps

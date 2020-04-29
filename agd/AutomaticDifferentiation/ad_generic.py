@@ -37,16 +37,6 @@ def precision(x):
 	if not isinstance(x,type): x = array(x).dtype.type
 	return np.finfo(x).precision	
 
-
-def _new(cls):
-	@functools.wraps(cls.__new__)
-	def new(value,*args,**kwargs): 
-		value = asarray(value)
-		cls_ = cupy_generic.cupy_rebase(cls) if cupy_generic.from_cupy(value) else cls
-		return cls_(value,*args,**kwargs)
-	return new
-
-
 def remove_ad(data,iterables=tuple()):
 	def f(a): return a.value if is_ad(a) else a
 	return functional.map_iterables(f,data,iterables)
@@ -56,9 +46,9 @@ def common_cast(*args):
 	"""
 	If any of the arguments is an AD type, casts all other arguments to that type.
 	Casts to ndarray if no argument is an AD type. 
-	Usage : recommended when using array scalars with AD information.
+	Usage : if a and b may or may not b AD arrays, 
+	a,b = common_cast(a,b); a[0]=b[0]
 	"""
-	return args
 	args = tuple(array(x) for x in args)
 	common_type = None
 	for x in args: 
@@ -69,17 +59,6 @@ def common_cast(*args):
 				raise ValueError("Error : several distinct AD types")
 	return args if common_type is None else tuple(common_type(x) for x in args)
 
-
-def left_operand(data,iterables=tuple()):
-	"""
-	Turns numpy scalars into array scalars (zero-dimensional arrays).
-	This operation is REQUIRED when the right operand is an array scalar with AD content 
-	(due to a bug/feature in numpy operator precedence and casting rules). Harmless otherwise.
-	"""
-	return data
-	if np.isscalar(data) and not isinstance(data,np.ndarray): 
-		return np.array(data)
-	return data
 
 def min_argmin(array,axis=None):
 	if axis is None: return min_argmin(array.flatten(),axis=0)
