@@ -9,6 +9,7 @@ from . import Dense
 from . import Sparse
 from . import Reverse
 from . import Sparse2
+from .cupy_generic import isndarray
 
 class reverseAD2(object):
 	"""
@@ -217,7 +218,7 @@ class reverseAD2(object):
 		co_arg = []
 		def f(input):
 			nonlocal co_arg
-			if isinstance(input,np.ndarray):
+			if isndarray(input):
 				assert isinstance(input,Dense.denseAD) and input.size_ad==1
 				l = len(co_arg)
 				co_arg.append( (input,coef1[l],coef2[l]) )
@@ -247,7 +248,7 @@ def operator_like(inputs=None,co_output=None,**kwargs):
 		dir_hessian = tuple()
 		def reg_coef(a):
 			nonlocal dir_hessian
-			if isinstance(a,np.ndarray):
+			if isndarray(a):
 				assert isinstance(a,Dense.denseAD) and a.size_ad==1
 				dir_hessian+=(a.coef.flatten(),)
 		input_iterables = kwargs.get('input_iterables',(tuple,))

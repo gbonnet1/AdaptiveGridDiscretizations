@@ -13,3 +13,4 @@ dist/
 *.slides.html
 *_Format.txt
 *_Data.dat
+Miscellaneous/upload.py

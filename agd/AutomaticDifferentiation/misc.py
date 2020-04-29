@@ -3,18 +3,14 @@
 
 import numpy as np
 import numbers
-import functools
-import operator
 from .functional import map_iterables,map_iterables2,pair
 from .cupy_generic import isndarray,from_cupy
 from .ad_generic import is_ad,remove_ad
 from . import ad_generic
-from . import cupy_support as npl
+from . import cupy_support as cps
+from . import numpy_like as npl
 
 # ------- Ugly utilities -------
-def _tuple_first(a): 	return a[0] if isinstance(a,tuple) else a
-def _getitem(a,where):
-	return a if (where is True and not isndarray(a)) else a[where]
 def _add_dim(a):		return npl.expand_dims(a,axis=-1)	
 def _add_dim2(a):		return _add_dim(_add_dim(a))
 
@@ -210,137 +206,10 @@ def spapply(mat,rhs,crop_rhs=False):
 	if crop_rhs: 
 		cols = mat[1][1]
 		if len(cols)==0: 
-			return npl.zeros_like(rhs,shape=(0,))
+			return cps.zeros_like(rhs,shape=(0,))
 		size = 1+np.max(cols)
 		if rhs.shape[0]>size:
 			rhs = rhs[:size]
 	if from_cupy(rhs): import cupy; spmod = cupy.cupyx.scipy.sparse
 	else: import scipy.sparse as spmod
 	return spmod.coo_matrix(mat).tocsr()*rhs
-
-def min(array,axis=None,keepdims=False,out=None):
-	if axis is None: return array.flatten().min(axis=0,out=out)
-	ai = npl.expand_dims(np.argmin(array.value, axis=axis), axis=axis)
-	out = np.take_along_axis(array,ai,axis=axis)
-	if not keepdims: out = out.reshape(array.shape[:axis]+array.shape[axis+1:])
-	return out
-
-def max(array,axis=None,keepdims=False,out=None):
-	if axis is None: return array.flatten().max(axis=0,out=out)
-	ai = npl.expand_dims(np.argmax(array.value, axis=axis), axis=axis)
-	out = np.take_along_axis(array,ai,axis=axis)
-	if not keepdims: out = out.reshape(array.shape[:axis]+array.shape[axis+1:])
-	return out
-
-def add(a,b,out=None,where=True): 
-	if out is None: return a+b if is_ad(a) else b+a
-	else: result=_tuple_first(out); result[where]=a[where]+_getitem(b,where); return result
-
-def subtract(a,b,out=None,where=True):
-	if out is None: return a-b if is_ad(a) else b.__rsub__(a) 
-	else: result=_tuple_first(out); result[where]=a[where]-_getitem(b,where); return result
-
-def multiply(a,b,out=None,where=True):
-	if out is None: return a*b if is_ad(a) else b*a
-	else: result=_tuple_first(out); result[where]=a[where]*_getitem(b,where); return result
-
-def true_divide(a,b,out=None,where=True): 
-	if out is None: return a/b if is_ad(a) else b.__rtruediv__(a)
-	else: result=_tuple_first(out); result[where]=a[where]/_getitem(b,where); return result
-
-
-def maximum(a,b): return np.where(a>b,a,b)
-def minimum(a,b): return np.where(a<b,a,b)
-
-def prod(arr,axis=None,dtype=None,out=None,keepdims=False,initial=None):
-	"""Attempt to reproduce numpy prod function. (Rather inefficiently, and I presume partially)"""
-
-	shape_orig = arr.shape
-
-	if axis is None:
-		arr = arr.flatten()
-		axis = (0,)
-	elif isinstance(axis,numbers.Number):
-		axis=(axis,)
-
-
-	if axis!=(0,):
-		d = len(axis)
-		rd = tuple(range(len(axis)))
-		arr = np.moveaxis(arr,axis,rd)
-		shape1 = (np.prod(arr.shape[d:],dtype=int),)+arr.shape[d:]
-		arr = arr.reshape(shape1)
-
-	if len(arr)==0:
-		return initial
-
-	if dtype!=arr.dtype and dtype is not None:
-		if initial is None:
-			initial = dtype(1)
-		elif dtype!=initial.dtype:
-			initial = initial*dtype(1)
-
-
-	out = functools.reduce(operator.mul,arr) if initial is None else functools.reduce(operator.mul,arr,initial)
-
-	if keepdims:
-		shape_kept = tuple(1 if i in axis else ai for i,ai in enumerate(shape_orig)) if out.size>1 else (1,)*len(shape_orig)
-		out = out.reshape(shape_kept) 
-
-	return out
-
-
-
-# Elementary functions and their derivatives
-
-def pow1(x,n):	return (x**n,n*x**(n-1))
-def pow2(x,n):	return (x**n,n*x**(n-1),(n*(n-1))*x**(n-2))
-
-def log1(x): 	return (np.log(x),1./x)
-def log2(x):	y=1./x; return (np.log(x),y,-y**2)
-
-def exp1(x): 	e=np.exp(x); return (e,e)
-def exp2(x): 	e=np.exp(x); return (e,e,e)
-
-def abs1(x):	return (np.abs(x),np.sign(x))
-def abs2(x):	return (np.abs(x),np.sign(x),np.zeros_like(x))
-
-def sin1(x):	return (np.sin(x),np.cos(x))
-def sin2(x):	s=np.sin(x); return (s,np.cos(x),-s)
-
-def cos1(x): 	return (np.cos(x),-np.sin(x))
-def cos2(x):	c=np.cos(x); return (c,-np.sin(x),-c)
-
-def tan1(x):	t=np.tan(x); return (t,1.+t**2)
-def tan2(x):	t=np.tan(x); u=1.+t**2; return (t,u,2.*u*t)
-
-def arcsin1(x): return (np.arcsin(x),(1.-x**2)**-0.5)
-def arcsin2(x): y=1.-x**2; return (np.arcsin(x),y**-0.5,x*y**-1.5)
-
-def arccos1(c): return (np.arccos(x),-(1.-x**2)**-0.5)
-def arccos2(c): y=1.-x**2; return (np.arccos(x),-y**-0.5,-x*y**-1.5)
-
-def _arctan1(x): return (np.arctan(x),1./(1+x**2))
-def _arctan2(x): y=1./(1.+x**2); return (np.arctan(x),y,-2.*x*y**2)
-
-# No implementation of arctan2, or hypot, which have two args
-
-def sinh1(x):	return (np.sinh(x),np.cosh(x))
-def sinh2(x):	s=np.sinh(x); return (s,np.cosh(x),s)
-
-def cosh1(x):	return (np.cosh(x),np.sinh(x))
-def cosh2(x):	c=np.cosh(x); return (c,np.sinh(x),c)
-
-def tanh1(x):	t=np.tanh(x); return (t,1.-t**2)
-def tanh2(x):	t=np.tanh(x); u=1.-t**2; return (t,u,-2.*u*t)
-
-def arcsinh1(x): return (np.arcsinh(x),(1.+x**2)**-0.5)
-def arcsinh2(x): y=1.+x**2; return (np.arcsinh(x),y**-0.5,-x*y**-1.5)
-
-def arccosh1(c): return (np.arccos(x),(x**2-1.)**-0.5)
-def arccosh2(c): y=x**2-1.; return (np.arccos(x),y**-0.5,-x*y**-1.5)
-
-def _arctanh1(x): return (np.arctan(x),1./(1-x**2))
-def _arctanh2(x): y=1./(1-x**2); return (np.arctan(x),y,2.*x*y**2)
-
-

@@ -6,6 +6,7 @@ import numbers
 import functools
 from .ad_generic import is_ad
 from . import ad_generic
+from .cupy_generic import isndarray
 """
 This file takes advantage of the __array_function__ mechanisme of numpy to reimplement 
 a number of numpy functions in a way that is compatible with AD information.
@@ -15,10 +16,10 @@ a number of numpy functions in a way that is compatible with AD information.
 numpy_overloads = {}
 cupy_alt_overloads = {} # Used for numpy function unsupported by cupy
 numpy_implementation = {# Use original numpy implementation
-	np.moveaxis,np.expand_dims,np.ndim,np.squeeze,
+	np.moveaxis,np.ndim,np.squeeze,
 	np.amin,np.amax,np.argmin,np.argmax,
 	np.sum,np.prod,
-	np.full_like,np.ones_like,np.zeros_like
+	np.full_like,np.ones_like,np.zeros_like,np.reshape,np.take_along_axis,
 	} 
 
 def implements(numpy_function):
@@ -56,6 +57,11 @@ def _array_function_overload(self,func,types,args,kwargs,cupy_alt=True):
 
 stack = implements(np.stack)(ad_generic.stack)
 
+@implements(np.expand_dims)
+def expand_dims(a,axis):
+	if axis<0: axis=axis+a.ndim+1
+	return np.reshape(a,a.shape[:axis]+(1,)+a.shape[axis:])
+
 @implements(np.empty_like)
 def empty_like(a,*args,**kwargs):
 	return type(a)(np.empty_like(a.value,*args,**kwargs))
@@ -73,7 +79,7 @@ def broadcast_to(array,shape):
 def where(mask,a,b): 
 	A,B,Mask = (a,b,mask) if is_ad(b) else (b,a,np.logical_not(mask))
 	result = B.copy()
-	result[Mask] = A[Mask] if isinstance(A,np.ndarray) else A
+	result[Mask] = A[Mask] if isndarray(A) else A
 	return result
 
 @implements(np.sort)

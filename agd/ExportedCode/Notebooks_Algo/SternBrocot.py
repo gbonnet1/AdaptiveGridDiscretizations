@@ -1,7 +1,5 @@
-# Code automatically exported from notebook Notebooks_Algo\SternBrocot.ipynb
+# Code automatically exported from notebook Notebooks_Algo/SternBrocot.ipynb
 # Do not modify
-import sys; sys.path.append("../..") # Path to import agd
-
 import numpy as np
 from matplotlib import pyplot as plt
 

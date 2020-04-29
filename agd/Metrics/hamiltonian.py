@@ -23,8 +23,6 @@ from .. import LinearParallel as lp
 from .. import AutomaticDifferentiation as ad
 from .base import Base
 
-lo = ad.left_operand
-
 def fixedpoint(f,x,tol=1e-9,nitermax=100):
 	"""
 	Iterates the function f on the data x until a fixed point is found, 
@@ -130,7 +128,7 @@ class Hamiltonian(object):
 				if callable(f): return f(x)
 				else: return 0.5*lp.dot_VV(x,ad.apply_linear_mapping(f,x))
 
-			return sum(lo(value(h,x)) for (h,x) in zip(self._H,(q,p)) )
+			return sum(value(h,x) for (h,x) in zip(self._H,(q,p)) )
 		elif self.is_metric:
 			return self._H.at(q).norm2(p)
 		else:

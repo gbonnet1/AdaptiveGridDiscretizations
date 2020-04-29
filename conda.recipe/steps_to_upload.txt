@@ -1,5 +1,11 @@
-# change version in conda.recipe/meta.yaml and setup.py
+-- Preliminaries --
 # cd to directory containing AdaptiveGridDiscretizations
+
+python Miscellaneous/TestVersion.py # --new_version=???
+python Miscellaneous/TestTocs.py # --update 
+python Miscellaneous/TestMarkdown.py
+
+-- Anaconda ---
 
 # Run in the command line
 
@@ -11,3 +17,11 @@ anaconda upload --force $PATH_TO_AGD.tar.bz2 --user agd-lbr
 
 # For testing
 conda install --force agd -c agd-lbr
+
+-- Pip --
+
+python conda.recipe/setup.py bdist_wheel
+
+python -m twine upload dist/*
+
+# Virer agd.egg-info, build et dist

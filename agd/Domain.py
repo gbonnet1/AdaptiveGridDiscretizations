@@ -479,7 +479,8 @@ class Dirichlet:
 		- interior_radius (optional): sets
 			interior = domain.contains_ball(interior_radius)
 
-		- grid_values (defaults to 0.): placeholder values to be used on the grid
+		- grid_values (defaults to 0.): placeholder values to be used on the grid.
+			Either an array of values, or a function
 		"""
 		self.domain = domain
 
@@ -500,7 +501,7 @@ class Dirichlet:
 				interior_radius = self.gridscale * 1e-8 
 			self.interior = self.domain.contains_ball(self.grid,interior_radius)
 
-		if isinstance(grid_values,float) or isinstance(grid_values,np.ndarray):
+		if isinstance(grid_values,float) or ad.isndarray(grid_values):
 			self.grid_values = grid_values
 		else:
 			self.grid_values = grid_values(self.grid)

@@ -35,7 +35,7 @@ on the markdown front-end : it may apply to all the following characters, on onl
 Prefer \\mathrm.
 """
 
-def TestMath(filepath,update=False,show=False):
+def TestMath(filepath,show=False,check_raise=False):
 	with open(filepath, encoding='utf8') as data_file:
 		data = json.load(data_file)
 	def showcell(cell):
@@ -55,30 +55,35 @@ def TestMath(filepath,update=False,show=False):
 					print(f"--- Markdown displaymath issue in file {filepath} : ---")
 					print(eqn)
 					showcell(cell)
+					if check_raise: raise ValueError("Non portable markdown found")
 			if line==("<!---\n") and prevLine!="\n":
 				print(f"--- Markdown comment issue in file {filepath} : ---")
 				print([prevLine],line)
 				showcell(cell)
+				if check_raise: raise ValueError("Non portable markdown found")
 			if "\\rm " in line:
 				print(f"--- Mardown math issue in file {filepath},", 
 					"prefer \\mathrm{bla} to {\\rm bla} ---")
 				print(line)
 				showcell(cell)
+				if check_raise: raise ValueError("Non portable markdown found")
 
 			prevLine = line
 
-
-if __name__ == '__main__':
-#	TestToc("Notebooks_Algo","Dense")
-#	TestTocs("Notebooks_Algo")
-#	TestTocss()
-	kwargs = {"update":False,"show":False}
-	for key in sys.argv[1:]:
-		assert key[:2]=="--" and key[2:] in kwargs
-		kwargs[key[2:]]=True
-
+def Main(**kwargs):
 	for dirname in os.listdir():
 		if not dirname.startswith("Notebooks_"): continue
 		for filename in os.listdir(dirname):
 			if not filename.endswith(".ipynb"): continue
 			TestMath(os.path.join(dirname,filename),**kwargs)
+
+if __name__ == '__main__':
+#	TestToc("Notebooks_Algo","Dense")
+#	TestTocs("Notebooks_Algo")
+#	TestTocss()
+	kwargs = {"show":False}
+	for key in sys.argv[1:]:
+		assert key[:2]=="--" and key[2:] in kwargs
+		kwargs[key[2:]]=True
+
+	Main(**kwargs)

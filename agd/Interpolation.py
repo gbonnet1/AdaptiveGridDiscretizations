@@ -7,7 +7,6 @@ import scipy.linalg
 
 from . import AutomaticDifferentiation as ad
 from .AutomaticDifferentiation import cupy_support as cps
-lo = ad.left_operand
 
 
 """
@@ -342,13 +341,18 @@ class UniformGridInterpolation:
 
 		# Separate treatment of interior and boundary points
 		if interior is None:
-			result_shape = self.oshape+x.shape[1:]
-			result = cps.zeros_like(x,shape = result_shape)
 			y = (ad.remove_ad(x) - origin)/scale
 			interior_x = self.spline.interior(y)
 			boundary_x = np.logical_not(interior_x)
 			interior_result = self(x[:,interior_x],True)
 			boundary_result = self(x[:,boundary_x],False)
+
+			result_shape = self.oshape+x.shape[1:]
+			#numpy zeros_like has a bug for empty shapes
+			if result_shape==tuple(): result = cps.zeros_like(x.reshape(-1)[0])
+			else: result = cps.zeros_like(x,shape=result_shape)
+			result,interior_result,boundary_result = ad.common_cast(result,interior_result,boundary_result)
+
 			try:
 				result[...,interior_x] = interior_result
 				result[...,boundary_x] = boundary_result
@@ -357,6 +361,8 @@ class UniformGridInterpolation:
 				ellipsis = (slice(None),)*len(self.oshape)
 				result.__setitem__((*ellipsis,interior_x),interior_result)
 				result.__setitem__((*ellipsis,boundary_x),boundary_result)
+
+			return result
 
 		# Rescale the coordinates in reference rectangle
 		y = np.expand_dims((x - origin)/scale,axis=1)
@@ -390,7 +396,7 @@ class UniformGridInterpolation:
 		# Spline weights
 		weight = self.spline(y,ys)
 
-		return (lo(coef)*weight).sum(axis=ondim)
+		return (coef*weight).sum(axis=ondim)
 
 	def set_values(self,values):
 		self.coef = self.make_coefs(values)

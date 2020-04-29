@@ -30,7 +30,7 @@ def get_array_module(arg,iterables=(tuple,)):
 	return sys.modules['numpy']
 
 def isndarray(x):
-	return isinstance(x,get_array_module(x).ndarray)
+	return functional.is_ad(x) or isinstance(x,get_array_module(x).ndarray)
 
 def samesize_int_t(float_t):
 	"""
@@ -124,19 +124,3 @@ def set_output_dtype32(f,silent=False,iterables=(tuple,)):
 		return functional.map_iterables(caster,output,iterables=iterables)
 
 	return wrapper
-
-# ------ inheriting from cupy.ndarray -----
-
-def cupy_init_kwargs(x):
-	"""
-	Returns the parameters necessary to generate a copy of x.
-	"""
-	x = get_array_module(x).ascontiguousarray(x)
-	return {'shape':x.shape,'dtype':x.dtype,
-		'memptr':x.data,'strides':x.strides,'order':'C'}
-
-def cupy_rebase(cls):
-	"""
-	Rebase a class on cupy.ndarray.
-	"""
-	return functional.class_rebase(cls,(cupy_module().ndarray,),cls.__name__+'_cupy')

@@ -24,7 +24,7 @@ class Base:
 		"""
 		Gradient of the norm defined by the metric.
 		"""
-		if ad.is_ad(v) or ad.is_ad(self,iterables=(Base,)):
+		if ad.is_ad(v) or ad.is_ad(self,iterables=(type(self),)):
 			v_dis = ad.disassociate(v,shape_bound=v.shape[1:])
 			grad_dis = self.disassociate().gradient(v_dis)
 			return ad.associate(grad_dis)
@@ -52,7 +52,7 @@ class Base:
 	
 	def disassociate(self):
 		def dis(x):
-			if isinstance(x,np.ndarray) and x.shape[-self.vdim:]==self.shape:
+			if ad.isndarray(x) and x.shape[-self.vdim:]==self.shape:
 				return ad.disassociate(x,shape_bound=self.shape)
 			return x
 		return self.from_generator(dis(x) for x in self)

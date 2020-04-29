@@ -20,18 +20,22 @@ def ListNotebookFiles(dirname):
 	return [filename for filename,extension in filenames_extensions 
 	if extension==".ipynb" and filename!="Summary"]
 
-def UpdateToc(filepath,data,cell,toc,update=False,show=False):
-	if not ( ('tags' in cell['metadata'] and 'TOC' in cell['metadata']['tags'])
-		or (len(cell['source'])>0 and cell['source'][0]==toc[0])): 
-		return False # Not a TOC cell
+def UpdateToc(filepath,data,toc,update=False,show=False,check_raise=False):
+	"""
+	Updates the table of contents and writes the result to specified file.
+	"""
+	for cell in data['cells']:
+		if (('tags' in cell['metadata'] and 'TOC' in cell['metadata']['tags'])
+			or (len(cell['source'])>0 and cell['source'][0]==toc[0])): break 
+	else: print(f"TOC not found for {filepath}")
 
 	# A bit of cleanup
 	while toc[-1]=="\n": toc=toc[:-1]
 	toc[-1]=toc[-1].rstrip()
 	cell['source'][-1] = cell['source'][-1].rstrip()
 
-	if toc==cell['source']:
-		return True # No need to update
+	if toc==cell['source']: return # No need to update
+	elif check_raise: raise ValueError("Outdated TOC found. Please update")
 
 	print(f"TOC of file {filepath} {'is being updated ' if update else 'needs updating'}")
 	if show:
@@ -41,9 +45,8 @@ def UpdateToc(filepath,data,cell,toc,update=False,show=False):
 		cell['source'] = toc
 		with open(filepath,'w') as f:
 			json.dump(data,f,ensure_ascii=False,indent=1)
-	return True
 
-def TestToc(dirname,filename,**kwargs):
+def TestToc(dirname,filename,check_raise=False,**kwargs):
 	filepath = os.path.join(dirname,filename)+".ipynb"
 	with open(filepath, encoding='utf8') as data_file:
 		data = json.load(data_file)
@@ -59,6 +62,7 @@ def TestToc(dirname,filename,**kwargs):
 	if line0!=line0_ref:
 		print("directory : ",dirname," file : ",filename,
 			" line0 : ",line0," differs from expexted ",line0_ref)
+		if check_raise: raise ValueError("Invalid header")
 
 	line1 = s[1].strip()
 	line1_ref = {
@@ -73,41 +77,37 @@ def TestToc(dirname,filename,**kwargs):
 	if line0!=line0_ref:
 		print("directory : ",dirname," file : ",filename,
 			" line1 : ",line1," differs from expexted ",line1_ref)
+		if check_raise: raise ValueError("Invalid header")
+
 
 	toc = TocTools.displayTOC(dirname+"/"+filename,dirname[10:]).splitlines(True)
-	for c in data['cells']:
-		if UpdateToc(filepath,data,c,toc,**kwargs): return
-	print("directory : ",dirname," file : ",filename, " toc not found")
-
+	UpdateToc(filepath,data,toc,check_raise=check_raise,**kwargs)
 
 def TestTocs(dirname,**kwargs):
 	filepath = os.path.join(dirname,"Summary.ipynb")
 	with open(filepath, encoding='utf8') as data_file:
 		data = json.load(data_file)
 	toc = TocTools.displayTOCs(dirname[10:],dirname+"/").splitlines(True)
-	for c in data['cells']:
-		if UpdateToc(filepath,data,c,toc,**kwargs): return
-	print("directory : ",dirname," Summary toc not found")
+	UpdateToc(filepath,data,toc,**kwargs)
 
 def TestTocss(**kwargs):
 	filename = "Summary.ipynb"
 	with open(filename, encoding='utf8') as data_file:
 		data = json.load(data_file)
 	toc = TocTools.displayTOCss().splitlines(True)
-	for c in data['cells']:
-		if UpdateToc(filename,data,c,toc,**kwargs): return
-	print("Main Summary toc not found")
+	UpdateToc(filename,data,toc,**kwargs)
 
+def Main(**kwargs):
+	TestTocss(**kwargs)
+	for dirname in ListNotebookDirs():
+		TestTocs(dirname,**kwargs)
+		for filename in ListNotebookFiles(dirname):
+			TestToc(dirname,filename,**kwargs)
 
 if __name__ == '__main__':
 #	TestToc("Notebooks_Algo","Dense")
 #	TestTocs("Notebooks_Algo")
 #	TestTocss()
 	kwargs = {key[2:]:True for key in sys.argv[1:] if key[:2]=='--'}
-
-	TestTocss(**kwargs)
-	for dirname in ListNotebookDirs():
-		TestTocs(dirname,**kwargs)
-		for filename in ListNotebookFiles(dirname):
-			TestToc(dirname,filename,**kwargs)
+	Main(**kwargs)
 
