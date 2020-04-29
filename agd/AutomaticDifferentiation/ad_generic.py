@@ -14,7 +14,7 @@ This file implements functions which apply indifferently to several AD types.
 """
 
 def stack(elems,axis=0):
-	for e in elems:
+	for e in elems: 
 		if is_ad(e): return type(e).stack(elems,axis)
 	return np.stack(elems,axis)
 
@@ -37,6 +37,7 @@ def precision(x):
 	if not isinstance(x,type): x = array(x).dtype.type
 	return np.finfo(x).precision	
 
+
 def _new(cls):
 	@functools.wraps(cls.__new__)
 	def new(value,*args,**kwargs): 
@@ -45,9 +46,11 @@ def _new(cls):
 		return cls_(value,*args,**kwargs)
 	return new
 
+
 def remove_ad(data,iterables=tuple()):
 	def f(a): return a.value if is_ad(a) else a
 	return functional.map_iterables(f,data,iterables)
+
 
 def common_cast(*args):
 	"""

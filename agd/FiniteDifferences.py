@@ -90,7 +90,7 @@ def TakeAtOffset(u,offset, padding=np.nan, **kwargs):
 
 	values = u.flatten()[neighIndex]
 	if padding is not None:
-		if isinstance(values,np.ndarray):
+		if ad.isndarray(values):
 			values[np.logical_not(inside)] = padding
 		elif not inside:
 			values = padding

@@ -5,93 +5,52 @@ import numpy as np
 from . import cupy_generic
 from .cupy_generic import cupy_init_kwargs,cupy_rebase
 from . import ad_generic
-from . import cupy_support as npl
-from . import numpy_like
+from . import cupy_support as cps
 from . import misc
 from . import Sparse
 from . import Dense2
+from . import Base
 
 _add_dim = misc._add_dim; _pad_last = misc._pad_last; _concatenate=misc._concatenate;
 
 
-class spAD2(np.ndarray):
+class spAD2(Base.baseAD):
 	"""
 	A class for sparse forward second order automatic differentiation
 	"""
 
-	# Construction
-	# See : https://docs.scipy.org/doc/numpy-1.13.0/user/basics.subclassing.html
-	def __new__(cls,value,coef1=None,index=None,coef2=None,index_row=None,index_col=None,broadcast_ad=False):
-		# Case where one should just reproduce value
-		if cls.is_ad(value):
+	def __init__(self,value,coef1=None,index=None,coef2=None,index_row=None,index_col=None,broadcast_ad=False):
+		if self.is_ad(value):
 			assert (coef1 is None and index is None 
 				and coef2 is None and index_row is None and index_col is None)
-			if cls.cupy_based(): value,coef1,index,coef2,index_row,index_col \
+			self.value,self.coef1,self.index,self.coef2,self.index_row,self.index_col \
 				= value.value,value.coef1,value.index,value.coef2,value.index_row,value.index_col
-			else: return value
+			return
 		if ad_generic.is_ad(value):
 			raise ValueError("Attempting to cast between different AD types")
 
 		# Create instance 
-		value = ad_generic.asarray(value)
-		if cls.cupy_based():
-			spAD2_cupy = cupy_rebase(spAD2)
-			obj = super(spAD2_cupy,cls).__new__(cls,**cupy_init_kwargs(value))
-		else: 
-			obj = value.view(spAD2)
-
-		shape = value.shape
+		self.value = ad_generic.asarray(value)
+		shape = self.shape
 		shape2 = shape+(0,)
 		int_t = cupy_generic.samesize_int_t(value.dtype)
 		assert ((coef1 is None) and (index is None)) or (coef1.shape==index.shape)
-		obj.coef1 = (npl.zeros_like(value,shape=shape2) if coef1  is None 
+		self.coef1 = (cps.zeros_like(value,shape=shape2) if coef1  is None 
 			else misc._test_or_broadcast_ad(coef1,shape,broadcast_ad) )
-		obj.index = (npl.zeros_like(value,shape=shape2,dtype=int_t)  if index is None  
+		self.index = (cps.zeros_like(value,shape=shape2,dtype=int_t)  if index is None  
 			else misc._test_or_broadcast_ad(index,shape,broadcast_ad) )
 		
 		assert (((coef2 is None) and (index_row is None) and (index_col is None)) 
 			or ((coef2.shape==index_row.shape) and (coef2.shape==index_col.shape)))
-		obj.coef2 = (npl.zeros_like(value,shape=shape2) if coef2  is None 
+		self.coef2 = (cps.zeros_like(value,shape=shape2) if coef2  is None 
 			else misc._test_or_broadcast_ad(coef2,shape,broadcast_ad) )
-		obj.index_row = (npl.zeros_like(value,shape=shape2,dtype=int_t)  if index_row is None 
+		self.index_row = (cps.zeros_like(value,shape=shape2,dtype=int_t)  if index_row is None 
 			else misc._test_or_broadcast_ad(index_row,shape,broadcast_ad) )
-		obj.index_col = (npl.zeros_like(value,shape=shape2,dtype=int_t)  if index_col is None 
+		self.index_col = (cps.zeros_like(value,shape=shape2,dtype=int_t)  if index_col is None 
 			else misc._test_or_broadcast_ad(index_col,shape,broadcast_ad) )
-		return obj
-
-	def __init__(self,value,*args,**kwargs):
-		if self.cupy_based():
-			if self.is_ad(value): value = value.value
-			spAD2_cupy = cupy_rebase(spAD2)
-			super(spAD2_cupy,self).__init__(**cupy_init_kwargs(value))
 
 	@classmethod
-	def _ndarray(cls):
-		return cls.__bases__[0]
-	@classmethod
-	def cupy_based(cls):
-		return cls._ndarray() is not np.ndarray
-	@classmethod
-	def isndarray(cls,other): 
-		"""Wether argument is an ndarray from a compatible module (numpy or cupy)"""
-		return isinstance(other,cls._ndarray())
-	@classmethod
-	def is_ad(cls,other): return isinstance(other,cls)
-	@classmethod
-	def new(cls,*args,**kwargs):
-		return cls(*args,**kwargs)
-	@property
-	def value(self): 
-		"""Returns the base ndarray, without AD information"""
-		if self.cupy_based(): return self.view()
-		else: return self.view(np.ndarray)
-	@classmethod
-	def _spAD(cls):
-		return cupy_rebase(Sparse.spAD) if cls.cupy_based() else Sparse.spAD	
-	@classmethod
-	def _denseAD2(cls):
-		return cupy_rebase(Dense2.denseAD2) if cls.cupy_based() else Dense2.denseAD2
-
+	def order(cls): return 2
 	def copy(self,order='C'):
 		return self.new(self.value.copy(order=order),
 			self.coef1.copy(order=order),self.index.copy(order=order),
@@ -189,27 +148,9 @@ class spAD2(np.ndarray):
 			_concatenate(_add_dim(b)*self.coef2,_add_dim(c)*(coef1_r*coef1_t)),
 			_concatenate(self.index_row, index_r),_concatenate(self.index_col, index_t))
 	
-	def sqrt(self):			return self**0.5
-	def __pow__(self,n):	return self._math_helper(misc.pow2(self.value,n))
-	def log(self):			return self._math_helper(misc.log2(self.value))
-	def exp(self):			return self._math_helper(misc.exp2(self.value))
-	def abs(self):			return self._math_helper(misc.abs2(self.value))
-	def sin(self):			return self._math_helper(misc.sin2(self.value))
-	def cos(self):			return self._math_helper(misc.cos2(self.value))
-	def tan(self):			return self._math_helper(misc.tan2(self.value))
-	def arcsin(self):		return self._math_helper(misc.arcsin2(self.value))
-	def arccos(self):		return self._math_helper(misc.arccos2(self.value))
-	def arctan(self):		return self._math_helper(misc._arctan2(self.value))
-	def sinh(self):			return self._math_helper(misc.sinh2(self.value))
-	def cosh(self):			return self._math_helper(misc.cosh2(self.value))
-	def tanh(self):			return self._math_helper(misc.tanh2(self.value))
-	def arcsinh(self):		return self._math_helper(misc.arcsinh2(self.value))
-	def arccosh(self):		return self._math_helper(misc.arccosh2(self.value))
-	def arctanh(self):		return self._math_helper(misc._arctanh2(self.value))
-
 	@classmethod
 	def compose(cls,a,t):
-		assert cls._denseAD2().is_ad(a) and all(cls.is_ad(b) for b in t)
+		assert isinstance(a,Dense2.denseAD2) and all(cls.is_ad(b) for b in t)
 		b = np.moveaxis(cls.concatenate(t,axis=0),0,-1) # Possible performance hit if ad sizes are inhomogeneous
 		coef1 = _add_dim(a.coef1)*b.coef1
 		index1 = np.broadcast_to(b.index,coef1.shape)
@@ -278,9 +219,6 @@ class spAD2(np.ndarray):
 			self.coef1.reshape(shape1,order=order), self.index.reshape(shape1,order=order),
 			self.coef2.reshape(shape2,order=order),self.index_row.reshape(shape2,order=order),self.index_col.reshape(shape2,order=order))
 
-	def flatten(self):	return self.reshape( (self.size,) )
-	def squeeze(self,axis=None): return self.reshape(self.value.squeeze(axis).shape)
-
 	def broadcast_to(self,shape):
 		shape1 = shape+(self.size_ad1,)
 		shape2 = shape+(self.size_ad2,)
@@ -294,9 +232,6 @@ class spAD2(np.ndarray):
 			np.pad(self.value,pad_width,*args,constant_values=constant_values,**kwargs),
 			_pad(self.coef1),_pad(self.index),
 			_pad(self.coef2),_pad(self.index_row),_pad(self.index_col))
-
-	@property
-	def T(self):	return self if self.ndim<2 else self.transpose()
 	
 	def transpose(self,axes=None):
 		if axes is None: axes = tuple(reversed(range(self.ndim)))
@@ -322,93 +257,22 @@ class spAD2(np.ndarray):
 		out = self.new(value,coef1,index,coef2,index_row,index_col)
 		return out
 
-	prod = misc.prod
-
-	def min(self,*args,**kwargs): return misc.min(self,*args,**kwargs)
-	def max(self,*args,**kwargs): return misc.max(self,*args,**kwargs)
-	def argmin(self,*args,**kwargs): return self.value.argmin(*args,**kwargs)
-	def argmax(self,*args,**kwargs): return self.value.argmax(*args,**kwargs)
-
-	def sort(self,*varargs,**kwargs):
-		from . import sort
-		self=sort(self,*varargs,**kwargs)
-
-
-	# See https://docs.scipy.org/doc/numpy/reference/ufuncs.html
-	def __array_ufunc__(self,ufunc,method,*inputs,**kwargs):
-#		if ufunc!=np.maximum:
-#			print(self)
-#			return NotImplemented
-		# Return an np.ndarray for piecewise constant functions
-		if ufunc in [
-		# Comparison functions
-		np.greater,np.greater_equal,
-		np.less,np.less_equal,
-		np.equal,np.not_equal,
-
-		# Math
-		np.floor_divide,np.rint,np.sign,np.heaviside,
-
-		# Floating functions
-		np.isfinite,np.isinf,np.isnan,np.isnat,
-		np.signbit,np.floor,np.ceil,np.trunc
-		]:
-			inputs_ = (a.value if self.is_ad(a) else a for a in inputs)
-			return self.value.__array_ufunc__(ufunc,method,*inputs_,**kwargs)
-
-
-		if method=="__call__":
-
-			# Reimplemented
-			if ufunc==np.maximum: return misc.maximum(*inputs,**kwargs)
-			if ufunc==np.minimum: return misc.minimum(*inputs,**kwargs)
-
-			# Math functions
-			if ufunc==np.sqrt:		return self.sqrt()
-			if ufunc==np.log:		return self.log()
-			if ufunc==np.exp:		return self.exp()
-			if ufunc==np.abs:		return self.abs()
-			if ufunc==np.sin:		return self.sin()
-			if ufunc==np.cos:		return self.cos()
-			if ufunc==np.tan:		return self.tan()
-			if ufunc==np.arcsin:	return self.arcsin()
-			if ufunc==np.arccos:	return self.arccos()
-			if ufunc==np.arctan:	return self.arctan()
-			if ufunc==np.sinh:		return self.sinh()
-			if ufunc==np.cosh:		return self.cosh()
-			if ufunc==np.tanh:		return self.tanh()
-			if ufunc==np.arcsinh:	return self.arcsinh()
-			if ufunc==np.arccosh:	return self.arccosh()
-			if ufunc==np.arctanh:	return self.arctanh()
-
-			# Operators
-			if ufunc==np.add: return self.add(*inputs,**kwargs)
-			if ufunc==np.subtract: return self.subtract(*inputs,**kwargs)
-			if ufunc==np.multiply: return self.multiply(*inputs,**kwargs)
-			if ufunc==np.true_divide: return self.true_divide(*inputs,**kwargs)
-
-
-		return NotImplemented
-
-	def __array_function__(self,func,types,args,kwargs):
-		return numpy_like._array_function_overload(self,func,types,args,kwargs)
-
 	# Conversion
 	def bound_ad(self):
-		def maxi(a): return int(npl.max(a,initial=-1))
+		def maxi(a): return int(cps.max(a,initial=-1))
 		return 1+np.max((maxi(self.index),maxi(self.index_row),maxi(self.index_col)))
 	def to_dense(self,dense_size_ad=None):
 		def mvax(arr): return np.moveaxis(arr,-1,0)
 		dsad = self.bound_ad() if dense_size_ad is None else dense_size_ad
-		coef1 = npl.zeros_like(self.value,shape=self.shape+(dsad,))
+		coef1 = cps.zeros_like(self.value,shape=self.shape+(dsad,))
 		for c,i in zip(mvax(self.coef1),mvax(self.index)):
 			np.put_along_axis(coef1,_add_dim(i),np.take_along_axis(coef1,_add_dim(i),axis=-1)+_add_dim(c),axis=-1)
-		coef2 = npl.zeros_like(self.value,shape=self.shape+(dsad*dsad,))
+		coef2 = cps.zeros_like(self.value,shape=self.shape+(dsad*dsad,))
 		for c,i in zip(mvax(self.coef2),mvax(self.index_row*dsad+self.index_col)):
 			np.put_along_axis(coef2,_add_dim(i),np.take_along_axis(coef2,_add_dim(i),axis=-1)+_add_dim(c),axis=-1)
-		return self._denseAD2()(self.value,coef1,np.reshape(coef2,self.shape+(dsad,dsad)))
+		return Dense2.new(self.value,coef1,np.reshape(coef2,self.shape+(dsad,dsad)))
 	def to_first(self):
-		return self._spAD()(self.value,self.coef1,self.index)
+		return Sparse.new(self.value,self.coef1,self.index)
 
 	#Linear algebra
 	def triplets(self):
@@ -438,26 +302,6 @@ class spAD2(np.ndarray):
 		return (mat,rhs) if raw else misc.spsolve(mat,rhs)
 	
 	# Static methods
-
-	# Support for +=, -=, *=, /=
-	def __iadd__(self,other): return misc.add(self,other,out=self,where=True)
-	def __isub__(self,other): return misc.subtract(self,other,out=self,where=True)
-	def __imul__(self,other): return misc.multiply(self,other,out=self,where=True)
-	def __itruediv__(self,other): return misc.true_divide(self,other,out=self,where=True)
-
-	@staticmethod
-	def add(*args,**kwargs): return misc.add(*args,**kwargs)
-	@staticmethod
-	def subtract(*args,**kwargs): return misc.subtract(*args,**kwargs)
-	@staticmethod
-	def multiply(*args,**kwargs): return misc.multiply(*args,**kwargs)
-	@staticmethod
-	def true_divide(*args,**kwargs): return misc.true_divide(*args,**kwargs)
-
-	@classmethod
-	def stack(cls,elems,axis=0):
-		return cls.concatenate(tuple(npl.expand_dims(e,axis=axis) for e in elems),axis)
-
 	@classmethod
 	def concatenate(cls,elems,axis=0):
 		axis1 = axis if axis>=0 else axis-1
@@ -473,12 +317,12 @@ class spAD2(np.ndarray):
 		np.concatenate(tuple(_pad_last(e.index_col,size_ad2)  for e in elems2),axis=axis1))
 
 	def simplify_ad(self):
-		spHelper1 = self._spAD()(self.value,self.coef1,self.index)
+		spHelper1 = Sparse.new(self.value,self.coef1,self.index)
 		spHelper1.simplify_ad()
 		self.coef1,self.index = spHelper1.coef,spHelper1.index
 
 		n_col = 1+np.max(self.index_col)
-		spHelper2 = self._spAD()(self.value,self.coef2,self.index_row*n_col + self.index_col)
+		spHelper2 = Sparse.new(self.value,self.coef2,self.index_row*n_col + self.index_col)
 		spHelper2.simplify_ad()
 		self.coef2,self.index_row,self.index_col = spHelper2.coef, spHelper2.index//n_col, spHelper2.index%n_col
 
@@ -492,15 +336,15 @@ def _flatten_nlast(a,n):
 	return a.reshape(s[:-n]+(np.prod(s[-n:]),))
 
 # -------- Factory method -----
-new = ad_generic._new(spAD2) # Factory function
+def new(*args,**kwargs): return spAD2(*args,**kwargs)
 
 def identity(*args,**kwargs):
 	arr = Sparse.identity(*args,**kwargs)
 	shape2 = arr.shape+(0,)
 	return new(arr.value,arr.coef,arr.index,
-		npl.zeros_like(arr.coef,shape=shape2),
-		npl.zeros_like(arr.index,shape=shape2),
-		npl.zeros_like(arr.index,shape=shape2))
+		cps.zeros_like(arr.coef,shape=shape2),
+		cps.zeros_like(arr.index,shape=shape2),
+		cps.zeros_like(arr.index,shape=shape2))
 
 def register(*args,**kwargs):
 	return Sparse.register(*args,**kwargs,ident=identity)

@@ -30,7 +30,7 @@ def get_array_module(arg,iterables=(tuple,)):
 	return sys.modules['numpy']
 
 def isndarray(x):
-	return isinstance(x,get_array_module(x).ndarray)
+	return functional.is_ad(x) or isinstance(x,get_array_module(x).ndarray)
 
 def samesize_int_t(float_t):
 	"""

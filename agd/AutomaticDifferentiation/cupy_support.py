@@ -18,15 +18,9 @@ def flat(a):
 	try: return a.flat # cupy.ndarray (old version ?) does not have flat
 	except AttributeError: return a.reshape(-1) 
 
-@implements_cupy_alt(np.expand_dims,ValueError)
-def expand_dims(a,axis): # numpy will not accept cupy arrays
-	if axis<0: axis=1+a.ndim+axis
-	newshape = a.shape[:axis]+(1,)+a.shape[axis:]
-	return a.reshape(newshape)
-
 @implements_cupy_alt(np.full_like,TypeError)
 def full_like(arr,*args,**kwargs): # cupy (old version ?) lacks the shape argument
-	arr = np.broadcast_to(arr.flatten()[0], kwargs.pop('shape'))
+	arr = np.broadcast_to(arr.reshape(-1)[0], kwargs.pop('shape'))
 	return np.full_like(arr,*args,**kwargs)
 
 def zeros_like(a,*args,**kwargs): return full_like(a,0.,*args,**kwargs)

@@ -26,8 +26,10 @@ def norm(arr,ord=2,axis=None,keepdims=False,averaged=False):
 	Compatible with automatic differentiation.
 	"""
 	arr = ad_generic.array(arr)
-	if ord==np.inf: return np.max(np.abs(arr),axis=axis,keepdims=keepdims)
-	if ord%2!=0:    arr = np.abs(arr)
+	if ord==np.inf or ord%2!=0:
+		try: arr = np.abs(arr)
+		except TypeError: arr = np.vectorize(np.abs)(arr)
+	if ord==np.inf: return np.max(arr,axis=axis,keepdims=keepdims)
 	sum_pow = np.sum(arr**ord,axis=axis,keepdims=keepdims)
 	
 	if averaged:
@@ -77,7 +79,7 @@ class stop_default:
 
 	def abort(self):
 		if self.raise_on_abort:
-			raise ValueError
+			raise ValueError("Newton solver did not reach convergence")
 		return True
 
 
