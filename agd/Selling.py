@@ -14,7 +14,7 @@ iterMax3 = 100
 
 # -------- Dimension based dispatch -----
 
-def GetDimBounds(m):
+def _GetDimBounds(m):
     """Returns dim,bounds where m.shape = (dim,dim)+bounds. Purposedly fails if dim not in [1,2,3]."""
     shape = m.shape
     if len(shape)<2:
@@ -31,12 +31,12 @@ def ObtuseSuperbase(m,sb=None):
     In : symmetric positive definite matrix m. Initial superbase sb (optional).
     Out : obtuse superbase is stored in input argument sb if it is not None. Else it is returned.
     """
-    dim,bounds = GetDimBounds(m)
+    dim,bounds = _GetDimBounds(m)
     osb = CanonicalSuperbase(dim,bounds) if sb is None else sb
 
-    if   dim==1:            success = ObtuseSuperbase1(m,osb)    
-    elif dim==2:            success = ObtuseSuperbase2(m,osb)
-    else: assert dim==3;    success = ObtuseSuperbase3(m,osb) 
+    if   dim==1:            success = _ObtuseSuperbase1(m,osb)    
+    elif dim==2:            success = _ObtuseSuperbase2(m,osb)
+    else: assert dim==3;    success = _ObtuseSuperbase3(m,osb) 
 
     if sb is None:
         if not success: raise ValueError('Selling.Decomposition2 error: Selling algorithm unterminated')
@@ -52,13 +52,13 @@ def Decomposition(m,sb=None):
         input : symmetric positive definite tensor, d<=3. Superbase (optional).
         output : coefficients, offsets
     """
-    dim,bounds=GetDimBounds(m)
+    dim,bounds=_GetDimBounds(m)
     if sb is None:
         sb = ObtuseSuperbase(m)
 
-    if   dim==1:            return Decomposition1(m,sb)    
-    elif dim==2:            return Decomposition2(m,sb)
-    else: assert dim==3;    return Decomposition3(m,sb)
+    if   dim==1:            return _Decomposition1(m,sb)    
+    elif dim==2:            return _Decomposition2(m,sb)
+    else: assert dim==3;    return _Decomposition3(m,sb)
 
 
 def GatherByOffset(T,Coefs,Offsets):
@@ -95,31 +95,31 @@ def SuperbasesForConditioning(cond,dim=2):
     One of them is M-obtuse, for any positive definite matrix M with condition number below the given bound.
     (Condition number is the ratio of the largest to the smallest eigenvalue.)
     """
-    if dim==1:          return SuperbasesForConditioning1(cond)
-    elif dim==2:        return SuperbasesForConditioning2(cond)
-    else: assert dim==3;return SuperbasesForConditioning3(cond)
+    if dim==1:          return _SuperbasesForConditioning1(cond)
+    elif dim==2:        return _SuperbasesForConditioning2(cond)
+    else: assert dim==3;return _SuperbasesForConditioning3(cond)
 
 # ------- One dimensional variant (trivial) ------
 
-def ObtuseSuperbase1(m,sb=None):
-    osb = CanonicalSuperbase(*GetDimBounds(m))
+def _ObtuseSuperbase1(m,sb=None):
+    osb = CanonicalSuperbase(*_GetDimBounds(m))
     if sb is None:  return osb
     else: sb=osb; return True
 
-def Decomposition1(m,sb):
-    _,bounds = GetDimBounds(m)
+def _Decomposition1(m,sb):
+    _,bounds = _GetDimBounds(m)
     offsets = sb[:,0].reshape((1,1,)+bounds)
     coefs = m.reshape((1,)+bounds)    
     return coefs, offsets.astype(int)
 
-def SuperbasesForConditioning1(cond):
+def _SuperbasesForConditioning1(cond):
     sb = CanonicalSuperbase(1)
     return sb.reshape(sb.shape+(1,))
 
 # ------- Two dimensional variant ------
 
 # We do everyone in parallel, without selection or early abort
-def ObtuseSuperbase2(m,sb):
+def _ObtuseSuperbase2(m,sb):
     """
         Use Selling's algorithm to compute an obtuse superbase.
 
@@ -150,21 +150,21 @@ def ObtuseSuperbase2(m,sb):
     return iterReduced==iterReducedMax
     
 # Produce the matrix decomposition
-def Decomposition2(m,sb):
+def _Decomposition2(m,sb):
     """
         Use Selling's algorithm to decompose a tensor
 
         input : symmetric positive definite tensor 
         output : coefficients, offsets
     """
-    _,bounds = GetDimBounds(m)
+    _,bounds = _GetDimBounds(m)
     coef=np.zeros((3,)+bounds)
     for (i,j,k) in [(0,1,2),(1,2,0),(2,0,1)]:
         coef[i] = -dot_VV(sb[:,j], dot_AV(m, sb[:,k]) )
     
     return coef,perp(sb).astype(int)
 
-def SuperbasesForConditioning2(cond):
+def _SuperbasesForConditioning2(cond):
     """
     Implementation is based on exploring the Stern-Brocot tree, 
     with a stopping criterion based on the angle between consecutive vectors.
@@ -196,7 +196,7 @@ def SuperbasesForConditioning2(cond):
 # ------- Three dimensional variant -------
 
 # We do everyone in parallel, without selection or early abort
-def ObtuseSuperbase3(m,sb):
+def _ObtuseSuperbase3(m,sb):
     """
         Use Selling's algorithm to compute an obtuse superbase.
 
@@ -227,14 +227,14 @@ def ObtuseSuperbase3(m,sb):
     
     return iterReduced==iterReducedMax
     
-def Decomposition3(m,sb):
+def _Decomposition3(m,sb):
     """
         Use Selling's algorithm to decompose a tensor
 
         input : symmetric positive definite tensor, d=3
         output : coefficients, offsets
     """
-    _,bounds = GetDimBounds(m)
+    _,bounds = _GetDimBounds(m)
     
     coef=np.zeros((6,)+bounds)
     offset=np.zeros((3,6,)+bounds)
@@ -245,5 +245,5 @@ def Decomposition3(m,sb):
         
     return coef,offset.astype(int)
 
-def SuperbasesForConditioning3(cond):
-    raise ValueError("Sorry, SuperbasesForConditioning3 is not implemented yet")
+def _SuperbasesForConditioning3(cond):
+    raise ValueError("Sorry, _SuperbasesForConditioning3 is not implemented yet")
