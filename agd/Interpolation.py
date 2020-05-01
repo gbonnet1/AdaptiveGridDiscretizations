@@ -291,17 +291,25 @@ class UniformGridInterpolation:
 	def __init__(self,grid,values=None,order=1,periodic=False,check_grid=True):
 		"""
 		- grid (ndarray) : must be a uniform grid. E.g. np.meshgrid(aX,aY,indexing='ij')
-		 where aX,aY have uniform spacing.
+		 where aX,aY have uniform spacing. Alternatively
 		- values (ndarray) : interpolated values.
 		- order (int, tuple of ints) : spline interpolation order (<=3), along each axis.
 		- periodic (bool, tuple of bool) : wether periodic interpolation, along each axis.
 		"""
-		grid = ad.asarray(grid)
-		self.shape = grid.shape[1:]
-		self.origin = grid.__getitem__((slice(None),)+(0,)*self.vdim)
-		self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
-		if check_grid:
-			assert np.allclose(grid,self._grid())
+		if isinstance(grid,dict):
+			self.shape  = grid['shape']
+			self.origin = ad.asarray(grid['origin'])
+			self.scale  = ad.asarray(grid['scale'])
+			if grid.get('cell_centered',False): 
+				self.origin += self.scale/2 # Convert to node_centered origin
+		else:
+			grid = ad.asarray(grid)
+			self.shape = grid.shape[1:]
+			self.origin = grid.__getitem__((slice(None),)+(0,)*self.vdim)
+			self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
+			if check_grid:
+				assert np.allclose(grid,self._grid())
+
 		if order is None: order = 1
 		if isinstance(order,int): order = (order,)*self.vdim
 

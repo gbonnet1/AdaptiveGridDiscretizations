@@ -70,8 +70,8 @@ class dictIn(dict):
 	def vdim(self):
 		"""Vector dimension of the ambient space."""
 		return len(self['dims'])
-	
-
+	@property
+	def shape(self): return tuple(self['dims'].astype(int))
 
 	def copy(self):
 		return dictIn(dict.copy(self))

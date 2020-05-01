@@ -13,32 +13,33 @@ from agd.Plotting import savefig; #savefig.dirName = 'Images/BoatRouting'
 import numpy as np
 import matplotlib.pyplot as plt
 
-def route_min(v,params):
-    v,α,ω,M = fd.common_field((v,)+params,depths=(1,0,1,2))
-    v_norm = np.sqrt(lp.dot_VAV(v,M,v))
-    ωα_norm = np.sqrt( lp.dot_VAV(ω,M,ω) + α)
-    cost = 2*(v_norm*ωα_norm - lp.dot_VAV(v,M,ω))
-    time = v_norm / ωα_norm
-    fuel = cost/time - α
-    head = (v/time - ω)/np.sqrt(fuel)
+def route_min(z,params):
+    z,μ,ω,M = fd.common_field((z,)+params, depths=(1,0,1,2))
+    z_norm = np.sqrt(lp.dot_VAV(z,M,z))
+    μω_norm = np.sqrt( 2*μ +lp.dot_VAV(ω,M,ω) )
+    cost = z_norm*μω_norm - lp.dot_VAV(z,M,ω)
+    time = z_norm / μω_norm
+    fuel = cost/time
+    rvel = z/time - ω
     return {
-        'cost':cost,
-        'time':time,
-        'fuel':fuel, # ρ, instantaneous fuel consumption
-        'head':head, # u, where to head for
+        'cost':cost, # minimal cost for this travel
+        'time':time, # optimal travel time 
+        'fuel':fuel, # instantaneous fuel consumption
+        'rvel':rvel, # relative velocity, w.r.t current
     }
 
 def metric(params):
-    α,ω,M = fd.common_field(params,depths=(0,1,2))
-    return Rander( M*(lp.dot_VAV(ω,M,ω) + α), -lp.dot_AV(M,ω)).with_cost(2.)
+    μ,ω,M = fd.common_field(params,depths=(0,1,2))
+    return Rander( M*(2*μ + lp.dot_VAV(ω,M,ω)), -lp.dot_AV(M,ω))
 
 def Spherical(θ,ϕ): 
     """Spherical embedding: θ is longitude, ϕ is latitude from equator toward pole"""
     return (np.cos(θ)*np.cos(ϕ), np.sin(θ)*np.cos(ϕ), np.sin(ϕ))
 
 def IntrinsicMetric(Embedding,*X):
+    """Riemannian metric for a manifold embedded in Euclidean space"""
     X_ad = ad.Dense.identity(constant=X,shape_free=(2,)) # First order dense AD variable
-    Embed_ad = ad.asarray(Embedding(*X_ad)) # Differentiate the spherical embedding
+    Embed_ad = ad.asarray(Embedding(*X_ad)) # Differentiate the embedding
     Embed_grad = Embed_ad.gradient()
     Embed_M = lp.dot_AA(Embed_grad,lp.transpose(Embed_grad)) # Riemannian metric
     return Embed_M
@@ -53,4 +54,23 @@ def Currents(θ,ϕ):
     bump1 = 2*bump(2*(θ-0.7),ϕ-0.2); ω1=(1,-1)
     bump0,ω0,bump1,ω1 = fd.common_field( (bump0,ω0,bump1,ω1), depths=(0,1,0,1))
     return bump0*ω0+bump1*ω1
+
+def ArrivalTime(hfmIn,params):
+    hfmIn = hfmIn.copy()
+    hfmIn['metric'] = metric(params)
+    cache = HFMUtils.Cache(needsflow=True)
+    hfmOut = hfmIn.RunSmart(cache=cache)
+    
+    flow = hfmOut['flow']
+    no_flow = np.all(flow==0,axis=0)
+    flow[:,no_flow]=np.nan  # No flow at the seed point, avoid zero divide
+    flow_norm = hfmIn['metric'].norm(flow)
+    route = route_min(flow,params)
+    costVariation = route['time']/flow_norm
+    costVariation[no_flow] = 0
+    hfmIn['costVariation'] = np.expand_dims(costVariation,axis=-1)
+    
+    hfmOut2 = hfmIn.RunSmart(cache=cache) # cache avoids some recomputations
+    time = hfmOut2['values'].gradient(0)
+    return time,hfmOut
 
