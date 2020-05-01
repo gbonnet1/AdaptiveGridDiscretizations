@@ -48,14 +48,15 @@ VolumeFilenames = {
     "Isotropic","Riemannian","Rander","AsymmetricQuadratic",
     "Curvature","Curvature3","DeviationHorizontality",
     "Geodesics","HighAccuracy","SmartIO","Sensitivity","SensitivitySL",
-    "Illusion","Tubular","FisherRao","DubinsZermelo","MedialAxis",
-    "Seismic"
+    "Illusion","Tubular","FisherRao","DubinsZermelo","MedialAxis","BoatRouting",
+    "Seismic",
 ],
 'NonDiv':[
 	"MonotoneSchemes1D","Time1D_NonDiv","OTBoundary1D",
 	"LinearMonotoneSchemes2D","NonlinearMonotoneFirst2D",
 	"NonlinearMonotoneSecond2D",
-	"MongeAmpere","EikonalEulerian"
+	"MongeAmpere","EikonalEulerian",
+	"BoatRouting_Time",
 ],
 'Div':["Time1D_Div","Elliptic","EllipticAsymmetric","VaradhanGeodesics"],
 'Algo':[

@@ -133,16 +133,23 @@ def from_module(x,module_name):
 	_module_name = x.__module__
 	return module_name == _module_name or _module_name.startswith(module_name+'.')
 
+classesAD = ('denseAD','denseAD2','spAD','spAD2',
+'denseAD_cupy','denseAD2_cupy','spAD_cupy','spAD2_cupy')
+
 def is_adtype(t):
 	return (t.__module__.startswith('agd.AutomaticDifferentiation.') 
-		and t.__name__ in ('denseAD','denseAD2','spAD','spAD2',
-			'denseAD_cupy','denseAD2_cupy','spAD_cupy','spAD2_cupy'))
+		and t.__name__ in classesAD)
 	
 def is_ad(data,iterables=tuple()):
 	"""
 	Returns None if no ad variable found, or the adtype if one is found.
 	Also checks consistency of the ad types.
 	"""
+	# TODO : this function seems to be quite slow. A shortcut would be welcome.
+	# Also, returning a bool would be better than the AD type.
+#	if iterables is tuple(): 
+#		t = type(data)
+#		return t if is_adtype(t) else None #type(data).__name__ in classesAD
 	adtype=None
 	def check(t):
 		nonlocal adtype

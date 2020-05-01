@@ -25,6 +25,7 @@ def as_field(u,shape,conditional=True,depth=None):
 
 def common_field(arrays,depths,shape=tuple()):
 	if shape==tuple():
+		assert len(arrays)==len(depths)
 		for arr,depth in zip(arrays,depths):
 			if arr is None: continue
 			arr=ad.asarray(arr)
