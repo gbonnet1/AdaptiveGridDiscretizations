@@ -7,6 +7,21 @@ from . import numpy_like as npl
 from .ad_generic import is_ad,asarray
 from . import cupy_generic
 from . import functional
+
+# ----- implementation note -----
+# denseAD should not inherit from np.ndarray, otherwise silent casts of scalars
+# denseAD_cupy must inherit cp.ndarray, otherwise operator overloading won't work
+
+
+# import the cupy module only if available on the system
+try: 
+	import cupy as cp
+	_cp_ndarray = cp.ndarray
+except ModuleNotFoundError: 
+	cp=None
+	class _cp_ndarray: pass
+
+
 # Elementary functions and their derivatives
 # No implementation of arctan2, or hypot, which have two args
 class Taylor1: # first order Taylor expansions
@@ -241,16 +256,19 @@ class baseAD:
 				initial = initial*dtype(1)
 
 
-		out = functools.reduce(operator.mul,arr) if initial is None else functools.reduce(operator.mul,arr,initial)
+		out = functools.reduce(operator.mul,arr) if initial is None 
+			else functools.reduce(operator.mul,arr,initial)
 
 		if keepdims:
-			shape_kept = tuple(1 if i in axis else ai for i,ai in enumerate(shape_orig)) if out.size>1 else (1,)*len(shape_orig)
+			shape_kept = tuple(1 if i in axis else ai for i,ai in enumerate(shape_orig)) 
+				if out.size>1 else (1,)*len(shape_orig)
 			out = out.reshape(shape_kept) 
 
 		return out
 
+# --------- Cupy support ----------
 
-# ---- cupy ad needs cp.ndarray as base class ----
+denseAD_cupy = 
 
 def _new(cls):
 	@functools.wraps(cls.__init__)

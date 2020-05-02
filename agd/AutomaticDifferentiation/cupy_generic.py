@@ -12,6 +12,14 @@ import sys
 import functools
 from . import functional
 
+# import the cupy module only if available on the system
+try: 
+	import cupy as cp
+	_cp_ndarray = cp.ndarray
+except ModuleNotFoundError: 
+	cp=None
+	class _cp_ndarray: pass
+
 # ----- Getting the cupy module, if needed -----
 def cupy_module():
 	import cupy
