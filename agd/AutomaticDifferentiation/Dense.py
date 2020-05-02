@@ -1,14 +1,13 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-import numpy as np
 import functools
+import numpy as np
 from . import functional
-from . import ad_generic
-from . import cupy_support as npl
-from . import numpy_like
-from . import misc
 from . import Base
+from . import cupy_support as cps
+from . import ad_generic
+from . import misc
 
 
 _add_dim = misc._add_dim; _add_coef=misc._add_coef
@@ -26,7 +25,7 @@ class denseAD(Base.baseAD):
 		if ad_generic.is_ad(value):
 			raise ValueError("Attempting to cast between different AD types")
 		self.value = ad_generic.asarray(value)
-		self.coef = (npl.zeros_like(value,shape=self.shape+(0,)) if coef is None 
+		self.coef = (cps.zeros_like(value,shape=self.shape+(0,)) if coef is None 
 			else misc._test_or_broadcast_ad(coef,self.shape,broadcast_ad) )
 		self._init_cupy()
 
@@ -113,7 +112,7 @@ class denseAD(Base.baseAD):
 		if self.is_ad(other):
 			if other.size_ad==0: return self.__setitem__(key,other.value)
 			elif self.size_ad==0: 
-				self.coef=npl.zeros_like(self.value,shape=self.shape+(other.size_ad,))
+				self.coef=cps.zeros_like(self.value,shape=self.shape+(other.size_ad,))
 			self.value[key] = other.value
 			self.coef[ekey] =  other.coef
 		else:
@@ -163,7 +162,7 @@ class denseAD(Base.baseAD):
 		return cls( 
 		np.concatenate(tuple(e.value for e in elems2), axis=axis), 
 		np.concatenate(tuple(e.coef if e.size_ad==size_ad else 
-			npl.zeros_like(e.value,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1))
+			cps.zeros_like(e.value,shape=e.shape+(size_ad,)) for e in elems2),axis=axis1))
 
 	def associate(self,squeeze_free_dims=-1,squeeze_bound_dims=-1):
 		from . import associate
@@ -178,12 +177,23 @@ class denseAD(Base.baseAD):
 		return self.new(op(self.value),misc.apply_linear_operator(op,self.coef,flatten_ndim=1))
 
 # -------- End of class denseAD -------
+# ------ Cupy support ------
+
+denseAD_cupy,new = Base.cupy_variant(denseAD)
+
+#denseAD_cupy = functional.class_rebase(denseAD,(Base.baseAD_cupy,),"denseAD_cupy")
+
+#@functools.wraps(denseAD.__init__)
+#def new(value,*args,**kwargs):
+#	value = ad_generic.asarray(value)
+#	if cupy_generic.from_cupy(value): return denseAD_cupy(value,*args,**kwargs)
+#	else: return denseAD(value,*args,**kwargs)
+
+#@functools.wraps(denseAD.__init__)
+#def new(*args,**kwargs): return denseAD(*args,**kwargs)
 
 # -------- Factory methods -----
 
-new = Base._new(denseAD)
-#@functools.wraps(denseAD.__init__)
-#def new(*args,**kwargs): return denseAD(*args,**kwargs)
 
 def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,0)):
 	"""
@@ -197,7 +207,7 @@ def identity(shape=None,shape_free=None,shape_bound=None,constant=None,shift=(0,
 	shape_elem = shape[:ndim_elem]
 	size_elem = int(np.prod(shape_elem))
 	size_ad = shift[0]+size_elem+shift[1]
-	coef1 = npl.zeros_like(constant,shape=(size_elem,size_ad))
+	coef1 = cps.zeros_like(constant,shape=(size_elem,size_ad))
 	for i in range(size_elem):
 		coef1[i,shift[0]+i]=1.
 	coef1 = coef1.reshape(shape_elem+(1,)*len(shape_bound)+(size_ad,))

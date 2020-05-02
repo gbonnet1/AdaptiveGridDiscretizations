@@ -4,13 +4,12 @@
 import numpy as np
 import functools
 from . import functional
+from . import Base
+from . import cupy_support as cps
 from . import ad_generic
 from . import cupy_generic
-from . import cupy_support as cps
-from . import numpy_like as npl
 from . import misc
 from . import Dense
-from . import Base
 
 _add_dim = misc._add_dim; _pad_last = misc._pad_last; _concatenate=misc._concatenate;
 
@@ -281,7 +280,7 @@ class spAD(Base.baseAD):
 			cum_coef[pos_new_index]=co[pos_new_index]
 			cum_coef[pos_old_index]+=co[pos_old_index]
 			indices[pos_new_index]+=1
-			indices_exp = npl.expand_dims(indices,axis=0)
+			indices_exp = cps.expand_dims(indices,axis=0)
 			np.put_along_axis(self.index,indices_exp,prev_index,axis=0)
 			np.put_along_axis(self.coef,indices_exp,cum_coef,axis=0)
 
@@ -301,7 +300,7 @@ class spAD(Base.baseAD):
 		index_end[indices<indices_max] = -1
 		while np.min(indices,axis=None)<indices_max:
 			indices=np.minimum(indices_max,1+indices)
-			indices_exp = npl.expand_dims(indices,axis=0)
+			indices_exp = cps.expand_dims(indices,axis=0)
 			np.put_along_axis(self.coef, indices_exp,coef_end,axis=0)
 			np.put_along_axis(self.index,indices_exp,index_end,axis=0)
 
@@ -318,7 +317,7 @@ class spAD(Base.baseAD):
 # -------- End of class spAD -------
 
 # -------- Factory methods -----
-new = Base._new(spAD)
+spAD_cupy,new = Base.cupy_variant(spAD)
 
 def identity(shape=None,constant=None,shift=0):
 	shape,constant = misc._set_shape_constant(shape,constant)

@@ -1,7 +1,5 @@
 import numpy as np
-from . import cupy_generic
-from .ad_generic import is_ad
-from .numpy_like import implements_cupy_alt
+from .Base import implements_cupy_alt,expand_dims
 
 """
 This file implements a few numpy functions that not well supported by the

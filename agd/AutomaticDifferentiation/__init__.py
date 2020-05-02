@@ -2,6 +2,8 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 from . import functional
+#from . import Base # No need to import, but this level in hierarchy
+from . import cupy_support
 from . import cupy_generic
 from . import ad_generic
 from . import misc

@@ -336,7 +336,7 @@ def _flatten_nlast(a,n):
 	return a.reshape(s[:-n]+(np.prod(s[-n:]),))
 
 # -------- Factory method -----
-new = Base._new(spAD2)
+spAD2_cupy,new = Base.cupy_variant(spAD2)
 
 def identity(*args,**kwargs):
 	arr = Sparse.identity(*args,**kwargs)

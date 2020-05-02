@@ -11,34 +11,12 @@ import numpy as np
 import sys
 import functools
 from . import functional
+from .Base import cp,isndarray,from_cupy # dummy cp and _cp_ndarray if not in the system
 
-# import the cupy module only if available on the system
-try: 
-	import cupy as cp
-	_cp_ndarray = cp.ndarray
-except ModuleNotFoundError: 
-	cp=None
-	class _cp_ndarray: pass
-
-# ----- Getting the cupy module, if needed -----
-def cupy_module():
-	import cupy
-	return cupy
-
-# -------- Identifying data source -------
-
-def from_cupy(x): 
-	return functional.from_module(x,'cupy')
-
-def get_array_module(arg,iterables=(tuple,)):
-	"""Returns the module (numpy or cupy) of an array"""
-	for x in functional.rec_iter(arg,iterables):
-		if functional.is_ad(x): x = x.value
-		if from_cupy(x): return sys.modules['cupy']
-	return sys.modules['numpy']
-
-def isndarray(x):
-	return functional.is_ad(x) or isinstance(x,get_array_module(x).ndarray)
+def get_array_module(x,iterables=tuple()):
+	"""Returns the cupy module or the numpy module, depending on data"""
+	if cp is None: return np
+	return cp if any(from_cupy(x) for x in rec_iter(data,iterables)) else np
 
 def samesize_int_t(float_t):
 	"""
@@ -133,10 +111,10 @@ def set_output_dtype32(f,silent=False,iterables=(tuple,)):
 
 	return wrapper
 
-def cupy_init_kwargs(x):
-	"""
-	Returns the parameters necessary to generate a copy of x.
-	"""
-	x = get_array_module(x).ascontiguousarray(x)
-	return {'shape':x.shape,'dtype':x.dtype,
-		'memptr':x.data,'strides':x.strides,'order':'C'}
+#def cupy_init_kwargs(x):
+#	"""
+#	Returns the parameters necessary to generate a copy of x.
+#	"""
+#	x = get_array_module(x).ascontiguousarray(x)
+#	return {'shape':x.shape,'dtype':x.dtype,
+#		'memptr':x.data,'strides':x.strides,'order':'C'}

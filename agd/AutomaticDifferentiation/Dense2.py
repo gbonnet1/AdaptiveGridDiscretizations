@@ -4,9 +4,7 @@
 import numpy as np
 import functools
 from . import ad_generic
-from . import numpy_like as npl
 from . import cupy_support as cps
-from . import numpy_like
 from . import misc
 from . import Dense
 from . import Base
@@ -61,7 +59,7 @@ class denseAD2(Base.baseAD):
 
 	def __mul__(self,other):
 		if self.is_ad(other):
-			mixed = npl.expand_dims(self.coef1,axis=-1)*npl.expand_dims(other.coef1,axis=-2)
+			mixed = cps.expand_dims(self.coef1,axis=-1)*cps.expand_dims(other.coef1,axis=-2)
 			return self.new(self.value*other.value, _add_coef(_add_dim(self.value)*other.coef1,_add_dim(other.value)*self.coef1),
 				_add_coef(_add_coef(_add_dim2(self.value)*other.coef2,_add_dim2(other.value)*self.coef2),_add_coef(mixed,np.moveaxis(mixed,-2,-1))))
 		elif self.isndarray(other):
@@ -90,7 +88,7 @@ class denseAD2(Base.baseAD):
 	# Math functions
 	def _math_helper(self,deriv): # Inputs : a=f(x), b=f'(x), c=f''(x), where x=self.value
 		a,b,c=deriv
-		mixed = npl.expand_dims(self.coef1,axis=-1)*npl.expand_dims(self.coef1,axis=-2)
+		mixed = cps.expand_dims(self.coef1,axis=-1)*cps.expand_dims(self.coef1,axis=-2)
 		return self.new(a,_add_dim(b)*self.coef1,_add_dim2(b)*self.coef2+_add_dim2(c)*mixed)
 
 	@classmethod
@@ -193,7 +191,7 @@ class denseAD2(Base.baseAD):
 
 # -------- Factory method -----
 
-new = Base._new(denseAD2)
+denseAD2_cupy,new = Base.cupy_variant(denseAD2)
 
 def identity(*args,**kwargs):
 	arr = Dense.identity(*args,**kwargs)

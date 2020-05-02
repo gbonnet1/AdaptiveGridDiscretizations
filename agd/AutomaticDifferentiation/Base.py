@@ -3,9 +3,6 @@ import numbers
 import functools
 import operator
 
-from . import numpy_like as npl
-from .ad_generic import is_ad,asarray
-from . import cupy_generic
 from . import functional
 
 # ----- implementation note -----
@@ -61,7 +58,7 @@ class Taylor2: # second order Taylor expansions of classical functions
 	def arctanh(x): y=1./(1-x**2); return (np.arctanh(x),y,2.*x*y**2)
 
 def _tuple_first(a): 	return a[0] if isinstance(a,tuple) else a
-def _getitem(a,where):  return a if (where is True and not cupy_generic.isndarray(a)) else a[where]
+def _getitem(a,where):  return a if (where is True and not isndarray(a)) else a[where]
 
 def add(a,b,out=None,where=True): 
 	if out is None: return a+b if is_ad(a) else b+a
@@ -84,12 +81,14 @@ def minimum(a,b): return np.where(a<b,a,b)
 
 class baseAD:
 
+	def cupy_based(self): return not isinstance(self,baseAD)
 	def _init_cupy(self):
 		if self.cupy_based():
-			import cupy as cp
-			baseAD_cupy = functional.class_rebase(baseAD,(cp.ndarray,),"baseAD_cupy")
+#			import cupy as cp
+#			baseAD_cupy = functional.class_rebase(baseAD,(cp.ndarray,),"baseAD_cupy")
 			x = cp.array([np.nan],dtype=np.float32)
-			super(baseAD_cupy,self).__init__(**cupy_generic.cupy_init_kwargs(x))
+			super(baseAD_cupy,self).__init__(shape=x.shape,dtype=x.dtype,
+				memptr=x.data,strides=x.strides,order='C')
 
 	@property
 	def shape(self): return self.value.shape
@@ -104,7 +103,7 @@ class baseAD:
 
 	@classmethod
 	def stack(cls,elems,axis=0):
-		return cls.concatenate(tuple(npl.expand_dims(e,axis=axis) for e in elems),axis)
+		return cls.concatenate(tuple(expand_dims(e,axis=axis) for e in elems),axis)
 
 	@property
 	def dtype(self): return self.value.dtype
@@ -194,7 +193,7 @@ class baseAD:
 		return NotImplemented
 
 	def __array_function__(self,func,types,args,kwargs):
-		return npl._array_function_overload(self,func,types,args,kwargs)
+		return _array_function_overload(self,func,types,args,kwargs)
 
 
 	# Support for +=, -=, *=, /=, <, <=, >, >=, ==, !=
@@ -215,14 +214,14 @@ class baseAD:
 
 	def min(array,axis=None,keepdims=False,out=None):
 		if axis is None: return array.reshape(-1).min(axis=0,out=out)
-		ai = npl.expand_dims(np.argmin(array.value, axis=axis), axis=axis)
+		ai = expand_dims(np.argmin(array.value, axis=axis), axis=axis)
 		out = np.take_along_axis(array,ai,axis=axis)
 		if not keepdims: out = out.reshape(array.shape[:axis]+array.shape[axis+1:])
 		return out
 
 	def max(array,axis=None,keepdims=False,out=None):
 		if axis is None: return array.reshape(-1).max(axis=0,out=out)
-		ai = npl.expand_dims(np.argmax(array.value, axis=axis), axis=axis)
+		ai = expand_dims(np.argmax(array.value, axis=axis), axis=axis)
 		out = np.take_along_axis(array,ai,axis=axis)
 		if not keepdims: out = out.reshape(array.shape[:axis]+array.shape[axis+1:])
 		return out
@@ -255,12 +254,11 @@ class baseAD:
 			elif dtype!=initial.dtype:
 				initial = initial*dtype(1)
 
-
-		out = functools.reduce(operator.mul,arr) if initial is None 
+		out = functools.reduce(operator.mul,arr) if initial is None \
 			else functools.reduce(operator.mul,arr,initial)
 
 		if keepdims:
-			shape_kept = tuple(1 if i in axis else ai for i,ai in enumerate(shape_orig)) 
+			shape_kept = tuple(1 if i in axis else ai for i,ai in enumerate(shape_orig)) \
 				if out.size>1 else (1,)*len(shape_orig)
 			out = out.reshape(shape_kept) 
 
@@ -268,17 +266,139 @@ class baseAD:
 
 # --------- Cupy support ----------
 
-denseAD_cupy = 
+baseAD_cupy = functional.class_rebase(baseAD,(_cp_ndarray,),"baseAD_cupy")
 
-def _new(cls):
+def is_ad(data,iterables=tuple()): 
+	"""Wether the object holds ad information"""
+	return any(isinstance(x,(baseAD,baseAD_cupy)) for x in functional.rec_iter(data,iterables))
+
+def isndarray(x): 
+	"""Wether the object is a numpy or cupy ndarray, or an adtype"""
+	return isinstance(x,(np.ndarray,baseAD,_cp_ndarray))
+
+def from_cupy(x): 
+	"""Wether the variable is an instance of a cupy ndarray (incudes AD types)"""
+	return isinstance(x,_cp_ndarray)
+
+def array(a,copy=True):
+	"""
+	Similar to np.array, but does not cast AD subclasses of np.ndarray to the base class.
+	Turns a list or tuple of arrays with the same dimensions. 
+	Turns a scalar into an array scalar.
+	"""
+	if isinstance(a,(list,tuple)): return stack([asarray(e) for e in a],axis=0)
+	elif isndarray(a): return a.copy() if copy else a
+	else: return np.array(a,copy=copy)
+
+def asarray(a): return array(a,copy=False)
+
+def cupy_variant(cls):
+	cls_cupy = functional.class_rebase(cls,(baseAD_cupy,),cls.__name__+"_cupy")
 	@functools.wraps(cls.__init__)
 	def new(value,*args,**kwargs): 
 		value = asarray(value)
-		if cupy_generic.from_cupy(value):
-			import cupy as cp
-			baseAD_cupy = functional.class_rebase(baseAD,(cp.ndarray,),"baseAD_cupy")
-			cls_cupy = functional.class_rebase(cls,(baseAD_cupy,),cls.__name__+"_cupy")
-			return cls_cupy(value,*args,**kwargs)
-		else:
-			return cls(value,*args,**kwargs)
-	return new
+		if from_cupy(value): return cls_cupy(value,*args,**kwargs)
+		else: return cls(value,*args,**kwargs)
+	return cls_cupy,new
+
+# -------- numpy __array_function__ mechanism ---------
+
+"""
+We use the __array_function__ mechanism of numpy to reimplement 
+a number of numpy functions in a way that is compatible with AD information.
+"""
+
+#https://docs.scipy.org/doc/numpy/reference/arrays.classes.html
+numpy_overloads = {}
+cupy_alt_overloads = {} # Used for numpy function unsupported by cupy
+numpy_implementation = {# Use original numpy implementation
+	np.moveaxis,np.ndim,np.squeeze,
+	np.amin,np.amax,np.argmin,np.argmax,
+	np.sum,np.prod,
+	np.full_like,np.ones_like,np.zeros_like,np.reshape,np.take_along_axis,
+	} 
+
+def implements(numpy_function):
+	"""Register an __array_function__ implementation for MyArray objects."""
+	def decorator(func):
+		numpy_overloads[numpy_function] = func
+		return func
+	return decorator
+
+def implements_cupy_alt(numpy_function,exception):
+	"""Register an alternative to a numpy function only partially supported by cupy"""
+	def decorator(func):
+		cupy_alt_overloads[numpy_function] = (func,exception)
+		@functools.wraps(func)
+		def wrapper(*args,**kwargs):
+			try: return numpy_function(*args,**kwargs)
+			except exception: return func(*args,**kwargs)
+		return wrapper
+	return decorator
+
+def _array_function_overload(self,func,types,args,kwargs,cupy_alt=True):
+
+	if cupy_alt and self.cupy_based() and func in cupy_alt_overloads:
+		func_alt,exception = cupy_alt_overloads[func]
+		try: return _array_function_overload(self,func,types,args,kwargs,cupy_alt=False)
+		except exception: return func_alt(*args,**kwargs)
+
+	if func in numpy_overloads:
+		return numpy_overloads[func](*args,**kwargs)
+	elif func in numpy_implementation: 
+		return func._implementation(*args,**kwargs)
+	else: return NotImplemented
+
+# ---- overloads ----
+
+@implements(np.stack)
+def stack(elems,axis=0):
+	for e in elems: 
+		if is_ad(e): return type(e).stack(elems,axis)
+	return np.stack(elems,axis)
+
+@implements(np.expand_dims)
+def expand_dims(a,axis):
+	if axis<0: axis=axis+a.ndim+1
+	return np.reshape(a,a.shape[:axis]+(1,)+a.shape[axis:])
+
+@implements(np.empty_like)
+def empty_like(a,*args,**kwargs):
+	return type(a)(np.empty_like(a.value,*args,**kwargs))
+
+@implements(np.copyto)
+def copy_to(dst,src,*args,**kwargs):
+	if is_ad(src): raise ValueError("copyto is not supported with an AD source")
+	np.copyto._implementation(dst.value,src,*args,**kwargs)
+
+@implements(np.broadcast_to)
+def broadcast_to(array,shape):
+	return array.broadcast_to(shape)
+	
+@implements(np.where)
+def where(mask,a,b): 
+	A,B,Mask = (a,b,mask) if is_ad(b) else (b,a,np.logical_not(mask))
+	result = B.copy()
+	result[Mask] = A[Mask] if isndarray(A) else A
+	return result
+
+@implements(np.sort)
+def sort(array,axis=-1,*varargs,**kwargs):
+	ai = np.argsort(array.value,axis=axis,*varargs,**kwargs)
+	return np.take_along_axis(array,ai,axis=axis)
+
+@implements(np.concatenate)
+def concatenate(elems,axis=0):
+	for e in elems:
+		if is_ad(e): return type(e).concatenate(elems,axis)
+	return np.concatenate(elems,axis)	
+
+@implements(np.pad)
+def pad(array, pad_width, *args,**kwargs):
+	if isinstance(pad_width,numbers.Integral):
+		pad_width = (pad_width,)
+	if isinstance(pad_width[0],numbers.Integral) and len(pad_width)==1:
+		pad_width = ((pad_width[0],pad_width[0]),)
+	if len(pad_width)==1:
+		pad_width = pad_width*array.ndim
+	return array.pad(pad_width,*args,**kwargs)

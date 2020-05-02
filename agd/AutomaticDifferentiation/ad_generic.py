@@ -6,29 +6,24 @@ import numpy as np
 import functools
 
 from . import functional
-from .functional import is_ad
-from . import cupy_generic
+from .Base import is_ad,isndarray,array,asarray
 
 """
 This file implements functions which apply indifferently to several AD types.
 """
 
-def stack(elems,axis=0):
-	for e in elems: 
-		if is_ad(e): return type(e).stack(elems,axis)
-	return np.stack(elems,axis)
-
-def array(a,copy=True):
+def adtype(data,iterables=tuple()):
 	"""
-	Similar to np.array, but does not cast AD subclasses of np.ndarray to the base class.
-	Turns a list or tuple of arrays with the same dimensions. 
-	Turns a scalar into an array scalar.
+	Returns None if no ad variable found, or the adtype if one is found.
+	Also checks consistency of the ad types.
 	"""
-	if isinstance(a,(list,tuple)): return stack([asarray(e) for e in a],axis=0)
-	elif cupy_generic.isndarray(a): return a.copy() if copy else a
-	else: return np.array(a,copy=copy)
-
-def asarray(a): return array(a,copy=False)
+	result = None
+	for value in rec_iter(data,iterables):
+		t=type(x)
+		if is_ad(t): 
+			if result is None: result=t
+			else: assert result==t
+	return result
 
 def precision(x):
 	"""
@@ -61,13 +56,13 @@ def common_cast(*args):
 
 
 def min_argmin(array,axis=None):
-	if axis is None: return min_argmin(array.flatten(),axis=0)
+	if axis is None: return min_argmin(array.reshape(-1),axis=0)
 	ai = np.argmin(array,axis=axis)
 	return np.squeeze(np.take_along_axis(array,np.expand_dims(ai,
 		axis=axis),axis=axis),axis=axis),ai
 
 def max_argmax(array,axis=None):
-	if axis is None: return max_argmax(array.flatten(),axis=0)
+	if axis is None: return max_argmax(array.reshape(-1),axis=0)
 	ai = np.argmax(array,axis=axis)
 	return np.squeeze(np.take_along_axis(array,np.expand_dims(ai,
 		axis=axis),axis=axis),axis=axis),ai
@@ -166,7 +161,7 @@ def associate(array,squeeze_free_dims=-1,squeeze_bound_dims=-1):
 	"""
 	if is_ad(array): 
 		return array.associate(squeeze_free_dims,squeeze_bound_dims)
-	result = stack(array.flatten(),axis=0)
+	result = np.stack(array.reshape(-1),axis=0)
 	shape_free  = squeeze_shape(array.shape,squeeze_free_dims)
 	shape_bound = squeeze_shape(result.shape[1:],squeeze_bound_dims) 
 	return result.reshape(shape_free+shape_bound)

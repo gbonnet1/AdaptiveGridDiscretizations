@@ -8,10 +8,9 @@ from .cupy_generic import isndarray,from_cupy
 from .ad_generic import is_ad,remove_ad
 from . import ad_generic
 from . import cupy_support as cps
-from . import numpy_like as npl
 
 # ------- Ugly utilities -------
-def _add_dim(a):		return npl.expand_dims(a,axis=-1)	
+def _add_dim(a):		return cps.expand_dims(a,axis=-1)	
 def _add_dim2(a):		return _add_dim(_add_dim(a))
 
 def _to_tuple(a): return tuple(a) if hasattr(a,"__iter__") else (a,)
