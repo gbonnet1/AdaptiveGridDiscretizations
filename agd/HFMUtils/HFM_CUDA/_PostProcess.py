@@ -13,7 +13,6 @@ from .graph_reverse import graph_reverse
 from ... import FiniteDifferences as fd
 from ... import LinearParallel as lp
 from ... import AutomaticDifferentiation as ad
-from ...AutomaticDifferentiation import numpy_like as npl
 
 # This file implements some member functions of the Interface class of HFM_CUDA
 

@@ -13,10 +13,10 @@ import functools
 from . import functional
 from .Base import cp,isndarray,from_cupy # dummy cp and _cp_ndarray if not in the system
 
-def get_array_module(x,iterables=tuple()):
+def get_array_module(data,iterables=tuple()):
 	"""Returns the cupy module or the numpy module, depending on data"""
 	if cp is None: return np
-	return cp if any(from_cupy(x) for x in rec_iter(data,iterables)) else np
+	return cp if any(from_cupy(x) for x in functional.rec_iter(data,iterables)) else np
 
 def samesize_int_t(float_t):
 	"""
