@@ -182,17 +182,6 @@ class denseAD(Base.baseAD):
 
 denseAD_cupy,new = Base.cupy_variant(denseAD)
 
-#denseAD_cupy = functional.class_rebase(denseAD,(Base.baseAD_cupy,),"denseAD_cupy")
-
-#@functools.wraps(denseAD.__init__)
-#def new(value,*args,**kwargs):
-#	value = ad_generic.asarray(value)
-#	if cupy_generic.from_cupy(value): return denseAD_cupy(value,*args,**kwargs)
-#	else: return denseAD(value,*args,**kwargs)
-
-#@functools.wraps(denseAD.__init__)
-#def new(*args,**kwargs): return denseAD(*args,**kwargs)
-
 # -------- Factory methods -----
 
 
