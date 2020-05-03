@@ -42,6 +42,8 @@ class spAD(Base.baseAD):
 	def copy(self,order='C'):
 		return self.new(self.value.copy(order=order),
 			self.coef.copy(order=order),self.index.copy(order=order))
+	def as_tuple(self): return self.value,self.coef,self.index
+
 	def __copy__(self): return self.copy(order='K')
 	def __deepcopy__(self,*args): 
 		return self.new(self.value.__deepcopy__(*args),

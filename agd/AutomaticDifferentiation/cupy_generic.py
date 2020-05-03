@@ -31,20 +31,36 @@ def samesize_int_t(float_t):
 
 # ----------- Retrieving data from a cupy array ------------
 
+dtype32to64 = {np.float32:np.float64,np.int32:np.int64,np.uint32:np.uint64,}
+dtype64to32 = {np.float64:np.float32,np.int64:np.int32,np.uint64:np.uint32,}
+
 def cupy_get(x,dtype64=False,iterables=tuple()):
 	"""
 	If argument is a cupy ndarray, returns output of 'get' member function, 
-	which is a numpy ndarray. Returns unchanged argument otherwise.
+	which is a numpy ndarray. Likewise for AD types. Returns unchanged argument otherwise.
 	- dtype64 : convert 32 bit floats and ints to their 64 bit counterparts
 	"""
 	def caster(x):
-		if from_cupy(x) and isndarray(x):
+		if from_cupy(x):
+			if is_ad(x): return x.numpy_variant(*(caster(z) for z in x.astuple()))
 			x = x.get()
-			if dtype64 and x.dtype.type in (np.int32,np.float32):
-				dtype = np.int64 if x.dtype.type==np.int32 else np.float64
-				return x.astype(dtype)
+			if x.dtype.type in dtype32to64: x=x.astype(dtype32to64[x.dtype.type])
 		return x
 	return functional.map_iterables(caster,x,iterables)
+
+def cupy_set(x,dtype32=True,iterables=tuple()):
+	"""
+	If argument is a numpy ndarray, converts it to a cupy ndarray. Applies to AD Types.
+	- dtype32 : convert 64 bit floats and ints to their 32 bit counterparts
+	"""
+	def caster(x):
+		if isndarray(x) and not from_cupy(x):
+			if is_ad(x): return x.cupy_variant(*(caster(z) for z in x.astuple()))
+			dtype = dtype64to32.get(x.dtype.type,x.dtype.type)
+			return cp.asarray(x,dtype=dtype)
+		return x
+	return functional.map_iterables(caster,x,iterables)
+
 
 def cupy_get_args(f,*args,**kwargs):
 	"""

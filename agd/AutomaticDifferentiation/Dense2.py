@@ -34,6 +34,7 @@ class denseAD2(Base.baseAD):
 	def copy(self,order='C'):
 		return self.new(self.value.copy(order=order),
 			self.coef1.copy(order=order),self.coef2.copy(order=order))
+	def as_tuple(self): return self.value,self.coef1,self.coef2
 
 	# Representation 
 	def __iter__(self):

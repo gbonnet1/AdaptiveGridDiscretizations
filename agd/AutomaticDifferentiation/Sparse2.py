@@ -55,6 +55,7 @@ class spAD2(Base.baseAD):
 		return self.new(self.value.copy(order=order),
 			self.coef1.copy(order=order),self.index.copy(order=order),
 			self.coef2.copy(order=order),self.index_row.copy(order=order),self.index_col.copy(order=order))
+	def as_tuple(self): return self.value,self.coef1,self.index,self.coef2,self.index_row,self.index_col
 
 	# Representation 
 	def __iter__(self):

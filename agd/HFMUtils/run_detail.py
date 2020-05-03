@@ -7,6 +7,11 @@ from .. import Metrics
 from .. import AutomaticDifferentiation as ad
 from .Grid import PointFromIndex
 
+def GetGeodesics(output,suffix=''): 
+	if suffix != '' and not suffix.startswith('_'): suffix='_'+suffix
+	return np.vsplit(output['geodesicPoints'+suffix],
+					 output['geodesicLengths'+suffix].cumsum()[:-1].astype(int))
+
 class Cache(object):
 	def __init__(self,needsflow=False):
 		self.contents = dict()
@@ -234,7 +239,6 @@ def PostProcess(key,value,raw_in,refined_out):
 	copies key,val from raw to refined, with adequate treatment
 	"""
 	if key.startswith('geodesicPoints'):
-		from ..HFMUtils import GetGeodesics
 		suffix = key[len('geodesicPoints'):]
 		geodesics = GetGeodesics(raw_in,suffix=suffix)
 		setkey_safe(refined_out,"geodesics"+suffix,

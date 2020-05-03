@@ -294,6 +294,8 @@ def asarray(a): return array(a,copy=False)
 
 def cupy_variant(cls):
 	cls_cupy = functional.class_rebase(cls,(baseAD_cupy,),cls.__name__+"_cupy")
+	cls.cupy_variant = cls_cupy
+	cls_cupy.numpy_variant = cls
 	@functools.wraps(cls.__init__)
 	def new(value,*args,**kwargs): 
 		value = asarray(value)

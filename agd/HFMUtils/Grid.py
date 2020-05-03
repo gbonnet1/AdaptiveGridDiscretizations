@@ -6,9 +6,6 @@ from collections import namedtuple
 from .. import AutomaticDifferentiation as ad
 from .. import Metrics
 
-SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
-'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','DubinsExt2',
-'ReedsShepp3','ReedsSheppForward3'}
 
 def array_float_caster(params):
 	if 'array_float_caster' in params: return params['array_float_caster']
