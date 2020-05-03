@@ -10,16 +10,20 @@ _array_float_fields = {
 	'seedValues','seedValues_Unoriented','seedValueVariation',
 	'cost','speed','costVariation',
 	'inspectSensitivity','inspectSensitivityWeights','inspectSensitivityLengths',
+	'exportVoronoiFlags'
 }
 
 # Alternative key for setting or getting a single element
 _singleIn = {
 	'seed':'seeds','seedValue':'seedValues',
-	'tip':'tips','tip_Unoriented':'tips_Unoriented'
+	'seed_Unoriented':'seeds_Unoriented','seedValue_Unoriented':'seedValues_Unoriented',
+	'tip':'tips','tip_Unoriented':'tips_Unoriented',
+	'seedFlag':'seedFlags','seedFlag_Unoriented':'seedFlags_Unoriented',
 }
 
 _singleOut = {
-	'geodesic':'geodesics','geodesic_Unoriented':'geodesics_Unoriented'
+	'geodesic':'geodesics','geodesic_Unoriented':'geodesics_Unoriented',
+	'geodesic_euclideanLength':'geodesics_euclideanLength',
 }
 
 SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
@@ -34,6 +38,9 @@ class dictOut(MutableMapping):
 	def __init__(self,store=None):
 		self.store=store
 
+	def __copy__(self): return dictOut(self.store.copy())
+	def copy(self): return self.__copy__()
+
 	def __repr__(self):
 		return f"dictOut({self.store})"
 
@@ -43,7 +50,7 @@ class dictOut(MutableMapping):
 
 	def __getitem__(self, key): 
 		if key in _singleOut:
-			values = self.store[key]
+			values = self.store[_singleOut[key]]
 			if len(values)!=1: 
 				raise ValueError(f"Found {len(values)} values for key {key}")
 			return values[0]
@@ -87,7 +94,10 @@ class dictIn(MutableMapping):
 		self.float_t = np.float64 if float_t is None else float_t
 		self.array_float_caster = lambda x : self.xp.array(x,dtype=float_t)
 		self.store = {'arrayOrdering':'RowMajor'}
-		if store: self.store.update(store)
+		if store: self.update(store)
+
+	def __copy__(self): return dictIn(self.store.copy(),self.mode,self.float_t)
+	def copy(self): return self.__copy__()
 
 	def __repr__(self): 
 		return f"dictIn({self.store},mode={self.mode},float_t={self.float_t})"
@@ -101,7 +111,7 @@ class dictIn(MutableMapping):
 
 	def __getitem__(self, key): 
 		if key in _singleIn:
-			values = self.store[key]
+			values = self.store[_singleIn[key]]
 			if len(values)!=1: 
 				raise ValueError(f"Found {len(values)} values for key {key}")
 			return values[0]
@@ -129,31 +139,6 @@ class dictIn(MutableMapping):
 			gpuOut = HFM_CUDA.RunGPU(gpuIn)
 			cpuOut = ad.cupy_generic.cupy_get(gpuOut,iterables=(dict,list))
 			return dictOut(cpuOut) # device->host
-
-	@property
-	def seed(self):
-		"""Get the seed point, if there is a single one"""
-		nseeds = len(self.get('seeds',tuple()))
-		if nseeds!=1: raise ValueError(f"Found {nseeds} seeds, expected exactly one")
-		return self['seeds'][0]
-
-	@seed.setter
-	def seed(self,value): 
-		"""Set a single seed point."""
-		self['seeds'] = [value]	
-
-
-	@property
-	def tip(self):
-		"""Get the tip point, if there is a single one"""
-		ntips = len(self.get('tips',tuple()))
-		if ntips!=1: raise ValueError(f"Found {ntips} tips, expected exactly one")
-		return self['tips'][0]
-
-	@tip.setter
-	def tip(self,value): 
-		"""Set a single tip point."""
-		self['tips'] = [value]	
 
 	# ------- Grid related functions ------
 
