@@ -8,7 +8,7 @@ import functools
 #from .Grid import GetCorners,Rect,GetAxes,GetGrid,PointFromIndex,IndexFromPoint,CenteredLinspace,GridNeighbors
 from .LibraryCall import GetBinaryDir
 from .run_detail import Cache
-from .DictIn import dictIn,CenteredLinspace
+from .DictIn import dictIn,dictOut,CenteredLinspace
 
 # def Run(hfmIn,smart=False,**kwargs):
 # 	"""

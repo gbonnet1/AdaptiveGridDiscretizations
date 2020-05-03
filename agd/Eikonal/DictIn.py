@@ -12,9 +12,50 @@ _array_float_fields = {
 	'inspectSensitivity','inspectSensitivityWeights','inspectSensitivityLengths',
 }
 
+# Alternative key for setting or getting a single element
+_singleIn = {
+	'seed':'seeds','seedValue':'seedValues',
+	'tip':'tips','tip_Unoriented':'tips_Unoriented'
+}
+
+_singleOut = {
+	'geodesic':'geodesics','geodesic_Unoriented':'geodesics_Unoriented'
+}
+
 SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
 'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','DubinsExt2',
 'ReedsShepp3','ReedsSheppForward3'}
+
+class dictOut(MutableMapping):
+	"""
+	A dictionnary like structure used as output of the Eikonal solvers. 
+	"""
+
+	def __init__(self,store=None):
+		self.store=store
+
+	def __repr__(self):
+		return f"dictOut({self.store})"
+
+	def __setitem__(self, key, value):
+		if key in _singleOut: key = _singleIn[key]; value = [value]
+		self.store[key] = value
+
+	def __getitem__(self, key): 
+		if key in _singleOut:
+			values = self.store[key]
+			if len(values)!=1: 
+				raise ValueError(f"Found {len(values)} values for key {key}")
+			return values[0]
+		return self.store[key]
+
+	def __delitem__(self, key): 
+		key = _singleOut.get(key,key)
+		del self.store[key]
+
+	def __iter__(self): return iter(self.store)
+	def __len__(self):  return len(self.store)
+
 
 def CenteredLinspace(a,b,n):
 	"""
@@ -29,7 +70,7 @@ def CenteredLinspace(a,b,n):
 
 class dictIn(MutableMapping):
 	"""
-	A dictionary like structure intended for calling the HFM algoritm
+	A dictionary like structure used as input of the Eikonal solvers.
 	"""
 
 	def __init__(self, store=None, mode='cpu', float_t=None):
@@ -49,15 +90,27 @@ class dictIn(MutableMapping):
 		if store: self.store.update(store)
 
 	def __repr__(self): 
-		return f"dictIn(mode={self.mode},float_t={self.float_t},store={self.store})"
+		return f"dictIn({self.store},mode={self.mode},float_t={self.float_t})"
 
 	def __setitem__(self, key, value):
+		if key in _singleIn: 
+			key = _singleIn[key]; value = [value]
 		if key in _array_float_fields and not ad.isndarray(value):
 			value = self.array_float_caster(value)
 		self.store[key] = value
 
-	def __getitem__(self, key): return self.store[key]
-	def __delitem__(self, key): del self.store[key]
+	def __getitem__(self, key): 
+		if key in _singleIn:
+			values = self.store[key]
+			if len(values)!=1: 
+				raise ValueError(f"Found {len(values)} values for key {key}")
+			return values[0]
+		return self.store[key]
+
+	def __delitem__(self, key): 
+		key = _singleIn.get(key,key)
+		del self.store[key]
+
 	def __iter__(self): return iter(self.store)
 	def __len__(self):  return len(self.store)
 
@@ -65,17 +118,17 @@ class dictIn(MutableMapping):
 		if self['arrayOrdering']!='RowMajor': 
 			raise ValueError("Unsupported array ordering")
 
-		if   self.mode=='cpu':     return run_detail.RunSmart(self,**kwargs)
-		elif self.mode=='cpu_raw': return run_detail.RunRaw(self,**kwargs)
+		if   self.mode=='cpu':     return dictOut(run_detail.RunSmart(self,**kwargs))
+		elif self.mode=='cpu_raw': return dictOut(run_detail.RunRaw(self,**kwargs))
 		
 		from . import HFM_CUDA
-		if   self.mode=='gpu':       return HFM_CUDA.RunGPU(self,**kwargs)
+		if   self.mode=='gpu':       return dictOut(HFM_CUDA.RunGPU(self,**kwargs))
 		elif self.mode=='gpu_transfer':
 			gpuIn = ad.cupy_generic.cupy_set(self, # host->device
 				dtype32=self.float_t==np.float32, iterables=(dictIn,Metrics.Base))
 			gpuOut = HFM_CUDA.RunGPU(gpuIn)
-			return ad.cupy_generic.cupy_get(gpuOut,iterables=(dict,list)) # device->host
-
+			cpuOut = ad.cupy_generic.cupy_get(gpuOut,iterables=(dict,list))
+			return dictOut(cpuOut) # device->host
 
 	@property
 	def seed(self):
