@@ -13,7 +13,7 @@ from .. import FiniteDifferences as fd
 class Riemann(Base):
 
 	def __init__(self,m):
-		self.m=m
+		self.m=ad.asarray(m)
 
 	def norm(self,v):
 		v,m = fd.common_field((v,self.m),(1,2))
@@ -39,7 +39,8 @@ class Riemann(Base):
 		return np.sqrt(lp.trace(self.m))
 
 	def inv_transform(self,a):
-		return Riemann(lp.dot_AA(lp.transpose(a),lp.dot_AA(self.m,a)))
+		m,a = fd.common_field((self.m,a),depths=(2,2))
+		return Riemann(lp.dot_AA(lp.transpose(a),lp.dot_AA(m,a)))
 	def with_costs(self,costs):
 		costs,m = fd.common_field((costs,self.m),depths=(1,2))
 		return Riemann(m*lp.outer_self(costs))

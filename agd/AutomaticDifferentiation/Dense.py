@@ -102,7 +102,8 @@ class denseAD(Base.baseAD):
 
 	def gradient(self,i=None): 
 		"""Returns the gradient, or the i-th component of the gradient if specified."""
-		return np.moveaxis(self.coef,-1,0) if i is None else self.coef[...,i]
+		grad = np.moveaxis(self.coef,-1,0)
+		return grad if i is None else grad[i]
 
 	def __getitem__(self,key):
 		ekey = misc.key_expand(key)

@@ -45,6 +45,12 @@ class pair(object):
 	def __repr__(self):
 		return "pair("+repr(self.first)+","+repr(self.second)+")"
 
+def dict_like(a): 
+	"""
+	Wether a, type or instance, has 'items' attribute. 
+	Will be regarded as dict-like structure.
+	"""
+	return hasattr(a,'items')
 
 def map_iterables(f,a,iterables,split=False): 
 	"""
@@ -52,7 +58,7 @@ def map_iterables(f,a,iterables,split=False):
 	"""
 	if isinstance(a,iterables):
 		type_a = type(a)
-		if issubclass(type(a),dict):
+		if dict_like(a):
 			result = type_a({key:map_iterables(f,val,iterables,split=split) for key,val in a.items()})
 			if split: return type_a({key:a for key,(a,_) in a.items()}), type_a({key:a for key,(_,a) in a.items()})
 			else: return result
@@ -69,7 +75,7 @@ def map_iterables2(f,a,b,iterables):
 	"""
 	for type_iterable in iterables:
 		if isinstance(a,type_iterable):
-			if issubclass(type_iterable,dict):
+			if dict_like(a):
 				return type_iterable({key:map_iterables2(f,a[key],b[key],iterables) for key in a})
 			else: 
 				return from_generator(type_iterable)(map_iterables2(f,ai,bi,iterables) for ai,bi in zip(a,b))

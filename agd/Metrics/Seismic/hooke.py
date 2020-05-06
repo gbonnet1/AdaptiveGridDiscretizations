@@ -71,6 +71,11 @@ class Hooke(ImplicitBase):
 		for x in super(Hooke,self).__iter__():
 			yield x
 
+	def with_cost(self,cost):
+		other = copy.copy(self)
+		other.hooke = self.hooke * cost**2
+		return other
+
 	def _to_common_field(self,*args,**kwargs):
 		self.hooke,self.inverse_transformation = fd.common_field(
 			(self.hooke,self.inverse_transformation),(2,2),*args,**kwargs)

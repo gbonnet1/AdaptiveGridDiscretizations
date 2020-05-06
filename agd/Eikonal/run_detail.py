@@ -5,12 +5,12 @@ import numpy as np
 from .LibraryCall import RunDispatch,GetBinaryDir
 from .. import Metrics
 from .. import AutomaticDifferentiation as ad
-from .Grid import PointFromIndex
 
 def GetGeodesics(output,suffix=''): 
 	if suffix != '' and not suffix.startswith('_'): suffix='_'+suffix
-	return np.vsplit(output['geodesicPoints'+suffix],
+	geodesics = np.vsplit(output['geodesicPoints'+suffix],
 					 output['geodesicLengths'+suffix].cumsum()[:-1].astype(int))
+	return [geo.T for geo in geodesics]
 
 class Cache(object):
 	def __init__(self,needsflow=False):
@@ -87,7 +87,10 @@ class Cache(object):
 
 def RunRaw(hfmIn):
 	"""Raw call to the HFM library"""
-	return RunDispatch(hfmIn,GetBinaryDir("FileHFM","HFMpy"))
+	rawIn = hfmIn.copy()
+	mode = rawIn.pop('mode',None); assert mode is None or mode=='cpu_raw'
+	float_t = rawIn.pop('float_t',None); assert float_t is None or float_t==np.float64 
+	return RunDispatch(rawIn,GetBinaryDir("FileHFM","HFMpy"))
 
 
 def RunSmart(hfmIn,returns="out",co_output=None,cache=None):
@@ -121,7 +124,7 @@ def RunSmart(hfmIn,returns="out",co_output=None,cache=None):
 		[co_hfmOut,co_value],_ = co_output
 		assert hfmIn.get('extractValues',False) and co_hfmOut is None
 		indices = np.nonzero(co_value)
-		positions = PointFromIndex(hfmIn_raw,np.asarray(indices).T)
+		positions = hfmIn.PointFromIndex(np.asarray(indices).T)
 		weights = co_value[indices]
 		setkey_safe(hfmIn_raw,'inspectSensitivity',positions)
 		setkey_safe(hfmIn_raw,'inspectSensitivityWeights',weights)
@@ -205,8 +208,9 @@ def PreProcess(key,value,refined_in,raw_out,cache):
 	"""
 
 	verbosity = refined_in.get('verbosity',1)
-
-	if key in ('cost','speed'):
+	if   key=='mode': assert value=='cpu'; return
+	elif key=='float_t': assert value==np.float64; return
+	elif key in ('cost','speed'):
 		if isinstance(value,Metrics.Isotropic):
 			value = value.to_HFM()
 		if isinstance(value,ad.Dense.denseAD):
@@ -215,6 +219,10 @@ def PreProcess(key,value,refined_in,raw_out,cache):
 			value = ad.remove_ad(value)
 		setkey_safe(raw_out,key,value)
 	elif key in ('metric','dualMetric'):
+		if isinstance(value,(Metrics.Isotropic,Metrics.Diagonal)):
+			PreProcess('cost' if key=='metric' else 'speed',
+				value.to_HFM(),refined_in,raw_out,cache)
+			return
 		if isinstance(value,Metrics.Base): 
 			if ad.is_ad(value,iterables=(Metrics.Base,)):
 				metric_ad = value if key=='metric' else value.dual()
@@ -241,8 +249,7 @@ def PostProcess(key,value,raw_in,refined_out):
 	if key.startswith('geodesicPoints'):
 		suffix = key[len('geodesicPoints'):]
 		geodesics = GetGeodesics(raw_in,suffix=suffix)
-		setkey_safe(refined_out,"geodesics"+suffix,
-			[np.moveaxis(geo,-1,0) for geo in geodesics])
+		setkey_safe(refined_out,"geodesics"+suffix,geodesics)
 	elif key.startswith('geodesicLengths'):
 		pass
 

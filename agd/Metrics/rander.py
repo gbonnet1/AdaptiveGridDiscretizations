@@ -53,7 +53,8 @@ class Rander(Base):
 		return Riemann(self.m).cost_bound() + ad.Optimization.norm(self.w,ord=2,axis=0)
 
 	def inv_transform(self,a):
-		return Rander(Riemann(self.m).inv_transform(a).m,lp.dot_VA(self.w,a))
+		w,a = fd.common_field((self.w,a),depths=(1,2))
+		return Rander(Riemann(self.m).inv_transform(a).m,lp.dot_VA(w,a))
 
 	def with_costs(self,costs):
 		costs,m,w = fd.common_field((costs,self.m,self.w),depths=(1,2,1))

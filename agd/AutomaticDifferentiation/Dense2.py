@@ -111,10 +111,13 @@ class denseAD2(Base.baseAD):
 	def to_first(self): return Dense.denseAD(self.value,self.coef1)
 	def gradient(self,i=None): 
 		"""Returns the gradient, or the i-th component of the gradient if specified."""
-		return np.moveaxis(self.coef1,-1,0) if i is None else self.coef1[...,i]
+		grad = np.moveaxis(self.coef1,-1,0)
+		return grad if i is None else grad[i]
 	def hessian(self,i=None,j=None): 
 		"""Returns the hessian, or component (i,j) of the hessian if specified."""
-		return np.moveaxis(self.coef2,(-2,-1),(0,1)) if i is None else self.coef2[...,i,j]
+		assert (i is None) == (j is None)
+		hess = np.moveaxis(self.coef2,(-2,-1),(0,1))
+		return hess if i is None else hess[i,j]
 
 	def __getitem__(self,key):
 		ekey1,ekey2 = misc.key_expand(key,1),misc.key_expand(key,2)

@@ -47,7 +47,7 @@ VolumeFilenames = {
 'FMM':[
     "Isotropic","Riemannian","Rander","AsymmetricQuadratic",
     "Curvature","Curvature3","DeviationHorizontality",
-    "Geodesics","HighAccuracy","SmartIO","Sensitivity","SensitivitySL",
+    "Geodesics","HighAccuracy","Sensitivity","SensitivitySL", #"SmartIO",
     "Illusion","Tubular","FisherRao","DubinsZermelo","MedialAxis","BoatRouting",
     "Seismic",
 ],

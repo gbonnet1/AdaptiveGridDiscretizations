@@ -7,7 +7,7 @@ from .. import Metrics
 _array_float_fields = {
 	'origin','dims','gridScale','gridScales','values',
 	'seeds','seeds_Unoriented','tips','tips_Unoriented',
-	'seedValues','seedValues_Unoriented','seedValueVariation',
+	'seedValues','seedValues_Unoriented','seedValueVariation','seedFlags',
 	'cost','speed','costVariation',
 	'inspectSensitivity','inspectSensitivityWeights','inspectSensitivityLengths',
 	'exportVoronoiFlags'
@@ -19,6 +19,10 @@ _singleIn = {
 	'seed_Unoriented':'seeds_Unoriented','seedValue_Unoriented':'seedValues_Unoriented',
 	'tip':'tips','tip_Unoriented':'tips_Unoriented',
 	'seedFlag':'seedFlags','seedFlag_Unoriented':'seedFlags_Unoriented',
+}
+
+_readonlyIn = {
+	'mode','float_t'
 }
 
 _singleOut = {
@@ -62,7 +66,7 @@ class dictOut(MutableMapping):
 
 	def __iter__(self): return iter(self.store)
 	def __len__(self):  return len(self.store)
-
+	def keys(self): return self.store.keys()
 
 def CenteredLinspace(a,b,n):
 	"""
@@ -75,34 +79,55 @@ def CenteredLinspace(a,b,n):
 	r,dr=np.linspace(a,b,n_,endpoint=False,retstep=True)
 	return r+dr/2
 
+
 class dictIn(MutableMapping):
 	"""
 	A dictionary like structure used as input of the Eikonal solvers.
 	"""
 
-	def __init__(self, store=None, mode='cpu', float_t=None):
-		
+	default_mode = 'cpu' # class attribute
+
+	def __init__(self, store=None):
+		if store is None: store=dict()
+		self.store = {'arrayOrdering':'RowMajor'}
+		if 'mode' in store:
+			mode = store['mode']
+			self.store['mode']=mode
+		else:
+			mode = dictIn.default_mode
 		assert mode in ('cpu','cpu_raw','gpu','gpu_transfer')
-		self.mode = mode
+		self._mode = mode
 		if self.mode in ('gpu','gpu_transfer'):
 			import cupy as cp
 			self.xp = cp
-			if float_t is None: float_t = np.float32
+			float_t = np.float32
 		else: 
 			self.xp = np
+			float_t = np.float64
 
-		self.float_t = np.float64 if float_t is None else float_t
+		if 'float_t' in store:
+			float_t = store['float_t']
+			self.store['float_t']=float_t
+
+		self._float_t = float_t
+
 		self.array_float_caster = lambda x : self.xp.array(x,dtype=float_t)
-		self.store = {'arrayOrdering':'RowMajor'}
 		if store: self.update(store)
 
-	def __copy__(self): return dictIn(self.store.copy(),self.mode,self.float_t)
+	def __copy__(self): return dictIn(self.store.copy())
 	def copy(self): return self.__copy__()
 
+	@property
+	def mode(self): return self._mode
+	@property
+	def float_t(self):return self._float_t
+	
 	def __repr__(self): 
-		return f"dictIn({self.store},mode={self.mode},float_t={self.float_t})"
+		return f"dictIn({self.store})"
 
 	def __setitem__(self, key, value):
+		if key in _readonlyIn and self.store[key]!=value: 
+			raise ValueError(f"Key {key} is readonly (set at init)") 
 		if key in _singleIn: 
 			key = _singleIn[key]; value = [value]
 		if key in _array_float_fields and not ad.isndarray(value):
@@ -123,29 +148,39 @@ class dictIn(MutableMapping):
 
 	def __iter__(self): return iter(self.store)
 	def __len__(self):  return len(self.store)
+	def keys(self): return self.store.keys()
 
 	def Run(self,**kwargs):
 		if self['arrayOrdering']!='RowMajor': 
 			raise ValueError("Unsupported array ordering")
-
-		if   self.mode=='cpu':     return dictOut(run_detail.RunSmart(self,**kwargs))
-		elif self.mode=='cpu_raw': return dictOut(run_detail.RunRaw(self,**kwargs))
+		def to_dictOut(out):
+			if isinstance(out,tuple): return (dictOut(out[0]),) + out[1:]
+			else: return dictOut(out)
+			
+		if   self.mode=='cpu': return to_dictOut(run_detail.RunSmart(self,**kwargs))
+		elif self.mode=='cpu_raw': return to_dictOut(run_detail.RunRaw(self.store,**kwargs))
 		
 		from . import HFM_CUDA
-		if   self.mode=='gpu':       return dictOut(HFM_CUDA.RunGPU(self,**kwargs))
+		if   self.mode=='gpu': return to_dictOut(HFM_CUDA.RunGPU(self,**kwargs))
 		elif self.mode=='gpu_transfer':
 			gpuIn = ad.cupy_generic.cupy_set(self, # host->device
-				dtype32=self.float_t==np.float32, iterables=(dictIn,Metrics.Base))
+				dtype32=(self.float_t==np.float32), iterables=(dictIn,Metrics.Base))
 			gpuOut = HFM_CUDA.RunGPU(gpuIn)
 			cpuOut = ad.cupy_generic.cupy_get(gpuOut,iterables=(dict,list))
-			return dictOut(cpuOut) # device->host
+			return to_dictOut(cpuOut) # device->host
 
 	# ------- Grid related functions ------
 
 	@property
 	def shape(self):
+		"""Shape of the discretization grid"""
 		return tuple(self['dims'].astype(int))
 
+	@property
+	def size(self): 
+		"""Number of discretization points in the domain"""
+		return np.prod(self.shape)
+	
 	@property
 	def SE(self):
 		"""Wether the model is based on the Special Euclidean group"""
@@ -222,7 +257,8 @@ class dictIn(MutableMapping):
 		"""Regularly spaced sample points in the domain"""
 		self['tips'] = self.Grid(dims).reshape(self.vdim,-1).T
 
-	def SetRect(self,sides,sampleBoundary=False,gridScale=None,gridScales=None,dimx=None,dims=None):
+	def SetRect(self,sides,sampleBoundary=False,gridScale=None,gridScales=None,
+		dimx=None,dims=None,overwrite=False):
 		"""
 		Defines a box domain, for the HFM library.
 		Inputs.
@@ -231,7 +267,7 @@ class dictIn(MutableMapping):
 		- gridScale, gridScales : side h>0 of each pixel (alt : axis dependent)
 		- dimx, dims : number of points along the first axis (alt : along all axes)
 		"""
-		if any(e in self for e in ('gridScale','gridScales','dims','origin')):
+		if any(e in self for e in ('gridScale','gridScales','dims','origin')) and not overwrite:
 			raise ValueError("Domain already partially set")
 		corner0,corner1 = np.asarray(sides,dtype=float).T
 		dim = len(corner0)
@@ -307,3 +343,6 @@ class dictIn(MutableMapping):
 		inRange = np.all(np.logical_and(bottom<neigh,neigh<top),axis=-1)
 
 		return neigh[np.logical_and(close,inRange)]
+
+
+

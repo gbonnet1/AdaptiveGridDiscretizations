@@ -59,3 +59,12 @@ def animation_curve(X,Y,**kwargs):
     kwargs.setdefault('interval',20)
     kwargs.setdefault('repeat',False)
     return animation.FuncAnimation(fig,func,fargs=(Y,),frames=len(Y),**kwargs)
+
+def quiver(X,Y,U,V,subsampling=tuple(),**kwargs):
+	"""
+	Pyplot quiver with additional arg:
+	- subsampling (tuple). Subsample X,Y,U,V
+	"""
+	where = tuple(slice(None,None,s) for s in subsampling)
+	def f(Z): return Z.__getitem__(where)
+	plt.quiver(f(X),f(Y),f(U),f(V),**kwargs)

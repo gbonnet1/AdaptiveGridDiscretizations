@@ -15,9 +15,7 @@ def RawToFiles(params,prefix='input'):
     The dictionnary elements must by strings, scalars, and numpy arrays.
     The resulting files are readable by the HFM library.
     """
-    if(not isinstance(params,dict) or not isinstance(prefix,str)):
-        print("Invalid parameters")
-        return
+    assert isinstance(prefix,str)
     f = open(prefix+'_Format.txt','w')
     data=[]
     for key,val in params.items():
