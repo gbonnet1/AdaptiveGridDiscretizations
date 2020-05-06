@@ -151,6 +151,10 @@ class dictIn(MutableMapping):
 	def keys(self): return self.store.keys()
 
 	def Run(self,**kwargs):
+		"""
+	 	Calls the HFM library, prints log and returns output.
+	 	"""
+
 		if self['arrayOrdering']!='RowMajor': 
 			raise ValueError("Unsupported array ordering")
 		def to_dictOut(out):
