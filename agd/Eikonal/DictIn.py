@@ -239,9 +239,9 @@ class dictIn(MutableMapping):
 		vdim = self.vdim
 		projective = self.get('projective',False)
 		if vdim==len(dims): dims=dims[:int((vdim+1)/2)] #raise ValueError("Angular resolution already set")
-		if   vdim==3: self['dims'] = np.append(dims,value/2 if projective else value)
-		elif vdim==5: self['dims'] = np.concatenate((dims,
-			[value/4 if projective  else value/2, value]))
+		if   vdim==3: self['dims'] = (*dims,value/2 if projective else value) # np.append(dims,value/2 if projective else value)
+		elif vdim==5: self['dims'] = (*dims,value/4 if projective  else value/2, value) #np.concatenate((dims,
+#			[value/4 if projective  else value/2, value]))
 
 	@property
 	def gridScales(self):
@@ -260,7 +260,7 @@ class dictIn(MutableMapping):
 		origin = self.get('origin',self.xp.zeros_like(dims))
 		gridScales = self.gridScales
 		if self.SE: 
-			tail = (-gridScales[-1]/2,)*(len(dims)-len(origin))
+			tail = self.array_float_caster((-gridScales[-1]/2,)*(len(dims)-len(origin)))
 			origin = np.concatenate((origin,tail))
 		return (origin,origin+gridScales*dims)
 

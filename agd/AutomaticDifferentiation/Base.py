@@ -84,8 +84,6 @@ class baseAD:
 	def cupy_based(self): return not isinstance(self,baseAD)
 	def _init_cupy(self):
 		if self.cupy_based():
-#			import cupy as cp
-#			baseAD_cupy = functional.class_rebase(baseAD,(cp.ndarray,),"baseAD_cupy")
 			x = cp.array([np.nan],dtype=np.float32)
 			super(baseAD_cupy,self).__init__(shape=x.shape,dtype=x.dtype,
 				memptr=x.data,strides=x.strides,order='C')
@@ -288,7 +286,9 @@ def array(a,copy=True):
 	"""
 	if isinstance(a,(list,tuple)): return stack([asarray(e) for e in a],axis=0)
 	elif isndarray(a): return a.copy() if copy else a
-	else: return np.array(a,copy=copy)
+	else: return array.caster(a) 
+
+array.caster = np.asarray
 
 def asarray(a): return array(a,copy=False)
 

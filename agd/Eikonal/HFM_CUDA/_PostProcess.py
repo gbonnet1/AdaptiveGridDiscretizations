@@ -65,7 +65,7 @@ def PostProcess(self):
 			w = fd.as_field(self.metric.w,self.shape,depth=1)
 			eucl_gradient = lp.dot_AV(m,flow_vector)+w
 			flow_corrected = self.dualMetric.gradient(eucl_gradient)
-			flow_corrected[np.isnan(flow_corrected)]=0.# Vanishing flow yields nan gradient
+			flow_corrected[:,self.seedTags]=0 # Actual seeds and walls
 			flow_vector = flow_corrected
 		self.flow_vector = flow_vector
 		if self.exportGeodesicFlow:
@@ -132,6 +132,8 @@ def SolveAD(self):
 	Forward and reverse differentiation of the HFM.
 	"""
 	if not (self.forwardAD or self.reverseAD): return
+	if self.model_=='Rander': raise EikonalGPU_NotImplementedError(
+		"Sorry: automatic differentiation is not yet implemented for Rander metrics on GPU")
 	eikonal = self.kernel_data['eikonal']
 	flow = self.kernel_data['flow']
 	traits = eikonal.traits
@@ -156,6 +158,7 @@ def SolveAD(self):
 			mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
 		coef = np.moveaxis(misc.block_squeeze(valueVariation,self.shape),0,-1)
+#		coef[self.walls]=np.nan
 #		self.hfmOut['valueVariation'] = coef
 		val = self.values
 		self.values = ad.Dense.new(val,cp.asarray(coef,val.dtype))
@@ -175,6 +178,7 @@ def SolveAD(self):
 		# By default, weightsT[indicesT==invalid_index]=0
 
 		allSensitivity = self.SolveLinear(rhs,diag,indicesT,weightsT,-dist,'reverseAD')
+#		allSensitivity[self.walls]=np.nan
 		allSensitivity = np.moveaxis(misc.block_squeeze(allSensitivity,self.shape),0,-1)
 		pos = tuple(self.seedIndices.T)
 		seedSensitivity = allSensitivity[pos]

@@ -89,9 +89,8 @@ def SetRHS(self):
 	eikonal.trigger = seedTags
 
 	if 'wallDist' in eikonal.args: 
-		walls = self.wallDist==0
-		seedTags = np.logical_or(seedTags,walls)
-		rhs[walls] = np.inf
+		seedTags = np.logical_or(seedTags,self.walls)
+		rhs[self.walls] = np.inf
 
 	self.forwardAD = ad.is_ad(rhs)
 	self.rhs = rhs

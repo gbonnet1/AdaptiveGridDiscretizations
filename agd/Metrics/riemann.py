@@ -29,7 +29,11 @@ class Riemann(Base):
 	def shape(self): return self.m.shape[2:]	
 
 	def eigvals(self):
-		return np.moveaxis(np.linalg.eigvalsh(np.moveaxis(self.m,(0,1),(-2,-1))),-1,0)
+		try: return np.moveaxis(np.linalg.eigvalsh(np.moveaxis(self.m,(0,1),(-2,-1))),-1,0)
+		except ValueError: 
+			assert ad.cupy_generic.from_cupy(self.m)
+			import cupy
+			return cupy.asarray(Riemann(self.m.get()).eigvals())
 	def is_definite(self):
 		return self.eigvals().min(axis=0)>0
 	def anisotropy(self):

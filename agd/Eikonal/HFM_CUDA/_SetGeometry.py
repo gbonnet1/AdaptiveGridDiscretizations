@@ -179,6 +179,7 @@ def SetGeometry(self):
 
 	# Walls
 	walls = self.GetValue('walls',default=None,help='Obstacles in the domain')
+	self.walls = walls
 	if walls is not None:
 		wallDist_t = np.uint8
 		wallDistBound = self.GetValue('wallDistBound',default=10,

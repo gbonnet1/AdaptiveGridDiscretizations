@@ -31,12 +31,6 @@ def savefig(fig,fileName,dirName=None,ax=None,**kwargs):
 		if savefig.dirName is None: return 
 		else: dirName=savefig.dirName
 
-
-#		kwargs['bbox_inches']=ax.get_tightbbox(
-#			fig.canvas.get_renderer()).transformed(fig.dpi_scale_trans.inverted())
-#		kwargs.pop('dpi',None)
-#		kwargs.pop('pad_inches',None)
-	
 	# Save figure
 	if path.isdir(dirName):
 		fig.savefig(path.join(dirName,fileName),**kwargs) 

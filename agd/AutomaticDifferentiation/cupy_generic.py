@@ -61,7 +61,7 @@ def cupy_set(x,dtype32=True,iterables=tuple()):
 		return x
 	return functional.map_iterables(caster,x,iterables)
 
-
+@functional.decorator_with_arguments
 def cupy_get_args(f,*args,**kwargs):
 	"""
 	Decorator applying cupy_get to all arguments of the given function.
@@ -105,7 +105,7 @@ def array_float_caster(arg,**kwargs):
 	return lambda arr:xp.asarray(arr,dtype=float_t)
 
 @functional.decorator_with_arguments
-def set_output_dtype32(f,silent=False,iterables=(tuple,)):
+def set_output_dtype32(f,silent=True,iterables=(tuple,)):
 	"""
 	If the output of the given funtion contains ndarrays with 64bit dtype,
 	int or float, they are converted to 32 bit dtype.

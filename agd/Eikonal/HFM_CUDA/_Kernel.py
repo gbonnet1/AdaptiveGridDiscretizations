@@ -185,8 +185,13 @@ def SetKernel(self):
 	if self.model_ =='Isotropic':
 		SetCst('weights', self.h**-2, float_t)
 	if self.isCurvature:
-		nTheta = self.shape[2];
-		theta = cp.arange(nTheta)*2.*np.pi/nTheta
+		nTheta = self.shape[2]
+
+		if self.model == 'ReedsShepp2' and self.GetValue('projective',False,
+			help="Identify opposite angular directions in Reeds-Shepp model"):
+			boundTheta = np.pi
+		else: boundTheta = 2.*np.pi
+		theta = cp.arange(nTheta)*boundTheta/nTheta
 		
 		if traits['precomputed_scheme_macro']:
 			# Precompute the curvature penalizing complex stencils
