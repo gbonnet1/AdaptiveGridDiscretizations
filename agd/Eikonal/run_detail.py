@@ -219,10 +219,9 @@ def PreProcess(key,value,refined_in,raw_out,cache):
 			value = ad.remove_ad(value)
 		setkey_safe(raw_out,key,value)
 	elif key in ('metric','dualMetric'):
-		if isinstance(value,(Metrics.Isotropic,Metrics.Diagonal)):
-			PreProcess('cost' if key=='metric' else 'speed',
-				value.to_HFM(),refined_in,raw_out,cache)
-			return
+		if refined_in['model'].startswith('Isotropic') or refined_in['model'].startswith('Diagonal'):
+			assert isinstance(value,(Metrics.Isotropic,Metrics.Diagonal))
+			return PreProcess('cost' if key=='metric' else 'speed',value.to_HFM(),refined_in,raw_out,cache)
 		if isinstance(value,Metrics.Base): 
 			if ad.is_ad(value,iterables=(Metrics.Base,)):
 				metric_ad = value if key=='metric' else value.dual()
