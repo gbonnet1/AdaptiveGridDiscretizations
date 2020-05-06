@@ -30,7 +30,7 @@ class Interface(object):
 
 		# Needed for GetValue
 		self.hfmOut = {'keys':{
-		'used':['origin','arrayOrdering'],
+		'used':['origin','arrayOrdering','dims'],
 		'default':OrderedDict(),
 		'visited':[],
 		'help':OrderedDict(),
@@ -147,8 +147,7 @@ class Interface(object):
 		self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
 		self.hfmOut['solverGPUTime'] = self.kernel_data['eikonal'].stats['time']
 		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys()) 
-			-set(self.hfmOut['keys']['used']) # Used by interface
-			-{'array_float_caster'}) # Set by interface
+			-set(self.hfmOut['keys']['used']) ) # Used by interface
 		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
 			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
 

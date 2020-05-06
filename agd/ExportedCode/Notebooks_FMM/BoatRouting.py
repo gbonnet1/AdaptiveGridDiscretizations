@@ -1,16 +1,17 @@
-# Code automatically exported from notebook Notebooks_FMM/BoatRouting.ipynb
+# Code automatically exported from notebook Notebooks_FMM\BoatRouting.ipynb
 # Do not modify
 import sys; sys.path.insert(0,"..") # Allow import of agd from parent directory (useless if conda package installed)
 #from Miscellaneous import TocTools; print(TocTools.displayTOC('BoatRouting','FMM'))
 
-from ... import HFMUtils
+from ... import Eikonal
 from ... import LinearParallel as lp
 from ... import FiniteDifferences as fd
 from agd.Metrics import Rander,Riemann
 from ... import AutomaticDifferentiation as ad
-from agd.Plotting import savefig; #savefig.dirName = 'Images/BoatRouting'
+from agd.Plotting import savefig,quiver; #savefig.dirName = 'Images/BoatRouting'
 
 import numpy as np
+from copy import copy
 import matplotlib.pyplot as plt
 
 def route_min(z,params):
@@ -56,10 +57,11 @@ def Currents(θ,ϕ):
     return bump0*ω0+bump1*ω1
 
 def ArrivalTime(hfmIn,params):
-    hfmIn = hfmIn.copy()
+    hfmIn = copy(hfmIn) 
     hfmIn['metric'] = metric(params)
-    cache = HFMUtils.Cache(needsflow=True)
-    hfmOut = hfmIn.RunSmart(cache=cache)
+    hfmIn['exportGeodesicFlow']=1
+    cache = Eikonal.Cache(needsflow=True)
+    hfmOut = hfmIn.Run(cache=cache)
     
     flow = hfmOut['flow']
     no_flow = np.all(flow==0,axis=0)
@@ -70,7 +72,7 @@ def ArrivalTime(hfmIn,params):
     costVariation[no_flow] = 0
     hfmIn['costVariation'] = np.expand_dims(costVariation,axis=-1)
     
-    hfmOut2 = hfmIn.RunSmart(cache=cache) # cache avoids some recomputations
+    hfmOut2 = hfmIn.Run(cache=cache) # cache avoids some recomputations
     time = hfmOut2['values'].gradient(0)
     return time,hfmOut
 

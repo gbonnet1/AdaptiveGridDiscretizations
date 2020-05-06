@@ -11,7 +11,7 @@ import numpy as np
 import sys
 import functools
 from . import functional
-from .Base import cp,isndarray,from_cupy # dummy cp and _cp_ndarray if not in the system
+from .Base import cp,isndarray,from_cupy,is_ad # dummy cp and _cp_ndarray if not in the system
 
 def get_array_module(data,iterables=tuple()):
 	"""Returns the cupy module or the numpy module, depending on data"""

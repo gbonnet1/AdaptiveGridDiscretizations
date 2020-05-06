@@ -22,7 +22,12 @@ _singleIn = {
 }
 
 _readonlyIn = {
-	'mode','float_t'
+	'float_t'
+}
+
+_array_module = {
+	'cpu':'numpy','cpu_raw':'numpy','gpu_transfer':'numpy',
+	'gpu':'cupy','cpu_transfer':'cupy',
 }
 
 _singleOut = {
@@ -83,6 +88,11 @@ def CenteredLinspace(a,b,n):
 class dictIn(MutableMapping):
 	"""
 	A dictionary like structure used as input of the Eikonal solvers.
+	- cpu : Run algorithm on host, store data on host
+	- cpu_transfer : Run algorithm on host, store data on device
+	- cpu_raw : Raw call to the HFM CPU library (debug purposes)
+	- gpu : Run algorithm on device, store data on device
+	- gpu_transfer : Run algorithm on device, store data on host
 	"""
 
 	default_mode = 'cpu' # class attribute
@@ -95,9 +105,9 @@ class dictIn(MutableMapping):
 			self.store['mode']=mode
 		else:
 			mode = dictIn.default_mode
-		assert mode in ('cpu','cpu_raw','gpu','gpu_transfer')
+		assert mode in ('cpu','cpu_raw','cpu_transfer','gpu','gpu_transfer')
 		self._mode = mode
-		if self.mode in ('gpu','gpu_transfer'):
+		if self.mode in ('gpu','cpu_transfer'):
 			import cupy as cp
 			self.xp = cp
 			float_t = np.float32
@@ -111,7 +121,7 @@ class dictIn(MutableMapping):
 
 		self._float_t = float_t
 
-		self.array_float_caster = lambda x : self.xp.array(x,dtype=float_t)
+		self.array_float_caster = lambda x : self.xp.asarray(x,dtype=float_t)
 		if store: self.update(store)
 
 	def __copy__(self): return dictIn(self.store.copy())
@@ -126,6 +136,10 @@ class dictIn(MutableMapping):
 		return f"dictIn({self.store})"
 
 	def __setitem__(self, key, value):
+		if key=='mode':
+			if _array_module[value]!=_array_module[self.mode]:
+				raise ValueError('Switching between modes with distinct array storage')
+			else: self._mode = value
 		if key in _readonlyIn and self.store[key]!=value: 
 			raise ValueError(f"Key {key} is readonly (set at init)") 
 		if key in _singleIn: 
@@ -150,10 +164,14 @@ class dictIn(MutableMapping):
 	def __len__(self):  return len(self.store)
 	def keys(self): return self.store.keys()
 
-	def Run(self,**kwargs):
+	def Run(self,join=None,**kwargs):
 		"""
-	 	Calls the HFM library, prints log and returns output.
-	 	"""
+		Calls the HFM library, prints log and returns output.
+		"""
+		if join is not None:
+			other = self.copy()
+			other.update(join)
+			return other.Run(**kwargs)
 
 		if self['arrayOrdering']!='RowMajor': 
 			raise ValueError("Unsupported array ordering")
@@ -163,6 +181,11 @@ class dictIn(MutableMapping):
 			
 		if   self.mode=='cpu': return to_dictOut(run_detail.RunSmart(self,**kwargs))
 		elif self.mode=='cpu_raw': return to_dictOut(run_detail.RunRaw(self.store,**kwargs))
+		elif self.mode=='cpu_transfer':
+			cpuIn = ad.cupy_generic.cupy_get(self,dtype64=True,iterables=(dictIn,Metrics.Base))
+			for key in list(cpuIn.keys()): 
+				if key.startswith('traits'): cpuIn.pop(key)
+			return to_dictOut(run_detail.RunSmart(cpuIn,**kwargs))
 		
 		from . import HFM_CUDA
 		if   self.mode=='gpu': return to_dictOut(HFM_CUDA.RunGPU(self,**kwargs))
@@ -178,7 +201,9 @@ class dictIn(MutableMapping):
 	@property
 	def shape(self):
 		"""Shape of the discretization grid"""
-		return tuple(self['dims'].astype(int))
+		dims = self['dims']
+		if ad.cupy_generic.from_cupy(dims): dims = dims.get()
+		return tuple(dims.astype(int))
 
 	@property
 	def size(self): 
@@ -262,7 +287,7 @@ class dictIn(MutableMapping):
 		self['tips'] = self.Grid(dims).reshape(self.vdim,-1).T
 
 	def SetRect(self,sides,sampleBoundary=False,gridScale=None,gridScales=None,
-		dimx=None,dims=None,overwrite=False):
+		dimx=None,dims=None):
 		"""
 		Defines a box domain, for the HFM library.
 		Inputs.
@@ -271,12 +296,15 @@ class dictIn(MutableMapping):
 		- gridScale, gridScales : side h>0 of each pixel (alt : axis dependent)
 		- dimx, dims : number of points along the first axis (alt : along all axes)
 		"""
-		if any(e in self for e in ('gridScale','gridScales','dims','origin')) and not overwrite:
-			raise ValueError("Domain already partially set")
-		corner0,corner1 = np.asarray(sides,dtype=float).T
+		# Ok to set or completely replace the domain
+		domain_count = sum(e in self for e in ('gridScale','gridScales','dims','origin'))
+		if domain_count not in (0,3): raise ValueError("Domain already partially set")
+		
+		caster = self.array_float_caster
+		corner0,corner1 = caster(sides).T
 		dim = len(corner0)
 		sb=float(sampleBoundary)
-		width = np.asarray(corner1)-np.asarray(corner0)
+		width = corner1-corner0
 		if gridScale is not None: 
 			gridScales=[gridScale]*dim; self['gridScale']=gridScale
 		elif gridScales is not None:
@@ -284,17 +312,17 @@ class dictIn(MutableMapping):
 		elif dimx is not None:
 			gridScale=width[0]/(dimx-sb); gridScales=[gridScale]*dim; self['gridScale']=gridScale
 		elif dims is not None:
-			gridScales=width/(np.asarray(dims)-sb); self['gridScales']=gridScales
+			gridScales=width/(xp.asarray(dims)-sb); self['gridScales']=gridScales
 		else: 
 			raise ValueError('Missing argument gridScale, gridScales, dimx, or dims')
 
-		h=gridScales
-		ratios = [(M-m)/delta+sb for delta,m,M in zip(h,corner0,corner1)]
-		dims = [round(r) for r in ratios]
+		h=caster(gridScales)
+		ratios = (corner1-corner0)/h + sb
+		dims = np.round(ratios)
 		assert(np.min(dims)>0)
-		origin = [c+(r-d-sb)*delta/2 for c,r,d,delta in zip(corner0,ratios,dims,h)]
-		self['dims']   = np.asarray(dims)
-		self['origin'] = np.asarray(origin)
+		origin = corner0 + (ratios-dims-sb)*h/2
+		self['dims']   = dims
+		self['origin'] = origin
 
 	def PointFromIndex(self,index,to=False):
 		"""

@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_GPU/Isotropic_Repro.ipynb
+# Code automatically exported from notebook Notebooks_GPU\Isotropic_Repro.ipynb
 # Do not modify
 import cupy as cp
 import numpy as np
@@ -6,16 +6,15 @@ import itertools
 from matplotlib import pyplot as plt
 np.set_printoptions(edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%5.3g" % x))
 
-from ... import HFMUtils
+from ... import Eikonal
 from ... import AutomaticDifferentiation as ad
 from ... import Metrics
 import agd.AutomaticDifferentiation.cupy_generic as cugen
 norm_infinity = ad.Optimization.norm_infinity
+Eikonal.dictIn.default_mode = 'gpu'
 
 cp = ad.functional.decorate_module_functions(cp,cugen.set_output_dtype32) # Use float32 and int32 types in place of float64 and int64
 plt = ad.functional.decorate_module_functions(plt,cugen.cupy_get_args)
-HFMUtils.dictIn.RunSmart = cugen.cupy_get_args(HFMUtils.RunSmart,dtype64=True,iterables=(dict,Metrics.Base))
-#RunSmart = cugen.cupy_get_args(RunSmart,dtype64=True,iterables=(dict,Metrics.Base))
 
 variants_basic = (
     [{},{"seedRadius":2.}], # Spread seed information ?
@@ -40,11 +39,9 @@ def RunCompare(gpuIn,check=True,check_ratio=0,variants=None,**kwargs):
 
     # Run the CPU and GPU solvers
     gpuIn = gpuIn.copy(); gpuIn.update(kwargs)
-    gpuOut = gpuIn.RunGPU()
+    gpuOut = gpuIn.Run()
     if gpuIn.get('verbosity',1):  print(f"--- gpu done, turning to cpu ---")
-    cpuIn = gpuIn.copy(); 
-    for key in ('traits','array_float_caster'): cpuIn.pop(key,None)
-    cpuOut = cpuIn.RunSmart()
+    cpuOut = gpuIn.Run(join={'mode':'cpu_transfer'})
     
     # Print performance info
     fmTime = cpuOut['FMCPUTime']; stencilTime = cpuOut['StencilCPUTime']; 

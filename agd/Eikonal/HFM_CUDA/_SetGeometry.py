@@ -7,7 +7,6 @@ import copy
 
 from . import misc
 from . import inf_convolution
-from .. import Grid
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
 from ... import Metrics
@@ -23,8 +22,7 @@ def SetGeometry(self):
 	policy = eikonal.policy
 
 	# Domain shape and grid scale
-	self.shape = tuple(self.GetValue('dims',
-		help="dimensions (shape) of the computational domain").astype(int))
+	self.shape = self.hfmIn.shape
 
 	self.periodic_default = (False,False,True) if self.isCurvature else (False,)*self.ndim
 	self.periodic = self.GetValue('periodic',default=self.periodic_default,

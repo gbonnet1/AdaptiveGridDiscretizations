@@ -208,7 +208,7 @@ def PreProcess(key,value,refined_in,raw_out,cache):
 	"""
 
 	verbosity = refined_in.get('verbosity',1)
-	if   key=='mode': assert value=='cpu'; return
+	if   key=='mode': assert value in ('cpu','cpu_transfer'); return
 	elif key=='float_t': assert value==np.float64; return
 	elif key in ('cost','speed'):
 		if isinstance(value,Metrics.Isotropic):

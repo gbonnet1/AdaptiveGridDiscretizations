@@ -2,7 +2,6 @@ import numpy as np
 import cupy as cp
 from .inf_convolution import inf_convolution
 from . import misc
-from .. import Grid
 from ... import AutomaticDifferentiation as ad
 
 def SetRHS(self):
@@ -25,7 +24,7 @@ def SetRHS(self):
 
 	# Check and adimensionize seeds
 	assert seeds.ndim==2 and seeds.shape[1]==self.ndim
-	seeds = Grid.PointFromIndex(self.hfmIn,seeds,to=True) 
+	seeds = self.hfmIn.PointFromIndex(seeds,to=True) 
 	self.seeds=seeds
 	if len(seeds)==1: self.seed = seeds[0]
 
@@ -48,7 +47,7 @@ def SetRHS(self):
 	if seedRadius==0.:
 		seedIndices = np.round(seeds).astype(int)
 	else:
-		neigh = Grid.GridNeighbors(self.hfmIn,self.seed,seedRadius) # Geometry last
+		neigh = self.hfmIn.GridNeighbors(self.seed,seedRadius) # Geometry last
 		r = seedRadius 
 		aX = [cp.arange(int(np.floor(ci-r)),int(np.ceil(ci+r)+1)) for ci in self.seed]
 		neigh =  np.stack(cp.meshgrid( *aX, indexing='ij'),axis=-1)
