@@ -24,8 +24,9 @@ result_path = "ExportedCode"
 def ExportCode(inFName,outFName,update=False,show=False):
 	with open(inFName, encoding='utf8') as data_file:
 		data = json.load(data_file)
+	directory,filename = os.path.split(inFName)
 	output = [
-		f"# Code automatically exported from notebook {inFName}\n",
+		f"# Code automatically exported from notebook {filename} in directory {directory}\n",
 		"# Do not modify\n"]
 	nAlgo = 0
 	for c in data['cells']:
