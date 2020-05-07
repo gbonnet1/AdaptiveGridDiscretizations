@@ -110,10 +110,10 @@ class dictIn(MutableMapping):
 		if self.mode in ('gpu','cpu_transfer'):
 			import cupy as cp
 			self.xp = cp
-			float_t = np.float32
-		else: 
-			self.xp = np
-			float_t = np.float64
+		else: self.xp = np
+		
+		if self.mode in ('gpu','cpu_transfer','gpu_transfer'): float_t=np.float32
+		else: float_t=np.float64
 
 		if 'float_t' in store:
 			float_t = store['float_t']
@@ -296,7 +296,7 @@ class dictIn(MutableMapping):
 		- gridScale, gridScales : side h>0 of each pixel (alt : axis dependent)
 		- dimx, dims : number of points along the first axis (alt : along all axes)
 		"""
-		# Ok to set or completely replace the domain
+		# Ok to set a new domain, or completely replace the domain
 		domain_count = sum(e in self for e in ('gridScale','gridScales','dims','origin'))
 		if domain_count not in (0,3): raise ValueError("Domain already partially set")
 		

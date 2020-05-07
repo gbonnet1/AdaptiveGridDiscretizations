@@ -76,7 +76,7 @@ def SetKernelTraits(self):
 	self.size_i = np.prod(self.shape_i)
 	self.caster = lambda x : cp.asarray(x,dtype=self.float_t)
 	self.nscheme = kernel_traits.nscheme(self)
-	assert self.float_t == self.hfmIn.float_t 
+#	assert self.float_t == self.hfmIn.float_t # Not necessary for gpu_transfer
 
 def SetKernel(self):
 	"""
