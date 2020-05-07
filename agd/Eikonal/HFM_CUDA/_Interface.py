@@ -4,6 +4,7 @@
 import numpy as np
 from collections import OrderedDict
 from types import SimpleNamespace
+import numbers
 
 # Deferred implementation of Interface member functions
 from . import _Kernel
@@ -73,7 +74,19 @@ class Interface(object):
 		if key in self.hfmIn:
 			self.hfmOut['keys']['used'].append(key)
 			value = self.hfmIn[key]
-			return self.caster(value) if array_float else value
+			if array_float is False: return value
+			value = self.caster(value)
+			# Check shape
+			if array_float is tuple:
+				shapeRef,shape = array_float,value.shape
+				if len(shapeRef)!=len(shape):
+					raise ValueError(f"Field key has incorrect number of dimensions. "
+						f"Expected shape {shapeRef}, found {shape}")
+				for sRef,s in zip(shapeRef,shape):
+					if sRef not in (-1,s): 
+						raise ValueError(f"Field key has incorrect dimensions. "
+							f"Expected shape {shapeRef}, found {shape}")
+			return value
 		elif isinstance(default,str) and default == "_None":
 			raise ValueError(f"Missing value for key {key}")
 		else:
@@ -81,6 +94,8 @@ class Interface(object):
 				if isinstance(default,str) and default=="_Dummy":
 					print(f"see out['keys']['default'][{key}] for default")
 				else:print(f"key {key} defaults to {default}")
+			if isinstance(default, numbers.Number) and array_float is not False:
+				default = self.caster(default)
 			return default
 
 	def Warn(self,msg):

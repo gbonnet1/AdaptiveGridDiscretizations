@@ -303,11 +303,22 @@ class UniformGridInterpolation:
 			if grid.get('cell_centered',False): 
 				self.origin += self.scale/2 # Convert to node_centered origin
 		else:
-			grid = ad.asarray(grid)
-			self.shape = grid.shape[1:]
-			self.origin = grid.__getitem__((slice(None),)+(0,)*self.vdim)
-			self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
-			if check_grid:
+			def get_origin_step_len(a,axis):
+				a = ad.asarray(a)
+				assert a.ndim==1 or a.ndim>=axis
+				if a.ndim>1:a=a.__getitem__((0,)*axis+(slice(None,),)+(0,)*(a.ndim-axis-1))
+				return a[0],a[1]-a[0],len(a)
+			self.origin,self.scale,shape = \
+				ad.asarray([get_origin_step_len(a,axis) for axis,a in enumerate(grid)]).T
+			if ad.cupy_generic.from_cupy(shape): shape=shape.get() 
+			self.shape = tuple(int(i) for i in shape)
+#			print(self.origin,self.scale,self.shape)
+#			print(type(self.shape[0]))
+#			grid = ad.asarray(grid)
+#			self.shape = grid.shape[1:]
+#			self.origin = grid.__getitem__((slice(None),)+(0,)*self.vdim)
+#			self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
+			if check_grid and grid[0].ndim>1:
 				assert np.allclose(grid,self._grid())
 
 		if order is None: order = 1

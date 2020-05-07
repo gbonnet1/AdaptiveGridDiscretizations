@@ -187,12 +187,6 @@ def SetKernel(self):
 	if self.isCurvature:
 		nTheta = self.shape[2]
 		theta = self.hfmIn.Axes()[2]
-
-#		if self.model == 'ReedsShepp2' and self.GetValue('projective',False,
-#			help="Identify opposite angular directions in Reeds-Shepp model"):
-#			boundTheta = np.pi
-#		else: boundTheta = 2.*np.pi
-#		theta = cp.arange(nTheta)*boundTheta/nTheta
 		
 		if traits.get('precomputed_scheme_macro',False):
 			# Precompute the curvature penalizing complex stencils
