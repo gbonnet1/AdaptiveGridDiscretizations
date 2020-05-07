@@ -88,8 +88,8 @@ void get_ixi_kappa_theta(
 	XI_VAR(ixi = geom[k]; ++k;)
 	KAPPA_VAR(kappa = geom[k]; ++k;)
 	#if theta_var_macro 
-	cos_theta = geom[k]; ++k;
-	sin_theta = geom[k]; ++k;
+	cosTheta = geom[k]; ++k;
+	sinTheta = geom[k]; ++k;
 	#else
 	const Int iTheta = x[2];
 //	theta = (2.*pi*x[2])/shape_tot[2];  // Now using precomputed trigonometric tables

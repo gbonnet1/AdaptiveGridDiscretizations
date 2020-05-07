@@ -124,7 +124,8 @@ class dictIn(MutableMapping):
 		self.array_float_caster = lambda x : self.xp.asarray(x,dtype=float_t)
 		if store: self.update(store)
 
-	def __copy__(self): return dictIn(self.store.copy())
+	def __copy__(self):     return dictIn(self.store.copy())
+	def __deepcopy__(self): return dictIn(self.store.deepcopy())
 	def copy(self): return self.__copy__()
 
 	@property
@@ -235,13 +236,12 @@ class dictIn(MutableMapping):
 	@nTheta.setter
 	def nTheta(self,value):
 		if not self.SE: raise ValueError("Not an SE model")
-		dims = self['dims']
+		shape = self.shape
 		vdim = self.vdim
 		projective = self.get('projective',False)
-		if vdim==len(dims): dims=dims[:int((vdim+1)/2)] #raise ValueError("Angular resolution already set")
-		if   vdim==3: self['dims'] = (*dims,value/2 if projective else value) # np.append(dims,value/2 if projective else value)
-		elif vdim==5: self['dims'] = (*dims,value/4 if projective  else value/2, value) #np.concatenate((dims,
-#			[value/4 if projective  else value/2, value]))
+		if vdim==len(shape): shape=shape[:int((vdim+1)/2)] #raise ValueError("Angular resolution already set")
+		if   vdim==3: self['dims'] = (*shape, value/2 if projective else value) 
+		elif vdim==5: self['dims'] = (*shape, value/4 if projective  else value/2, value) 
 
 	@property
 	def gridScales(self):
@@ -344,6 +344,26 @@ class dictIn(MutableMapping):
 		continuousIndex = self.PointFromIndex(point,to=True)
 		index = np.round(continuousIndex)
 		return index.astype(int),(continuousIndex-index)
+
+	def OrientedPoints(self,pointU):
+		"""
+		Appends all possible orientations to the point coordinates.
+		"""
+		pointU = self.array_float_caster(pointU)
+		if self['model'] not in SEModels: 
+			raise ValueError("OrientedPoints only makes sense for models SE space.")
+		if self.vdim!=3:
+			raise ValueError("Sorry, oriented point not implemented for SE(3) models.")
+		pdim = int((self.vdim+1)/2) # Number of physical dimensions
+		if pointU.shape[-1]!=pdim:
+			raise ValueError(f"Unoriented points expected to have {pdim} dimensions, "
+				f"found {pointU.shape[-1]}.")
+		theta = self.Axes()[2]
+		point = self.xp.full((len(theta),*pointU.shape[:-1],self.vdim),np.nan)
+		for i,t in enumerate(theta):
+			point[i,...,:pdim]=pointU
+			point[i,...,pdim:]=t
+		return point
 
 	def VectorFromOffset(self,offset,to=False):
 		offset = self.array_float_caster(offset)

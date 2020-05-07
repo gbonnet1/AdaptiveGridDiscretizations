@@ -76,29 +76,29 @@ def SetGeometry(self):
 
 	if self.isCurvature:
 		# Geometry defined using the xi, kappa and theta parameters
-		self.xi = self.GetValue('xi',array_float=True,
+		xi = self.GetValue('xi',array_float=True,
 			help="Cost of rotation for the curvature penalized models")
-		self.kappa = self.GetValue('kappa',default=0.,array_float=True,
+		kappa = self.GetValue('kappa',default=0.,array_float=True,
 			help="Rotation bias for the curvature penalized models")
 		self.theta = self.GetValue('theta',default=0.,verbosity=3,array_float=True,
 			help="Deviation from horizontality, for the curvature penalized models")
 
 		# Scale h_base is taken care of through the 'cost' field
 		h_ratio = self.h_per/self.h_base
-		self.xi    *= h_ratio
-		self.kappa /= h_ratio
+		self.ixi    = 1/(xi*h_ratio)
+		self.kappa = kappa/h_ratio
 		# Large arrays are passed as geometry data, and scalar entries as module constants
 		geom = []
 		def is_var(e): return isinstance(e,cp.ndarray) and e.ndim>0
 		traits = eikonal.traits
-		traits['xi_var_macro']    = int(is_var(self.xi))
+		traits['xi_var_macro']    = int(is_var(self.ixi))
 		traits['kappa_var_macro'] = int(is_var(self.kappa))
 		traits['theta_var_macro'] = int(is_var(self.theta))
 		if not is_var(self.theta): traits['nTheta']=self.shape[2];
 		if all(traits[e]==0 for e in ('xi_var_macro','kappa_var_macro','theta_var_macro')):
 			traits['precomputed_scheme_macro']=1
 
-		geom = [e for e in (1./self.xi,self.kappa,
+		geom = [e for e in (self.ixi,self.kappa,
 			np.cos(self.theta),np.sin(self.theta)) if is_var(e)]
 		if len(geom)>0: self.geom = ad.array(geom)
 		else: self.geom = cp.zeros((0,)+self.shape, dtype=self.float_t)
@@ -134,10 +134,10 @@ def SetGeometry(self):
 	self.tips = self.GetValue('tips',default=None,array_float=True,
 		help="Tips from which to compute the minimal geodesics")
 	if self.isCurvature:
-		self.unorientedTips=self.GetValue('unorientedTips',default=None,array_float=True,
+		self.tips_Unoriented=self.GetValue('tips_Unoriented',default=None,array_float=True,
 			help="Compute a geodesic from the most favorable orientation")
 	self.hasTips = (self.tips is not None 
-		or (self.isCurvature and self.unorientedTips is not None))
+		or (self.isCurvature and self.tips_Unoriented is not None))
 
 	# Cost function
 	if self.HasValue('speed'): 

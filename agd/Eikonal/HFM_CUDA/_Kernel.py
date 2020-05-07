@@ -186,14 +186,15 @@ def SetKernel(self):
 		SetCst('weights', self.h**-2, float_t)
 	if self.isCurvature:
 		nTheta = self.shape[2]
+		theta = self.hfmIn.Axes()[2]
 
-		if self.model == 'ReedsShepp2' and self.GetValue('projective',False,
-			help="Identify opposite angular directions in Reeds-Shepp model"):
-			boundTheta = np.pi
-		else: boundTheta = 2.*np.pi
-		theta = cp.arange(nTheta)*boundTheta/nTheta
+#		if self.model == 'ReedsShepp2' and self.GetValue('projective',False,
+#			help="Identify opposite angular directions in Reeds-Shepp model"):
+#			boundTheta = np.pi
+#		else: boundTheta = 2.*np.pi
+#		theta = cp.arange(nTheta)*boundTheta/nTheta
 		
-		if traits['precomputed_scheme_macro']:
+		if traits.get('precomputed_scheme_macro',False):
 			# Precompute the curvature penalizing complex stencils
 			offset_t=self.offset_t
 			scheme = self.kernel_data['scheme']
@@ -207,7 +208,7 @@ def SetKernel(self):
 			scheme.module = GetModule(scheme.source,self.cuoptions)
 			for args in ( ('shape_o',self.shape_o,int_t),('size_o',self.size_o,int_t),
 				('shape_tot',self.shape,int_t),('size_tot',size_tot,int_t),
-				('ixi',  1./self.xi,float_t), ('kappa',self.kappa,float_t),
+				('ixi',  self.ixi,float_t), ('kappa',self.kappa,float_t),
 				('cosTheta_s',np.cos(theta),float_t), ('sinTheta_s',np.sin(theta),float_t)):
 				SetModuleConstant(scheme.module,*args)
 			nactx = self.nscheme['nactx']

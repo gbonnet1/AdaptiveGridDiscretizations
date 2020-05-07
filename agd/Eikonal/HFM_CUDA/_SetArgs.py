@@ -82,6 +82,25 @@ def SetRHS(self):
 		if self.reverseAD: seedValues_rev = neighValues_rev+0.5*(metric0.norm(diff)+metric1.norm(diff))
 		seedIndices = neigh
 
+	if self.isCurvature and self.HasValue('seeds_Unoriented'):
+		# Unoriented seeds are simply rounded
+		seedsU = self.GetValue('seeds_Unoriented',
+			help="Unoriented seeds for the curvature penalized models")
+		seedValuesU = cp.zeros(len(seedsU),dtype=self.float_t)
+		seedValuesU = self.GetValue('seedValues_Unoriented',
+			default=seedValuesU,help="Initial value for the front propagation")
+
+		# Expand with angular coordinate
+		seedsU = self.hfmIn.OrientedPoints(seedsU)
+		seedValuesU = np.tile(seedValuesU,len(seedsU))
+		seedsU = self.hfmIn.PointFromIndex(seedsU.reshape(-1,3),to=True) 
+		seedIndicesU = np.round(seedsU).astype(int)
+
+		# Concatenate with oriented data
+		seeds       = np.concatenate((seeds,seedsU),axis=0)
+		seedIndices = np.concatenate((seedIndices,seedIndicesU),axis=0)
+		seedValues  = np.concatenate((seedValues,seedValuesU),axis=0)
+
 	rhs,seedValues = ad.common_cast(rhs,seedValues)
 	pos = tuple(seedIndices.T)
 	rhs[pos] = seedValues

@@ -3,9 +3,24 @@ import cupy as cp
 from . import cupy_module_helper
 from . import inf_convolution
 from . import misc
+from ...AutomaticDifferentiation import cupy_support as cps
 
 def GetGeodesics(self):
 		if not self.hasTips: return
+		tips = self.tips
+		tips = self.hfmIn.PointFromIndex(tips,to=True)
+		if self.isCurvature and self.tips_Unoriented is not None:
+			tipsU = self.tips_Unoriented
+			tipsU = self.hfmIn.OrientedPoints(tipsU)
+			tipsU = self.hfmIn.PointFromIndex(tipsU,to=True)
+			tipIndicesU = np.round(tipsU).astype(int)
+			valuesU = self.values[tuple(np.moveaxis(tipIndicesU,-1,0))]
+			amin = np.argmin(valuesU,axis=0) # Select most favorable value
+			amin = amin.reshape((1,*amin.shape,1))
+			amin = np.broadcast_to(amin,(*amin.shape[:-1],3))
+			tipsU = np.squeeze(cps.take_along_axis(tipIndicesU,amin,axis=0),axis=0)
+			tips = np.concatenate((tips,tipsU))
+
 		geodesic = self.kernel_data['geodesic'] # Not using the common solver here
 
 		# Set the kernel traits
@@ -60,7 +75,7 @@ def GetGeodesics(self):
 		causalityTolerance = self.GetValue('geodesic_causalityTolerance',default=4.,
 			help="Used in criterion for rejecting points in flow interpolation")
 		SetCst('causalityTolerance', causalityTolerance, self.float_t)
-		nGeodesics=len(self.tips)
+		nGeodesics=len(tips)
 
 		# Prepare the euclidean distance to seed estimate (for stopping criterion)
 		eucl_bound_default = 12 if self.isCurvature else 6
@@ -84,7 +99,6 @@ def GetGeodesics(self):
 		# Run the geodesic ODE solver
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
 		corresp = list(range(nGeodesics))
-		tips = self.hfmIn.PointFromIndex(self.tips,to=True)
 		geodesics = [ [tip.reshape(1,-1)] for tip in tips]
 
 		block_size=self.GetValue('geodesic_block_size',default=32,
@@ -128,5 +142,7 @@ def GetGeodesics(self):
 			corresp=corresp_next
 
 		geodesics_cat = [np.concatenate(geo,axis=0) for geo in geodesics]
-		self.hfmOut['geodesics']=[self.hfmIn.PointFromIndex(geo).T for geo in geodesics_cat]
+		geodesics = [self.hfmIn.PointFromIndex(geo).T for geo in geodesics_cat]
+		self.hfmOut['geodesics']=geodesics[:len(self.tips)]
+		self.hfmOut['geodesics_Unoriented']=geodesics[len(self.tips):]
 		self.hfmOut['geodesic_stopping_criteria'] = stopping_criterion
