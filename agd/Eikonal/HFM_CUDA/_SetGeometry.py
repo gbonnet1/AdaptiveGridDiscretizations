@@ -33,17 +33,17 @@ def SetGeometry(self):
 	
 	# Set the discretization gridScale(s)
 	if self.isCurvature:
-		self.h_base = self.GetValue('gridScale',array_float=True,
+		self.h_base = self.GetValue('gridScale',array_float=tuple(),
 			help="Scale of the physical (not angular) grid.")
 		self.h_per = self.caster(2.*np.pi / self.shape[2] )
 		self.h = self.caster((self.h_base,self.h_base,self.h_per))
 
 	elif self.HasValue('gridScale') or self.isCurvature:
-		self.h = cp.broadcast_to(self.GetValue('gridScale',array_float=True,
+		self.h = cp.broadcast_to(self.GetValue('gridScale',array_float=tuple(),
 			help="Scale of the computational grid"), (self.ndim,))
 
 	else:
-		self.h = self.GetValue('gridScales',array_float=True,
+		self.h = self.GetValue('gridScales',array_float=(self.ndim,),
 			help="Axis independent scales of the computational grid")
 
 	self.h_broadcasted = fd.as_field(self.h,self.shape,depth=1)
@@ -76,29 +76,41 @@ def SetGeometry(self):
 
 	if self.isCurvature:
 		# Geometry defined using the xi, kappa and theta parameters
-		self.xi = self.GetValue('xi',array_float=True,
+		xi = self.GetValue('xi',array_float=True,
 			help="Cost of rotation for the curvature penalized models")
-		self.kappa = self.GetValue('kappa',default=0.,array_float=True,
+		kappa = self.GetValue('kappa',default=0.,array_float=True,
 			help="Rotation bias for the curvature penalized models")
 		self.theta = self.GetValue('theta',default=0.,verbosity=3,array_float=True,
 			help="Deviation from horizontality, for the curvature penalized models")
 
 		# Scale h_base is taken care of through the 'cost' field
 		h_ratio = self.h_per/self.h_base
-		self.xi    *= h_ratio
-		self.kappa /= h_ratio
+		self.ixi    = 1/(xi*h_ratio)
+		self.kappa = kappa/h_ratio
 		# Large arrays are passed as geometry data, and scalar entries as module constants
 		geom = []
 		def is_var(e): return isinstance(e,cp.ndarray) and e.ndim>0
 		traits = eikonal.traits
-		traits['xi_var_macro']    = int(is_var(self.xi))
+		traits['xi_var_macro']    = int(is_var(self.ixi))
 		traits['kappa_var_macro'] = int(is_var(self.kappa))
 		traits['theta_var_macro'] = int(is_var(self.theta))
 		if not is_var(self.theta): traits['nTheta']=self.shape[2];
 		if all(traits[e]==0 for e in ('xi_var_macro','kappa_var_macro','theta_var_macro')):
 			traits['precomputed_scheme_macro']=1
 
-		geom = [e for e in (1./self.xi,self.kappa,
+		def broadcast(e,name):
+			shapeRef = self.hfmIn.shape
+			if e.shape in (tuple(),shapeRef): return e # Constant, or full field
+			elif e.shape==shapeRef[2:]: return np.broadcast_to(e,shapeRef) # Angular field
+			elif e.shape==shapeRef[:2]: 
+				return np.broadcast_to(e.reshape((1,1,shapeRef[2])),shapeRef)
+			raise ValueError(f"Field {name} has incorrect dimensions. Found {e.shape}, "
+				f"whereas domain has shape {shapeRef}")
+		self.ixi=broadcast(self.ixi,'xi')
+		self.kappa=broadcast(self.kappa,'kappa')
+		self.theta=broadcast(self.theta,'theta')
+
+		geom = [e for e in (self.ixi,self.kappa,
 			np.cos(self.theta),np.sin(self.theta)) if is_var(e)]
 		if len(geom)>0: self.geom = ad.array(geom)
 		else: self.geom = cp.zeros((0,)+self.shape, dtype=self.float_t)
@@ -131,13 +143,13 @@ def SetGeometry(self):
 	# geometrical data related with geodesics 
 	self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,
 		help="Export the upwind geodesic flow (direction of the geodesics)")
-	self.tips = self.GetValue('tips',default=None,array_float=True,
+	self.tips = self.GetValue('tips',default=None,array_float=(-1,self.ndim),
 		help="Tips from which to compute the minimal geodesics")
 	if self.isCurvature:
-		self.unorientedTips=self.GetValue('unorientedTips',default=None,array_float=True,
+		self.tips_Unoriented=self.GetValue('tips_Unoriented',default=None,array_float=(-1,2),
 			help="Compute a geodesic from the most favorable orientation")
 	self.hasTips = (self.tips is not None 
-		or (self.isCurvature and self.unorientedTips is not None))
+		or (self.isCurvature and self.tips_Unoriented is not None))
 
 	# Cost function
 	if self.HasValue('speed'): 
@@ -151,13 +163,14 @@ def SetGeometry(self):
 		costVariation = self.GetValue('costVariation',default=None,
 			help="First order variation of the cost function")
 		if costVariation is not None: self.cost = ad.Dense.new(self.cost,costVariation)
-	if self.isCurvature: self.cost *= self.h_base
+	if self.isCurvature: 
+		self.cost = self.cost*self.h_base
 	self.cost = np.broadcast_to(self.cost,self.shape)
 
 	# Cost related parameters
 	if self.HasValue('atol') and self.HasValue('rtol'): tol = None
 	else:
-		tol = self.GetValue('tol',default="_Dummy",array_float=True,
+		tol = self.GetValue('tol',default="_Dummy",array_float=tuple(),
 			help="Convergence tolerance for the fixed point solver (determines atol, rtol)")
 		float_resolution = np.finfo(self.float_t).resolution
 		if isinstance(tol,str) and tol=="_Dummy":
@@ -166,10 +179,10 @@ def SetGeometry(self):
 			mean_cost_bound = np.mean(cost_bound)
 			tol = mean_cost_bound * float_resolution * 5.
 			self.hfmOut['keys']['default']['tol']=self.float_t(float(tol))
-	policy.atol = self.GetValue('atol',default=tol,array_float=True,
+	policy.atol = self.GetValue('atol',default=tol,array_float=tuple(),
 		help="Absolute convergence tolerance for the fixed point solver")
 	rtol_default = 0. if policy.multiprecision else float_resolution * 5.
-	policy.rtol = self.GetValue('rtol',default=rtol_default, array_float=True,
+	policy.rtol = self.GetValue('rtol',default=rtol_default, array_float=tuple(),
 		help="Relative convergence tolerance for the fixed point solver")
 
 	if policy.bound_active_blocks:

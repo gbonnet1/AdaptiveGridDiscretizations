@@ -62,7 +62,7 @@ const Int nymin_delay
 */
 
 // History length, used for the above delayed stopping criteria
-const Int hlen = 1 + (eucl_delay<nymin_delay ? nymin_delay : eucl_delay); //max(eucl_delay,nymin_delay)+1;
+const Int hlen = 1 + (eucl_delay<nymin_delay ? nymin_delay : eucl_delay); 
 
 #ifndef debug_print_macro
 const Int debug_print = 0;

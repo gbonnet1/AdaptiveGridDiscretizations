@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_FMM\BoatRouting.ipynb
+# Code automatically exported from notebook BoatRouting.ipynb in directory Notebooks_FMM
 # Do not modify
 import sys; sys.path.insert(0,"..") # Allow import of agd from parent directory (useless if conda package installed)
 #from Miscellaneous import TocTools; print(TocTools.displayTOC('BoatRouting','FMM'))

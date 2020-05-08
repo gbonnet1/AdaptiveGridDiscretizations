@@ -1,0 +1,17 @@
+name: agd-hfm_cuda
+channels:
+  - conda-forge
+dependencies:
+  - python=3.7
+  - matplotlib
+  - notebook
+  - scipy
+  - conda-build
+  - conda-verify
+  - anaconda-client
+  - nbformat
+  - nbdime
+  - ffmpeg
+  - cudatoolkit
+  - pip
+#  - ipywidgets

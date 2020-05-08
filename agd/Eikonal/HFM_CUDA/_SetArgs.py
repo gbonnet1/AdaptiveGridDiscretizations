@@ -9,8 +9,8 @@ def SetRHS(self):
 	seedTags = cp.full(self.shape,False,dtype=bool)
 
 	eikonal = self.kernel_data['eikonal']
-	seeds = self.GetValue('seeds',default=None,
-		help="Points from where the front propagation starts",array_float=True)
+	seeds = self.GetValue('seeds',default=None,array_float=(-1,self.ndim),
+		help="Points from where the front propagation starts")
 	if seeds is None:
 		if eikonal.solver=='global_iteration': return
 		trigger = self.GetValue('trigger',
@@ -29,11 +29,11 @@ def SetRHS(self):
 	if len(seeds)==1: self.seed = seeds[0]
 
 	seedValues = cp.zeros(len(seeds),dtype=self.float_t)
-	seedValues = self.GetValue('seedValues',default=seedValues,
-		help="Initial value for the front propagation",array_float=True)
+	seedValues = self.GetValue('seedValues',default=seedValues,array_float=(len(seeds),),
+		help="Initial value for the front propagation")
 	if not ad.is_ad(seedValues):
 		seedValueVariation = self.GetValue('seedValueVariation',default=None,
-			help="First order variation of the seed values",array_float=True)
+			help="First order variation of the seed values",array_float=(-1,len(seeds)) )
 		if seedValueVariation is not None:
 			seedValues = ad.Dense.new(seedValues,seedValueVariation.T)
 	seedRadius_default = 2.
@@ -82,6 +82,25 @@ def SetRHS(self):
 		if self.reverseAD: seedValues_rev = neighValues_rev+0.5*(metric0.norm(diff)+metric1.norm(diff))
 		seedIndices = neigh
 
+	if self.isCurvature and self.HasValue('seeds_Unoriented'):
+		# Unoriented seeds are simply rounded
+		seedsU = self.GetValue('seeds_Unoriented',
+			help="Unoriented seeds for the curvature penalized models")
+		seedValuesU = cp.zeros(len(seedsU),dtype=self.float_t)
+		seedValuesU = self.GetValue('seedValues_Unoriented',
+			default=seedValuesU,help="Initial value for the front propagation")
+
+		# Expand with angular coordinate
+		seedsU = self.hfmIn.OrientedPoints(seedsU)
+		seedValuesU = np.tile(seedValuesU,len(seedsU))
+		seedsU = self.hfmIn.PointFromIndex(seedsU.reshape(-1,3),to=True) 
+		seedIndicesU = np.round(seedsU).astype(int)
+
+		# Concatenate with oriented data
+		seeds       = np.concatenate((seeds,seedsU),axis=0)
+		seedIndices = np.concatenate((seedIndices,seedIndicesU),axis=0)
+		seedValues  = np.concatenate((seedValues,seedValuesU),axis=0)
+
 	rhs,seedValues = ad.common_cast(rhs,seedValues)
 	pos = tuple(seedIndices.T)
 	rhs[pos] = seedValues
@@ -105,7 +124,7 @@ def SetArgs(self):
 	policy = eikonal.policy
 	shape_i = self.shape_i
 	
-	values = self.GetValue('values',default=None,
+	values = self.GetValue('values',default=None,array_float=self.shape,
 		help="Initial values for the eikonal solver")
 	if values is None: values = cp.full(self.shape,np.inf,dtype=self.float_t)
 	block_values = misc.block_expand(values,shape_i,

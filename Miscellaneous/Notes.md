@@ -15,6 +15,16 @@ find . "(" -name "*.h" -or -name "*.hxx" -or -name "*.cxx" -or -name "*.hpp" ")"
 find . "(" -name "*.py" ")" -print0 | xargs -0 wc -l
 ```
 
+## cupy install
+
+After the agd-hfm_gpu environnement is installed, type in command line:
+
+```console
+pip install cupy-cuda102
+``` 
+
+The suffix should be the cudatoolkit version number.
+
 <!---
 All terminal commands presented here assume that the base directory is the directory containing this file.
 
