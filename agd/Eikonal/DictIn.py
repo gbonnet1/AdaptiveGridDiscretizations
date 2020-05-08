@@ -312,7 +312,7 @@ class dictIn(MutableMapping):
 		elif dimx is not None:
 			gridScale=width[0]/(dimx-sb); gridScales=[gridScale]*dim; self['gridScale']=gridScale
 		elif dims is not None:
-			gridScales=width/(xp.asarray(dims)-sb); self['gridScales']=gridScales
+			gridScales=width/(caster(dims)-sb); self['gridScales']=gridScales
 		else: 
 			raise ValueError('Missing argument gridScale, gridScales, dimx, or dims')
 
@@ -361,7 +361,8 @@ class dictIn(MutableMapping):
 		xp = self.xp
 		point = self.array_float_caster(point)
 		point_cindex = self.PointFromIndex(point,to=True)
-		aX = [xp.arange(int(np.floor(ci-gridRadius)),int(np.ceil(ci+gridRadius)+1)) for ci in point_cindex]
+		aX = [xp.arange(int(np.floor(ci-gridRadius)),int(np.ceil(ci+gridRadius)+1),
+			dtype=self.float_t) for ci in point_cindex]
 		neigh_index =  xp.stack(xp.meshgrid( *aX, indexing='ij'),axis=-1)
 		neigh_index = neigh_index.reshape(-1,neigh_index.shape[-1])
 
