@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_NonDiv\NonlinearMonotoneFirst2D.ipynb
+# Code automatically exported from notebook NonlinearMonotoneFirst2D.ipynb in directory Notebooks_NonDiv
 # Do not modify
 from ... import Selling
 from ... import LinearParallel as lp

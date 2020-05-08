@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_GPU\Isotropic_Repro.ipynb
+# Code automatically exported from notebook Isotropic_Repro.ipynb in directory Notebooks_GPU
 # Do not modify
 import cupy as cp
 import numpy as np

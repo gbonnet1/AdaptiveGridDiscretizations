@@ -308,10 +308,16 @@ class UniformGridInterpolation:
 				assert a.ndim==1 or a.ndim>=axis
 				if a.ndim>1:a=a.__getitem__((0,)*axis+(slice(None,),)+(0,)*(a.ndim-axis-1))
 				return a[0],a[1]-a[0],len(a)
-			self.origin,self.scale,shape = \
-				ad.asarray([get_origin_step_len(a,axis) for axis,a in enumerate(grid)]).T
-			if ad.cupy_generic.from_cupy(shape): shape=shape.get() 
-			self.shape = tuple(int(i) for i in shape)
+			origin_scale_shape = [get_origin_step_len(a,axis) for axis,a in enumerate(grid)]
+			origin,scale,shape = [list(l) for l in zip(*origin_scale_shape)]
+			self.origin = ad.asarray(origin)
+			self.scale  = ad.asarray(scale)
+			self.shape = tuple(shape)
+
+#			self.origin,self.scale,shape = \
+#				ad.asarray([get_origin_step_len(a,axis) for axis,a in enumerate(grid)]).T
+#			if ad.cupy_generic.from_cupy(shape): shape=shape.get() 
+#			self.shape = tuple(int(i) for i in shape)
 #			print(self.origin,self.scale,self.shape)
 #			print(type(self.shape[0]))
 #			grid = ad.asarray(grid)

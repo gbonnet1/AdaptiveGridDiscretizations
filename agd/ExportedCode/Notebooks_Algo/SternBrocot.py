@@ -1,4 +1,4 @@
-# Code automatically exported from notebook Notebooks_Algo\SternBrocot.ipynb
+# Code automatically exported from notebook SternBrocot.ipynb in directory Notebooks_Algo
 # Do not modify
 import numpy as np
 from matplotlib import pyplot as plt
