@@ -35,55 +35,79 @@ on the markdown front-end : it may apply to all the following characters, on onl
 Prefer \\mathrm.
 """
 
-def TestMath(filepath,show=False,check_raise=False):
+def showcell(cell,source_only=True,show=None,check_raise=None): 
+	if show is None: show=showcell.show
+	if check_raise is None: check_raise=showcell.check_raise
+
+	if show: 
+		if source_only: print("(Cell source) : \n", *cell["source"])
+		else: print("'Cell contents) : ",cell)
+	if check_raise: raise ValueError("Error found")
+
+def TestMarkdownCell(where,cell,cache):
+	eqn = None
+	prevLine="\n"
+	for line in cell['source']:
+		if line=="$$" or line=="$$\n":
+			eqn = "" if eqn is None else None
+			continue
+		if eqn is not None:
+			eqn = eqn+line
+			l = line.lstrip()
+			if line[0]=='<' or (l[0] in ['+','-','*'] and l[1]==' '):
+				print(f"--- Markdown displaymath issue ", where, " : ---")
+				print(eqn)
+				showcell(cell)
+		if line==("<!---\n") and prevLine!="\n":
+			print(f"--- Markdown comment issue ", where, ": ---")
+			print([prevLine],line)
+			showcell(cell)
+		if "\\rm " in line:
+			print(f"--- Mardown math issue ", where, 
+				"prefer \\mathrm{bla} to {\\rm bla} ---")
+			print(line)
+			showcell(cell)
+
+		prevLine = line
+
+def TestCodeCell(where,cell,cache):
+	if len(cell['source'])==0: return
+	expected_count = cache['execution_count']
+	cell_count = cell['execution_count']
+	if cell_count is not None: cache['execution_count']=cell_count+1
+
+	if cell_count is None and cache.get('allcount',True):
+		print("Unexecuted cell ", where)
+		showcell(cell,source_only=False)
+		cache['allcount']=False
+	elif expected_count!=cell_count and cache.get('csqcount',True):
+		print("Non consecutive execution_count ", where)
+		cache['csqcount']=False
+		showcell(cell,check_raise=False,show=False)
+
+def TestNotebook(filepath):
 	with open(filepath, encoding='utf8') as data_file:
 		data = json.load(data_file)
-	def showcell(cell):
-		if show: print("(Cell contents) : \n", *cell["source"])
+	cache={'execution_count':1}
 	for cell in data["cells"]:
-		if cell['cell_type']!='markdown': continue
-		eqn = None
-		prevLine="\n"
-		for line in cell['source']:
-			if line=="$$" or line=="$$\n":
-				eqn = "" if eqn is None else None
-				continue
-			if eqn is not None:
-				eqn = eqn+line
-				l = line.lstrip()
-				if line[0]=='<' or (l[0] in ['+','-','*'] and l[1]==' '):
-					print(f"--- Markdown displaymath issue in file {filepath} : ---")
-					print(eqn)
-					showcell(cell)
-					if check_raise: raise ValueError("Non portable markdown found")
-			if line==("<!---\n") and prevLine!="\n":
-				print(f"--- Markdown comment issue in file {filepath} : ---")
-				print([prevLine],line)
-				showcell(cell)
-				if check_raise: raise ValueError("Non portable markdown found")
-			if "\\rm " in line:
-				print(f"--- Mardown math issue in file {filepath},", 
-					"prefer \\mathrm{bla} to {\\rm bla} ---")
-				print(line)
-				showcell(cell)
-				if check_raise: raise ValueError("Non portable markdown found")
+		where = f" in file {filepath}, expected cell number {cache['execution_count']}"
+		if cell['cell_type']=='markdown': TestMarkdownCell(where,cell,cache)
+		if cell['cell_type']=='code': TestCodeCell(where,cell,cache)
 
-			prevLine = line
-
-def Main(**kwargs):
+def Main(show=False,check_raise=False):
+	showcell.show = show
+	showcell.check_raise = check_raise
 	for dirname in os.listdir():
 		if not dirname.startswith("Notebooks_"): continue
 		for filename in os.listdir(dirname):
 			if not filename.endswith(".ipynb"): continue
-			TestMath(os.path.join(dirname,filename),**kwargs)
+			TestNotebook(os.path.join(dirname,filename))
 
 if __name__ == '__main__':
-#	TestToc("Notebooks_Algo","Dense")
-#	TestTocs("Notebooks_Algo")
-#	TestTocss()
-	kwargs = {"show":False}
+	kwargs = {"show":False,"check_raise":False}
 	for key in sys.argv[1:]:
 		assert key[:2]=="--" and key[2:] in kwargs
 		kwargs[key[2:]]=True
 
+	print(kwargs,sys.argv[1:])
 	Main(**kwargs)
