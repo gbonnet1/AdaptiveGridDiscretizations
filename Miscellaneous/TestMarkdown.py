@@ -109,5 +109,4 @@ if __name__ == '__main__':
 		assert key[:2]=="--" and key[2:] in kwargs
 		kwargs[key[2:]]=True
 
-	print(kwargs,sys.argv[1:])
 	Main(**kwargs)
