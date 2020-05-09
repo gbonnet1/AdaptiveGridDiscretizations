@@ -144,6 +144,6 @@ def GetGeodesics(self):
 		geodesics = [self.hfmIn.PointFromIndex(geo).T for geo in geodesics_cat]
 		if self.tips is not None: 
 			self.hfmOut['geodesics']=geodesics[:len(self.tips)]
-		if self.tips_Unoriented is not None:
+		if self.isCurvature and self.tips_Unoriented is not None:
 			self.hfmOut['geodesics_Unoriented']=geodesics[-len(self.tips_Unoriented):]
 		self.hfmOut['geodesic_stopping_criteria'] = stopping_criterion

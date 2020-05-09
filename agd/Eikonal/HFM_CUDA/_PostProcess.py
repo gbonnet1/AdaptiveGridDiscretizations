@@ -60,13 +60,8 @@ def PostProcess(self):
 	if 'flow_vector' in flow.args:
 		flow_vector = misc.block_squeeze(flow.args['flow_vector'],self.shape)
 		if self.model_=='Rander':
-			if self.dualMetric is None: self.dualMetric = self.metric.dual()
-			m = fd.as_field(self.metric.m,self.shape,depth=2)
-			w = fd.as_field(self.metric.w,self.shape,depth=1)
-			eucl_gradient = lp.dot_AV(m,flow_vector)+w
-			flow_corrected = self.dualMetric.gradient(eucl_gradient)
-			flow_corrected[:,self.seedTags]=0 # Actual seeds and walls
-			flow_vector = flow_corrected
+			flow_vector/=self.metric.norm(flow_vector)
+			flow_vector[:,self.seedTags]=0 # Seeds and walls
 		self.flow_vector = flow_vector
 		if self.exportGeodesicFlow:
 			self.hfmOut['flow'] = - flow_vector * self.h_broadcasted
