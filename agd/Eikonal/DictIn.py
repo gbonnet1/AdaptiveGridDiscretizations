@@ -191,8 +191,9 @@ class dictIn(MutableMapping):
 		from . import HFM_CUDA
 		if   self.mode=='gpu': return to_dictOut(HFM_CUDA.RunGPU(self,**kwargs))
 		elif self.mode=='gpu_transfer':
-			gpuIn = ad.cupy_generic.cupy_set(self, # host->device
-				dtype32=(self.float_t==np.float32), iterables=(dictIn,Metrics.Base))
+			gpuStoreIn = ad.cupy_generic.cupy_set(self.store, # host->device
+				dtype32=True, iterables=(dict,Metrics.Base))
+			gpuIn = dictIn({**gpuStoreIn,'mode':'gpu'})
 			gpuOut = HFM_CUDA.RunGPU(gpuIn)
 			cpuOut = ad.cupy_generic.cupy_get(gpuOut,iterables=(dict,list))
 			return to_dictOut(cpuOut) # device->host
@@ -333,6 +334,7 @@ class dictIn(MutableMapping):
 		scale = self.gridScales
 		start = bottom +0.5*scale
 		index = self.array_float_caster(index)
+		assert index.shape[-1]==self.vdim
 		if not to: return start+scale*index
 		else: return (index-start)/scale
 

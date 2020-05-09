@@ -7,8 +7,7 @@ from ...AutomaticDifferentiation import cupy_support as cps
 
 def GetGeodesics(self):
 		if not self.hasTips: return
-		tips = self.tips
-		tips = self.hfmIn.PointFromIndex(tips,to=True)
+		if self.tips is not None: tips = self.hfmIn.PointFromIndex(self.tips,to=True)
 		if self.isCurvature and self.tips_Unoriented is not None:
 			tipsU = self.tips_Unoriented
 			tipsU = self.hfmIn.OrientedPoints(tipsU)
@@ -19,7 +18,7 @@ def GetGeodesics(self):
 			amin = amin.reshape((1,*amin.shape,1))
 			amin = np.broadcast_to(amin,(*amin.shape[:-1],3))
 			tipsU = np.squeeze(cps.take_along_axis(tipIndicesU,amin,axis=0),axis=0)
-			tips = np.concatenate((tips,tipsU))
+			tips = np.concatenate((tips,tipsU)) if self.tips is not None else tipsU
 
 		geodesic = self.kernel_data['geodesic'] # Not using the common solver here
 
@@ -143,6 +142,8 @@ def GetGeodesics(self):
 
 		geodesics_cat = [np.concatenate(geo,axis=0) for geo in geodesics]
 		geodesics = [self.hfmIn.PointFromIndex(geo).T for geo in geodesics_cat]
-		self.hfmOut['geodesics']=geodesics[:len(self.tips)]
-		self.hfmOut['geodesics_Unoriented']=geodesics[len(self.tips):]
+		if self.tips is not None: 
+			self.hfmOut['geodesics']=geodesics[:len(self.tips)]
+		if self.tips_Unoriented is not None:
+			self.hfmOut['geodesics_Unoriented']=geodesics[-len(self.tips_Unoriented):]
 		self.hfmOut['geodesic_stopping_criteria'] = stopping_criterion

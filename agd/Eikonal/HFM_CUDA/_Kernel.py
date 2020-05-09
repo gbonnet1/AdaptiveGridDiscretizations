@@ -134,10 +134,7 @@ def SetKernel(self):
 	if self.hasTips: 
 		for key in ('flow_vector','flow_weightsum'): 
 			flow.traits[key+"_macro"]=1
-
-	flow.traits['flow_vector_macro'] = int(
-		self.exportGeodesicFlow or (self.tips is not None) or 
-		(self.isCurvature and (self.unorientedTips is not None)))
+	if self.exportGeodesicFlow: flow.traits['flow_vector_macro']=1
 
 	flow.source = cupy_module_helper.traits_header(flow.traits,
 		join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"

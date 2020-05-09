@@ -31,7 +31,7 @@ class Interface(object):
 
 		# Needed for GetValue
 		self.hfmOut = {'keys':{
-		'used':['origin','arrayOrdering','dims'],
+		'used':['origin','arrayOrdering','dims','mode','projective'],
 		'default':OrderedDict(),
 		'visited':[],
 		'help':OrderedDict(),
