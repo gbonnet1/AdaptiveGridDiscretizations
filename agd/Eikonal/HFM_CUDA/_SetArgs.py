@@ -94,7 +94,7 @@ def SetRHS(self):
 		# Concatenate with oriented data
 		if seeds is None: seeds,seedIndices,seedValues = seedsU,seedIndicesU,seedValuesU
 		else: seeds,seedIndices,seedValues = (np.concatenate((e,eU),axis=0) for e,eU in \
-			[(seeds,seedU),(seedIndices,seedIndicesU),(seedValues,seedValuesU)])
+			[(seeds,seedsU),(seedIndices,seedIndicesU),(seedValues,seedValuesU)])
 
 	if seeds is None and seedsU is None:
 		if eikonal.solver=='global_iteration': return

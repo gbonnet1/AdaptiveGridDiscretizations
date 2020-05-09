@@ -89,29 +89,20 @@ def SetGeometry(self):
 		self.kappa = kappa/h_ratio
 		# Large arrays are passed as geometry data, and scalar entries as module constants
 		geom = []
-		def is_var(e): return isinstance(e,cp.ndarray) and e.ndim>0
 		traits = eikonal.traits
-		traits['xi_var_macro']    = int(is_var(self.ixi))
-		traits['kappa_var_macro'] = int(is_var(self.kappa))
-		traits['theta_var_macro'] = int(is_var(self.theta))
-		if not is_var(self.theta): traits['nTheta']=self.shape[2];
+		traits['xi_var_macro']    = self.ixi.ndim>0
+		traits['kappa_var_macro'] = self.kappa.ndim>0
+		traits['theta_var_macro'] = self.theta.ndim>0
+		if self.theta.ndim==0: traits['nTheta']=self.shape[2];
 		if all(traits[e]==0 for e in ('xi_var_macro','kappa_var_macro','theta_var_macro')):
 			traits['precomputed_scheme_macro']=1
 
-		def broadcast(e,name):
-			shapeRef = self.hfmIn.shape
-			if e.shape in (tuple(),shapeRef): return e # Constant, or full field
-			elif e.shape==shapeRef[2:]: return np.broadcast_to(e,shapeRef) # Angular field
-			elif e.shape==shapeRef[:2]: 
-				return np.broadcast_to(e.reshape((1,1,shapeRef[2])),shapeRef)
-			raise ValueError(f"Field {name} has incorrect dimensions. Found {e.shape}, "
-				f"whereas domain has shape {shapeRef}")
-		self.ixi=broadcast(self.ixi,'xi')
-		self.kappa=broadcast(self.kappa,'kappa')
-		self.theta=broadcast(self.theta,'theta')
+		if self.ixi.ndim>0:   self.ixi  =self.as_field(self.ixi,'xi')
+		if self.kappa.ndim>0: self.kappa=self.as_field(self.kappa,'kappa')
+		if self.theta.ndim>0: self.theta=self.as_field(self.theta,'theta')
 
 		geom = [e for e in (self.ixi,self.kappa,
-			np.cos(self.theta),np.sin(self.theta)) if is_var(e)]
+			np.cos(self.theta),np.sin(self.theta)) if e.ndim>0]
 		if len(geom)>0: self.geom = ad.array(geom)
 		else: self.geom = cp.zeros((0,)+self.shape, dtype=self.float_t)
 
@@ -192,8 +183,8 @@ def SetGeometry(self):
 
 	# Walls
 	walls = self.GetValue('walls',default=None,help='Obstacles in the domain')
-	self.walls = walls
 	if walls is not None:
+		if self.isCurvature: walls = self.as_field(walls,'walls')
 		wallDist_t = np.uint8
 		wallDistBound = self.GetValue('wallDistBound',default=10,
 			help="Bound on the computed distance to the obstacles.\n"
@@ -209,4 +200,6 @@ def SetGeometry(self):
 		self.wallDist = wallDist
 		eikonal.args['wallDist'] = misc.block_expand(wallDist,self.shape_i,
 			mode='constant',constant_values=np.iinfo(wallDist_t).max)
+	self.walls = walls
+
 

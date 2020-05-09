@@ -151,7 +151,21 @@ class Interface(object):
 		if self._dualMetric is None: self._dualMetric = self._metric.dual()
 		return self._dualMetric
 
-	
+	def as_field(self,e,name,depth=0):
+		shape = self.hfmIn.shape
+		oshape,ishape = e.shape[:depth],e.shape[depth:]
+		if ishape==shape: # Already a field
+			return e
+		elif ishape==tuple(): # Constant field
+			return np.broadcast_to(e.reshape(oshape+(1,)*self.ndim),oshape+shape)
+		elif self.isCurvature:
+			if ishape==shape[2:]:  # Angular field
+				return np.broadcast_to(e.reshape(oshape+(1,1)+ishape),oshape+shape)
+			elif ishape==shape[:2]: # Physical field
+				return np.broadcast_to(e.reshape(oshape+ishape+(1,)), oshape+shape)
+		raise ValueError(f"Field {name} has incorrect dimensions. Found {e.shape}, "
+			f"whereas domain has shape {shapeRef}")
+
 	def FinalCheck(self):
 		if self.GetValue('exportValues',False,help="Return the solution numerical values"):
 			self.hfmOut['values'] = self.values

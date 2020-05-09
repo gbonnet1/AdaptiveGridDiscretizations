@@ -64,16 +64,20 @@ def traits_header(traits,
 	- log2_size: insert a trait for the ceil of the base 2 logarithm of previous size.
 	- integral_max: declare max of integral typedefs
 	"""
+	def to_c(value): 
+		if isinstance(value,bool): return str(value).lower()
+		else: return value
+
 	source = []
 	for key,value in traits.items():
 		if key.endswith('macro'):
-			source.append(f"#define {key} {traits[key]}")
+			source.append(f"#define {key} {to_c(value)}")
 			continue
 		elif (key+'_macro') not in traits:
 			source.append(f"#define {key}_macro")
 
 		if isinstance(value,numbers.Integral):
-			source.append(f"const int {key}={str(value).lower()};")
+			source.append(f"const int {key}={to_c(value)};")
 		elif isinstance(value,tuple) and isinstance(value[1],type):
 			val,dtype=value
 			line = f"const {np2cuda_dtype[dtype]} {key} = "
@@ -89,7 +93,7 @@ def traits_header(traits,
 				source.append(f"const {ctype} {key}_Max = {np.iinfo(value).max};")
 		elif all(isinstance(v,numbers.Integral) for v in value):
 			source.append(f"const int {key}[{len(value)}] = "
-				+"{"+",".join(str(s).lower() for s in value)+ "};")
+				+"{"+",".join(str(to_c(s)) for s in value)+ "};")
 		else: 
 			raise ValueError(f"Unsupported trait {key}:{value}")
 

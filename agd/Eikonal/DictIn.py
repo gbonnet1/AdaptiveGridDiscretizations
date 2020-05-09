@@ -232,7 +232,7 @@ class dictIn(MutableMapping):
 		shape = self.shape
 		if self.vdim!=len(self.shape): raise ValueError("Angular resolution not set")
 		n = shape[-1]
-		return (2*n) if self.get('projective',False) else n
+		return (2*n) if self.get('projective',False) and self.vdim==3 else n
 
 	@nTheta.setter
 	def nTheta(self,value):
