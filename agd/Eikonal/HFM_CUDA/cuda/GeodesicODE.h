@@ -164,7 +164,7 @@ ODEStop::Enum NormalizedFlow(
 	if(dist_min==infinity()){return ODEStop::InWall;}
 	Int yq[ndim]; copy_vV(xq,yq); 
 	for(Int k=0; k<ndim; ++k){if((imin>>k)&1) {yq[k]+=1;}}
-	const Int ny = Grid::Index(yq,shape_tot);
+	const Int ny = Grid::Index_per(yq,shape_tot);
 
 	// Set the distance threshold
 	if(ny!=nymin){

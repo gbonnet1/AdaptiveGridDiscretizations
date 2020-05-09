@@ -5,6 +5,12 @@
 /** This file implements common facilities for bounds checking and array access.*/
 namespace Grid {
 
+Int mod_pos(Int x,const Int n){
+	// Positive residue of x modulo n
+	x=x%n;
+	return x>=0 ? x : (x+n);
+}
+
 #ifdef bilevel_grid_macro // Only if shape_tot, shape_o and shape_i are defined
 Int Index_tot(const Int x[ndim]){
 	// Get the index of a point in the full array.
@@ -12,7 +18,7 @@ Int Index_tot(const Int x[ndim]){
 	Int n_o=0,n_i=0;
 	for(Int k=0; k<ndim; ++k){
 		Int xk=x[k];
-		PERIODIC(if(periodic_axes[k]){xk = (xk+shape_tot[k])%shape_tot[k];})
+		PERIODIC(if(periodic_axes[k]){xk = mod_pos(xk,shape_tot[k]);})
 		const Int 
 		s_i = shape_i[k],
 		x_o= xk/s_i,
@@ -58,7 +64,7 @@ Int Index_per(const Int x[ndim], const Int shape_[ndim]){
 	for(Int k=0; k<ndim; ++k){
 		if(k>0) {n*=shape_[k];}
 		Int xk=x[k];
-		PERIODIC(if(periodic_axes[k]){xk=(xk+shape_[k])%shape_[k];})
+		PERIODIC(if(periodic_axes[k]){xk=mod_pos(xk,shape_[k]);})
 		n+=xk;
 	}
 	return n;

@@ -10,7 +10,7 @@ const Int nfwd = 0; // Number of forward offsets
 
 #include "Constants.h"
 #if !precomputed_scheme_macro
-void scheme(GEOM(const Scalar params[geom_size],)  Int x[ndim],
+void scheme(GEOM(const Scalar geom[geom_size],)  Int x[ndim],
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
 	XI_VAR(Scalar ixi;) KAPPA_VAR(Scalar kappa;)
 	Scalar cT, sT; // cos(theta), sin(theta)

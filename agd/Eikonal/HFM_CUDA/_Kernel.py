@@ -185,7 +185,10 @@ def SetKernel(self):
 	if self.isCurvature:
 		nTheta = self.shape[2]
 		theta = self.hfmIn.Axes()[2]
-		
+		eps = self.GetValue('eps',default=0.1,array_float=tuple(),
+			help='Relaxation parameter for the curvature penalized models')
+		SetCst('decomp_v_relax',eps**2,float_t)
+
 		if traits.get('precomputed_scheme_macro',False):
 			# Precompute the curvature penalizing complex stencils
 			offset_t=self.offset_t
@@ -201,7 +204,8 @@ def SetKernel(self):
 			for args in ( ('shape_o',self.shape_o,int_t),('size_o',self.size_o,int_t),
 				('shape_tot',self.shape,int_t),('size_tot',size_tot,int_t),
 				('ixi',  self.ixi,float_t), ('kappa',self.kappa,float_t),
-				('cosTheta_s',np.cos(theta),float_t), ('sinTheta_s',np.sin(theta),float_t)):
+				('cosTheta_s',np.cos(theta),float_t), ('sinTheta_s',np.sin(theta),float_t),
+				('decomp_v_relax',eps**2,float_t)):
 				SetModuleConstant(scheme.module,*args)
 			nactx = self.nscheme['nactx']
 			weights = cp.ascontiguousarray(cp.zeros((nTheta,nactx),float_t))
