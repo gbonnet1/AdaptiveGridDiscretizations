@@ -313,19 +313,8 @@ class UniformGridInterpolation:
 			self.origin = ad.asarray(origin)
 			self.scale  = ad.asarray(scale)
 			self.shape = tuple(shape)
-
-#			self.origin,self.scale,shape = \
-#				ad.asarray([get_origin_step_len(a,axis) for axis,a in enumerate(grid)]).T
-#			if ad.cupy_generic.from_cupy(shape): shape=shape.get() 
-#			self.shape = tuple(int(i) for i in shape)
-#			print(self.origin,self.scale,self.shape)
-#			print(type(self.shape[0]))
-#			grid = ad.asarray(grid)
-#			self.shape = grid.shape[1:]
-#			self.origin = grid.__getitem__((slice(None),)+(0,)*self.vdim)
-#			self.scale = grid.__getitem__((slice(None),)+(1,)*self.vdim) - self.origin
 			if check_grid and grid[0].ndim>1:
-				assert np.allclose(grid,self._grid())
+				assert np.allclose(grid,self._grid(),atol=1e-5) #Atol allows float32 types
 
 		if order is None: order = 1
 		if isinstance(order,int): order = (order,)*self.vdim
