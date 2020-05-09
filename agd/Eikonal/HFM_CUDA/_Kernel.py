@@ -135,6 +135,7 @@ def SetKernel(self):
 		for key in ('flow_vector','flow_weightsum'): 
 			flow.traits[key+"_macro"]=1
 	if self.exportGeodesicFlow: flow.traits['flow_vector_macro']=1
+	if self.model_=='Rander' and (self.forwardAD or self.reverseAD): flow.traits['flow_vector_macro']=1
 
 	flow.source = cupy_module_helper.traits_header(flow.traits,
 		join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"

@@ -58,13 +58,12 @@ def PostProcess(self):
 		self.Solve('flow')
 
 	if 'flow_vector' in flow.args:
-		flow_vector = misc.block_squeeze(flow.args['flow_vector'],self.shape)
+		self.flow_vector = misc.block_squeeze(flow.args['flow_vector'],self.shape)
 		if self.model_=='Rander':
-			flow_vector/=self.metric.norm(flow_vector)
-			flow_vector[:,self.seedTags]=0 # Seeds and walls
-		self.flow_vector = flow_vector
+			self.flow_normalization=np.where(self.seedTags,1.,self.metric.norm(-self.flow_vector))
+			self.flow_vector/=self.flow_normalization
 		if self.exportGeodesicFlow:
-			self.hfmOut['flow'] = - flow_vector * self.h_broadcasted
+			self.hfmOut['flow'] = - self.flow_vector * self.h_broadcasted
 	
 def SolveLinear(self,rhs,diag,indices,weights,chg,kernelName):
 	"""
@@ -127,8 +126,6 @@ def SolveAD(self):
 	Forward and reverse differentiation of the HFM.
 	"""
 	if not (self.forwardAD or self.reverseAD): return
-	if self.model_=='Rander': raise EikonalGPU_NotImplementedError(
-		"Sorry: automatic differentiation is not yet implemented for Rander metrics on GPU")
 	eikonal = self.kernel_data['eikonal']
 	flow = self.kernel_data['flow']
 	traits = eikonal.traits
@@ -149,8 +146,9 @@ def SolveAD(self):
 	weights = flow.args['flow_weights']
 
 	if self.forwardAD:
-		rhs = misc.block_expand(self.rhs.gradient(),self.shape_i,
-			mode='constant',constant_values=np.nan)
+		rhs = self.rhs.gradient()
+		if self.model_=='Rander': rhs*=self.flow_normalization
+		rhs = misc.block_expand(rhs,self.shape_i,mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
 		coef = np.moveaxis(misc.block_squeeze(valueVariation,self.shape),0,-1)
 #		coef[self.walls]=np.nan
@@ -178,7 +176,9 @@ def SolveAD(self):
 		pos = tuple(self.seedIndices.T)
 		seedSensitivity = allSensitivity[pos]
 		allSensitivity[pos]=0
-		self.hfmOut['costSensitivity'] = allSensitivity #TODO : seedSensitivity
+		if self.model_=='Rander': 
+			allSensitivity/=ad.cupy_support.expand_dims(self.flow_normalization,axis=-1)
+		self.hfmOut['costSensitivity'] = allSensitivity 
 
 		val,(row,col) = self.seedValues_rev.triplets()
 		seedSensitivity = ad.misc.spapply((val,(col,row)),seedSensitivity)
