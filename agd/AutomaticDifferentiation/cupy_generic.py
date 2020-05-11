@@ -44,7 +44,7 @@ def cupy_get(x,dtype64=False,iterables=tuple()):
 	"""
 	def caster(x):
 		if from_cupy(x):
-			if is_ad(x): return x.numpy_variant(*(caster(z) for z in x.astuple()))
+			if is_ad(x): return x.numpy_variant(*(caster(z) for z in x.as_tuple()))
 			x = x.get()
 			if x.dtype.type in dtype32to64: x=x.astype(dtype32to64[x.dtype.type])
 		return x
@@ -57,7 +57,7 @@ def cupy_set(x,dtype32=True,iterables=tuple()):
 	"""
 	def caster(x):
 		if isndarray(x) and not from_cupy(x):
-			if is_ad(x): return x.cupy_variant(*(caster(z) for z in x.astuple()))
+			if is_ad(x): return x.cupy_variant(*(caster(z) for z in x.as_tuple()))
 			dtype = dtype64to32.get(x.dtype.type,x.dtype.type)
 			return cp.asarray(x,dtype=dtype)
 		return x
