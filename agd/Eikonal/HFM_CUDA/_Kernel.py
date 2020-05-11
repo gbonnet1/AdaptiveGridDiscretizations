@@ -221,7 +221,7 @@ def SetKernel(self):
 			self.hfmOut.update({'scheme_weights':weights,'scheme_offsets':offsets})
 
 		else: # Not a precomputed scheme
-			if traits['xi_var_macro']==0:    SetCst('ixi',  1./self.xi,float_t) # ixi = 1/xi
+			if traits['xi_var_macro']==0:    SetCst('ixi',  self.ixi,  float_t) # ixi = 1/xi
 			if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
 			if traits['theta_var_macro']==0: 
 				SetCst('cosTheta_s',np.cos(theta),float_t)

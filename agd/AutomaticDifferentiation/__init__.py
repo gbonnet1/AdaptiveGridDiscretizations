@@ -20,7 +20,7 @@ from .ad_generic import array,asarray,is_ad,remove_ad,common_cast,min_argmin, \
 	max_argmax,disassociate,associate,apply_linear_mapping,apply_linear_inverse,precision
 
 from .ad_specific import simplify_ad,apply,compose
-from .cupy_generic import isndarray
+from .cupy_generic import isndarray,cupy_friendly
 
 
 

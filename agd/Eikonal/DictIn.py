@@ -36,8 +36,11 @@ _singleOut = {
 }
 
 SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
-'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','DubinsExt2',
+'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','ElasticaExt2_5','DubinsExt2',
 'ReedsShepp3','ReedsSheppForward3'}
+
+# These models do not follow the usual dimension convention (physical dimension last)
+dimModels = {'ElasticaExt2_5':3,'Riemann3_Periodic':3} 
 
 class dictOut(MutableMapping):
 	"""
@@ -220,7 +223,9 @@ class dictIn(MutableMapping):
 	@property
 	def vdim(self):
 		"""Dimension of the ambient vector space"""
-		dim = int(self['model'][-1])
+		model = self['model']
+		if model in dimModels: return dimModels[model]
+		dim = int(model[-1])
 		return (2*dim-1) if self.SE else dim
 
 	@property

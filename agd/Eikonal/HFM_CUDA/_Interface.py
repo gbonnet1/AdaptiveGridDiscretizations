@@ -44,6 +44,7 @@ class Interface(object):
 		
 		self.model = self.GetValue('model',help='Minimal path model to be solved.')
 		# Unified treatment of standard and extended curvature models
+		if self.model=='ElasticaExt2_5': self.model='ElasticaExt2'
 		if self.model.endswith("Ext2"): self.model=self.model[:-4]+"2"
 
 		self.ndim = len(hfmIn['dims'])

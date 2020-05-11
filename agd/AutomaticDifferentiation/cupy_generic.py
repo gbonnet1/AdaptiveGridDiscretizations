@@ -11,7 +11,9 @@ import numpy as np
 import sys
 import functools
 from . import functional
-from .Base import cp,isndarray,from_cupy,is_ad # dummy cp and _cp_ndarray if not in the system
+from .Base import cp,isndarray,from_cupy,is_ad,array # dummy cp and _cp_ndarray if not in the system
+import types
+from copy import copy
 
 def get_array_module(data,iterables=tuple()):
 	"""Returns the cupy module or the numpy module, depending on data"""
@@ -134,3 +136,42 @@ def set_output_dtype32(f,silent=True,iterables=(tuple,)):
 #	x = get_array_module(x).ascontiguousarray(x)
 #	return {'shape':x.shape,'dtype':x.dtype,
 #		'memptr':x.data,'strides':x.strides,'order':'C'}
+
+# ------------ A helper function for cupy/numpy notebooks -------------
+
+def cupy_friendly(arg):
+	"""
+	Returns a "cupy-friendly" copy of the input module or function, 
+	following arbitrary and ad-hoc rules.
+	"""
+
+	if isinstance(arg,types.ModuleType):
+		# Special cases
+		if arg is np:
+			print("Replacing numpy with cupy, set to output 32bit ints and floats by default.")
+			if cp is None: raise ValueError("cupy module not found")
+			cp32 = functional.decorate_module_functions(cp,set_output_dtype32)
+			print("Using cp.asarray(*,dtype=np.float32) as the default caster in ad.array.")
+			array.caster = lambda x: cp.asarray(x,dtype=np.float32)
+			return cp32
+		if arg.__name__ == 'scipy.ndimage':
+			print("Replacing module scipy.ndimage with cupyx.scipy.ndimage .")
+			from cupyx.scipy import ndimage
+			return ndimage
+		if arg.__name__ == 'agd.Eikonal':
+			print("Setting dictIn.default_mode = 'gpu' in module agd.Eikonal .")
+			arg.dictIn.default_mode = 'gpu'
+			return arg
+
+		# Default behavior
+		print(f"Returning a copy of module {arg.__name__} whose functions accept cupy arrays as input.")
+		return functional.decorate_module_functions(arg,cupy_get_args)
+
+
+	if isinstance(arg,types.FunctionType):
+		print(f"Returning a copy of function {arg.__name__} which accepts cupy arrays as input.")
+		return cupy_get_args(arg)
+
+
+
+
