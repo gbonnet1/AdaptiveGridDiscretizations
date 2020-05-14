@@ -3,6 +3,7 @@ import os
 import json
 import TocTools
 import sys
+from distutils.util import strtobool
 
 """
 This file, when executed as a Python script, tests that the table of contents 
@@ -11,6 +12,8 @@ of the notebooks are all correct, and reports any inconsistency.
 Optional arguments :
 	--update, the tables of contents are updated.
 	--show, the tables of contents are shown
+	--EikonalGPU_config=True/False, turn on or off gpu config
+	--check_raise, raise an exception if toc is incorrect
 """
 
 def ListNotebookDirs():
@@ -20,38 +23,70 @@ def ListNotebookFiles(dirname):
 	return [filename for filename,extension in filenames_extensions 
 	if extension==".ipynb" and filename!="Summary"]
 
-def UpdateToc(filepath,data,toc,update=False,show=False,check_raise=False):
+def UpdateConfig(filepath,data):
 	"""
-	Updates the table of contents and writes the result to specified file.
+	Updates the EikonalGPU_config cell (comment or uncomment).
+	Returns : wether an update was performed.
+	"""
+	if UpdateConfig.EikonalGPU_config is None: return False
+	relevant = (filepath.startswith('Notebooks_FMM')
+		or filepath=='Notebooks_NonDiv/BoatRouting_Time.ipynb')
+	if not relevant: return False
+
+	for cell in data['cells']:
+		if 'tags' in cell['metadata'] and 'EikonalGPU_config' in cell['metadata']['tags']:
+			break
+	else: 
+		print(f"EikonalGPU_config not found for {filepath}")
+		return False
+
+	request = UpdateConfig.EikonalGPU_config
+	source = cell['source']
+	present = not source[0].startswith('#')
+
+	if request==present: return False
+	print(f"Inconsistent config found for Notebook {filepath}")
+	if UpdateConfig.show: print(source)
+	if request: source[0] = source[0][1:]
+	else: source[0] = '#'+source[0]
+	return True
+
+UpdateConfig.show = False
+UpdateConfig.EikonalGPU_config = None
+
+def UpdateToc(filepath,data,toc):
+	"""
+	Updates the table of contents.
+	Returns : wether an update was performed
 	"""
 	for cell in data['cells']:
 		if (('tags' in cell['metadata'] and 'TOC' in cell['metadata']['tags'])
 			or (len(cell['source'])>0 and cell['source'][0]==toc[0])): break 
-	else: print(f"TOC not found for {filepath}")
+	else: raise ValueError(f"TOC not found for {filepath}")
 
 	# A bit of cleanup
 	while toc[-1]=="\n": toc=toc[:-1]
 	toc[-1]=toc[-1].rstrip()
 	cell['source'][-1] = cell['source'][-1].rstrip()
 
-	if toc==cell['source']: return # No need to update
-	elif check_raise: raise ValueError("Outdated TOC found. Please update")
+	if toc==cell['source']: return False # No need to update
 
-	print(f"TOC of file {filepath} {'is being updated ' if update else 'needs updating'}")
-	if show:
+	print(f"TOC of file {filepath} needs updating")
+	if UpdateToc.show:
 		print("------- Old toc -------\n",*cell['source'])
 		print("------- New toc -------\n ",*toc)
-	if update:
-		cell['source'] = toc
-		with open(filepath,'w') as f:
-			json.dump(data,f,ensure_ascii=False,indent=1)
 
-def TestToc(dirname,filename,check_raise=False,**kwargs):
-	filepath = os.path.join(dirname,filename)+".ipynb"
-	with open(filepath, encoding='utf8') as data_file:
-		data = json.load(data_file)
+	cell['source'] = toc
+	return True
 
-	# Test Header
+UpdateToc.show = False
+
+def UpdateHeader(filepath,data):
+	"""
+	Update the first cell of the notebook, to follow the header conventions.
+	-- Returns : wether an update is required.
+	"""
+	dirname,_ = os.path.split(filepath)
 	s = data['cells'][0]['source']
 	line0 = s[0].strip()
 	line0_ref = (
@@ -60,9 +95,8 @@ def TestToc(dirname,filename,check_raise=False,**kwargs):
 		"# Adaptive PDE discretizations on cartesian grids")
 
 	if line0!=line0_ref:
-		print("directory : ",dirname," file : ",filename,
-			" line0 : ",line0," differs from expexted ",line0_ref)
-		if check_raise: raise ValueError("Invalid header")
+		print(f"Notebook {filepath}, line0 : {line0}, differs from expexted {line0_ref}")
+		s[0] = line0_ref
 
 	line1 = s[1].strip()
 	line1_ref = {
@@ -74,40 +108,75 @@ def TestToc(dirname,filename,check_raise=False,**kwargs):
 	'Notebooks_GPU':    "## Volume : GPU accelerated methods",
 	}[dirname]
 
-	if line0!=line0_ref:
-		print("directory : ",dirname," file : ",filename,
-			" line1 : ",line1," differs from expexted ",line1_ref)
-		if check_raise: raise ValueError("Invalid header")
+	if line1!=line1_ref:
+		print(f"Notebook {filepath}, line1 : {line1} differs from expexted {line1_ref}")
+		s[1] = line1_ref
 
+	return line0!=line0_ref or line1!=line1_ref
 
+def Load(filepath):
+	with open(filepath, encoding='utf8') as data_file: 
+		return json.load(data_file)
+
+def Dump(filepath,data):
+	msg = f"Updates needed for file {filepath}"
+	if Dump.check_raise: raise ValueError(msg)
+	if not Dump.update: print(msg); return
+	print(f"Updating {filepath}")
+	with open(filepath,'w') as f: json.dump(data,f,ensure_ascii=False,indent=1)
+
+Dump.check_raise = False
+Dump.update = False
+
+def TestToc(dirname,filename):
+	filepath = os.path.join(dirname,filename)+".ipynb"
+	data = Load(filepath)
 	toc = TocTools.displayTOC(dirname+"/"+filename,dirname[10:]).splitlines(True)
-	UpdateToc(filepath,data,toc,check_raise=check_raise,**kwargs)
 
-def TestTocs(dirname,**kwargs):
+	updates = [
+		UpdateHeader(filepath,data),
+		UpdateToc(filepath,data,toc),
+		UpdateConfig(filepath,data), ]
+
+	if any(updates): Dump(filepath,data)
+
+def TestTocs(dirname):
 	filepath = os.path.join(dirname,"Summary.ipynb")
-	with open(filepath, encoding='utf8') as data_file:
-		data = json.load(data_file)
+	data = Load(filepath)
 	toc = TocTools.displayTOCs(dirname[10:],dirname+"/").splitlines(True)
-	UpdateToc(filepath,data,toc,**kwargs)
+	if UpdateToc(filepath,data,toc): Dump(filepath,data)
 
-def TestTocss(**kwargs):
-	filename = "Summary.ipynb"
-	with open(filename, encoding='utf8') as data_file:
-		data = json.load(data_file)
+def TestTocss():
+	filepath = "Summary.ipynb"
+	data = Load(filepath)
 	toc = TocTools.displayTOCss().splitlines(True)
-	UpdateToc(filename,data,toc,**kwargs)
+	if UpdateToc(filepath,data,toc): Dump(filepath,data)
 
-def Main(**kwargs):
-	TestTocss(**kwargs)
+def Main(update=False,check_raise=False,show=False,EikonalGPU_config=None):
+	Dump.update = update
+	Dump.check_raise = check_raise
+	UpdateToc.show = show
+	UpdateConfig.show = show
+	UpdateConfig.EikonalGPU_config = EikonalGPU_config
+	TestToc('Notebooks_FMM','FisherRao'); return
+	TestTocss()
 	for dirname in ListNotebookDirs():
-		TestTocs(dirname,**kwargs)
+		TestTocs(dirname)
 		for filename in ListNotebookFiles(dirname):
-			TestToc(dirname,filename,**kwargs)
+			TestToc(dirname,filename)
+
+def SysArgs(argv,prefix='--',default=True,caster=None):
+	kwargs = {}
+	for keyval in argv:
+		if '=' in keyval : 
+			key,val = keyval.split('=')
+			if caster is not None: val = caster(val)
+		else: 
+			key = keyval
+			val = default
+		assert key.startswith(prefix)
+		kwargs[key[len(prefix):]]=val
+	return kwargs
 
 if __name__ == '__main__':
-#	TestToc("Notebooks_Algo","Dense")
-#	TestTocs("Notebooks_Algo")
-#	TestTocss()
-	kwargs = {key[2:]:True for key in sys.argv[1:] if key[:2]=='--'}
-	Main(**kwargs)
-
+	Main(**SysArgs(sys.argv[1:],caster=strtobool))
