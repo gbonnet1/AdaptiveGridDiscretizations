@@ -92,7 +92,7 @@ def TestNotebook(filepath):
 	for cell in data["cells"]:
 		where = f" in file {filepath}, expected cell number {cache['execution_count']}"
 		if cell['cell_type']=='markdown': TestMarkdownCell(where,cell,cache)
-		if cell['cell_type']=='code': TestCodeCell(where,cell,cache)
+#		if cell['cell_type']=='code': TestCodeCell(where,cell,cache)
 
 def Main(show=False,check_raise=False):
 	showcell.show = show

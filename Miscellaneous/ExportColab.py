@@ -3,6 +3,7 @@ import os
 import sys
 
 from TestCode import ListNotebooks
+from TestTocs import UpdateConfig
 
 """
 This file slightly modifies the agd notebooks and exports them, 
@@ -58,10 +59,13 @@ google_drive_link = {
 	"Notebooks_NonDiv/ShapeFromShading.ipynb":"https://drive.google.com/open?id=1ENdnH9FmlhQGvef0TfCS7e3xiTMOMHXP",
 	"Notebooks_NonDiv/Summary.ipynb":"https://drive.google.com/open?id=1Cy4aftpK3g769vI9y6oTJKC-y9EpTMr8",
 	"Notebooks_NonDiv/Time1D_NonDiv.ipynb":"https://drive.google.com/open?id=17NF1LCE5HYp1lU5nvORQEQrN5grLKLT6",
-
 	"Notebooks_GPU/Summary.ipynb":"https://drive.google.com/open?id=17ZU6QxzY9fludRpXmBCh3u9nEcv_n_ph",
 
 	"Summary.ipynb":"https://drive.google.com/open?id=1exIN-55tUG1LFlgoHM582k8o8zy6H46f",
+
+	# ? New link format 
+	"Notebooks_NonDiv/BoatRouting_Time.ipynb":"https://drive.google.com/file/d/1T5sudWA6u23cG2mEqXF6wAXNpk-gAY1t/view?usp=sharing",
+	"Notebooks_FMM/BoatRouting.ipynb":"https://drive.google.com/file/d/10xMu3f_0LcyBRu4Qymifz2I_MgWU6X2Y/view?usp=sharing",
 	}
 
 
@@ -70,9 +74,15 @@ def Links(filename):
 		raise ValueError(f"File {filename} has no google drive link")
 	links = {}
 	for key,value in google_drive_link.items():
-		link_prefix = 'https://drive.google.com/open?id='
-		assert value.startswith(link_prefix)
-		drive_id = value[len(link_prefix):]
+		link_prefix1 = 'https://drive.google.com/open?id='
+		link_prefix2 = 'https://drive.google.com/file/d/'
+		link_suffix2 = '/view?usp=sharing'
+		if value.startswith(link_prefix1): 
+			drive_id = value[len(link_prefix1):]
+		elif value.startswith(link_prefix2) and value.endswith(link_suffix2):
+			drive_id = value[len(link_prefix2):-len(link_suffix2)]
+		else: raise ValueError('Invalid link format')
+
 		colab_link = f"https://colab.research.google.com/notebook#fileId={drive_id}&offline=true&sandboxMode=true"
 		subdir_,filename = os.path.split(key)
 		if "/" in filename: # in subdirectory
@@ -85,21 +95,23 @@ def Links(filename):
 	return links
 
 def ToColab(filename,output_dir):
-	if filename.startswith('Notebooks_GPU') and filename.endswith('_Repro'):
-		return
+	if filename.startswith('Notebooks_GPU') and filename.endswith('_Repro'): return
 	with open(filename+'.ipynb', encoding='utf8') as data_file:
 		data=json.load(data_file)
 
-	# Import the agd package from pip
-	for cell in data['cells']:
-		if (cell['cell_type']=='code' and len(cell['source'])>0 
-			and cell['source'][0].startswith('import sys; sys.path.insert(0,"..")')):
-			cell['source'] = ['pip install agd']
-			# Do not forget to turn on GPU mode in Google Colab (R) parameters if necessary
-			break
-	else:
-		if 'Summary' not in filename:
-			raise ValueError(f"File {filename} does not import agd") 
+	if 'Summary' not in filename:
+		# Import the agd package from pip
+		for cell in data['cells']:
+			if (cell['cell_type']=='code' and len(cell['source'])>0 
+				and cell['source'][0].startswith('import sys; sys.path.insert(0,"..")')):
+				cell['source'] = ['pip install agd']
+				# Do not forget to turn on GPU mode in Google Colab (R) parameters if necessary
+				break
+		else: raise ValueError(f"File {filename} does not import agd")
+
+		#Use the GPU eikonal solver 
+		UpdateConfig.EikonalGPU_config = True
+		UpdateConfig(filename,data)
 
 	links = Links(filename)
 	# Change the links to open in colab

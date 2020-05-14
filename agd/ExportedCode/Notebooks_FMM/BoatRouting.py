@@ -10,7 +10,7 @@ from agd.Metrics import Rander,Riemann
 from ... import AutomaticDifferentiation as ad
 from agd.Plotting import savefig,quiver; #savefig.dirName = 'Images/BoatRouting'
 
-import numpy as np
+import numpy as np; xp = np
 from copy import copy
 import matplotlib.pyplot as plt
 

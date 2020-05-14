@@ -100,16 +100,16 @@ def UpdateHeader(filepath,data):
 
 	line1 = s[1].strip()
 	line1_ref = {
-	'Notebooks_Algo':	"## Volume: Algorithmic tools",
-	'Notebooks_Div':	"## Volume: Divergence form PDEs",
-	'Notebooks_NonDiv':	"## Volume: Non-divergence form PDEs",
+	'Notebooks_Algo':	"## Volume : Algorithmic tools",
+	'Notebooks_Div':	"## Volume : Divergence form PDEs",
+	'Notebooks_NonDiv':	"## Volume : Non-divergence form PDEs",
 	'Notebooks_FMM':	"",
-	'Notebooks_Repro':	"## Volume: Reproducible research",
+	'Notebooks_Repro':	"## Volume : Reproducible research",
 	'Notebooks_GPU':    "## Volume : GPU accelerated methods",
 	}[dirname]
 
 	if line1!=line1_ref:
-		print(f"Notebook {filepath}, line1 : {line1} differs from expexted {line1_ref}")
+		print(f"Notebook {filepath}, line1 : '{line1}' differs from expected '{line1_ref}'")
 		s[1] = line1_ref
 
 	return line0!=line0_ref or line1!=line1_ref
@@ -119,7 +119,7 @@ def Load(filepath):
 		return json.load(data_file)
 
 def Dump(filepath,data):
-	msg = f"Updates needed for file {filepath}"
+	msg = f"-- Updates needed for file {filepath} --"
 	if Dump.check_raise: raise ValueError(msg)
 	if not Dump.update: print(msg); return
 	print(f"Updating {filepath}")
@@ -158,7 +158,6 @@ def Main(update=False,check_raise=False,show=False,EikonalGPU_config=None):
 	UpdateToc.show = show
 	UpdateConfig.show = show
 	UpdateConfig.EikonalGPU_config = EikonalGPU_config
-	TestToc('Notebooks_FMM','FisherRao'); return
 	TestTocss()
 	for dirname in ListNotebookDirs():
 		TestTocs(dirname)
