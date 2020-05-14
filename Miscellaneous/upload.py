@@ -84,7 +84,7 @@ if __name__=="__main__":
 		assert keyval.startswith('--')
 		if '=' in keyval:
 			key,value = keyval[2:].split('=')
-		else 
+		else:
 			key=keyval[2:]
 			value = True
 		kwargs[key]=value 
