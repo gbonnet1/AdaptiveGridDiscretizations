@@ -18,12 +18,14 @@ This file will
 - create the google drive variants and move them
 """
 
+showcase_dir = "../AdaptiveGridDiscretizations_showcase"
+
 def Main_GPU():
 	for filepath in ListNotebooks():
 		if not filepath.startswith('Notebooks_GPU'): continue
 		dirname,filename = os.path.split(filepath)
 		shutil.copyfile(os.path.join(dirname,'test_results',filename+'_out.ipynb'),
-			os.path.join(showcase_dir,filepath+'ipynb'))
+			os.path.join(showcase_dir,filepath+'.ipynb'))
 
 def Main(new_version=None,gpu=False):
 	if gpu: return Main_GPU()
@@ -33,7 +35,6 @@ def Main(new_version=None,gpu=False):
 
 	# Routine exports
 	colab_dir = "/Users/mirebeau/Google Drive/AdaptiveGridDiscretizations_Colab"
-	showcase_dir = "/Users/mirebeau/Dropbox/Programmes/Github/AdaptiveGridDiscretizations_showcase"
 	ExportCode.Main(update=True)
 	ExportColab.Main(output_dir=colab_dir)
 
