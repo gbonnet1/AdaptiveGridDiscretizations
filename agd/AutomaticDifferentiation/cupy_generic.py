@@ -149,7 +149,9 @@ def cupy_friendly(arg):
 		# Special cases
 		if arg is np:
 			print("Replacing numpy with cupy, set to output 32bit ints and floats by default.")
-			if cp is None: raise ValueError("cupy module not found")
+			if cp is None: 
+				raise ValueError("cupy module not found.\n"
+					"If your are using Google Colab, go to modify->notebook parameters and activate GPU acceleration.")
 			cp32 = functional.decorate_module_functions(cp,set_output_dtype32)
 			print("Using cp.asarray(*,dtype=np.float32) as the default caster in ad.array.")
 			array.caster = lambda x: cp.asarray(x,dtype=np.float32)
