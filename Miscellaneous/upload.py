@@ -82,7 +82,11 @@ if __name__=="__main__":
 	kwargs = {}
 	for keyval in sys.argv[1:]:
 		assert keyval.startswith('--')
-		key,value = keyval[2:].split('=')
+		if '=' in keyval:
+			key,value = keyval[2:].split('=')
+		else 
+			key=keyval[2:]
+			value = True
 		kwargs[key]=value 
 
 	Main(**kwargs)
