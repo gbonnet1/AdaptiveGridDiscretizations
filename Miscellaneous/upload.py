@@ -48,8 +48,6 @@ def Main(new_version=None,gpu=False):
 		shutil.copyfile(os.path.join(dirname,'test_results',filename+'_out.ipynb'),
 			os.path.join(showcase_dir,filepath+'ipynb'))
 
-	raise ValueError
-
 	# New version number
 	if 'new_version' in kwargs:
 		new_version = kwargs['new_version']

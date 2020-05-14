@@ -37,7 +37,7 @@ def UpdateConfig(filepath,data):
 		if 'tags' in cell['metadata'] and 'EikonalGPU_config' in cell['metadata']['tags']:
 			break
 	else: 
-		print(f"EikonalGPU_config not found for {filepath}")
+		if not UpdateConfig.silent: print(f"EikonalGPU_config not found for {filepath}")
 		return False
 
 	request = UpdateConfig.EikonalGPU_config
@@ -45,7 +45,7 @@ def UpdateConfig(filepath,data):
 	present = not source[0].startswith('#')
 
 	if request==present: return False
-	print(f"Inconsistent config found for Notebook {filepath}")
+	if not UpdateConfig.silent: print(f"Inconsistent config found for Notebook {filepath}")
 	if UpdateConfig.show: print(source)
 	if request: source[0] = source[0][1:]
 	else: source[0] = '#'+source[0]
@@ -53,6 +53,7 @@ def UpdateConfig(filepath,data):
 
 UpdateConfig.show = False
 UpdateConfig.EikonalGPU_config = None
+UpdateConfig.silent = False
 
 def UpdateToc(filepath,data,toc):
 	"""

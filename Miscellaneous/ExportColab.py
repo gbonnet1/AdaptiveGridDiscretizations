@@ -111,6 +111,7 @@ def ToColab(filename,output_dir):
 
 		#Use the GPU eikonal solver 
 		UpdateConfig.EikonalGPU_config = True
+		UpdateConfig.silent = True
 		UpdateConfig(filename,data)
 
 	links = Links(filename)
