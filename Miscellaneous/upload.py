@@ -47,7 +47,7 @@ def Main(new_version=None,gpu=False):
 
 		dirname,filename = os.path.split(filepath)
 		shutil.copyfile(os.path.join(dirname,'test_results',filename+'_out.ipynb'),
-			os.path.join(showcase_dir,filepath+'ipynb'))
+			os.path.join(showcase_dir,filepath+'.ipynb'))
 
 	# New version number
 	if 'new_version' in kwargs:
@@ -60,7 +60,6 @@ def Main(new_version=None,gpu=False):
 		print("new_version :",new_version)
 
 	TestVersion.Main(new_version)
-
 	
 	# Build conda and pip versions
 	os.system("conda build .")
