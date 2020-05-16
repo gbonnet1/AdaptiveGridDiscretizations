@@ -23,8 +23,8 @@ def as_field(u,shape,conditional=True,depth=None):
 	if as_is(): return u
 	else: return np.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)
 
-def common_field(arrays,depths,shape=tuple()):
-	if shape==tuple():
+def common_field(arrays,depths,shape=None):
+	if shape is None:
 		assert len(arrays)==len(depths)
 		for arr,depth in zip(arrays,depths):
 			if arr is None: continue

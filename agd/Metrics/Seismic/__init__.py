@@ -1,12 +1,8 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-from .implicit_base import ImplicitBase
-from .reduced import Reduced
+#from .implicit_base import ImplicitBase
 from .hooke   import Hooke
-
-
-
-
-
+from .tti import TTI
+import .thomsen as 
 
