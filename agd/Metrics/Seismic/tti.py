@@ -26,7 +26,7 @@ class TTI(ImplicitBase):
 	"""
 
 	def __init__(self,linear,quadratic,vdim=None,*args,**kwargs):
-		super(TTI,self).__init__(**kwargs)
+		super(TTI,self).__init__(*args,**kwargs)
 		self.linear = ad.asarray(linear)
 		self.quadratic = ad.asarray(quadratic)
 		assert len(self.linear) == 2
