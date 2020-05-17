@@ -84,14 +84,12 @@ def Links(filename):
 		else: raise ValueError('Invalid link format')
 
 		colab_link = f"https://colab.research.google.com/notebook#fileId={drive_id}&offline=true&sandboxMode=true"
-		subdir_,filename = os.path.split(key)
-		if "/" in filename: # in subdirectory
-			links.update({
-			filename:colab_link,
-			"../"+key:colab_link,
-			})
-		else:
+		subdir_,othername = os.path.split(key)
+		if filename=='Summary':
 			links[key]=colab_link
+		else:
+			if "/" in key: links[othername] = colab_link
+			links["../"+key]=colab_link
 	return links
 
 def ToColab(filename,output_dir):

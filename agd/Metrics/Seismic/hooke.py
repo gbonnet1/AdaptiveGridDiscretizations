@@ -5,16 +5,15 @@ import numpy as np
 import itertools
 import copy
 
-from .. import misc
-from ..riemann import Riemann
 from ... import AutomaticDifferentiation as ad
 from ... import LinearParallel as lp
 from ... import FiniteDifferences as fd
-from ...FiniteDifferences import common_field
-from .implicit_base import ImplicitBase
 from ... import Selling
-
-
+from ...FiniteDifferences import common_field
+from .. import misc
+from ..riemann import Riemann
+from .implicit_base import ImplicitBase
+from .thomsen_data import HexagonalFromTEM
 
 class Hooke(ImplicitBase):
 	"""
@@ -91,7 +90,7 @@ class Hooke(ImplicitBase):
 		Voigt,Voigti = self._Voigt,self._Voigti
 		d = self.vdim
 		m = ad.asarray([[
-			sum(v[j]*v[l] * hooke[Voigt[i,j],Voigt[k,l]]
+			sum(v[j]*v[l] * hooke[Voigt[i,j],Voigt[k,l]] 
 				for j in range(d) for l in range(d))
 			for i in range(d)] for k in range(d)])
 
@@ -105,7 +104,7 @@ class Hooke(ImplicitBase):
 		Extract a two dimensional Hooke tensor from a three dimensional one, 
 		corresponding to a slice through the X and Z axes.
 		"""
-		assert(self.vdim==3)
+		assert self.vdim==3
 		h=self.hooke
 		return Hooke(ad.asarray([ 
 			[h[0,0], h[0,2], h[0,4] ],
@@ -123,7 +122,7 @@ class Hooke(ImplicitBase):
 		c44=Vs**2
 		c11=c33*(1+2*eps)
 		c13=-c44+np.sqrt( (c33-c44)**2+2*delta*c33*(c33-c44) )
-		zero = 0.*Vs
+		zero = np.zeros_like(Vs)
 		return cls(ad.asarray( [ [c11,c13,zero], [c13,c33,zero], [zero,zero,c44] ] ))
 
 	@classmethod
@@ -213,95 +212,11 @@ class Hooke(ImplicitBase):
 	def from_hexagonal(cls,a,b,c,d,e):
 		return cls.from_tetragonal(a,b,c,d,e,(a-b)/2)
 
-# Densities in gram per cubic centimeter
-
-	@classmethod
-	def mica(cls,density=False):
-		metric = cls.from_hexagonal(178.,42.4,14.5,54.9,12.2)
-		rho = 2.79
-		return (metric,rho) if density else metric
-
-	@classmethod
-	def stishovite(cls,density=False):
-		metric = cls.from_tetragonal(453,211,203,776,252,302)
-		rho = 4.29
-		return (metric,rho) if density else metric
-
-	@classmethod
-	def olivine(cls,density=False):
-		metric = cls.from_orthorombic(323.7,66.4,71.6,197.6,75.6,235.1,64.6,78.7,79.0)
-		olivine_rho = 3.311
-		return (metric,rho) if density else metric
-
-	@classmethod
-	def from_Reduced_TTI(cls,metric):
-		"""Generate full Hooke tensor from reduced algebraic form.
-		Warning : Reduced to Hooke conversion may induce approximations."""
-		# Original code by F. Desquilbet, 2020
-		from .reduced import Reduced
-		l,q,c = metric.linear,metric.quadratic,metric.cubic
-		z = np.zeros(l.shape[1:])
-		if metric.vdim==2:
-
-			aa = q[0,0]
-			bb = q[1,1]
-			cc = q[0,1]
-			dd = l[0]
-			ee = l[1]
-
-			Vp = np.sqrt((ee+np.sqrt(ee**2+4*bb))/2)
-			Vs = np.sqrt((ee-np.sqrt(ee**2+4*bb))/2)
-			eps = -1/2*(1+aa/(Vp**2*Vs**2))
-			delt = 1/2*(-1+1/Vp**2*(Vs**2+(cc+Vp**4*(1+2*eps)+Vs**4)/(Vp**2-Vs**2)))
-
-			c11 = Vp**2
-			c22 = Vs**2
-			c00 = (1+2*eps)*Vp**2
-			c10 = np.sqrt(2*delt*c11*(c11-c22)+(c11-c22)**2)-c22
-			c01 = c10
-			z = np.zeros(c00.shape)
-			
-			hooke = ad.array([
-				[c00,c01,  z],
-				[c01,c11,  z],
-				[  z,  z,c22]
-				])
-
-		elif metric.vdim==3:
-
-			aa = q[0,0]
-			bb = q[2,2]
-			cc = q[0,2]
-			dd = l[0]
-			ee = l[2]
-
-			Vp = np.sqrt((ee+np.sqrt(ee**2+4*bb))/2)
-			Vs = np.sqrt((ee-np.sqrt(ee**2+4*bb))/2)
-			eps = -1/2*(1+aa/(Vp**2*Vs**2))
-			delt = 1/2*(-1+1/Vp**2*(Vs**2+(cc+Vp**4*(1+2*eps)+Vs**4)/(Vp**2-Vs**2)))
-
-			c11 = Vp**2
-			c22 = Vs**2
-			c00 = (1+2*eps)*Vp**2
-			c10 = np.sqrt(2*delt*c11*(c11-c22)+(c11-c22)**2)-c22
-			c01 = c10
-			z=np.zeros(c00.shape)
-
-			hooke = ad.array([
-				[c00,c00,c01,  z,  z,  z],
-				[c00,c00,c01,  z,  z,  z],
-				[c01,c01,c11,  z,  z,  z],
-				[  z,  z,  z,c22,  z,  z],
-				[  z,  z,  z,  z,c22,  z],
-				[  z,  z,  z,  z,  z,  z]
-				])
-
-			#Note: hooke[1,0] can be anything. Then hooke[5,5] should be 
-			# (hooke[0,0]-hooke[1,0])/2 (here, chosen equal to 0)
-		else:
-			raise ValueError("Unsupported dimension")
-		return cls(hooke,*super(Reduced,metric).__iter__())
-
+	@classmethod 
+	def from_Thomsen(cls,tem):
+		"""Hooke tensor (m/s)^2 and density (g/cm^3)"""
+		hex,ρ = HexagonalFromTEM(tem)
+		return cls.from_hexagonal(*hex),ρ
 
 	def is_TTI(self,tol=None):
 		"""
@@ -328,6 +243,8 @@ class Hooke(ImplicitBase):
 	def _Voigt_m2v(self,m,sym=True):
 		"""
 		Turns a symmetric matrix into a vector, based on Voigt convention.
+		- sym : True -> use the upper triangular part of m. 
+		        Fals -> symmetrize the matrix m (adding its transpose).
 		"""
 		assert(self.inverse_transformation is None)
 		m=ad.asarray(m)
@@ -351,11 +268,10 @@ class Hooke(ImplicitBase):
 		"""
 		Dot product associated with a Hooke tensor, which turns a strain tensor epsilon
 		into a stress tensor sigma.
-		- m : the strain tensor
-		- sym : if false, the strain is symmetrized
+		- m : the strain tensor.
 		"""
 		
-		v,hooke = fd.common_field((self._Voigt_m2v(m),self.hooke),(1,2))
+		v,hooke = fd.common_field((self._Voigt_m2v(m,sym),self.hooke),(1,2))
 		w = lp.dot_AV(hooke,v)
 		return ad.array( ((w[0],w[2]),(w[2],w[1])) )
 
@@ -364,14 +280,13 @@ class Hooke(ImplicitBase):
 		Inner product associated with a Hooke tensor, on the space of symmetric matrices.
 		- m1 : first symmetric matrix
 		- m2 : second symmetric matrix. Defaults to m1.
-		- sym : if false, the matrices are symmetrized.
 		"""
 		if m2 is None: 
-			v1,hooke = fd.common_field((self._Voigt_m2v(m1),self.hooke),(1,2))
+			v1,hooke = fd.common_field((self._Voigt_m2v(m1,sym),self.hooke),(1,2))
 			v2=v1
 		else: 
 			v1,v2,hooke = fd.common_field(
-				(self._Voigt_m2v(m1),self._Voigt_m2v(m2),self.hooke),(1,1,2))
+				(self._Voigt_m2v(m1,sym),self._Voigt_m2v(m2,sym),self.hooke),(1,1,2))
 		return lp.dot_VV(v1,lp.dot_AV(hooke,v2))
 
 	def Selling(self):
@@ -399,9 +314,10 @@ class Hooke(ImplicitBase):
 		but is incompatible with the eikonal equation solver.
 		"""
 		r = self.inverse_transformation
-		if r is None: return
-		self.inverse_transformation = None
-		self.rotate(lp.transpose(r)) 
+		if r is None: return self
+		other = copy.copy(self)
+		other.inverse_transformation = None
+		return other.rotate(lp.transpose(r)) 
 
 	@classmethod
 	def from_Lame(cls,Lambda,Mu,vdim=2):
@@ -418,6 +334,10 @@ class Hooke(ImplicitBase):
 
 
 
+#Hooke tensor (m/s)^2 and density (g/cm^3)
+Hooke.mica = Hooke.from_hexagonal(178.,42.4,14.5,54.9,12.2), 2.79
+Hooke.stishovite = Hooke.from_tetragonal(453,211,203,776,252,302), 4.29
+Hooke.olivine = Hooke.from_orthorombic(323.7,66.4,71.6,197.6,75.6,235.1,64.6,78.7,79.0), 3.311
 
 
 

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
 	name='agd',  
-	version='0.1.6',
+	version='0.1.10',
 	author="Jean-Marie Mirebeau",
 	author_email="jm.mirebeau@gmail.com",
 	description="Adaptive Grid Discretizations",
@@ -13,6 +13,9 @@ setuptools.setup(
 	long_description_content_type="text/markdown",
 	url="https://github.com/Mirebeau/AdaptiveGridDiscretizations/",
 	packages=setuptools.find_packages(),
+	setup_requires=['setuptools_scm'],
+	include_package_data=True,
+#	package_data = {"agd":["Eikonal/HFM_CUDA/cuda/*"],},
 	platforms=["any"],
 	classifiers=[
 		"Programming Language :: Python :: 3",
