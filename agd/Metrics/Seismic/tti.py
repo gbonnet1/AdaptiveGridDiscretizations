@@ -25,7 +25,7 @@ class TTI(ImplicitBase):
 	In two dimensions, ignore the Z^2 term.
 	"""
 
-	def __init__(self,linear,quadratic,vdim=None,**kwargs):
+	def __init__(self,linear,quadratic,vdim=None,*args,**kwargs):
 		super(TTI,self).__init__(**kwargs)
 		self.linear = ad.asarray(linear)
 		self.quadratic = ad.asarray(quadratic)
@@ -54,6 +54,10 @@ class TTI(ImplicitBase):
 	def cost_bound(self):
 		# Ignoring the quadratic term for now.
 		return self.Riemann_approx().cost_bound()
+	def Riemann_approx(self):
+		diag = 1/self.linear
+		if self.vdim==3: diag = diag[0],diag[0],diag[1] 
+		return Riemann.from_diagonal(diag).inv_transform(self.inverse_transformation)
 
 	def _dual_params(self,shape=None):
 		return fd.common_field((self.linear,self.quadratic),depths=(1,2),shape=shape)
