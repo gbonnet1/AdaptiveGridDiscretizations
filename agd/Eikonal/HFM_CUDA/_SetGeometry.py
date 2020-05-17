@@ -53,7 +53,7 @@ def SetGeometry(self):
 	if   self.model_=='Diagonal':metricClass = Metrics.Diagonal
 	elif self.model_=='Riemann': metricClass = Metrics.Riemann
 	elif self.model_=='Rander' : metricClass = Metrics.Rander
-	elif self.model_=='TTI':     metricClass = Metrics.Seismic.Reduced
+	elif self.model_=='TTI':     metricClass = Metrics.Seismic.TTI
 
 	if self.model_=='Isotropic':
 		self._metric = Metrics.Diagonal(cp.ones(self.ndim,dtype=self.float_t))
