@@ -213,29 +213,10 @@ class Hooke(ImplicitBase):
 		return cls.from_tetragonal(a,b,c,d,e,(a-b)/2)
 
 	@classmethod 
-	def from_thomsen(cls,tem,reduced=False):
+	def from_Thomsen(cls,tem):
+		"""Hooke tensor (m/s)^2 and density (g/cm^3)"""
 		hex,ρ = HexagonalFromTEM(tem)
-		return cls.from_tetragonal(*hex),ρ
-
-# Densities in gram per cubic centimeter
-
-	@classmethod
-	def mica(cls,density=False):
-		metric = cls.from_hexagonal(178.,42.4,14.5,54.9,12.2)
-		rho = 2.79
-		return (metric,rho) if density else metric
-
-	@classmethod
-	def stishovite(cls,density=False):
-		metric = cls.from_tetragonal(453,211,203,776,252,302)
-		rho = 4.29
-		return (metric,rho) if density else metric
-
-	@classmethod
-	def olivine(cls,density=False):
-		metric = cls.from_orthorombic(323.7,66.4,71.6,197.6,75.6,235.1,64.6,78.7,79.0)
-		olivine_rho = 3.311
-		return (metric,rho) if density else metric
+		return cls.from_hexagonal(*hex),ρ
 
 	def is_TTI(self,tol=None):
 		"""
@@ -353,6 +334,10 @@ class Hooke(ImplicitBase):
 
 
 
+#Hooke tensor (m/s)^2 and density (g/cm^3)
+Hooke.mica = Hooke.from_hexagonal(178.,42.4,14.5,54.9,12.2), 2.79
+Hooke.stishovite = Hooke.from_tetragonal(453,211,203,776,252,302), 4.29
+Hooke.olivine = Hooke.from_orthorombic(323.7,66.4,71.6,197.6,75.6,235.1,64.6,78.7,79.0), 3.311
 
 
 

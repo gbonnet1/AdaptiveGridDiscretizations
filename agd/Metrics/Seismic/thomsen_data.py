@@ -1,9 +1,6 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-import numpy as np
-from collections import OrderedDict,namedtuple
-
 """
 We reproduce in this file list of VTI examples taken from "Weak elastic anisotropy" (Thomsen, 1986), 
 Units are : 
@@ -11,6 +8,10 @@ Units are :
 - 'ϵ','η','δ','γ' : dimensionless. (Originally, η is listed as δ^star.)
 - ρ : g/cm^3
 """
+
+
+import numpy as np
+from collections import OrderedDict,namedtuple
 
 ThomsenElasticMaterial=namedtuple('ThomsenElasticMaterial',['Vp','Vs','ϵ','η','δ','γ','ρ'])
 TEM = ThomsenElasticMaterial
@@ -54,7 +55,7 @@ def TEMFromHexagonal(hex,ρ):
 
 ThomsenData = OrderedDict([
 	("Taylor sandstone",                     TEM(3368,1829,0.110,-0.127,-0.035,0.255,2.500)),
-	("Mesaverde (4903) mudshale",            TEM(4529,2703,0.024,0.250,0.211,0.046,2.520)),
+	("Mesaverde (4903) mudshale",            TEM(4529,2703,0.034,0.250,0.211,0.046,2.520)),
 	("Mesaverde (4912) immature sandstone",  TEM(4476,2814,0.097,0.051,0.091,0.051,2.500)),
 	("Mesaverde (4946) immature sandstone",  TEM(4099,2346,0.077,-0.039,0.010,0.066,2.450)),
 	("Mesaverde (5469.5) silty sandstone",   TEM(4972,2899,0.056,-0.041,-0.003,0.067,2.630)),
@@ -68,7 +69,7 @@ ThomsenData = OrderedDict([
 	("Mesaverde (6455.1) immature sandstone",TEM(4418,2587,0.053,0.173,0.158,0.133,2.450)),
 	("Mesaverde (6542.6) immature sandstone",TEM(4405,2542,0.080,-0.057,-0.003,0.093,2.510)),
 	("Mesaverde (6563.7) mudshale",          TEM(5073,2998,0.010,0.009,0.012,-0.005,2.680)),
-	("Mesaverde (7888.4) sandstone",         TEM(4869,2911,0.033,0.030,0.040,0.019,2500)),
+	("Mesaverde (7888.4) sandstone",         TEM(4869,2911,0.033,0.030,0.040,-0.019,2500)),
 	("Mesaverde (7939.5) mudshale",          TEM(4296,2471,0.081,0.118,0.129,0.048,2.660)),
 
 	("Mesaverde shale (350)",                TEM(3383,2438,0.065,-0.003,0.059,0.071,2.35)),

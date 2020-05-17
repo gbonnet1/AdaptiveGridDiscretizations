@@ -48,6 +48,7 @@ class TTI(ImplicitBase):
 	def _dual_level(self,v,params=None,relax=0.):
 		l,q = self._dual_params(v.shape[1:]) if params is None else params
 		v2 = v**2
+		if self.vdim==3: v2 = ad.array([v2[:2].sum(axis=0),v2[2]])
 		return lp.dot_VV(l,v2) + np.exp(-relax)*lp.dot_VAV(v2,q,v2) - 1.
 	
 	def cost_bound(self):
@@ -76,7 +77,7 @@ class TTI(ImplicitBase):
 	def model_HFM(self):
 		return f"TTI{self.vdim}"
 
-	def Extract_XZ(self):
+	def extract_xz(self):
 		if len(self.shape)==3: raise ValueError("Three dimensional field")
 		if self.inverse_transformation is not None:
 			raise ValueError("Cannot extract XZ slice from tilted norms")
@@ -112,102 +113,18 @@ class TTI(ImplicitBase):
 		return cls(linear,quadratic,vdim=vdim,inverse_transformation=inv_trans)
 
 	@classmethod
-	def from_hexagonal(cls,c11,_,c13,c33,c44):
+	def from_hexagonal(cls,c11,_,c13,c33,c44,vdim=3):
 		linear = [c11+c44,c33+c44]
 		mixed = 0.5*(c13**2-c11*c33)+c13*c44
 		quadratic = [[-c11*c44,mixed],[mixed,-c33*c44]]
-		return cls(linear,quadratic)
+		return cls(linear,quadratic,vdim=vdim)
 
 	@classmethod
-	def from_thomsen(cls,tem):
+	def from_Thomsen(cls,tem,vdim=3):
 		hex,ρ = HexagonalFromTEM(tem)
-		return cls.from_tetragonal(*hex),ρ
+		return cls.from_hexagonal(*hex,vdim),ρ
 
-"""
-	@classmethod
-	def from_Thomsen(cls,Thomsen, vdim=3, V_squared=False):
-		if V_squared: Vp2,Vs2,eps,delta
-		else: Vp,Vs,eps,delta = Thomsen; Vp2,Vs2=Vp**2,Vs**2
+TTI.mica = TTI.from_hexagonal(178.,42.4,14.5,54.9,12.2), 2.79
+# Stishovite is tetragonal, but the P velocity is equivalent to an hexagonal model.
+TTI.stishovite = TTI.from_hexagonal(453,np.nan,203,776,252), 4.29 # See Hooke
 
-		a = -(1+2*eps)*Vp2*Vs2
-		b = -Vp2*Vs2
-		c = -(1+2*eps)*Vp2**2-Vs2**2+(Vp2-Vs2)*(Vp2*(1+2*delta)-Vs2)
-		d = Vs2+(1+2*eps)*Vp2
-		e = Vp2+Vs2
-
-		return cls([d,e], [[a,c],[c,b]], vdim=vdim)
-"""
-"""
-	def to_Thomsen(self,V_squared=False,safe=True):
-		if safe and self.inverse_transformation is not None:
-			raise ValueError("Thomsen parameters loose track of tilt")
-
-		((a,c),(_,b)) = self.quadratic
-		d,e = self.linear
-
-		Vp2 = (e+np.sqrt(e**2+4*b))/2
-		Vs2 = (e-np.sqrt(e**2+4*b))/2
-		eps = -0.5*(1+a/(Vp2*Vs2))
-		delta = 1/2*(-1+1/Vp2*(Vs2+(c+Vp2**2*(1+2*eps)+Vs2**2)/(Vp2-Vs2)))
-
-		if safe:
-			if self.inverse_transformation is not None:
-				raise ValueError("Thomsen parameters loose track of tilt")
-			other = self.from_Thomsen(Vp2,Vs2,eps,delta,V_squared=True)
-			if not (np.allclose(self.linear,other.linear)
-				and np.allclose(self.quadratic,other.quadratic)):
-				raise ValueError("Thomsen parameters appear to loose information"
-					"Use safe=False to ignore")
-
-		if V_squared: return Vp2,Vs2,eps,delta
-		else: return np.sqrt(Vp2),np.sqrt(Vs2),eps,delta
-"""
-
-"""
-	@classmethod
-	def from_Hooke(cls,metric):
-		from .hooke import Hooke
-		hooke = metric.hooke
-		
-		#assert(metric.is_reduced_VTI(metric)) #TODO
-	
-		if metric.vdim==2:
-
-			Vp = np.sqrt(hooke[1,1])
-			Vs = np.sqrt(hooke[2,2])
-			eps = (hooke[0,0]-hooke[1,1])/(2*hooke[1,1])
-			delt = ((hooke[0,1]+hooke[2,2])**2-(hooke[1,1]-hooke[2,2])**2)/(
-					2*hooke[1,1]*(hooke[1,1]-hooke[2,2]))
-			
-			aa = -(1+2*eps)*Vp**2*Vs**2
-			bb = -Vp**2*Vs**2
-			cc = -(1+2*eps)*Vp**4-Vs**4+(Vp**2-Vs**2)*(Vp**2*(1+2*delt)-Vs**2)
-			dd = Vs**2+(1+2*eps)*Vp**2
-			ee = Vp**2+Vs**2
-
-			linear = ad.array([dd,ee])
-			quadratic = ad.array([[aa,cc],[cc,bb]])
-
-		elif metric.vdim==3:
-			
-			Vp = np.sqrt(hooke[2,2])
-			Vs = np.sqrt(hooke[3,3])
-			eps = (hooke[0,0]-hooke[2,2])/(2*hooke[2,2])
-			delt = ((hooke[0,2]+hooke[3,3])**2-(hooke[2,2]-hooke[3,3])**2)/(
-					2*hooke[2,2]*(hooke[2,2]-hooke[3,3]))
-			
-			aa = -(1+2*eps)*Vp**2*Vs**2
-			bb = -Vp**2*Vs**2
-			cc = -(1+2*eps)*Vp**4-Vs**4+(Vp**2-Vs**2)*(Vp**2*(1+2*delt)-Vs**2)
-			dd = Vs**2+(1+2*eps)*Vp**2
-			ee = Vp**2+Vs**2
-
-			linear = ad.array([dd,dd,ee])
-			quadratic = ad.array([[aa,2*aa,cc],[2*aa,aa,cc],[cc,cc,bb]])
-
-		else:
-			raise ValueError("Unsupported dimension")
-
-		return cls(linear,quadratic,vdim=metric.vdim,*super(Hooke,metric).__iter__())
-
-"""

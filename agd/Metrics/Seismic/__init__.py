@@ -4,5 +4,5 @@
 #from .implicit_base import ImplicitBase
 from .hooke   import Hooke
 from .tti import TTI
-import .thomsen as 
+from . import thomsen_data as Thomsen
 
