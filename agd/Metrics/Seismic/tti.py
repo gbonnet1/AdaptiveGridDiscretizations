@@ -61,6 +61,7 @@ class TTI(ImplicitBase):
 	def __iter__(self):
 		yield self.linear
 		yield self.quadratic
+		yield self._vdim
 		for x in super(TTI,self).__iter__(): yield x
 
 	def _to_common_field(self,shape=None):
