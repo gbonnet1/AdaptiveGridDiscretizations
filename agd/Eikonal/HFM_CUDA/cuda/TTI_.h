@@ -176,7 +176,7 @@ Scalar tti_norm(const Scalar l[2], const Scalar q[3], const dim2::tti_data_t & d
 	Scalar diag[2];
 	const Scalar norm = _tti_norm(l,q,data,s,diag);
 	if(gradient!=NULL) {
-		for(Int i=0; i<ndim; ++i) {Ax[i]*=diag[max(i-1,0)]/norm;}
+		for(Int i=0; i<ndim; ++i) {Ax[i]*=diag[ndim==2 ? i : max(i-1,0)]/norm;}
 		tdot_av(A,Ax,gradient);}
 	return norm;
 }
