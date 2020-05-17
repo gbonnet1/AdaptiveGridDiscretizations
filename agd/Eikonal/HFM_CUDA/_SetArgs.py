@@ -40,6 +40,13 @@ def SetRHS(self):
 
 		if self.reverseAD: seedValues_rev=ad.Sparse.identity(constant=ad.remove_ad(seedValues))
 
+		if seedRadius>0 or self.factoringRadius>0:
+			self._CostMetric = self.metric.with_cost(self.cost)
+			# TODO : remove. No need to create this grid for our interpolation
+			grid = ad.array(np.meshgrid(*(cp.arange(s,dtype=self.float_t) 
+				for s in self.shape), indexing='ij')) # Adimensionized coordinates
+			self._CostMetric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
+
 		if seedRadius==0.: # Round seeds to closest grid point
 			seedIndices = np.round(seeds).astype(int)
 		else: # Spread seed over given radius, compute appropriate seedValues
@@ -64,12 +71,6 @@ def SetRHS(self):
 			neigh = neigh[inRange,:]
 			neighValues = neighValues[inRange]
 			if self.reverseAD: neighValues_rev = neighValues_rev[inRange]
-			
-			self._CostMetric = self.metric.with_cost(self.cost)
-			# TODO : remove. No need to create this grid for our interpolation
-			grid = ad.array(np.meshgrid(*(cp.arange(s,dtype=self.float_t) 
-				for s in self.shape), indexing='ij')) # Adimensionized coordinates
-			self._CostMetric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
 
 			diff = (neigh - self.seed).T # Geometry first
 			metric0 = self.CostMetric(self.seed)
