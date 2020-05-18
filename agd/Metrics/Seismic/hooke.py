@@ -96,7 +96,8 @@ class Hooke(ImplicitBase):
 
 		# Evaluate det
 		s = np.exp(-relax)
-		ident = fd.as_field(np.eye(d),m.shape[2:],conditional=False)
+		xp = ad.cupy_generic.get_array_module(m)
+		ident = fd.as_field(xp.eye(d,dtype=m.dtype),m.shape[2:],depth=2)
 		return 1.-s -lp.det(ident - m*s) 
 
 	def extract_xz(self):
@@ -179,7 +180,7 @@ class Hooke(ImplicitBase):
 	def _Mandel_factors(vdim,shape=tuple(),a=np.sqrt(2)):
 		def f(k):	return 1. if k<vdim else a
 		hdim = Hooke._hdim(vdim)
-		factors = np.array([[f(i)*f(j) for i in range(hdim)] for j in range(hdim)])
+		factors = ad.array([[f(i)*f(j) for i in range(hdim)] for j in range(hdim)])
 		return fd.as_field(factors,shape,conditional=False)
 
 	def to_Mandel(self,a=np.sqrt(2)):
@@ -326,7 +327,7 @@ class Hooke(ImplicitBase):
 		"""
 		assert(not (ad.is_ad(Lambda) or ad.is_ad(Mu)) )
 		hdim = cls._hdim(vdim)
-		hooke = np.zeros((hdim,hdim))
+		hooke = np.zeros_like(Lambda,shape=(hdim,hdim))
 		hooke[:vdim,:vdim] += Lambda
 		for i in range(hdim): 
 			hooke[i,i] += Mu*(1.+(i<vdim))
