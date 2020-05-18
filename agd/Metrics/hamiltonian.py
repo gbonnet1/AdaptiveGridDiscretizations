@@ -45,8 +45,8 @@ class Hamiltonian(object):
 		Inputs:
 		- H : the hamiltonian, which may be either:
 			* a metric
-		 	* a callable function
-			* a pair of callable functions, for a separable hamiltonian.
+		 	* a callable function of two arguments (q,p)
+			* a pair of callable functions, of two arguments (q,p) for a separable hamiltonian.
 				(in that case, may also be scalars or matrices, for quadratic hamiltonians)
 		- shape_free (optional) : the shape of the position and impulsion
 		- vdim (optional): equivalent to shape_free = (vdim,)
