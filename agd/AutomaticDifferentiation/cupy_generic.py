@@ -174,6 +174,15 @@ def cupy_friendly(arg):
 		print(f"Returning a copy of function {arg.__name__} which accepts cupy arrays as input.")
 		return cupy_get_args(arg)
 
+	if isndarray(arg):
+		print(f"Replacing ndarray object with cupy variant, for object of type {type(arg)}")
+		return cupy_set(arg)
+	else:
+		print("Replacing ndarray members with their cupy variants, "
+			f"for object of type {type(arg)}")
+		return cupy_set(arg,iterables=(type(arg),))
+
+
 
 
 

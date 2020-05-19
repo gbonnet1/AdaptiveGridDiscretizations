@@ -34,10 +34,11 @@ class ImplicitBase(Base):
 			return lp.dot_AV(lp.transpose(a),self._gradient(lp.dot_AV(a,v)))
 
 	def inv_transform(self,a):
+		inv_trans,a = fd.common_field((self.inverse_transformation,a),depths=(2,2))
+		inv_trans = a if inv_trans is None else lp.dot_AA(inv_trans,a)
 		other = copy.copy(self)
-		other._to_common_field(a.shape[2:])
-		if other.inverse_transformation is None: other.inverse_transformation = a
-		else: other.inverse_transformation = lp.dot_AA(other.inverse_transformation,a)
+		other.inverse_transformation = inv_trans
+		other._to_common_field()
 		return other
 
 	def is_topographic(self,a=None):
