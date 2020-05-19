@@ -49,7 +49,7 @@ VolumeFilenames = {
     "Curvature","Curvature3","DeviationHorizontality",
     "Geodesics","HighAccuracy","Sensitivity","SensitivitySL", #"SmartIO",
     "Illusion","Tubular","FisherRao","DubinsZermelo","MedialAxis","BoatRouting",
-    "Seismic",
+    "Seismic","TTI",
 ],
 'NonDiv':[
 	"MonotoneSchemes1D","Time1D_NonDiv","OTBoundary1D",

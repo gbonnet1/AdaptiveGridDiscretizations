@@ -66,6 +66,7 @@ google_drive_link = {
 	# ? New link format 
 	"Notebooks_NonDiv/BoatRouting_Time.ipynb":"https://drive.google.com/file/d/1T5sudWA6u23cG2mEqXF6wAXNpk-gAY1t/view?usp=sharing",
 	"Notebooks_FMM/BoatRouting.ipynb":"https://drive.google.com/file/d/10xMu3f_0LcyBRu4Qymifz2I_MgWU6X2Y/view?usp=sharing",
+	"Notebooks_FMM/TTI.ipynb":"https://drive.google.com/file/d/1bqWUzPHfEc3CEypMdIY-aGrTcEDfc6iL/view?usp=sharing",
 	}
 
 
@@ -132,13 +133,15 @@ def Main(output_dir):
 		ToColab(filename,output_dir)
 
 if __name__ == "__main__":
+	kwargs = {"output_dir":"/Users/mirebeau/Google Drive/AdaptiveGridDiscretizations_Colab"}
+	Main(**kwargs)
+	"""
 	for key in sys.argv[1:]:
 		prefix = '--output_dir='
 		if key.startswith(prefix):
 			output_dir = key[len(prefix):]
-			Main(output_dir)
 			break
 	else: print("Missing output_dir=...")
-
+	"""
 
 
