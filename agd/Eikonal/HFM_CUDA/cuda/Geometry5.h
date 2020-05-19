@@ -209,6 +209,15 @@ typedef const small (*supportT)[ndim]; // small[kktdim or symdim][ndim]
 const supportT support_[3] = {support0,support1,support2};
 
 void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
+	if(debug_print && blockIdx.x==0 && threadIdx.x==0){
+		printf("Entering KKT\n");
+		for(Int i=0; i<symdim; ++i){printf("%f ",state.m[i]);} printf("\n");
+		for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j){printf("%f ",state.a[i][j]);}} printf("\n");
+		printf("state : %i ,",state.vertex);
+		printf("obj : %f ",state.objective); printf("\n");
+		printf("blockDim %i\n",blockDim.x);
+	}
+
 
 	const coefT coef       = coef_[state.vertex]; // coef[symdim][symdim]
 	const supportT support = support_[state.vertex]; // support[kktdim][ndim]
@@ -276,9 +285,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 	const int BadIndex = 1234567890;
 	int next[max_size] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21};
 	int prev[max_size] = {BadIndex,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
-	
 	slinprog(&halves[0][0], 0, m, n_vec, d_vec, d, opt, work, next, prev, max_size);
-	
 	// TODO : check that status is correct
 	// Get the solution, and find the non-zero weights, which should be positive.
 	// kktdim - symdim = 5
@@ -290,10 +297,10 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 		sol[i]+=s;
 	}
 	for(int i=0; i<5; ++i){sol[15+i] = maxSol*linsol[i];}
-	
 	// We only need to exclude the 5 smallest elements. For simplicity, we sort all.
 	Int ord[kktdim]; 
-	merge_sort<kktdim>(sol,ord);
+	NetworkSort::sort<kktdim>(sol,ord);
+
 	for(int i=0; i<symdim; ++i){
 		const int j=ord[i+5]; 
 		weights[i] = sol[j];

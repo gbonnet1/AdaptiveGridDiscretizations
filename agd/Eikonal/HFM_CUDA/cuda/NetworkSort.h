@@ -1,3 +1,7 @@
+#pragma once
+// Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
+// Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
+
 /* This file implements efficient sorting methods for small array sizes, 2<=n<=64.
 (Longer sizes can easily be achieved using more merging steps.)
 Note that these sorting methods are intended to be used on a single thread, hence

@@ -141,7 +141,7 @@ def set_output_dtype32(f,silent=True,iterables=(tuple,)):
 
 def cupy_friendly(arg):
 	"""
-	Returns a "cupy-friendly" copy of the input module or function, 
+	Returns a "cupy-friendly" copy of the input module, function, or object,
 	following arbitrary and ad-hoc rules.
 	"""
 
@@ -163,6 +163,7 @@ def cupy_friendly(arg):
 		if arg.__name__ == 'agd.Eikonal':
 			print("Setting dictIn.default_mode = 'gpu' in module agd.Eikonal .")
 			arg.dictIn.default_mode = 'gpu'
+			arg.VoronoiDecomposition.default_mode = 'gpu'
 			return arg
 
 		# Default behavior

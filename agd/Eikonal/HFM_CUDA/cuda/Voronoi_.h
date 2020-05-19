@@ -21,19 +21,6 @@ void SetNeighbor(SimplexStateT & state,const Int neigh){
 }
 
 void KKT(const SimplexStateT & state, Scalar weights[decompdim], OffsetT offsets[decompdim][ndim]);
-/*
-void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kktdim][ndim]){
-	const coefT coef       = coef_[state.vertex]; // coef[symdim][symdim]
-	const supportT support = support_[state.vertex]; // support[kktdim][ndim]
-
-	dim_symdim::dot_av(coef,state.m,weights);
-	Scalar aInv_[ndim][ndim]; inv_a(state.a,aInv_);
-	Int aInv[ndim][ndim]; round_a(aInv_,aInv); // The inverse is known to have integer entries
-	for(int i=0; i<kktdim; ++i){dot_av(aInv,support[i],offsets[i]);}
-
-	KKT_Correct(state.vertex,weights);
-}
-*/
 
 void FirstGuess(SimplexStateT & state){
 	state.objective = 1./0.; 
@@ -75,16 +62,15 @@ bool BetterNeighbor(SimplexStateT & state){
 	return true;
 }
 
-
-
 } // namespace Voronoi
 
-void decomp_m(const Scalar m[symdim],Scalar weights[decompdim],OffsetT offsets[decompdim][ndim]){
+void decomp_m(const Scalar m[symdim],
+	Scalar weights[decompdim], OffsetT offsets[decompdim][ndim]){
 	using namespace Voronoi;
 	SimplexStateT state;
 	copy_mM(m,state.m);
 	identity_A(state.a);
-	FirstGuess(state);
-	for(Int i=0; i<maxiter; ++i){if(!BetterNeighbor(state)){break;}}
+	FirstGuess(state); 
+	for(Int i=0; i<maxiter; ++i){if(!BetterNeighbor(state)){break;}} 
 	KKT(state,weights,offsets);
 }

@@ -20,9 +20,8 @@ const Int factor_size = symdim;
 
 #include "Constants.h"
 
-void scheme(const Scalar dual_metric[symdim], Scalar weights[nsym], Int offsets[nsym][ndim]){
-	decomp_m(dual_metric,weights,offsets);
-}
+void scheme(const Scalar dual_metric[symdim], Scalar weights[nsym], OffsetT offsets[nsym][ndim]){
+	decomp_m(dual_metric,weights,offsets);}
 
 FACTOR(
 #include "EuclideanFactor.h"

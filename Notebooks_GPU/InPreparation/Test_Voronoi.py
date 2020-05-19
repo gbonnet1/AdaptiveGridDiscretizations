@@ -1,7 +1,6 @@
 import sys; sys.path.insert(0,"../..") # Allow import of agd from parent directory 
 
-from agd import HFMUtils
-from agd.HFMUtils import HFM_CUDA
+from agd import Eikonal
 import cupy as cp
 import numpy as np
 import time
@@ -14,8 +13,9 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
     formatter=dict(float=lambda x: "%5.3g" % x))
 
 
-n=4; ndim=4
-hfmIn = HFMUtils.dictIn({
+n=2; ndim=5
+hfmIn = Eikonal.dictIn({
+	'mode':'gpu',
     'model':f'Riemann{ndim}',
 #    'verbosity':1,
     'seeds':[[0]*ndim],
@@ -29,7 +29,7 @@ hfmIn = HFMUtils.dictIn({
 	'exportValues':True,
 #	'factoringRadius':10,
 #    'help':['nitermax_o','traits'],
-	'dims':np.array([n]*ndim),
+	'dims':[n]*ndim,
 	'origin':[-0.5]*ndim,
 	'gridScale':1.,
 #	'order':2,
@@ -70,16 +70,17 @@ if False:
 	hfmIn['model'] = f'Isotropic{ndim}'
 	hfmIn.pop('metric')
 
-hfmOut = hfmIn.RunGPU()
+hfmOut = hfmIn.Run()
 #if n<=5: print(hfmOut['values'])
 
 exact = ad.Optimization.norm(hfmIn.Grid(),axis=0,ord=2)
 print("difference to exact",norm_infinity(exact-hfmOut['values']))
 
+hfmIn.mode = 'cpu_transfer'
 
-cpuIn = hfmIn.copy()
-for key in ('traits','array_float_caster'): cpuIn.pop(key)
-cpuIn['metric'] = np.array(cpuIn['metric'].to_HFM().get(),dtype=np.float64)
+#cpuIn = hfmIn.copy()
+#for key in ('traits','array_float_caster'): cpuIn.pop(key)
+#cpuIn['metric'] = np.array(cpuIn['metric'].to_HFM().get(),dtype=np.float64)
 cpuOut = cpuIn.Run()
 
 diff = cpuOut['values']-hfmOut['values'].get()
