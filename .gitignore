@@ -13,3 +13,4 @@ dist/
 *_Format.txt
 *_Data.dat
 profile_stats
+.eggs/
