@@ -193,10 +193,10 @@ class Hamiltonian(object):
 
 	def DqH(self,q,p):
 		"""Differentiates the Hamiltonian, w.r.t. position."""
-		return inv_inner*self._DqH(q,p)
+		return self.inv_inner*self._DqH(q,p)
 	def DpH(self,q,p):
 		"""Differentiates the Hamiltonian, w.r.t. impulsion."""
-		return inv_inner*self._DpH(q,p)
+		return self.inv_inner*self._DpH(q,p)
 
 	def flow(self,q,p):
 		"""
