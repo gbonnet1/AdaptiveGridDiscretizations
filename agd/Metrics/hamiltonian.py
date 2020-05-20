@@ -39,7 +39,7 @@ def fixedpoint(f,x,tol=1e-9,nitermax=100):
 
 class Hamiltonian(object):
 	def __init__(self, H, 
-		shape_free=None, vdim=-1, disassociate_ad = False,
+		shape_free=None, vdim=-1, disassociate_ad = False, inv_inner=1.,
 		**kwargs):
 		"""
 		Inputs:
@@ -51,6 +51,8 @@ class Hamiltonian(object):
 		- shape_free (optional) : the shape of the position and impulsion
 		- vdim (optional): equivalent to shape_free = (vdim,)
 		- disassociate_ad: hide the AD information when calling H.
+		- inv_inner (optional, scalar or matrix) : 
+			inverse inner product, for derivative normalization
 		- **kwargs : if not empty, use dual metric interpolated with these arguments
 		"""		
 		if isinstance(H,list): H = tuple(H)
@@ -62,15 +64,13 @@ class Hamiltonian(object):
 
 		self._H = H
 		if self.is_separable: assert len(H)==2
-
-		if self.is_metric:
-			assert shape_free is None
-			self.vdim = self._H.vdim
-		else:
-			self.shape_free = shape_free
-
 		self.disassociate_ad = disassociate_ad
+		self.shape_free = shape_free
+		self.inv_inner = inv_inner
+
+		if self.is_metric and self.shape_free is None and vdim==-1: vdim = self._H.vdim
 		if vdim!=-1: self.vdim = vdim
+		#vdim = None is reserved for Hamiltonians with scalar state and impulsion
 
 	@property
 	def is_separable(self):
@@ -114,9 +114,18 @@ class Hamiltonian(object):
 		"""
 		assert self.is_separable
 		x_ad = ad.Sparse2.identity(shape=self.shape_free)
-		self._H = tuple(scipy.sparse.coo_matrix(f(x_ad).triplets()).tocsc()
-			if callable(f) else f
-			for f in self._H)
+		ham = []
+		for f in self._H:
+			if callable(f): 
+				f_ad = f(x_ad)
+				# simplify_ad is not efficiently applicable here, 
+				# because it needs to run before summation
+				#for _ in range(simplify_ad): f_ad.simplify_ad()
+				spmat  = scipy.sparse.coo_matrix(f_ad.triplets()).tocsc()
+				ham.append(spmat)
+			else: 
+				ham.append(f)
+		self._H = tuple(ham)
 
 	def H(self,q,p):
 		"""
@@ -161,10 +170,7 @@ class Hamiltonian(object):
 		else:
 			return ad.apply_linear_mapping(f,x)
 
-	def DqH(self,q,p):
-		"""
-		Differentiates the Hamiltonian, w.r.t. position.
-		"""
+	def _DqH(self,q,p):
 		self._checkdim(q)
 		if self.is_separable:
 			return self._gradient(self._H[0],q)
@@ -175,10 +181,7 @@ class Hamiltonian(object):
 		else: 
 			return self._gradient_ad(self._H(q_ad,p))
 
-	def DpH(self,q,p):
-		"""
-		Differentiates the Hamiltonian, w.r.t. impulsion.
-		"""
+	def _DpH(self,q,p):
 		self._checkdim(p)
 		if self.is_separable:
 			return self._gradient(self._H[1],p)
@@ -187,6 +190,13 @@ class Hamiltonian(object):
 		else: 
 			p_ad,q = self._identity_ad(p,noad=q)
 			return self._gradient_ad(self._H(q,self._identity_ad(p)))
+
+	def DqH(self,q,p):
+		"""Differentiates the Hamiltonian, w.r.t. position."""
+		return inv_inner*self._DqH(q,p)
+	def DpH(self,q,p):
+		"""Differentiates the Hamiltonian, w.r.t. impulsion."""
+		return inv_inner*self._DpH(q,p)
 
 	def flow(self,q,p):
 		"""

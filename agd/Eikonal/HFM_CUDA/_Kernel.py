@@ -115,7 +115,6 @@ def SetKernel(self):
 		help="Options passed via cupy.RawKernel to the cuda compiler")
 
 	eikonal.source += model_source+self.cuda_date_modified
-	print(eikonal.source)
 	eikonal.module = GetModule(eikonal.source,self.cuoptions)
 	# ---- Produce a second kernel for computing the geodesic flow ---
 	flow = self.kernel_data['flow']

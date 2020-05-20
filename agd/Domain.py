@@ -519,19 +519,14 @@ class Dirichlet:
 			raise ValueError("Error : gridscale is axis dependent")
 		return hmax
 
-	@property
-	def vdim(self): return len(self.grid)
-	
 	@property 
-	def shape(self): 
-		return self.grid.shape[1:]
-	
-	def as_field(self,arr,conditional=True):
-		return fd.as_field(arr,self.shape,conditional=conditional)
+	def shape(self): return self.grid.shape[1:]
+	@property
+	def vdim(self): return len(self.grid)	
+	def as_field(self,arr,**kwargs): return fd.as_field(arr,self.shape,**kwargs)
 
 	@property
-	def not_interior(self):
-		return np.logical_not(self.interior)
+	def not_interior(self): return np.logical_not(self.interior)
 	
 	@property
 	def Mock(self):
@@ -641,22 +636,18 @@ class MockDirichlet:
 
 
 	@property
-	def interior(self):
-		return np.isnan(self.grid_values)
+	def interior(self): return np.isnan(self.grid_values)
+	@property
+	def not_interior(self): return np.logical_not(self.interior)
 
 	@property
-	def not_interior(self):
-		return np.logical_not(self.interior)
-	
+	def vdim(self): return self.grid_values.ndim	
 	@property
-	def shape(self): 
-		return self.grid_values.shape
-	
-	def as_field(self,arr,conditional=True):
-		return fd.as_field(arr,self.shape,conditional=conditional)
+	def shape(self): return self.grid_values.shape
+	def as_field(self,arr,**kwargs): return fd.as_field(arr,self.shape,**kwargs)
 
-	def DiffUpwind(self,u,offsets): 
-		return fd.DiffUpwind(u,offsets,self.gridscale,padding=self.padding)
+	def DiffUpwind(self,u,offsets,**kwargs): 
+		return fd.DiffUpwind(u,offsets,self.gridscale,padding=self.padding,**kwargs)
 
 	def DiffCentered(self,u,offsets): 
 		return fd.DiffCentered(u,offsets,self.gridscale,padding=self.padding)

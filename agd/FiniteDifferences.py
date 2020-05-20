@@ -38,7 +38,7 @@ def common_field(arrays,depths,shape=None):
 
 def BoundedSlices(slices,shape):
 	"""
-	Returns the input slices with None replace with the upper bound
+	Returns the input slices with None replaced with the upper bound
 	from the given shape
 	"""
 	if slices[-1]==Ellipsis:
@@ -114,13 +114,17 @@ def Diff2(u,offset,gridScale=1.,**kwargs):
 	return AlignedSum(u,offset,(1,0,-1),np.array((1,-2,1))/gridScale**2,**kwargs)
 
 
-def DiffUpwind(u,offset,gridScale=1.,**kwargs):
+def DiffUpwind(u,offset,gridScale=1.,order=1,**kwargs):
 	"""
-	Approximates <d u, offset> with first order accuracy.
+	Approximates <grad u, offset> with specified accuracy order.
 	Upwind first order finite difference in the specified direction.
+	Note: only order=1 yields degenerate elliptic schemes.
 	"""
-	return AlignedSum(u,offset,(1,0),np.array((1,-1))/gridScale,**kwargs)
-
+	if   order==1: multiples,weights = (1,0),(1.,-1.)
+	elif order==2: multiples,weights = (2,1,0),(-0.5,2.,-1.5)
+	elif order==3: multiples,weights = (3,2,1,0),(1./3.,-1.5,3.,-11./6.)
+	else: raise ValueError("Unsupported order")
+	return AlignedSum(u,offset,multiples,np.array(weights)/gridScale,**kwargs)
 
 # --------- Non-Degenerate elliptic finite differences ---------
 
@@ -130,21 +134,6 @@ def DiffCentered(u,offset,gridScale=1.,**kwargs):
 	Centered first order finite difference in the specified direction.
 	"""
 	return AlignedSum(u,offset,(1,-1),np.array((1,-1))/(2*gridScale),**kwargs)
-
-def DiffUpwind2(u,offset,gridScale=1.,**kwargs):
-	"""
-	Approximates <d u, offset> with second order accuracy.
-	Upwind finite difference scheme, but lacking the degenerate ellipticity property.
-	"""
-	return AlignedSum(u,offset,(2,1,0),np.array((-0.5,2.,-1.5))/gridScale,**kwargs)
-
-def DiffUpwind3(u,offset,gridScale=1.,**kwargs):
-	"""
-	Approximates <d u, offset> with third order accuracy.
-	Upwind finite difference scheme, but lacking the degenerate ellipticity property.
-	"""
-	return AlignedSum(u,offset,(3,2,1,0),
-		np.array((1./3.,-1.5,3.,-11./6.))/gridScale,**kwargs)
 
 def DiffCross(u,offset0,offset1,gridScale=1.,**kwargs):
 	"""

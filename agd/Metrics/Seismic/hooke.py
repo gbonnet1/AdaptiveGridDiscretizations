@@ -163,6 +163,11 @@ class Hooke(ImplicitBase):
 		elif self.vdim==3: return np.array([[0,0],[1,1],[2,2],[1,2],[0,2],[0,1]])
 		else: raise ValueError("Unsupported dimension")
 
+	def to_depth4(self):
+		Voigt = self._Voigt
+		d = self.vdim
+		return ad.array([ [ [ [ self.hooke[Voigt[i,j],Voigt[k,l]]
+			for i in range(d)] for j in range(d)] for k in range(d)] for l in range(d)])
 
 	def rotate(self,r):
 		other = copy.copy(self)
@@ -245,7 +250,7 @@ class Hooke(ImplicitBase):
 		"""
 		Turns a symmetric matrix into a vector, based on Voigt convention.
 		- sym : True -> use the upper triangular part of m. 
-		        Fals -> symmetrize the matrix m (adding its transpose).
+		        False -> symmetrize the matrix m (adding its transpose).
 		"""
 		assert(self.inverse_transformation is None)
 		m=ad.asarray(m)
@@ -325,13 +330,31 @@ class Hooke(ImplicitBase):
 		"""
 		Constructs a Hooke tensor from the Lame coefficients, in dimension 2 or 3.
 		"""
-		assert(not (ad.is_ad(Lambda) or ad.is_ad(Mu)) )
+		assert not (ad.is_ad(Lambda) or ad.is_ad(Mu)) 
 		hdim = cls._hdim(vdim)
 		hooke = np.zeros_like(Lambda,shape=(hdim,hdim))
 		hooke[:vdim,:vdim] += Lambda
 		for i in range(hdim): 
 			hooke[i,i] += Mu*(1.+(i<vdim))
 		return cls(hooke)
+
+	def contract(self,w):
+		"""Returns the contracted tensor c_ijkl w_j w_l in Einstein's notations."""
+		voi = self._Voigt
+		hooke,w = fd.common_field((self.hooke,w),depths=(2,1))
+		def c(i,j,k,l): return hooke[voi[i,j],voi[k,l]]
+		d = self.vdim; assert len(w)==d
+		return ad.array([[
+			sum(c(i,j,k,l)*w[j]*w[l] for j in range(d) for l in range(d))
+			for i in range(d)] for k in range(d)])
+
+	def waves(self,w,rho):
+		"""Returns the pulsation and direction of the waves with the given wave vector."""
+		m = np.moveaxis(self.contract(w),(0,1),(-2,-1))
+		eVal,eVec = np.linalg.eigh(m)
+		eVec = np.moveaxis(eVec,(-2,-1),(0,1))
+		return np.sqrt(eVal/rho),eVec
+
 
 
 
