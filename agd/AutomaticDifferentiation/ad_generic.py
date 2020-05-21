@@ -74,9 +74,7 @@ def apply_linear_mapping(matrix,rhs,niter=1):
 	"""
 	Applies the provided linear operator, to a dense AD variable of first or second order.
 	"""
-	def step(x):
-		nonlocal matrix
-		return np.dot(matrix,x) if isinstance(matrix,np.ndarray) else (matrix*x)
+	def step(x): return np.dot(matrix,x) if isinstance(matrix,np.ndarray) else (matrix*x)
 	operator = functional.recurse(step,niter)
 	return rhs.apply_linear_operator(operator) if is_ad(rhs) else operator(rhs)
 
@@ -84,9 +82,7 @@ def apply_linear_inverse(solver,matrix,rhs,niter=1):
 	"""
 	Applies the provided linear inverse to a dense AD variable of first or second order.
 	"""
-	def step(x):
-		nonlocal solver,matrix
-		return solver(matrix,x)
+	def step(x): return solver(matrix,x)
 	operator = functional.recurse(step,niter)
 	return rhs.apply_linear_operator(operator) if is_ad(rhs) else operator(rhs)
 
