@@ -15,7 +15,6 @@ H(q,p) = (1/2) F^*_q(p)^2.
 In written words, the Hamiltonian is the half square of the dual metric.
 """
 
-import scipy.sparse
 import numpy as np
 from copy import copy
 
@@ -53,47 +52,6 @@ class HamiltonianBase:
 		if self.inv_inner is not None:  grad = ad.apply_linear_mapping(self.inv_inner,grad)
 		return grad.reshape(self.shape_free+grad.shape[1:])
 
-	# def __init__(self, H, 
-	# 	shape_free=None, vdim=-1, disassociate_ad = False, inv_inner=1.,
-	# 	**kwargs):
-	# 	"""
-	# 	Inputs:
-	# 	- H : the hamiltonian, which may be either:
-	# 		* a metric
-	# 	 	* a callable function of two arguments (q,p)
-	# 		* a pair of callable functions, of two arguments (q,p) for a separable hamiltonian.
-	# 			(in that case, may also be scalars or matrices, for quadratic hamiltonians)
-	# 	- shape_free (optional) : the shape of the position and impulsion
-	# 	- vdim (optional): equivalent to shape_free = (vdim,)
-	# 	- disassociate_ad: hide the AD information when calling H.
-	# 	- inv_inner (optional, scalar or matrix) : 
-	# 		inverse inner product, for derivative normalization
-	# 	- **kwargs : if not empty, use dual metric interpolated with these arguments
-	# 	"""		
-	# 	if isinstance(H,list): H = tuple(H)
-
-	# 	if kwargs:
-	# 		assert isinstance(H,Base)
-	# 		H = H.dual()
-	# 		H.set_interpolation(**kwargs)
-
-	# 	self._H = H
-	# 	if self.is_separable: assert len(H)==2
-	# 	self.disassociate_ad = disassociate_ad
-	# 	self.shape_free = shape_free
-	# 	self.inv_inner = inv_inner
-
-	# 	if self.is_metric and self.shape_free is None and vdim==-1: vdim = self._H.vdim
-	# 	if vdim!=-1: self.vdim = vdim
-	# 	#vdim = None is reserved for Hamiltonians with scalar state and impulsion
-
-	# @property
-	# def is_separable(self):
-	# 	return isinstance(self._H,tuple)
-	# @property
-	# def is_metric(self):
-	# 	return isinstance(self._H,Base)
-
 	@property
 	def vdim(self):
 		"""
@@ -123,89 +81,6 @@ class HamiltonianBase:
 		"""
 		if self.shape_free is None: self.vdim = x.shape[0]
 		assert self.shape_free==tuple() or x.shape[:self.ndim_free]==self.shape_free
-
-	# def separable_quadratic_set_sparse_matrices(self):
-	# 	"""
-	# 	If the hamiltonian is separable and quadratic, replace the callable functions
-	# 	with sparse matrices, for faster evaluation.
-	# 	"""
-	# 	assert self.is_separable
-	# 	x_ad = ad.Sparse2.identity(shape=self.shape_free)
-	# 	ham = []
-	# 	for f in self._H:
-	# 		if callable(f): 
-	# 			f_ad = f(x_ad)
-	# 			# simplify_ad is not efficiently applicable here, 
-	# 			# because it needs to run before summation
-	# 			#for _ in range(simplify_ad): f_ad.simplify_ad()
-	# 			spmat  = scipy.sparse.coo_matrix(f_ad.triplets()).tocsc()
-	# 			ham.append(spmat)
-	# 		else: 
-	# 			ham.append(f)
-	# 	self._H = tuple(ham)
-
-	# def H(self,q,p):
-	# 	"""
-	# 	Evaluates the Hamiltonian, for a given position and impulsion.
-	# 	"""
-	# 	if self.is_separable:
-	# 		def value(f,x):
-	# 			"""Evaluates a function with the given structure."""
-	# 			if callable(f): return f(x)
-	# 			else: return 0.5*lp.dot_VV(x,ad.apply_linear_mapping(f,x))
-
-	# 		return sum(value(h,x) for (h,x) in zip(self._H,(q,p)) )
-	# 	elif self.is_metric:
-	# 		return self._H.at(q).norm2(p)
-	# 	else:
-	# 		return self._H(q,p)
-
-	# def _identity_ad(self,x,noad=None):
-	# 	x_ad = ad.Dense.identity(constant=x,shape_free=self.shape_free) 
-	# 	if self.disassociate_ad: 
-	# 		x_dis = ad.disassociate(x_ad,shape_free=self.shape_free)
-	# 		return (x_dis if noad is None else 
-	# 			(x_dis,ad.disassociate(type(x_ad)(noad),shape_free=self.shape_free)) )
-	# 	else: 
-	# 		return x_ad if noad is None else (x_ad,noad)
-
-	# def _gradient_ad(self,x):
-	# 	"""
-	# 	Extracts the gradient from an AD variable and reshapes as required.
-	# 	"""
-	# 	if self.disassociate_ad: x=ad.associate(x)
-	# 	g = x.gradient()
-	# 	return g.reshape(self.shape_free+g.shape[1:])
-
-	# def _gradient(self,f,x):
-	# 	"""
-	# 	Differentiates a function with the given structure.
-	# 	"""
-	# 	if callable(f):
-	# 		return self._gradient_ad( f(self._identity_ad(x)) )
-	# 	else:
-	# 		return ad.apply_linear_mapping(f,x)
-
-	# def _DqH(self,q,p):
-	# 	self._checkdim(q)
-	# 	if self.is_separable:
-	# 		return self._gradient(self._H[0],q)
-
-	# 	q_ad,p = self._identity_ad(q,noad=p)
-	# 	if self.is_metric:
-	# 		return self._gradient_ad(self._H.at(q_ad).norm2(p))
-	# 	else: 
-	# 		return self._gradient_ad(self._H(q_ad,p))
-
-	# def _DpH(self,q,p):
-	# 	self._checkdim(p)
-	# 	if self.is_separable:
-	# 		return self._gradient(self._H[1],p)
-	# 	elif self.is_metric:
-	# 		return self._H.at(q).gradient2(p)
-	# 	else: 
-	# 		p_ad,q = self._identity_ad(p,noad=q)
-	# 		return self._gradient_ad(self._H(q,self._identity_ad(p)))
 
 	def H(self,q,p):
 		"""Evaluates the Hamiltonian, at a given position and impulsion."""
