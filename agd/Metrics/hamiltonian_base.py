@@ -9,10 +9,6 @@ Hamiltonian in a manner compatible with automatic differentiation.
 Recall that Hamilton's equations read 
 dq/dt =  dH/dp
 dp/dt = -dH/dq
-
-Given a metric F, the corresponding canonical Hamiltonian is defined as 
-H(q,p) = (1/2) F^*_q(p)^2.
-In written words, the Hamiltonian is the half square of the dual metric.
 """
 
 import numpy as np

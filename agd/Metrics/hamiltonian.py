@@ -1,3 +1,6 @@
+# Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
+# Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
+
 import scipy.sparse
 
 from .. import AutomaticDifferentiation as ad
@@ -9,6 +12,7 @@ class MetricHamiltonian(HamiltonianBase):
 	def __init__(self,metric,inv_inner=None,**kwargs):
 		"""
 		Hamiltonian defined by an interpolated metric, which is dualized and interpolated.
+		H(q,p) = (1/2) F^*_q(p)^2.
 		- metric : dual defines the hamiltonian
 		- kwargs : passed to metric.dual().set_interpolation 
 		"""
