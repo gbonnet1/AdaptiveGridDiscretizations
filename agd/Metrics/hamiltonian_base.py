@@ -121,14 +121,15 @@ class HamiltonianBase:
 		dq,dp = self.flow(q,p)
 		return np.concatenate((dq,dp),axis=0).flatten()
 
-	def integrate(self,q,p,scheme,niter,T=1,path=False):
+	def integrate(self,q,p,scheme,niter=None,dt=None,T=None,path=False):
 		"""
 		Solves Hamilton's equations by running the scheme niter times.
 		Inputs : 
 			- q,p : Initial position and impulsion.
 			- scheme : ODE integration scheme. (string or callable)
-			- niter : number of steps
-			- T : total time
+			
+			- niter,dt,T : number of steps, time step, and total time
+			  (exactly two among the three must be specified)
 			- path : wether to return the intermediate steps
 		Output : 
 			- q,p if path is False. 
@@ -139,7 +140,14 @@ class HamiltonianBase:
 			schemes.update(self.symplectic_schemes())
 			scheme = schemes[scheme]
 
-		dt = T/niter
+		if (niter is None) + (T is None) + (dt is None) != 2: 
+			raise ValueError("Exactly two of niter, dt and T must be specified")
+		if T is None:    T  = niter*dt
+		elif dt is None: dt = T/niter
+		elif niter is None: 
+			niter = int(np.ceil(T/dt))
+			dt = T/niter
+
 		q,p = copy(q),copy(p)
 		if path: Q,P = [copy(q)],[copy(p)]
 

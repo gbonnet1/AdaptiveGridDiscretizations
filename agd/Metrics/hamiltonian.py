@@ -105,13 +105,8 @@ class QuadraticHamiltonian(HamiltonianBase):
 		return 0.5*(lp.dot_VV(q,ad.apply_linear_mapping(self.Mq,q)) 
 			+ lp.dot_VV(p,ad.apply_linear_mapping(self.Mp,p)) )  
 
-	def _DqH(self,q,_):
-		q_ = self.flat(q)
-		return ad.apply_linear_mapping(self.Mq,q)
-
-	def _DpH(self,_,p):
-		p_ = self.flat(p)
-		return ad.apply_linear_mapping(self.Mp,p)
+	def _DqH(self,q,_): return ad.apply_linear_mapping(self.Mq,self.flat(q))
+	def _DpH(self,_,p): return ad.apply_linear_mapping(self.Mp,self.flat(p))
 
 	@classmethod
 	def spmat(cls,f,x,simplify_ad=None):
