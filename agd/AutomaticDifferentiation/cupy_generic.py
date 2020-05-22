@@ -171,7 +171,17 @@ def cupy_friendly(arg):
 		return functional.decorate_module_functions(arg,cupy_get_args)
 
 
+
 	if isinstance(arg,types.FunctionType):
+		if arg is np.allclose:
+			print("Setting float32 compatible default values atol=rtol=1e-5 in np.allclose")
+			def allclose(*args,**kwargs):
+				kwargs.setdefault('atol',1e-5)
+				kwargs.setdefault('rtol',1e-5)
+				return np.allclose(*args,**kwargs)
+			return allclose
+
+		# Default behavior
 		print(f"Returning a copy of function {arg.__name__} which accepts cupy arrays as input.")
 		return cupy_get_args(arg)
 
