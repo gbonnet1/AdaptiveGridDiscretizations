@@ -140,7 +140,7 @@ class HamiltonianBase:
 			schemes.update(self.symplectic_schemes())
 			scheme = schemes[scheme]
 
-		if (niter is None) + (T is None) + (dt is None) != 2: 
+		if (niter is None) + (T is None) + (dt is None) != 1: 
 			raise ValueError("Exactly two of niter, dt and T must be specified")
 		if T is None:    T  = niter*dt
 		elif dt is None: dt = T/niter

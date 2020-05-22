@@ -332,7 +332,7 @@ class Hooke(ImplicitBase):
 		"""
 		assert not (ad.is_ad(Lambda) or ad.is_ad(Mu)) 
 		hdim = cls._hdim(vdim)
-		hooke = np.zeros_like(Lambda,shape=(hdim,hdim))
+		hooke = ad.cupy_support.zeros_like(Lambda,shape=(hdim,hdim))
 		hooke[:vdim,:vdim] += Lambda
 		for i in range(hdim): 
 			hooke[i,i] += Mu*(1.+(i<vdim))

@@ -100,7 +100,7 @@ def TakeAtOffset(u,offset, padding=np.nan, **kwargs):
 
 def AlignedSum(u,offset,multiples,weights,**kwargs):
 	"""Returns sum along the direction offset, with specified multiples and weights"""
-	return sum(TakeAtOffset(u,mult*np.asarray(offset),**kwargs)*weight 
+	return sum(TakeAtOffset(u,mult*ad.asarray(offset),**kwargs)*weight 
 		for mult,weight in zip(multiples,weights))
 
 
@@ -213,14 +213,14 @@ def UniformGridInterpolator1D(bounds,values,mode='clip',axis=-1):
 		return result
 	return interp
 
-def AxesOrderingBounds(grid):
-	dim = len(grid)
-	lbounds = grid.__getitem__((slice(None),)+(0,)*dim)
-	ubounds = grid.__getitem__((slice(None),)+(-1,)*dim)
+# def AxesOrderingBounds(grid):
+# 	dim = len(grid)
+# 	lbounds = grid.__getitem__((slice(None),)+(0,)*dim)
+# 	ubounds = grid.__getitem__((slice(None),)+(-1,)*dim)
 
-	def active(i):
-		di = grid.__getitem__((slice(None),)+(0,)*i+(1,)+(0,)*(dim-1-i))
-		return np.argmax(np.abs(di-lbounds))
-	axes = tuple(active(i) for i in range(dim))
+# 	def active(i):
+# 		di = grid.__getitem__((slice(None),)+(0,)*i+(1,)+(0,)*(dim-1-i))
+# 		return np.argmax(np.abs(di-lbounds))
+# 	axes = tuple(active(i) for i in range(dim))
 
-	return axes,lbounds,ubounds 
+# 	return axes,lbounds,ubounds 
