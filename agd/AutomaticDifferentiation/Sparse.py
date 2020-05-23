@@ -192,8 +192,8 @@ class spAD(Base.baseAD):
 		if dense_size_ad is None: dense_size_ad = self.bound_ad()
 		coef = np.zeros(self.shape+(dense_size_ad,))
 		for c,i in zip(mvax(self.coef),mvax(self.index)):
-			coef_new = _add_dim(c)+np.take_along_axis(coef,_add_dim(i),axis=-1)
-			np.put_along_axis(coef,_add_dim(i),coef_new,axis=-1)
+			coef_new = _add_dim(c)+cps.take_along_axis(coef,_add_dim(i),axis=-1)
+			cps.put_along_axis(coef,_add_dim(i),coef_new,axis=-1)
 		return Dense.denseAD(self.value,coef)
 
 	#Linear algebra
@@ -259,35 +259,39 @@ class spAD(Base.baseAD):
 			other = other.reshape(tuple())
 			self.coef,self.index = other.coef,other.index
 			return
+
+		# Sort indices by increasing values
 		bad_index = np.iinfo(self.index.dtype).max
 		bad_pos = self.coef==0
 		self.index[bad_pos] = bad_index
 		ordering = self.index.argsort(axis=-1)
-		self.coef = np.take_along_axis(self.coef,ordering,axis=-1)
-		self.index = np.take_along_axis(self.index,ordering,axis=-1)
+		self.coef  = cps.take_along_axis(self.coef, ordering,axis=-1)
+		self.index = cps.take_along_axis(self.index,ordering,axis=-1)
 
+		# Accumulate coefficients associated with identical indices
 		cum_coef = cps.zeros_like(self.value)
-		indices = cps.zeros_like(self.index,shape=self.shape)
+		indices  = cps.zeros_like(self.index,shape=self.shape)
 		size_ad = self.size_ad
-		self.coef = np.moveaxis(self.coef,-1,0)
+		self.coef  = np.moveaxis(self.coef, -1,0)
 		self.index = np.moveaxis(self.index,-1,0)
 		prev_index = np.copy(self.index[0])
 
 		for i in range(size_ad):
 			 # Note : self.index, self.coef change during iterations
 			ind,co = self.index[i],self.coef[i]
-			pos_new_index = np.logical_and(prev_index != ind,ind!=bad_index)
+			pos_new_index = np.logical_and(prev_index!=ind, ind!=bad_index)
 			pos_old_index = np.logical_not(pos_new_index)
 			prev_index[pos_new_index] = ind[pos_new_index]
-			cum_coef[pos_new_index]=co[pos_new_index]
-			cum_coef[pos_old_index]+=co[pos_old_index]
-			indices[pos_new_index]+=1
+			cum_coef[pos_new_index]  = co[pos_new_index]
+			cum_coef[pos_old_index] += co[pos_old_index]
+			indices[pos_new_index] += 1
 			indices_exp = cps.expand_dims(indices,axis=0)
-			np.put_along_axis(self.index,indices_exp,prev_index,axis=0)
-			np.put_along_axis(self.coef,indices_exp,cum_coef,axis=0)
+			cps.put_along_axis(self.index,indices_exp,prev_index,axis=0)
+			cps.put_along_axis(self.coef, indices_exp,cum_coef,axis=0)
 
+		# Eliminate meaningless coefficients, after largest of indices
 		indices[self.index[0]==bad_index]=-1
-		indices_max = np.max(indices,axis=None)
+		indices_max = int(np.max(indices,axis=None))
 		size_ad_new = indices_max+1
 		self.coef  = self.coef[:size_ad_new]
 		self.index = self.index[:size_ad_new]
@@ -303,8 +307,8 @@ class spAD(Base.baseAD):
 		while np.min(indices,axis=None)<indices_max:
 			indices=np.minimum(indices_max,1+indices)
 			indices_exp = cps.expand_dims(indices,axis=0)
-			np.put_along_axis(self.coef, indices_exp,coef_end,axis=0)
-			np.put_along_axis(self.index,indices_exp,index_end,axis=0)
+			cps.put_along_axis(self.coef, indices_exp,coef_end,axis=0)
+			cps.put_along_axis(self.index,indices_exp,index_end,axis=0)
 
 		self.coef  = np.moveaxis(self.coef,0,-1)
 		self.index = np.moveaxis(self.index,0,-1)

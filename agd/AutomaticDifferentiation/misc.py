@@ -185,30 +185,33 @@ def recurse(step,niter=1):
 def flatten(a):
 	return a.flatten() if isndarray(a) else np.array([a])
 
-def spsolve(mat,rhs):
+def tocsr(triplets):
+	"""Turns sparse matrix given as triplets into a csr (compressed sparse row) matrix"""
+	if from_cupy(triplets[0]): import cupyx; spmod = cupyx.scipy.sparse
+	else: import scipy.sparse as spmod
+	return spmod.coo_matrix(triplets).tocsr()	
+
+def spsolve(triplets,rhs):
 	"""
 	Solves a sparse linear system where the matrix is given as triplets.
 	"""
-	if from_cupy(mat[0]):
-		import cupy; spmod = cupy.cupyx.scipy.sparse
-		spmat = spmod.coo_matrix(mat)
-		return spmod.linalg.lsqr(spmat,rhs) # Only available solver
+	if from_cupy(triplets[0]): 
+		import cupyx; 
+		solver = cupyx.scipy.sparse.linalg.lsqr # Only available solver
 	else:
-		import scipy.sparse; import scipy.sparse.linalg
-		return scipy.sparse.linalg.spsolve(
-		scipy.sparse.coo_matrix(mat).tocsr(),rhs)
+		import scipy.sparse.linalg
+		solver = scipy.sparse.linalg.spsolve
+	return solver(tocsr(triplets),rhs)		
 
-def spapply(mat,rhs,crop_rhs=False):
+def spapply(triplets,rhs,crop_rhs=False):
 	"""
 	Applies a sparse matrix, given as triplets, to an rhs.
 	"""
 	if crop_rhs: 
-		cols = mat[1][1]
+		cols = triplets[1][1]
 		if len(cols)==0: 
 			return cps.zeros_like(rhs,shape=(0,))
 		size = 1+np.max(cols)
 		if rhs.shape[0]>size:
 			rhs = rhs[:size]
-	if from_cupy(rhs): import cupy; spmod = cupy.cupyx.scipy.sparse
-	else: import scipy.sparse as spmod
-	return spmod.coo_matrix(mat).tocsr()*rhs
+	return tocsr(triplets)*rhs

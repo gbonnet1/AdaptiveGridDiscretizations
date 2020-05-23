@@ -63,10 +63,11 @@ def OffsetToIndex(shape,offset, mode='clip', uniform=None, where=(Ellipsis,)):
 
 	odim = (offset.ndim-1) if uniform else (offset.ndim - ndim-1) # Dimensions for distinct offsets 
 	everywhere = where==(Ellipsis,)
+	xp=ad.cupy_generic.get_array_module(offset)
 
-	grid = (np.mgrid[tuple(slice(n) for n in shape)]
+	grid = (xp.mgrid[tuple(slice(n) for n in shape)]
 		if everywhere else
-		np.squeeze(np.mgrid[BoundedSlices(where,shape)],
+		np.squeeze(xp.mgrid[BoundedSlices(where,shape)],
 		tuple(1+i for i,s in enumerate(where) if not isinstance(s,slice)) ) )
 	grid = grid.reshape( (ndim,) + (1,)*odim+grid.shape[1:])
 
@@ -74,23 +75,19 @@ def OffsetToIndex(shape,offset, mode='clip', uniform=None, where=(Ellipsis,)):
 		offset = offset[(slice(None),)*(1+odim)+where]
 
 	neigh = grid + (offset.reshape(offset.shape + (1,)*ndim) if uniform else offset)
-	inside = np.full(neigh.shape[1:],True) # Weither neigh falls out the domain
+	bound = xp.array(shape,dtype=neigh.dtype).reshape((ndim,)+(1,)*(neigh.ndim-1))
 
-	if mode=='wrap': # Apply periodic bc
-		for coord,bound in zip(neigh,shape):
-			coord %= bound
-	else: #identify bad indices
-		for coord,bound in zip(neigh,shape):
-			inside = np.logical_and.reduce( (inside, coord>=0, coord<bound) )
+	if mode=='wrap': neigh = np.mod(neigh,bound); inside=True
+	else: inside = np.logical_and(np.all(neigh>=0,axis=0),np.all(neigh<bound,axis=0))
 
-	neighIndex = np.ravel_multi_index(neigh, shape, mode=mode)
+	neighIndex = ad.cupy_support.ravel_multi_index(neigh, shape, mode=mode)
 	return neighIndex, inside
 
 def TakeAtOffset(u,offset, padding=np.nan, **kwargs):
 	mode = 'wrap' if padding is None else 'clip'
 	neighIndex, inside = OffsetToIndex(u.shape,offset,mode=mode, **kwargs)
 
-	values = u.flatten()[neighIndex]
+	values = u.reshape(-1)[neighIndex]
 	if padding is not None:
 		if ad.isndarray(values):
 			values[np.logical_not(inside)] = padding

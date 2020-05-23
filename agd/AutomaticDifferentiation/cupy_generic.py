@@ -10,10 +10,11 @@ import itertools
 import numpy as np
 import sys
 import functools
-from . import functional
-from .Base import cp,isndarray,from_cupy,is_ad,array # dummy cp and _cp_ndarray if not in the system
 import types
 from copy import copy
+
+from . import functional
+from .Base import cp,isndarray,from_cupy,is_ad,array # dummy cp and _cp_ndarray if not in the system
 
 def get_array_module(data,iterables=tuple()):
 	"""Returns the cupy module or the numpy module, depending on data"""

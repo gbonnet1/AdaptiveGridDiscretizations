@@ -106,7 +106,7 @@ class spAD2(Base.baseAD):
 				np.concatenate((coef2_a,coef2_b,coef2_ab,coef2_ab),axis=-1),
 				np.concatenate((index_row_a,index_row_b,index2_a,index2_b),axis=-1),
 				np.concatenate((index_col_a,index_col_b,index2_b,index2_a),axis=-1))
-		elif isinstance(other,np.ndarray):
+		elif self.isndarray(other):
 			value = self.value*other
 			coef1 = _add_dim(other)*self.coef1
 			index = np.broadcast_to(self.index,coef1.shape)
@@ -183,9 +183,19 @@ class spAD2(Base.baseAD):
 
 	def __getitem__(self,key):
 		ekey = misc.key_expand(key)
-		return self.new(self.value[key], 
-			self.coef1[ekey], self.index[ekey], 
-			self.coef2[ekey], self.index_row[ekey], self.index_col[ekey])
+		try:
+			return self.new(self.value[key], 
+				self.coef1[ekey], self.index[ekey], 
+				self.coef2[ekey], self.index_row[ekey], self.index_col[ekey])
+		except ZeroDivisionError: # Some cupy versions fail indexing correctly if size==0
+			value = self.value[ekey]
+			shape = value.shape
+			def take(arr): 
+				size_ad = arr.shape[-1]
+				return arr[ekey] if size_ad>0 else cps.zeros_like(arr,shape=(*shape,size_ad))
+			return self.new(self.value[key], 
+				take(self.coef1), take(self.index), 
+				take(self.coef2), take(self.index_row), take(self.index_col))
 
 	def __setitem__(self,key,other):
 		ekey = misc.key_expand(key)
@@ -214,6 +224,7 @@ class spAD2(Base.baseAD):
 
 	def reshape(self,shape,order='C'):
 		shape = misc._to_tuple(shape)
+		if shape==(-1,): shape = (self.size,) # Otherwise bug when size_ad2==0
 		shape1 = shape+(self.size_ad1,)
 		shape2 = shape+(self.size_ad2,)
 		return self.new(self.value.reshape(shape,order=order),
@@ -322,10 +333,11 @@ class spAD2(Base.baseAD):
 		spHelper1.simplify_ad()
 		self.coef1,self.index = spHelper1.coef,spHelper1.index
 
-		n_col = 1+np.max(self.index_col)
-		spHelper2 = Sparse.new(self.value,self.coef2,self.index_row*n_col + self.index_col)
-		spHelper2.simplify_ad()
-		self.coef2,self.index_row,self.index_col = spHelper2.coef, spHelper2.index//n_col, spHelper2.index%n_col
+		if self.size_ad2>0: # Otherwise empty max
+			n_col = 1+np.max(self.index_col)
+			spHelper2 = Sparse.new(self.value,self.coef2,self.index_row*n_col + self.index_col)
+			spHelper2.simplify_ad()
+			self.coef2,self.index_row,self.index_col = spHelper2.coef, spHelper2.index//n_col, spHelper2.index%n_col
 
 # -------- End of class spAD2 -------
 

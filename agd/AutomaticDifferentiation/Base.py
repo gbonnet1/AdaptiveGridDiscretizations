@@ -18,7 +18,6 @@ except ModuleNotFoundError:
 	cp=None
 	class _cp_ndarray: pass
 
-
 # Elementary functions and their derivatives
 # No implementation of arctan2, or hypot, which have two args
 class Taylor1: # first order Taylor expansions
