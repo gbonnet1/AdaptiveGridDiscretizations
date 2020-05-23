@@ -130,7 +130,8 @@ class HamiltonianBase:
 			
 			- niter,dt,T : number of steps, time step, and total time
 			  (exactly two among the three must be specified)
-			- path : wether to return the intermediate steps
+			- path : wether to return the intermediate steps. 
+			   (If positive number, period of intermediate steps to return)
 		Output : 
 			- q,p if path is False. 
 			Otherwise [q0,...,qn],[p0,...,pn],[t0,..tn], with n=niter, tn=T.
@@ -146,21 +147,21 @@ class HamiltonianBase:
 		elif dt is None: dt = T/niter
 		elif niter is None: 
 			niter = int(np.ceil(T/dt))
-			dt = T/niter
+			dt = T/niter # slightly decreased time step
 
 		q,p = copy(q),copy(p)
 		if path: Q,P = [copy(q)],[copy(p)]
 
 		for i in range(niter):
 			q,p = scheme(q,p,dt)
-			if path: Q.append(copy(q)); P.append(copy(p))
+			if path and not i%path: Q.append(copy(q)); P.append(copy(p))
 
 		if path: 
 			ndim_free = len(self.shape_free)
 			return (np.stack(Q,axis=ndim_free),
-				np.stack(P,axis=ndim_free),
-				np.linspace(0,T,niter+1))
-		return q,p
+				    np.stack(P,axis=ndim_free),
+				    np.linspace(0,T,niter+1))
+		else: return q,p
 
 	def nonsymplectic_schemes(self):
 		"""

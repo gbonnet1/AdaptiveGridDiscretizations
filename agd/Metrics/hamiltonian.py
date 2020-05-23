@@ -122,7 +122,7 @@ class QuadraticHamiltonian(HamiltonianBase):
 		if simplify_ad is None: simplify_ad = f_ad.ndim > 0
 		for i in range(simplify_ad): f_ad.simplify_ad()
 		f_ad = f_ad.sum()
-		return ad.misc.tocsr(f_ad.triplets()) #scipy.sparse.coo_matrix(f_ad.triplets()).tocsc()
+		return ad.misc.tocsr(f_ad.triplets()) 
 
 	def set_spmat(self,x,**kwargs):
 		self.shape_free = x.shape
