@@ -335,7 +335,8 @@ class spAD2(Base.baseAD):
 
 		if self.size_ad2>0: # Otherwise empty max
 			n_col = 1+np.max(self.index_col)
-			spHelper2 = Sparse.new(self.value,self.coef2,self.index_row*n_col + self.index_col)
+			index = self.index_row.astype(np.int64)*n_col + self.index_col.astype(np.int64)
+			spHelper2 = Sparse.new(self.value,self.coef2,index)
 			spHelper2.simplify_ad()
 			self.coef2,self.index_row,self.index_col = spHelper2.coef, spHelper2.index//n_col, spHelper2.index%n_col
 
