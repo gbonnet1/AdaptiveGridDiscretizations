@@ -16,10 +16,13 @@ typedef int IndexT;
 const Index IndexMax = ...; // Maximal value of an Int
 typedef float Scalar;
 const int bound_ad; // An upper bound on size_ad
+#define atol_macro true
 */
 __constant__ int size_ad;
 __constant__ SizeT size_tot;
+#if atol_macro
 __constant__ Scalar atol = 0.;
+#endif
 
 extern "C" {
 
@@ -66,6 +69,7 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 
 	int new_size_ad = i_acc+1;
 	
+	#if atol_macro
 	// Discard coefficients which are below the specified threshold
 	i_acc=0;
 	for(int i=0; i<new_size_ad; ++i){
@@ -76,7 +80,8 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 		}
 	}
 	new_size_ad = i_acc+1;
-
+	#endif
+	
 	// Fill with dummy values the useless coefs
 	const IndexT index_dummy = n_t;
 	for(int i=new_size_ad; i<size_ad; ++i){

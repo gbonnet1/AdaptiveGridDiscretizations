@@ -131,7 +131,7 @@ void HFMNeighbors(
 	}
 	)
 
-	NetworkSort::sort<nact>(v,order);
+	network_sort<nact>(v,order);
 
 } // HFMNeighbors
 
