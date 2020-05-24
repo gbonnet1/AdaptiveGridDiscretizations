@@ -265,7 +265,12 @@ class spAD(Base.baseAD):
 		np.concatenate(tuple(_pad_last(e.index,size_ad) for e in elems2),axis=axis1))
 
 	# Memory optimization
-	def simplify_ad(self):
+	def simplify_ad(self,atol=None):
+		"""
+		Compresses the AD information by merging suitable coefficients, and optionally 
+		removing negligible ones.
+		- atol : absolute tolerance to discard a coefficient.
+		"""
 		if self.size_ad==0: return # Nothing to simplify
 		if len(self.shape)==0: # Add dimension to scalar-like arrays
 			other = self.reshape((1,))
@@ -331,8 +336,20 @@ class spAD(Base.baseAD):
 
 		self.index[self.index==-1]=0 # Corresponding coefficient is zero anyway.
 
-			
+		# Optionally remove coefficients below tolerance threshold
+		# ? rtol : relative tolerance to discard a coefficient (compared to largest in row)
+		if atol is not None:
+			bad_pos = np.abs(self.coef) <= atol
+			self.index[bad_pos] = bad_index
+			self.coef[ bad_pos] = 0.
+			ordering = self.index.argsort(axis=-1)
+			self.coef  = cps.take_along_axis(self.coef, ordering,axis=-1)
+			self.index = cps.take_along_axis(self.index,ordering,axis=-1)
 
+			new_size_ad = self.size_ad - np.min(np.sum(bad_pos,axis=-1))
+			self.coef = self.coef[...,:new_size_ad]
+			self.index = self.index[...,:new_size_ad]
+			self.index[self.index==bad_index]=0 # 
 
 # -------- End of class spAD -------
 

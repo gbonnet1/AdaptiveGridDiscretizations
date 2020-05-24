@@ -120,9 +120,8 @@ class QuadraticHamiltonian(HamiltonianBase):
 		x_ad = ad.Sparse2.identity(constant=x)
 		f_ad = f(x_ad) 
 		if simplify_ad is None: simplify_ad = f_ad.ndim > 0
-		for i in range(simplify_ad): f_ad.simplify_ad()
-		f_ad = f_ad.sum()
-		return ad.misc.tocsr(f_ad.triplets()) 
+		if simplify_ad: f_ad.simplify_ad(atol=0.)
+		return f_ad.hessian_operator()
 
 	def set_spmat(self,x,**kwargs):
 		self.shape_free = x.shape

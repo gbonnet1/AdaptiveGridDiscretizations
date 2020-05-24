@@ -345,16 +345,16 @@ class spAD2(Base.baseAD):
 		np.concatenate(tuple(_pad_last(e.index_row,size_ad2)  for e in elems2),axis=axis1),
 		np.concatenate(tuple(_pad_last(e.index_col,size_ad2)  for e in elems2),axis=axis1))
 
-	def simplify_ad(self):
+	def simplify_ad(self,*args,**kwargs):
 		spHelper1 = Sparse.new(self.value,self.coef1,self.index)
-		spHelper1.simplify_ad()
+		spHelper1.simplify_ad(*args,**kwargs)
 		self.coef1,self.index = spHelper1.coef,spHelper1.index
 
 		if self.size_ad2>0: # Otherwise empty max
 			n_col = 1+np.max(self.index_col)
 			index = self.index_row.astype(np.int64)*n_col + self.index_col.astype(np.int64)
 			spHelper2 = Sparse.new(self.value,self.coef2,index)
-			spHelper2.simplify_ad()
+			spHelper2.simplify_ad(*args,**kwargs)
 			self.coef2,self.index_row,self.index_col = spHelper2.coef, spHelper2.index//n_col, spHelper2.index%n_col
 
 # -------- End of class spAD2 -------
