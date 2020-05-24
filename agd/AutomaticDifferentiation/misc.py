@@ -10,8 +10,9 @@ from . import ad_generic
 from . import cupy_support as cps
 
 # ------- Ugly utilities -------
-def _add_dim(a):		return cps.expand_dims(a,axis=-1)	
-def _add_dim2(a):		return _add_dim(_add_dim(a))
+def add_ndim(arr,n): return np.reshape(arr,arr.shape+(1,)*n)
+def _add_dim(a):     return cps.expand_dims(a,axis=-1)	
+def _add_dim2(a):    return _add_dim(_add_dim(a))
 
 def _to_tuple(a): return tuple(a) if hasattr(a,"__iter__") else (a,)
 
@@ -182,8 +183,8 @@ def recurse(step,niter=1):
 
 # ------- Common functions -------
 
-def flatten(a):
-	return a.flatten() if isndarray(a) else np.array([a])
+#def flatten(a):
+#	return a.flatten() if isndarray(a) else np.array([a])
 
 def tocsr(triplets):
 	"""Turns sparse matrix given as triplets into a csr (compressed sparse row) matrix"""

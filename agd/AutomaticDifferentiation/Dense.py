@@ -45,6 +45,11 @@ class denseAD(Base.baseAD):
 		return "denseAD("+repr(self.value)+","+misc._prep_nl(repr(self.coef))+")"
 
 	# Operators
+	def as_func(self,h):
+		"""Replaces the symbolic perturbation with h"""
+		value,coef = (misc.add_ndim(e,h.ndim-1) for e in (self.value,self.coef))
+		return value+(coef*h).sum(axis=self.ndim)
+
 	def __add__(self,other):
 		if self.is_ad(other):
 			return self.new(self.value+other.value, _add_coef(self.coef,other.coef))

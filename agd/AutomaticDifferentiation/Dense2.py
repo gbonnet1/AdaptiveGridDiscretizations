@@ -47,6 +47,12 @@ class denseAD2(Base.baseAD):
 		return "denseAD2("+repr(self.value)+","+misc._prep_nl(repr(self.coef1))+","+misc._prep_nl(repr(self.coef2)) +")"
 
 	# Operators
+	def as_func(self,h):
+		"""Replaces the symbolic perturbation with h"""
+		value,coef1,coef2 = (misc.add_ndim(e,h.ndim-1) for e in (self.value,self.coef1,self.coef2))
+		hh = cps.expand_dims(h,axis=0) * cps.expand_dims(h,axis=1)
+		return value+(coef1*h).sum(axis=self.ndim) + 0.5*(hh*coef2).sum(axis=(self.ndim,self.ndim+1))
+
 	def __add__(self,other):
 		if self.is_ad(other):
 			return self.new(self.value+other.value,_add_coef(self.coef1,other.coef1),_add_coef(self.coef2,other.coef2))

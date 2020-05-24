@@ -60,6 +60,11 @@ class spAD(Base.baseAD):
 		return "spAD"+repr((self.value,self.coef,self.index))	
 
 	# Operators
+	def as_func(self,h):
+		"""Replaces the symbolic perturbation with h"""
+		value,coef = (misc.add_ndim(e,h.ndim-1) for e in (self.value,self.coef))
+		return value+(coef*h[self.index]).sum(axis=self.ndim)
+
 	def __add__(self,other):
 		if self.is_ad(other):
 			value = self.value+other.value
@@ -187,6 +192,7 @@ class spAD(Base.baseAD):
 	# Conversion
 	def bound_ad(self):
 		return 1+int(cps.max(self.index,initial=-1))
+
 	def to_dense(self,dense_size_ad=None):
 		def mvax(arr): return np.moveaxis(arr,-1,0)
 		if dense_size_ad is None: dense_size_ad = self.bound_ad()
@@ -205,6 +211,14 @@ class spAD(Base.baseAD):
 
 		pos=coef!=0
 		return (coef[pos],(row[pos],column[pos]))
+
+	def tangent_operator(self):
+		"""Opaque matrix class representing the tangent linear operator"""
+		return misc.tocsr(self.triplets())
+	def adjoint_operator(self):
+		"""Opaque matrix class representing the adjoint linear operator"""
+		coef,(row,column) = self.triplets()
+		return misc.tocsr((coef,(column,row)))
 
 	def solve(self,raw=False):
 		"""

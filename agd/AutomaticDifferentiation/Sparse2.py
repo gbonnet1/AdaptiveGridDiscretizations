@@ -68,6 +68,12 @@ class spAD2(Base.baseAD):
 		return "spAD2"+repr((self.value,self.coef1,self.index,self.coef2,self.index_row,self.index_col))	
 
 	# Operators
+	def as_func(self,h):
+		"""Replaces the symbolic perturbation with h"""
+		value,coef1,coef2 = (misc.add_ndim(e,h.ndim-1) for e in (self.value,self.coef1,self.coef2))
+		return (value+(coef1*h[self.index]).sum(axis=self.ndim)
+			+0.5*(coef2*h[self.index_row]*h[self.index_col]).sum(axis=self.ndim))
+
 	def __add__(self,other):
 		if self.is_ad(other):
 			value = self.value+other.value; shape = value.shape
@@ -288,7 +294,18 @@ class spAD2(Base.baseAD):
 
 	#Linear algebra
 	def triplets(self):
+		"""The hessian operator, presented as triplets"""
 		return (self.coef2,(self.index_row,self.index_col))
+
+	def hessian_operator(self):
+		"""
+		The hessian operator, presented as an opaque matrix class, supporting mul.
+		Implicitly sums over all axes. Recommendation : apply simplify_ad before call.
+		"""
+		return misc.tocsr(self.sum().triplets())
+
+	def tangent_operator(self): return self.to_first().tangent_operator()
+	def adjoint_operator(self): return self.to_first().adjoint_operator()
 
 	def solve_stationnary(self,raw=False):
 		"""
