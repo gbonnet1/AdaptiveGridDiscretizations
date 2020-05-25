@@ -297,12 +297,12 @@ class spAD2(Base.baseAD):
 		"""The hessian operator, presented as triplets"""
 		return (self.coef2,(self.index_row,self.index_col))
 
-	def hessian_operator(self):
+	def hessian_operator(self,shape=None):
 		"""
 		The hessian operator, presented as an opaque matrix class, supporting mul.
 		Implicitly sums over all axes. Recommendation : apply simplify_ad before call.
 		"""
-		return misc.tocsr(self.sum().triplets())
+		return misc.tocsr(self.sum().triplets(),shape=shape)
 
 	def tangent_operator(self): return self.to_first().tangent_operator()
 	def adjoint_operator(self): return self.to_first().adjoint_operator()

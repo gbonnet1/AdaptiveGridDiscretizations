@@ -36,6 +36,14 @@ def common_field(arrays,depths,shape=None):
 	return tuple(None if arr is None else as_field(arr,shape,depth=depth) 
 		for (arr,depth) in zip(arrays,depths))
 
+def round_up_ratio(num,den):
+	"""
+	Returns the least multiple of den after num.
+	num and den must be integers, with den>0. 
+	"""
+	num,den = np.asarray(num),np.asarray(den)
+	return (num+den-1)//den
+
 def block_expand(arr,shape_i,renumber_ad=False,**kwargs):
 	"""
 	Reshape an array so as to factor shape_i (the inner shape),
@@ -53,7 +61,7 @@ def block_expand(arr,shape_i,renumber_ad=False,**kwargs):
 	shape_i = np.array(shape_i)
 
 	# Extend data
-	shape_o = round_up(shape_tot,shape_i)
+	shape_o = round_up_ratio(shape_tot,shape_i)
 	shape_pad = (0,)*ndim_pre + tuple(shape_o*shape_i - shape_tot)
 	arr = np.pad(arr, tuple( (0,s) for s in shape_pad), **kwargs) 
 

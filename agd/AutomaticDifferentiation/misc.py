@@ -186,11 +186,11 @@ def recurse(step,niter=1):
 #def flatten(a):
 #	return a.flatten() if isndarray(a) else np.array([a])
 
-def tocsr(triplets):
+def tocsr(triplets,shape=None):
 	"""Turns sparse matrix given as triplets into a csr (compressed sparse row) matrix"""
 	if from_cupy(triplets[0]): import cupyx; spmod = cupyx.scipy.sparse
 	else: import scipy.sparse as spmod
-	return spmod.coo_matrix(triplets).tocsr()	
+	return spmod.coo_matrix(triplets,shape=shape).tocsr()	
 
 def spsolve(triplets,rhs):
 	"""
