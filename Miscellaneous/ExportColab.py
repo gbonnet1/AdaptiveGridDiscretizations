@@ -67,6 +67,8 @@ google_drive_link = {
 	"Notebooks_NonDiv/BoatRouting_Time.ipynb":"https://drive.google.com/file/d/1T5sudWA6u23cG2mEqXF6wAXNpk-gAY1t/view?usp=sharing",
 	"Notebooks_FMM/BoatRouting.ipynb":"https://drive.google.com/file/d/10xMu3f_0LcyBRu4Qymifz2I_MgWU6X2Y/view?usp=sharing",
 	"Notebooks_FMM/TTI.ipynb":"https://drive.google.com/file/d/1bqWUzPHfEc3CEypMdIY-aGrTcEDfc6iL/view?usp=sharing",
+	"Notebooks_Div/ElasticWave.ipynb":"https://drive.google.com/file/d/1UIRej7tSGDuPJdr7-cgLgyLvMDMT43EE/view?usp=sharing",
+	"Notebooks_Div/ElasticEnergy.ipynb":"https://drive.google.com/file/d/1nZOJVpDG2Ja49jvIgGFWXIsTivSLBlsq/view?usp=sharing",
 	}
 
 

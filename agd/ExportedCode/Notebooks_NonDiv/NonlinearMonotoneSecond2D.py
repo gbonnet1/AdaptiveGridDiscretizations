@@ -90,7 +90,7 @@ def NextAngleAndSuperbase(theta,sb,D):
     return (theta_max[k],np.stack([sb[:,i],-sb[:,j],sb[:,j]-sb[:,i]],axis=1))
 
 def AnglesAndSuperbases(D,maxiter=200):
-    sb = Selling.CanonicalSuperbase(2).astype(int)
+    sb = Selling.CanonicalSuperbase(np.eye(2)).astype(int)
     thetas=[]
     superbases=[]
     theta=0

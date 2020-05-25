@@ -6,8 +6,10 @@ from agd.Metrics.Seismic import Hooke
 from ... import AutomaticDifferentiation as ad
 from ... import Domain
 from agd.Plotting import savefig; #savefig.dirName = 'Images/ElasticityDirichlet'
+
 norm_infinity = ad.Optimization.norm_infinity
 norm_average = ad.Optimization.norm_average
+mica,_ = Hooke.mica # Hooke tensor associated to this crystal
 
 def ElasticEnergy(v,hooke,dom,order=1):
     """
