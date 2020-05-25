@@ -1,5 +1,14 @@
+# Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
+# Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
+
+import numpy as np
 import cupy as cp
+import os
 from ...Eikonal.HFM_CUDA import cupy_module_helper as cmh
+
+
+#Compile times for the cupy kernel can be a bit long, presumably due to the merge sort.
+#Fortunately, this happens only once.
 
 def simplify_ad(x,atol=0.,blockSize=256):
 	"""Calls the GPU implementation of the simplify_ad method"""
@@ -17,6 +26,7 @@ def simplify_ad(x,atol=0.,blockSize=256):
 	scalar_t = coef.dtype.type
 	atol_macro = atol is not None
 	traits = {
+		'Int':int_t,
 		'IndexT':index_t,
 		'SizeT':size_t,
 		'Scalar':scalar_t,
@@ -25,26 +35,26 @@ def simplify_ad(x,atol=0.,blockSize=256):
 	}
 
 	# Setup the cupy kernel
-
-	source = cupy_module_helper.traits_header(traits,integral_max=True)
-	cuda_rpaths = "cuda",".../Eikonal/HFM_CUDA/cuda"
+	source = cmh.traits_header(traits,integral_max=True)
+	cuda_rpaths = "cuda","../../Eikonal/HFM_CUDA/cuda"
 	cuda_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)),rpath) for rpath in cuda_rpaths]
-	date_modified = max(cupy_module_helper.getmtime_max(path) for path in cuda_paths)
+	date_modified = max(cmh.getmtime_max(path) for path in cuda_paths)
 
 	source += ['#include "simplify_ad.h"',
 	f"// Date cuda code last date_modified : {date_modified}"]
-	cuoptions = ("-default-device", f"-I {cuda_path[0]}", f"-I {cuda_path[1]}") 
+	cuoptions = ("-default-device", f"-I {cuda_paths[0]}", f"-I {cuda_paths[1]}") 
 
 	source="\n".join(source)
-	module = cupy_module_helper.GetModule(source,cuoptions)
-	SetModuleConstant(module,'size_ad',x.size_ad,int_t)
-	SetModuleConstant(module,'size_tot',x.size,size_t)
-	if atol_macro: SetModuleConstant(module,'atol',atol,scalar_t)
+	module = cmh.GetModule(source,cuoptions)
+	cmh.SetModuleConstant(module,'size_ad',x.size_ad,int_t)
+	cmh.SetModuleConstant(module,'size_tot',x.size,size_t)
+	if atol_macro: cmh.SetModuleConstant(module,'atol',atol,scalar_t)
 	cupy_kernel = module.get_function("simplify_ad")
 
 	# Call the kernel
 	gridSize = int(np.ceil(x.size/blockSize))
 	new_size_ad = cp.zeros(x.shape,dtype=np.int32)
+#	print("i,c",index,coef)
 	cupy_kernel((gridSize,),(blockSize,),(index,coef,new_size_ad))
 	new_size_ad = np.max(new_size_ad)
 	

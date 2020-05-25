@@ -24,6 +24,10 @@ __constant__ SizeT size_tot;
 __constant__ Scalar atol = 0.;
 #endif
 
+#ifndef debug_print_macro
+const bool debug_print=false;
+#endif
+
 extern "C" {
 
 __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__ coef_t,
@@ -37,14 +41,18 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 	for(Int i=0; i<size_ad; ++i){
 		const Int i_t = n_t*size_ad+i;
 		index[i] = index_t[i_t];
-		coef[i]  = coef[i_t];
+		coef[i]  = coef_t[i_t];
 	}
-	for(int i=size_ad; i<bound_ad; ++i){index[i] = IndexMax;}
+	for(int i=size_ad; i<bound_ad; ++i){index[i] = IndexT_Max;}
 
+	if(debug_print && n_t==0){
+		printf("bd %i, sz %i, n_t %i\n",bound_ad,size_ad,n_t);
+		printf("index %i,%i, coef %f,%f\n",index[0],index[1],coef[0],coef[1]);
+	}
 
 	// Sort the indices
 	int order[bound_ad];
-	Network_sort::network_sort<bound_ad>(index,order);
+	network_sort<bound_ad>(index,order);
 
 
 	// Accumulate the coefficients associated with identical indices
@@ -57,36 +65,47 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 
 	for(int i=1; i<size_ad; ++i){
 		const int j = order[i];
-		ind = index[j];
-		co  = coef[j];
+		const IndexT ind = index[j];
+		const Scalar co  = coef[j];
 		if(ind==index_out[i_acc]){
 			coef_out[i_acc] += co;
 		} else {
 			i_acc+=1;
 			index_out[i_acc] = ind;
 			coef_out[i_acc]  = co;
+		}
 	}
 
 	int new_size_ad = i_acc+1;
 	
 	#if atol_macro
 	// Discard coefficients which are below the specified threshold
+	if(debug_print && n_t==0){
+		for(int i=0; i<new_size_ad; ++i){printf("%f %i\n", coef_out[i],index_out[i]);}
+		printf("\n");
+	}
 	i_acc=0;
 	for(int i=0; i<new_size_ad; ++i){
-		if(abs(coef_out[i])<=atol){
+		if(abs(coef_out[i])>atol){
+			if(i_acc!=i){
 			index_out[i_acc] = index_out[i];
-			coef_out[i_acc]  = coef_out[i];
+			coef_out[i_acc]  = coef_out[i];}
 			i_acc += 1;
 		}
 	}
-	new_size_ad = i_acc+1;
+	new_size_ad = i_acc;
 	#endif
 	
 	// Fill with dummy values the useless coefs
-	const IndexT index_dummy = n_t;
+	const IndexT index_dummy = 0;
 	for(int i=new_size_ad; i<size_ad; ++i){
 		index_out[i] = index_dummy;
 		coef_out[i]  = 0.;
+	}
+
+	if(debug_print && n_t==0){
+		for(int i=0; i<new_size_ad; ++i){printf("%f %i\n", coef_out[i],index_out[i]);}
+		printf("\n");
 	}
 
 	// Export the results

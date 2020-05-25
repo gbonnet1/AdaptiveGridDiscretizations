@@ -279,6 +279,10 @@ class spAD(Base.baseAD):
 			self.coef,self.index = other.coef,other.index
 			return
 
+		if self.cupy_based(): 
+			from .AD_CUDA.simplify_ad import simplify_ad
+			return simplify_ad(self,atol=atol)
+
 		# Sort indices by increasing values
 		bad_index = np.iinfo(self.index.dtype).max
 		bad_pos = self.coef==0

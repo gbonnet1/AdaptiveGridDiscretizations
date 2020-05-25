@@ -4,7 +4,7 @@
 import numpy as np
 import numbers
 from .functional import map_iterables,map_iterables2,pair
-from .cupy_generic import isndarray,from_cupy
+from .cupy_generic import isndarray,from_cupy,cp
 from .ad_generic import is_ad,remove_ad
 from . import ad_generic
 from . import cupy_support as cps

@@ -355,7 +355,11 @@ class spAD2(Base.baseAD):
 			index = self.index_row.astype(np.int64)*n_col + self.index_col.astype(np.int64)
 			spHelper2 = Sparse.new(self.value,self.coef2,index)
 			spHelper2.simplify_ad(*args,**kwargs)
-			self.coef2,self.index_row,self.index_col = spHelper2.coef, spHelper2.index//n_col, spHelper2.index%n_col
+			self.coef2 = spHelper2.coef
+			int_t = self.index_row.dtype.type
+			self.index_row,self.index_col = spHelper2.index//n_col, spHelper2.index%n_col
+			if int_t!=np.int64: self.index_row,self.index_col = (
+				e.astype(int_t) for e in (self.index_row,self.index_col))
 
 # -------- End of class spAD2 -------
 
