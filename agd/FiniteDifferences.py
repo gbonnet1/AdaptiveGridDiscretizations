@@ -7,6 +7,8 @@ from . import AutomaticDifferentiation as ad
 import functools
 import operator
 
+# --- Domain shape related methods --------
+
 def as_field(u,shape,conditional=True,depth=None):
 	"""
 	Checks if the last dimensions of u match the given shape. 
@@ -33,6 +35,65 @@ def common_field(arrays,depths,shape=None):
 			if shape!=tuple(): break
 	return tuple(None if arr is None else as_field(arr,shape,depth=depth) 
 		for (arr,depth) in zip(arrays,depths))
+
+def block_expand(arr,shape_i,renumber_ad=False,**kwargs):
+	"""
+	Reshape an array so as to factor shape_i (the inner shape),
+	and move these axes last.
+	Inputs : 
+	 - **kwargs : passed to np.pad
+	Output : 
+	 - padded and reshaped array
+	 - original shape
+	"""
+	ndim = len(shape_i)
+	shape_pre = arr.shape[:-ndim]
+	ndim_pre = len(shape_pre)
+	shape_tot=np.array(arr.shape[-ndim:])
+	shape_i = np.array(shape_i)
+
+	# Extend data
+	shape_o = round_up(shape_tot,shape_i)
+	shape_pad = (0,)*ndim_pre + tuple(shape_o*shape_i - shape_tot)
+	arr = np.pad(arr, tuple( (0,s) for s in shape_pad), **kwargs) 
+
+	# Reshape
+	shape_interleaved = tuple(np.stack( (shape_o,shape_i), axis=1).flatten())
+	arr = arr.reshape(shape_pre + shape_interleaved)
+
+	# Move axes
+	rg = np.arange(ndim)
+	axes_interleaved = ndim_pre + 1+2*rg
+	axes_split = ndim_pre + ndim+rg
+	arr = np.moveaxis(arr,axes_interleaved,axes_split)
+
+	return arr
+
+def block_squeeze(arr,shape,renumber_ad=False):
+	"""
+	Inverse operation to block_expand.
+	"""
+	ndim = len(shape)
+	shape_pre = arr.shape[:-2*ndim]
+	ndim_pre = len(shape_pre)
+	shape_o = arr.shape[(-2*ndim):-ndim]
+	shape_i = arr.shape[-ndim:]
+
+	# Move axes
+	rg = np.arange(ndim)
+	axes_interleaved = ndim_pre + 1+2*rg
+	axes_split = ndim_pre + ndim+rg
+	arr = np.moveaxis(arr,axes_split,axes_interleaved)
+
+	# Reshape
+	arr = arr.reshape(shape_pre
+		+tuple(s_o*s_i for (s_o,s_i) in zip(shape_o,shape_i)) )
+
+	# Extract subdomain
+	region = tuple(slice(0,s) for s in (shape_pre+shape))
+	arr = arr.__getitem__(region)
+
+	return arr
 
 # ----- Utilities for finite differences ------
 

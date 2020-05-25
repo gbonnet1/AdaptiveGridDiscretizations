@@ -66,3 +66,14 @@ def ravel_multi_index(multi_index,dims,mode='raise',order='C'):
 		result*=d
 		result+=i
 	return result
+
+@implements_cupy_alt(np.packbits,TypeError)
+def packbits(arr,bitorder='big'):
+	"""Implements bitorder option in cupy""" 
+	xp = get_array_module(arr)
+	if bitorder=='little':
+		shape = arr.shape
+		arr = arr.reshape(-1,8)
+		arr = arr[:,::-1]
+		arr = arr.reshape(shape)
+	return xp.packbits(arr)
