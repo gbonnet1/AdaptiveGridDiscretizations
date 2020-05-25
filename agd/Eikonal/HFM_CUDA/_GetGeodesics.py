@@ -2,8 +2,8 @@ import numpy as np
 import cupy as cp
 from . import cupy_module_helper
 from . import inf_convolution
-from . import misc
 from ...AutomaticDifferentiation import cupy_support as cps
+from ... import FiniteDifferences as fd
 
 def GetGeodesics(self):
 		if not self.hasTips: return
@@ -111,7 +111,7 @@ def GetGeodesics(self):
 		
 		flow = self.kernel_data['flow']
 		flow_vector    = self.flow_vector
-		flow_weightsum = misc.block_squeeze(flow.args['flow_weightsum'],self.shape)
+		flow_weightsum = fd.block_squeeze(flow.args['flow_weightsum'],self.shape)
 		values = self.values.astype(self.float_t)
 		args = (flow_vector,flow_weightsum,values,eucl)
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)

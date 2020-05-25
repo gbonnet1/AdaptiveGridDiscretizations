@@ -5,7 +5,6 @@ import numpy as np
 import cupy as cp
 from collections import OrderedDict
 
-from . import misc
 from . import kernel_traits
 from . import _solvers
 from . import cupy_module_helper
@@ -20,9 +19,9 @@ def PostProcess(self):
 	if self.verbosity>=1: print("Post-Processing")
 	eikonal = self.kernel_data['eikonal']
 
-	values = misc.block_squeeze(eikonal.args['values'],self.shape)
+	values = fd.block_squeeze(eikonal.args['values'],self.shape)
 	if eikonal.policy.multiprecision:
-		valuesq = misc.block_squeeze(eikonal.args['valuesq'],self.shape)
+		valuesq = fd.block_squeeze(eikonal.args['valuesq'],self.shape)
 		if self.GetValue('values_float64',default=False,
 			help="Export values using the float64 data type"):
 			float64_t = np.dtype('float64').type
@@ -58,7 +57,7 @@ def PostProcess(self):
 		self.Solve('flow')
 
 	if 'flow_vector' in flow.args:
-		self.flow_vector = misc.block_squeeze(flow.args['flow_vector'],self.shape)
+		self.flow_vector = fd.block_squeeze(flow.args['flow_vector'],self.shape)
 		if self.model_=='Rander':
 			self.flow_normalization=np.where(self.seedTags,1.,self.metric.norm(-self.flow_vector))
 			self.flow_vector/=self.flow_normalization
@@ -148,9 +147,9 @@ def SolveAD(self):
 	if self.forwardAD:
 		rhs = self.rhs.gradient()
 		if self.model_=='Rander': rhs*=self.flow_normalization
-		rhs = misc.block_expand(rhs,self.shape_i,mode='constant',constant_values=np.nan)
+		rhs = fd.block_expand(rhs,self.shape_i,mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
-		coef = np.moveaxis(misc.block_squeeze(valueVariation,self.shape),0,-1)
+		coef = np.moveaxis(fd.block_squeeze(valueVariation,self.shape),0,-1)
 #		coef[self.walls]=np.nan
 #		self.hfmOut['valueVariation'] = coef
 		val = self.values
@@ -161,7 +160,7 @@ def SolveAD(self):
 		rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
 		if rhs.shape[:-1]!=self.shape: 
 			raise ValueError(f"Reverse AD rhs shape {rhs.shape} does not start with {self.shape}")
-		rhs = misc.block_expand(np.moveaxis(rhs,-1,0),self.shape_i,
+		rhs = fd.block_expand(np.moveaxis(rhs,-1,0),self.shape_i,
 			mode='constant',constant_values=np.nan)
 
 		# Get the matrix structure
@@ -172,7 +171,7 @@ def SolveAD(self):
 
 		allSensitivity = self.SolveLinear(rhs,diag,indicesT,weightsT,-dist,'reverseAD')
 #		allSensitivity[self.walls]=np.nan
-		allSensitivity = np.moveaxis(misc.block_squeeze(allSensitivity,self.shape),0,-1)
+		allSensitivity = np.moveaxis(fd.block_squeeze(allSensitivity,self.shape),0,-1)
 		pos = tuple(self.seedIndices.T)
 		seedSensitivity = allSensitivity[pos]
 		allSensitivity[pos]=0

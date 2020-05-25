@@ -5,9 +5,9 @@ import numpy as np
 import cupy as cp
 import time
 import collections
-from . import misc
 from ...AutomaticDifferentiation.cupy_support import flat
 from .cupy_module_helper import SetModuleConstant
+from ... import FiniteDifferences as fd
 """
 The solvers defined below are member functions of the "interface" class devoted to 
 running the gpu eikonal solver.
@@ -96,7 +96,7 @@ def adaptive_gauss_siedel_iteration(self,data):
 	
 	trigger = data.trigger
 	if trigger.shape==self.shape: 
-		trigger = misc.block_expand(data.trigger,self.shape_i,
+		trigger = fd.block_expand(data.trigger,self.shape_i,
 		mode='constant',constant_values=False)
 	trigger = np.any(trigger.reshape(self.shape_o+(-1,)),axis=-1)
 	update_o = cp.ascontiguousarray(trigger.astype(np.uint8))
