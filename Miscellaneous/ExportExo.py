@@ -119,7 +119,7 @@ def MakeExo(FileName,ExoName):
 		newcells.append(cell)
 	data['cells']=newcells
 
-	with open(ExoName,'w') as f:
+	with open(ExoName,'w', encoding='utf8') as f:
 		json.dump(data,f,ensure_ascii=False)
 
 if __name__ == '__main__':

@@ -127,7 +127,7 @@ def ToColab(filename,output_dir):
 					if orig!=line:
 						cell['source'][i]=line
 
-	with open(os.path.join(output_dir,filename+'_Colab.ipynb'),'w') as f:
+	with open(os.path.join(output_dir,filename+'_Colab.ipynb'),'w',encoding='utf8') as f:
 		json.dump(data,f,ensure_ascii=False)
 
 def Main(output_dir):

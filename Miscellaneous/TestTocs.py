@@ -119,7 +119,7 @@ def Dump(filepath,data):
 	if Dump.check_raise: raise ValueError(msg)
 	if not Dump.update: print(msg); return
 	print(f"Updating {filepath}")
-	with open(filepath,'w') as f: json.dump(data,f,ensure_ascii=False,indent=1)
+	with open(filepath,'w', encoding='utf8') as f: json.dump(data,f,ensure_ascii=False,indent=1)
 
 Dump.check_raise = False
 Dump.update = False
