@@ -5,7 +5,6 @@ import numpy as np
 import cupy as cp
 import copy
 
-from . import misc
 from . import inf_convolution
 from ... import FiniteDifferences as fd
 from ... import AutomaticDifferentiation as ad
@@ -27,7 +26,7 @@ def SetGeometry(self):
 	self.periodic_default = (False,False,True) if self.isCurvature else (False,)*self.ndim
 	self.periodic = self.GetValue('periodic',default=self.periodic_default,
 		help="Apply periodic boundary conditions on some axes")
-	self.shape_o = tuple(misc.round_up(self.shape,self.shape_i))
+	self.shape_o = tuple(fd.round_up_ratio(self.shape,self.shape_i))
 	if policy.bound_active_blocks is True: 
 		policy.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
 	
@@ -126,11 +125,11 @@ def SetGeometry(self):
 			self.geom = self.metric.flatten(transposed_transformation=True)
 		else: raise ValueError("Unrecognized model")
 
-	eikonal.args['geom'] = misc.block_expand(fd.as_field(self.geom,self.shape),
-		self.shape_i,mode='constant',constant_values=np.inf,contiguous=True)
+	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(
+		self.geom,self.shape),self.shape_i,mode='constant',constant_values=np.inf))
 	if self.drift is not None:
-		eikonal.args['drift'] = misc.block_expand(fd.as_field(self.drift,self.shape),
-			self.shape_i,mode='constant',constant_values=np.nan,contiguous=True)
+		eikonal.args['drift'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(
+			self.drift,self.shape),self.shape_i,mode='constant',constant_values=np.nan))
 
 	# geometrical data related with geodesics 
 	self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,
@@ -198,7 +197,7 @@ def SetGeometry(self):
 		# This value indicates 'far from wall', and visibility computation is bypassed
 		wallDist[wallDist>wallDistBound] = wallDistMax_t 
 		self.wallDist = wallDist
-		eikonal.args['wallDist'] = misc.block_expand(wallDist,self.shape_i,
+		eikonal.args['wallDist'] = fd.block_expand(wallDist,self.shape_i,
 			mode='constant',constant_values=np.iinfo(wallDist_t).max)
 	self.walls = walls
 

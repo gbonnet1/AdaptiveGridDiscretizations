@@ -1,8 +1,8 @@
 import numpy as np
 import cupy as cp
 from .inf_convolution import inf_convolution
-from . import misc
 from ... import AutomaticDifferentiation as ad
+from ... import FiniteDifferences as fd
 
 def SetRHS(self):
 	rhs = self.cost.copy()
@@ -134,20 +134,20 @@ def SetArgs(self):
 	values = self.GetValue('values',default=None,array_float=self.shape,
 		help="Initial values for the eikonal solver")
 	if values is None: values = cp.full(self.shape,np.inf,dtype=self.float_t)
-	block_values = misc.block_expand(values,shape_i,
-		mode='constant',constant_values=np.inf,contiguous=True)
+	block_values = cp.ascontiguousarray(fd.block_expand(values,shape_i,
+		mode='constant',constant_values=np.inf))
 	eikonal.args['values']	= block_values
 
 	# Set the RHS and seed tags
 	self.SetRHS()
-	eikonal.args['rhs'] = misc.block_expand(ad.remove_ad(self.rhs),shape_i,
+	eikonal.args['rhs'] = fd.block_expand(ad.remove_ad(self.rhs),shape_i,
 		mode='constant',constant_values=np.inf)
 
 	if np.prod(self.shape_i)%8!=0:
 		raise ValueError('Product of shape_i must be a multiple of 8')
-	seedPacked = misc.block_expand(self.seedTags,shape_i,
+	seedPacked = fd.block_expand(self.seedTags,shape_i,
 		mode='constant',constant_values=True)
-	seedPacked = misc.packbits(seedPacked,bitorder='little')
+	seedPacked = ad.cupy_support.packbits(seedPacked,bitorder='little')
 	seedPacked = seedPacked.reshape( self.shape_o + (-1,) )
 	eikonal.args['seedTags'] = seedPacked
 
