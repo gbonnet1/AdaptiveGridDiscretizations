@@ -183,8 +183,8 @@ def recurse(step,niter=1):
 
 # ------- Common functions -------
 
-#def flatten(a):
-#	return a.flatten() if isndarray(a) else np.array([a])
+def as_flat(a):
+	return a.reshape(-1) if isndarray(a) else ad_generic.array([a])
 
 def tocsr(triplets,shape=None):
 	"""Turns sparse matrix given as triplets into a csr (compressed sparse row) matrix"""

@@ -101,7 +101,7 @@ class reverseAD2(object):
 						val,(row,col) = a_sparse.to_first().triplets()
 						coef_contrib = misc.spapply(
 							(val,(self._index_rev(col),row)),
-							misc.flatten(a_adjoint))
+							misc.as_flat(a_adjoint))
 						# Possible improvement : shift by np.min(self._index_rev(col)) to avoid adding zeros
 						coef[:coef_contrib.shape[0]] += coef_contrib
 						found=True
@@ -180,11 +180,11 @@ class reverseAD2(object):
 							# Linear contribution to the gradient
 							val,(row,col) = a_sparse.to_first().triplets()
 							triplets = (val,(self._index_rev(col),row))
-							coef1_contrib = misc.spapply(triplets,misc.flatten(a_adjoint1))
+							coef1_contrib = misc.spapply(triplets,misc.as_flat(a_adjoint1))
 							coef1[:coef1_contrib.shape[0]] += coef1_contrib
 
 							# Linear contribution to the hessian
-							linear_contrib = misc.spapply(triplets,misc.flatten(a_adjoint2))
+							linear_contrib = misc.spapply(triplets,misc.as_flat(a_adjoint2))
 							coef2[:linear_contrib.shape[0]] += linear_contrib
 
 							# Quadratic contribution to the hessian

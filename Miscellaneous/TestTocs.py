@@ -28,19 +28,13 @@ def UpdateConfig(filepath,data):
 	Updates the EikonalGPU_config cell (comment or uncomment).
 	Returns : wether an update was performed.
 	"""
-	if UpdateConfig.EikonalGPU_config is None: return False
-	relevant = (filepath.startswith('Notebooks_FMM')
-		or filepath=='Notebooks_NonDiv/BoatRouting_Time.ipynb')
-	if not relevant: return False
-
 	for cell in data['cells']:
-		if 'tags' in cell['metadata'] and 'EikonalGPU_config' in cell['metadata']['tags']:
-			break
-	else: 
-		if not UpdateConfig.silent: print(f"EikonalGPU_config not found for {filepath}")
-		return False
+		if 'tags' in cell['metadata']:
+			tags = cell['metadata']['tags']
+			if 'EikonalGPU_config' in tags or 'GPU_config' in tags: break
+	else: return False
 
-	request = UpdateConfig.EikonalGPU_config
+	request = UpdateConfig.GPU_config 
 	source = cell['source']
 	present = not source[0].startswith('#')
 
@@ -52,7 +46,7 @@ def UpdateConfig(filepath,data):
 	return True
 
 UpdateConfig.show = False
-UpdateConfig.EikonalGPU_config = None
+UpdateConfig.GPU_config = None
 UpdateConfig.silent = False
 
 def UpdateToc(filepath,data,toc):
@@ -153,12 +147,12 @@ def TestTocss():
 	toc = TocTools.displayTOCss().splitlines(True)
 	if UpdateToc(filepath,data,toc): Dump(filepath,data)
 
-def Main(update=False,check_raise=False,show=False,EikonalGPU_config=None):
+def Main(update=False,check_raise=False,show=False,GPU_config=None):
 	Dump.update = update
 	Dump.check_raise = check_raise
 	UpdateToc.show = show
 	UpdateConfig.show = show
-	UpdateConfig.EikonalGPU_config = EikonalGPU_config
+	UpdateConfig.GPU_config = GPU_config
 	TestTocss()
 	for dirname in ListNotebookDirs():
 		TestTocs(dirname)

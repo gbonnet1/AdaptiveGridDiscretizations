@@ -139,7 +139,7 @@ class reverseAD(object):
 						val,(row,col) = a_sparse.triplets()
 						coef_contrib = misc.spapply(
 							(val,(self._index_rev(col),row)),
-							misc.flatten(a_adjoint))
+							misc.as_flat(a_adjoint))
 						# Possible improvement : shift by np.min(self._index_rev(col)) to avoid adding zeros
 						coef[:coef_contrib.shape[0]] += coef_contrib
 						found=True
