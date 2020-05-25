@@ -265,12 +265,18 @@ class spAD(Base.baseAD):
 		np.concatenate(tuple(_pad_last(e.index,size_ad) for e in elems2),axis=axis1))
 
 	# Memory optimization
-	def simplify_ad(self,atol=None):
+	def simplify_ad(self,atol=None,rtol=None):
 		"""
 		Compresses the AD information by merging suitable coefficients, and optionally 
 		removing negligible ones.
-		- atol : absolute tolerance to discard a coefficient.
+		- atol : absolute tolerance to discard a coefficient. (True -> sensible default.)
+		- rtol : relative tolerance to discard a coefficient (compared to largest in row)
 		"""
+		if atol is True: atol = np.finfo(self.value.dtype).resolution
+		if rtol is True: rtol = np.finfo(self.value.dtype).resolution
+		if atol is None and rtol is not None: atol=0.
+		if rtol is None and atol is not None: rtol=0.
+
 		if self.size_ad==0: return # Nothing to simplify
 		if len(self.shape)==0: # Add dimension to scalar-like arrays
 			other = self.reshape((1,))
@@ -281,7 +287,7 @@ class spAD(Base.baseAD):
 
 		if self.cupy_based(): 
 			from .AD_CUDA.simplify_ad import simplify_ad
-			return simplify_ad(self,atol=atol)
+			return simplify_ad(self,atol=atol,rtol=rtol)
 
 		# Sort indices by increasing values
 		bad_index = np.iinfo(self.index.dtype).max
@@ -341,9 +347,13 @@ class spAD(Base.baseAD):
 		self.index[self.index==-1]=0 # Corresponding coefficient is zero anyway.
 
 		# Optionally remove coefficients below tolerance threshold
-		# ? rtol : relative tolerance to discard a coefficient (compared to largest in row)
 		if atol is not None:
-			bad_pos = np.abs(self.coef) <= atol
+			tol = atol
+			if rtol!=0:
+				max_coef = np.max(np.abs(self.coef),axis=-1)
+				tol = cps.expand_dims( tol + max_coef*rtol, axis=-1)
+
+			bad_pos = np.abs(self.coef) <= tol
 			self.index[bad_pos] = bad_index
 			self.coef[ bad_pos] = 0.
 			ordering = self.index.argsort(axis=-1)

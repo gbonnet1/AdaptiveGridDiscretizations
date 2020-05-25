@@ -10,7 +10,7 @@ from ...Eikonal.HFM_CUDA import cupy_module_helper as cmh
 #Compile times for the cupy kernel can be a bit long, presumably due to the merge sort.
 #Fortunately, this happens only once.
 
-def simplify_ad(x,atol=0.,blockSize=256):
+def simplify_ad(x,atol,rtol,blockSize=256):
 	"""Calls the GPU implementation of the simplify_ad method"""
 	
 	# Get the data
@@ -24,14 +24,14 @@ def simplify_ad(x,atol=0.,blockSize=256):
 	size_t = int_t
 	index_t = index.dtype.type
 	scalar_t = coef.dtype.type
-	atol_macro = atol is not None
+	tol_macro = atol is not None
 	traits = {
 		'Int':int_t,
 		'IndexT':index_t,
 		'SizeT':size_t,
 		'Scalar':scalar_t,
 		'bound_ad':bound_ad,
-		'atol_macro':atol_macro,
+		'tol_macro':tol_macro,
 	}
 
 	# Setup the cupy kernel
@@ -48,7 +48,9 @@ def simplify_ad(x,atol=0.,blockSize=256):
 	module = cmh.GetModule(source,cuoptions)
 	cmh.SetModuleConstant(module,'size_ad',x.size_ad,int_t)
 	cmh.SetModuleConstant(module,'size_tot',x.size,size_t)
-	if atol_macro: cmh.SetModuleConstant(module,'atol',atol,scalar_t)
+	if tol_macro: 
+		cmh.SetModuleConstant(module,'atol',atol,scalar_t)
+		cmh.SetModuleConstant(module,'rtol',rtol,scalar_t)
 	cupy_kernel = module.get_function("simplify_ad")
 
 	# Call the kernel

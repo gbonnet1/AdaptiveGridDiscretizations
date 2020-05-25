@@ -19,8 +19,9 @@ const int bound_ad; // An upper bound on size_ad
 */
 __constant__ int size_ad;
 __constant__ SizeT size_tot;
-#if atol_macro
+#if tol_macro
 __constant__ Scalar atol = 0.;
+__constant__ Scalar rtol = 0.;
 #endif
 
 #ifndef debug_print_macro
@@ -41,11 +42,6 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 		const Int i_t = n_t*size_ad+i;
 		index[i] = index_t[i_t];
 		coef[i]  = coef_t[i_t];
-	}
-
-	if(debug_print && n_t==0){
-		printf("bd %i, sz %i, n_t %i\n",bound_ad,size_ad,n_t);
-		printf("index %i,%i, coef %f,%f\n",index[0],index[1],coef[0],coef[1]);
 	}
 
 	// Sort the indices
@@ -79,15 +75,18 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 
 	int new_size_ad = i_acc+1;
 	
-	#if atol_macro
+	#if tol_macro
 	// Discard coefficients which are below the specified threshold
-	if(debug_print && n_t==0){
-		for(int i=0; i<new_size_ad; ++i){printf("%f %i\n", coef_out[i],index_out[i]);}
-		printf("\n");
+	Scalar tol = atol;
+	if(rtol>0){
+		Scalar coef_max=0.;
+		for(int i=0; i<new_size_ad; ++i){coef_max = max(coef_max,abs(coef_out[i]));}
+		tol += coef_max*rtol;
 	}
+
 	i_acc=0;
 	for(int i=0; i<new_size_ad; ++i){
-		if(abs(coef_out[i])>atol){
+		if(abs(coef_out[i])>tol){
 			if(i_acc!=i){
 			index_out[i_acc] = index_out[i];
 			coef_out[i_acc]  = coef_out[i];}
@@ -102,11 +101,6 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 	for(int i=new_size_ad; i<size_ad; ++i){
 		index_out[i] = index_dummy;
 		coef_out[i]  = 0.;
-	}
-
-	if(debug_print && n_t==0){
-		for(int i=0; i<new_size_ad; ++i){printf("%f %i\n", coef_out[i],index_out[i]);}
-		printf("\n");
 	}
 
 	// Export the results
