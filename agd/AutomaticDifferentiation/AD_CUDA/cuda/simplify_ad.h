@@ -13,7 +13,6 @@ Note : the method is embarassingly parallel, and threads do not interact.
 
 /* // The following, or variants, must be defined externally
 typedef int IndexT; 
-const Index IndexMax = ...; // Maximal value of an Int
 typedef float Scalar;
 const int bound_ad; // An upper bound on size_ad
 #define atol_macro true
@@ -43,7 +42,6 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 		index[i] = index_t[i_t];
 		coef[i]  = coef_t[i_t];
 	}
-	for(int i=size_ad; i<bound_ad; ++i){index[i] = IndexT_Max;}
 
 	if(debug_print && n_t==0){
 		printf("bd %i, sz %i, n_t %i\n",bound_ad,size_ad,n_t);
@@ -51,9 +49,12 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 	}
 
 	// Sort the indices
-	int order[bound_ad];
-	network_sort<bound_ad>(index,order);
+	int order[bound_ad]; int tmp[bound_ad];
+	variable_length_sort(index,order,tmp,size_ad); //size_ad
 
+	// Alternatively, used a fixed length sort (longer compile times)
+//	for(int i=size_ad; i<bound_ad; ++i){index[i] = IndexT_Max;}
+//	fixed_length_sort<bound_ad>(index,order);
 
 	// Accumulate the coefficients associated with identical indices
 	IndexT index_out[bound_ad];
@@ -115,6 +116,8 @@ __global__ void simplify_ad(IndexT * __restrict__ index_t, Scalar * __restrict__
 		coef_t[i_t]  = coef_out[i];
 	}
 	new_size_ad_t[n_t] = new_size_ad;
+
+	
 }
 
 } // extern "C"

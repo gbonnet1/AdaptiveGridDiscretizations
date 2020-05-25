@@ -299,7 +299,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 	for(int i=0; i<5; ++i){sol[15+i] = maxSol*linsol[i];}
 	// We only need to exclude the 5 smallest elements. For simplicity, we sort all.
 	Int ord[kktdim]; 
-	network_sort<kktdim>(sol,ord);
+	fixed_length_sort<kktdim>(sol,ord);
 
 	for(int i=0; i<symdim; ++i){
 		const int j=ord[i+5]; 

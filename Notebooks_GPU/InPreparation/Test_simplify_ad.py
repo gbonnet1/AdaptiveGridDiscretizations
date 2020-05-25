@@ -12,9 +12,13 @@ xp,mica,allclose = map(ad.cupy_friendly,(xp,mica,allclose))
 
 x=ad.Sparse.identity(constant=[1.,2])
 x=x*x
+for i in range(8): x=x+2*x
+print(x.size_ad)
 print(x)
 x.simplify_ad()
 print(x)
+
+
 
 def ElasticEnergy(v,hooke,dom,order=1):
     """
@@ -50,6 +54,8 @@ dom = Domain.MockDirichlet(X.shape,h,padding=None) #Periodic domain (wrap instea
 v_ad = ad.Sparse2.identity(constant=np.zeros_like(X))
 energy_density_ad = ElasticEnergy(v_ad,hooke(X),dom)
 print(f"Stencil cardinality: {energy_density_ad.size_ad2}")
+
+#energy_density_ad[0,0].simplify_ad(atol=0.)
 
 energy_density_ad.simplify_ad(atol=0.)
 print(f"Stencil cardinality: {energy_density_ad.size_ad2}")

@@ -35,7 +35,7 @@ def simplify_ad(x,atol=0.,blockSize=256):
 	}
 
 	# Setup the cupy kernel
-	source = cmh.traits_header(traits,integral_max=True)
+	source = cmh.traits_header(traits) #integral_max=True # needed for fixed length sort
 	cuda_rpaths = "cuda","../../Eikonal/HFM_CUDA/cuda"
 	cuda_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)),rpath) for rpath in cuda_rpaths]
 	date_modified = max(cmh.getmtime_max(path) for path in cuda_paths)
