@@ -28,6 +28,7 @@ def UpdateConfig(filepath,data):
 	Updates the EikonalGPU_config cell (comment or uncomment).
 	Returns : wether an update was performed.
 	"""
+	if UpdateConfig.GPU_config is None:return False
 	for cell in data['cells']:
 		if 'tags' in cell['metadata']:
 			tags = cell['metadata']['tags']
