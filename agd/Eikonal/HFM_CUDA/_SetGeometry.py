@@ -53,6 +53,7 @@ def SetGeometry(self):
 	elif self.model_=='Riemann': metricClass = Metrics.Riemann
 	elif self.model_=='Rander' : metricClass = Metrics.Rander
 	elif self.model_=='TTI':     metricClass = Metrics.Seismic.TTI
+	elif self.model_=='AsymQuad':metricClass = Metrics.AsymQuad
 
 	if self.model_=='Isotropic':
 		self._metric = Metrics.Diagonal(cp.ones(self.ndim,dtype=self.float_t))
@@ -68,8 +69,8 @@ def SetGeometry(self):
 			if ad.cupy_generic.isndarray(value): 
 				setattr(self,key,metricClass.from_HFM(value))
 
-	self.drift = self.GetValue('drift', default=None, verbosity=3, array_float=True,
-		help="Drift introduced in the eikonal equation, becoming F^*(grad u - drift)=1")
+#	self.drift = self.GetValue('drift', default=None, verbosity=3, array_float=True,
+#		help="Drift introduced in the eikonal equation, becoming F^*(grad u - drift)=1")
 
 	# Set the geometry
 
@@ -108,7 +109,7 @@ def SetGeometry(self):
 	else:
 		if self._metric is not None: self._metric = self._metric.with_costs(self.h)
 		if self._dualMetric is not None:self._dualMetric=self._dualMetric.with_speeds(self.h)
-		if self.drift is not None: self.drift *= self.h_broadcasted
+#		if self.drift is not None: self.drift *= self.h_broadcasted
 
 		if self.model_=='Isotropic':
 			# No geometry field. Metric passed as a module constant
@@ -118,11 +119,11 @@ def SetGeometry(self):
 		elif self.model_=='Riemann':
 			self.geom = self.dualMetric.flatten()
 		elif self.model_=='Rander':
-			self.geom = Metrics.Riemann(self.metric.m).dual().flatten()
-			if self.drift is None: self.drift = self.float_t(0.)
-			self.drift += self.metric.w
+			self.geom = self.metric.flatten(inverse_m=True)
 		elif self.model_ == 'TTI':
 			self.geom = self.metric.flatten(transposed_transformation=True)
+		elif self.model_ == 'AsymQuad':
+			self.geom = self.dualMetric.flatten(solve_w=True)
 		else: raise ValueError("Unrecognized model")
 
 	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(

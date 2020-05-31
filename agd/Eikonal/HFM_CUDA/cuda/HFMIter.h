@@ -8,7 +8,7 @@ This file implements the of a block of values, in the HFM algorithm.
 #include "HFM.h"
 
 void HFMIter(const bool active, 
-	const Scalar rhs, MIX(const bool mix_is_min,) const Scalar weights[__restrict__ nactx],
+	const Scalar rhs, ADAPTIVE_MIX(const bool mix_is_min,) const Scalar weights[__restrict__ nactx],
 	const Scalar v_o[__restrict__ ntotx], MULTIP(const Int vq_o[__restrict__ ntotx],) 
 	const Int v_i[__restrict__ ntotx], 
 	ORDER2(const Scalar v2_o[__restrict__ ntotx], MULTIP(const Int vq2_o[__restrict__ ntotx],) 
@@ -22,7 +22,9 @@ void HFMIter(const bool active,
 
 	#if strict_iter_i_macro // Always on if MULTIP or NMIX are on. 
 
-	Scalar u_new MIX(=mix_neutral(mix_is_min)); MULTIP(Int uq_new MIX(=0);)
+	Scalar u_new MIX(=mix_neutral(mix_is_min ALTERNATING_MIX([0])) ); 
+	MULTIP(Int uq_new MIX(=0);)
+
 	NOMIX(Scalar & u_mix = u_new; MULTIP(Int & uq_mix = uq_new;)
 		FLOW(Scalar * const flow_weights_mix = flow_weights; 
 			 NSYM(Int * const active_side_mix = active_side;)) )
@@ -39,7 +41,8 @@ void HFMIter(const bool active,
 			u_mix MULTIP(,uq_mix) 
 			FLOW(, flow_weights_mix NSYM(, active_side_mix))
 			);
-		MIX(if(mix_is_min==Greater(u_new MULTIP(,uq_new), u_mix MULTIP(,uq_mix) ) ){
+		MIX(if(mix_is_min ALTERNATING_MIX([kmix])==
+			Greater(u_new MULTIP(,uq_new), u_mix MULTIP(,uq_mix) ) ){
 			u_new=u_mix; MULTIP(uq_new=uq_mix;)
 			FLOW(kmix_=kmix; 
 				for(Int k=0; k<nact; ++k){flow_weights[k]=flow_weights_mix[k];}

@@ -52,7 +52,7 @@ def SetKernelTraits(self):
 
 	if not self.isCurvature: # Dimension generic models
 		traits['ndim_macro'] = int(self.model[-1])
-	if self.HasValue('drift') or self.model.startswith('Rander'):
+	if self.model.startswith('Rander'):
 		traits['drift_macro']=1
 
 	policy.bound_active_blocks = self.GetValue('bound_active_blocks',default=False,
@@ -237,7 +237,7 @@ def SetKernel(self):
 	# Sort the kernel arguments
 	args = eikonal.args
 	argnames = ('values','valuesq','valuesNext','valuesqNext',
-		'geom','drift','seedTags','rhs','wallDist')
+		'geom','seedTags','rhs','wallDist')
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
 #	print(eikonal.args['wallDist'].dtype)
 	flow.args = eikonal.args.copy() # Further arguments added later

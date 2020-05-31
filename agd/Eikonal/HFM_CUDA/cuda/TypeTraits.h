@@ -69,6 +69,28 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 #define NOMIX(...) __VA_ARGS__
 #endif
 
+// Wether the mix (min/max) depends on the geometry
+#ifndef adaptive_mix_macro
+#define adaptive_mix_macro 0
+#endif
+
+#if adaptive_mix_macro
+#define ADAPTIVE_MIX(...) __VA_ARGS__
+#else
+#define ADAPTIVE_MIX(...) 
+#endif
+
+// Wether the mix depends on the step (e.g. successively min-max-min)
+#ifndef alternating_mix_macro
+#define alternating_mix_macro 0
+#endif
+
+#if alternating_mix_macro
+#define ALTERNATING_MIX(...) __VA_ARGS__
+#else
+#define ALTERNATING_MIX(...) 
+#endif
+
 /** strict_iter_i_macro = 1 causes the input and output values 
 within a block to be stored separately and synced at the end of 
 each iteration*/

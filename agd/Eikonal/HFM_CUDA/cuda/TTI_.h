@@ -15,6 +15,9 @@ known as tilted transversally isotropic, and arising in seismology.
 #define nmix_macro (??)
 */
 
+// Min or max of schemes depending on the data
+#define adaptive_mix_macro 1
+
 #if (ndim_macro == 2)
 #include "Geometry2.h"
 #elif (ndim_macro == 3)

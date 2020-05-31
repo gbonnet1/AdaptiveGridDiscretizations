@@ -50,8 +50,10 @@ class AsymQuad(Base):
 		rander = Rander(self.m,self.w).with_costs(costs)
 		return AsymQuad(rander.m,rander.w)
 
-	def flatten(self):
-		return Rander(self.m,self.w).flatten()
+	def flatten(self,solve_w=False):
+		m,w = self.m,self.w
+		if solve_w: w = lp.solve_AV(m,w)
+		return Rander(m,w).flatten()
 
 	@classmethod
 	def expand(cls,arr):

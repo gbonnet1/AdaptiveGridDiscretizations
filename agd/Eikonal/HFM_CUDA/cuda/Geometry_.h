@@ -56,6 +56,10 @@ template<typename T>
 void add_vV(const T x[ndim], T y[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){y[i]+=x[i];}}
 
+template<typename Tx,typename Ty,typename Tout>
+void add_mm(const Tx x[symdim], const Ty y[symdim], Tout out[__restrict__ symdim]){
+	for(Int i=0; i<symdim; ++i){out[i]=x[i]+y[i];}}
+
 /// Difference
 template<typename Tx, typename Ty, typename Tout>
 void sub_vv(const Tx x[ndim], const Ty y[ndim], Tout out[__restrict__ ndim]){

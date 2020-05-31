@@ -60,8 +60,10 @@ class Rander(Base):
 		costs,m,w = fd.common_field((costs,self.m,self.w),depths=(1,2,1))
 		return Rander(m*lp.outer_self(costs),w*costs)
 
-	def flatten(self):
-		return np.concatenate((misc.flatten_symmetric_matrix(self.m),self.w),axis=0)
+	def flatten(self,inverse_m=False):
+		m,w = self.m,self.w
+		if inverse_m: m = lp.inverse(m)
+		return np.concatenate((misc.flatten_symmetric_matrix(m),w),axis=0)
 	
 	@classmethod
 	def expand(cls,arr):

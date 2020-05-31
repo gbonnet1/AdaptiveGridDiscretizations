@@ -24,7 +24,7 @@ __global__ void Update(
 	STRICT_ITER_O(Scalar * __restrict__ uNext_t, MULTIP(Int * __restrict__ uqNext_t,))
 
 	// Problem data
-	const Scalar * __restrict__ geom_t, DRIFT(const Scalar * __restrict__ drift_t,) 
+	const Scalar * __restrict__ geom_t, 
 	const BoolPack * __restrict__ seeds_t, const Scalar * __restrict__ rhs_t, 
 	WALLS(const WallT * __restrict__ wallDist_t,)
 
@@ -64,14 +64,16 @@ __global__ void Update(
 	const Int iTheta = x_t[2];
 	const Scalar * weights      = precomp_weights_s[iTheta];
 	const OffsetT (* offsets)[ndim] = precomp_offsets_s[iTheta];
-	MIX(const bool mix_is_min=true;) // Dubins2
 	#else
 	GEOM(Scalar geom[geom_size];
 	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];})
+	
 	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 	ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
-	MIX(const bool mix_is_min = )
-	scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets);
+	DRIFT(Scalar drift[nmix][ndim];)
+
+	ADAPTIVE_MIX(const bool mix_is_min = )
+	scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets DRIFT(,drift) );
 	#endif
 
 	EXPORT_SCHEME( 
@@ -90,11 +92,6 @@ __global__ void Update(
 		} // if curvature_macro
 	#endif
 	return;
-	)
-
-	DRIFT(
-	Scalar drift[ndim];
-	for(Int k=0; k<ndim; ++k){drift[k] = drift_t[n_t+size_tot*k];}
 	)
 
 	const Scalar u_old = u_t[n_t]; 
@@ -138,7 +135,7 @@ __global__ void Update(
 		SHIFT(
 			Scalar fact[2]={0.,0.}; ORDER2(Scalar fact2[2]={0.,0.};)
 			FACTOR( if(factors){factor_sym(x_rel,e,fact ORDER2(,fact2));} )
-			DRIFT( const Scalar s = scal_vv(drift,e); fact[0] +=s; fact[1]-=s; )
+			DRIFT( const Scalar s = scal_vv(drift[kmix],e); fact[0] +=s; fact[1]-=s; )
 			)
 
 		for(Int s=0; s<2; ++s){
@@ -220,7 +217,7 @@ __global__ void Update(
 
 	// Compute and save the values
 	HFMIter(!isSeed, 
-		rhs, MIX(mix_is_min,) weights,
+		rhs, ADAPTIVE_MIX(mix_is_min,) weights,
 		v_o MULTIP(,vq_o), v_i, 
 		ORDER2(v2_o MULTIP(,vq2_o), v2_i,)
 		u_i MULTIP(,uq_i) 

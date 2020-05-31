@@ -18,13 +18,42 @@ const Int nfwd = 0; // Number of forward offsets
 const Int geom_size = symdim;
 const Int factor_size = symdim;
 
+/* The asymmetric quadratic scheme reads max(min(a,b),c), 
+where a is a Rander scheme, and b,c are Riemann schemes*/
+#define nmix_macro 3 
+#define alternating_mix_macro 1
+const bool mix_is_min[3] = {true,true,false}; // First element doesn't really count
+
+// nactx = nmix*nsym
+
 #include "Constants.h"
 
 void scheme(const Scalar geom[geom_size], 
-	Scalar weights[nsym], OffsetT offsets[nsym][ndim], DRIFT(Scalar drift[1][ndim]) ){
-	const Scalar * dual_metric = geom; // dual_metric[symdim]
-	decomp_m(dual_metric,weights,offsets);
-	DRIFT(copy_vV(geom+symdim,drift[0]);)
+	Scalar weights[nactx], OffsetT offsets[nactx][ndim], DRIFT(Scalar drift[3][ndim]) ){
+	const Scalar * m = geom; // m[symdim]
+	const Scalar * eta = geom+symdim; // eta[ndim]
+	Scalar w[ndim]; dot_mv(m,eta,w);
+	Scalar wwT[symdim]; self_outer_v(w,wwT);
+
+	decomp_m(m,weights+nact,offsets+nact); zero_V(drift[1]);
+
+	Scalar mwwT[symdim]; add_mm(m,wwT,mwwT);
+	decomp_m(mwwT,weights+2*nact,offsets+2*nact); zero_V(drift[2]);
+
+	// Computes an ellipse in between the two halves
+	const Scalar n2 = scal_vv(w,eta); // | w |_{M^{-1}}
+	const Scalar n = sqrt(n2);
+	const Scalar in2 = sqrt(1.+n2);
+	const Scalar iin2 = 1.+in2;
+	const Scalar iin2_2 = iin2*iin2;
+	const Scalar iin2_3 = iin2*iin2_2;
+	const Scalar lambda = n/(2.*in2*iin2);
+	const Scalar mu = 4.*in2/iin2_3;
+	const Scalar gamma = 4.*(1.+n2)/iin2_2 - n2*mu;
+
+	for(Int i=0; i<symdim; ++i){mwwT[i] = gamma*m[i]+mu*wwT[i];}
+	decomp_m(mwwT,weights,offsets);
+	mul_kv(lambda,eta,drift[0]);
 }
 
 FACTOR(
