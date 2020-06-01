@@ -40,8 +40,8 @@ void scheme(const Scalar dual_costs2[ndim],
 	copy_vV(dual_costs2,weights);}
 #endif
 
-FACTOR(
 #include "EuclideanFactor.h"
+FACTOR(
 /** Returns the perturbations involved in the factored fast marching method.
 Input : x= relative position w.r.t the seed, e finite difference offset.*/
 void factor_sym(const Scalar x[ndim], const Int e[ndim], 

@@ -34,7 +34,7 @@ for a generic norm.*/
 void generic_factor_sym(const Scalar grad_e, // Gradient at x in direction e
 	const Scalar Nx, const Scalar Nxpe, const Scalar Nxme, // Norm at x and neighbors
 	Scalar fact[2] // Scheme first order perturbaton 
-	ORDER2(const Scalar Nxpe2, const Scalar Nxme2, // Norm at farther neighbors
+	ORDER2(,const Scalar Nxpe2, const Scalar Nxme2, // Norm at farther neighbors
 	Scalar fact2[2]) ){ // Scheme second order perturbation
 
 	fact[0] = -grad_e + Nx - Nxme; 

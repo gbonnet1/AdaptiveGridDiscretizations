@@ -21,7 +21,7 @@ const Int factor_size = symdim;
 #include "Constants.h"
 
 void scheme(const Scalar geom[geom_size], 
-	Scalar weights[nsym], OffsetT offsets[nsym][ndim], DRIFT(Scalar drift[1][ndim]) ){
+	Scalar weights[nsym], OffsetT offsets[nsym][ndim] DRIFT(,Scalar drift[1][ndim]) ){
 	const Scalar * dual_metric = geom; // dual_metric[symdim]
 	decomp_m(dual_metric,weights,offsets);
 	DRIFT(copy_vV(geom+symdim,drift[0]);)
