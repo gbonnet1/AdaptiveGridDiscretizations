@@ -195,7 +195,6 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim],
 	dim2::tti_data_t data; tti_data_init(l,q,data);
 
 	Scalar grad[ndim]; const Scalar Nx = tti_norm(l,q,data,A, x, grad);
-	const Scalar grad_e = scal_vv(grad,e);
 	Scalar xpe[ndim],xme[ndim]; add_vv(x,e,xpe); sub_vv(x,e,xme);
 	const Scalar Nxpe = tti_norm(l,q,data,A,xpe); 
 	const Scalar Nxme = tti_norm(l,q,data,A,xme); 
@@ -206,7 +205,7 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim],
 	const Scalar Nxme2 = tti_norm(l,q,data,A,xme2); 
 	)
 
-	generic_factor_sym(grad_e,Nx,Nxpe,Nxme,fact ORDER2(,Nxpe2,Nxme2,fact2));
+	generic_factor_sym(scal_vv(grad,e),Nx,Nxpe,Nxme,fact ORDER2(,Nxpe2,Nxme2,fact2));
 }
 
 /*

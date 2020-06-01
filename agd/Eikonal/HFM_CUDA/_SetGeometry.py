@@ -53,7 +53,7 @@ def SetGeometry(self):
 	elif self.model_=='Riemann': metricClass = Metrics.Riemann
 	elif self.model_=='Rander' : metricClass = Metrics.Rander
 	elif self.model_=='TTI':     metricClass = Metrics.Seismic.TTI
-	elif self.model_=='AsymQuad':metricClass = Metrics.AsymQuad
+	elif self.model_=='AsymmetricQuadratic':metricClass = Metrics.AsymQuad
 
 	if self.model_=='Isotropic':
 		self._metric = Metrics.Diagonal(cp.ones(self.ndim,dtype=self.float_t))
@@ -122,15 +122,15 @@ def SetGeometry(self):
 			self.geom = self.metric.flatten(inverse_m=True)
 		elif self.model_ == 'TTI':
 			self.geom = self.metric.flatten(transposed_transformation=True)
-		elif self.model_ == 'AsymQuad':
+		elif self.model_ == 'AsymmetricQuadratic':
 			self.geom = self.dualMetric.flatten(solve_w=True)
 		else: raise ValueError("Unrecognized model")
 
 	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(
 		self.geom,self.shape),self.shape_i,mode='constant',constant_values=np.inf))
-	if self.drift is not None:
-		eikonal.args['drift'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(
-			self.drift,self.shape),self.shape_i,mode='constant',constant_values=np.nan))
+#	if self.drift is not None:
+#		eikonal.args['drift'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(
+#			self.drift,self.shape),self.shape_i,mode='constant',constant_values=np.nan))
 
 	# geometrical data related with geodesics 
 	self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,

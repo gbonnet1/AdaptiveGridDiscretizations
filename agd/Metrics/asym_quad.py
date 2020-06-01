@@ -41,7 +41,7 @@ class AsymQuad(Base):
 		return np.sqrt(eMax/eMin)
 
 	def cost_bound(self):
-		return Riemann(self.m).cost_bound() + ad.Optimization.norm(w,ord=2,axis=0)
+		return Riemann(self.m + lp.outer_self(self.w)).cost_bound()
 
 	def inv_transform(self,a):
 		rander = Rander(self.m,self.w).inv_transform(a)

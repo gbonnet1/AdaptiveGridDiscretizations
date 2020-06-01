@@ -58,7 +58,7 @@ def PostProcess(self):
 
 	if 'flow_vector' in flow.args:
 		self.flow_vector = fd.block_squeeze(flow.args['flow_vector'],self.shape)
-		if self.model_=='Rander':
+		if self.model_ in ('Rander','AsymmetricQuadratic'):
 			self.flow_normalization=np.where(self.seedTags,1.,self.metric.norm(-self.flow_vector))
 			self.flow_vector/=self.flow_normalization
 		if self.exportGeodesicFlow:

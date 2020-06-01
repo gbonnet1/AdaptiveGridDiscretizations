@@ -203,10 +203,10 @@ __global__ void Update(
 	} // for kact
 	} // for kmix
 
-	if(debug_print && n_i==3+3*8){
+/*	if(debug_print && n_i==3+3*8){
 		printf("v_i %i,%i,%i,%i\n", v_i[0],v_i[1],v_i[2],v_i[3]);
 		printf("v_o %f,%f,%f,%f\n", v_o[0],v_o[1],v_o[2],v_o[3]);
-	}
+	}*/
 	__syncthreads(); // __shared__ u_i
 
 	FLOW(
