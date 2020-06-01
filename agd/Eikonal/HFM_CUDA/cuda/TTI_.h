@@ -132,6 +132,7 @@ bool scheme(const Scalar geom[geom_size],
 }
 
 #include "GoldenSearch.h"
+#include "EuclideanFactor.h"
 
 FACTOR(
 #ifndef niter_golden_search_macro
@@ -184,6 +185,31 @@ Scalar tti_norm(const Scalar l[2], const Scalar q[3], const dim2::tti_data_t & d
 	return norm;
 }
 
+
+void factor_sym(const Scalar x[ndim], const Int e[ndim], 
+	Scalar fact[2] ORDER2(,Scalar fact2[2])){
+	const Scalar * l = factor_metric; // linear[2]
+	const Scalar * q = factor_metric + 2; // quadratic[dim2::symdim]
+	const Scalar * A_ = factor_metric + (2+dim2::symdim); // transform[ndim * ndim]
+	const Scalar (* A)[ndim] = (const Scalar (*)[ndim]) A_;
+	dim2::tti_data_t data; tti_data_init(l,q,data);
+
+	Scalar grad[ndim]; const Scalar Nx = tti_norm(l,q,data,A, x, grad);
+	const Scalar grad_e = scal_vv(grad,e);
+	Scalar xpe[ndim],xme[ndim]; add_vv(x,e,xpe); sub_vv(x,e,xme);
+	const Scalar Nxpe = tti_norm(l,q,data,A,xpe); 
+	const Scalar Nxme = tti_norm(l,q,data,A,xme); 
+
+	ORDER2(
+	Scalar xpe2[ndim],xme2[ndim]; add_vv(xpe,e,xpe2); sub_vv(xme,e,xme2);
+	const Scalar Nxpe2 = tti_norm(l,q,data,A,xpe2); 
+	const Scalar Nxme2 = tti_norm(l,q,data,A,xme2); 
+	)
+
+	generic_factor_sym(grad_e,Nx,Nxpe,Nxme,fact ORDER2(,Nxpe2,Nxme2,fact2));
+}
+
+/*
 void factor_sym(const Scalar x[ndim], const Int e[ndim], 
 	Scalar fact[2] ORDER2(,Scalar fact2[2])){
 	const Scalar * l = factor_metric; // linear[2]
@@ -210,6 +236,8 @@ void factor_sym(const Scalar x[ndim], const Int e[ndim],
 	fact2[1] = 2*fact[1]-(Nx - 2*Nxpe + Nxpe2); 
 	)
 }
+*/
+
 ) // FACTOR
 
 #include "Update.h"

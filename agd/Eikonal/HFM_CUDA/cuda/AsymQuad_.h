@@ -15,8 +15,8 @@
 
 const Int nsym = decompdim; // Number of symmetric offsets
 const Int nfwd = 0; // Number of forward offsets
-const Int geom_size = symdim;
-const Int factor_size = symdim;
+const Int geom_size = symdim + ndim;
+const Int factor_size = geom_size;
 
 /* The asymmetric quadratic scheme reads max(min(a,b),c), 
 where a is a Rander scheme, and b,c are Riemann schemes*/
@@ -49,7 +49,7 @@ void scheme(const Scalar geom[geom_size],
 	const Scalar iin2_3 = iin2*iin2_2;
 	const Scalar lambda = n/(2.*in2*iin2);
 	const Scalar mu = 4.*in2/iin2_3;
-	const Scalar gamma = 4.*(1.+n2)/iin2_2 - n2*mu;
+	const Scalar gamma = 4.*in2/iin2_2; //4.*(1.+n2)/iin2_2 - n2*mu;
 
 	for(Int i=0; i<symdim; ++i){mwwT[i] = gamma*m[i]+mu*wwT[i];}
 	decomp_m(mwwT,weights,offsets);
@@ -58,14 +58,41 @@ void scheme(const Scalar geom[geom_size],
 
 FACTOR(
 #include "EuclideanFactor.h"
+Scalar asym_quad_norm(const Scalar m[symdim], const Scalar w[ndim], const Scalar v[ndim]){
+	const Scalar s = max(Scalar(0.),scal_vv(w,v));
+	return sqrt(norm_vmv(v,m,v)+s*s);
+}
+
+Scalar asym_quad_norm(const Scalar m[symdim], const Scalar w[ndim], const Scalar v[ndim],
+	Scalar grad[__restrict__ ndim]){ // Similar but returning also the gradient
+	const Scalar s = max(Scalar(0.),scal_vv(w,v));
+	dot_mv(m,v,grad);
+	const Scalar norm = sqrt(dot_vv(grad,v)+s*s);
+	madd_kvV(s,w,grad);
+	div_Vk(grad,norm);
+	return norm;
+}
+
 /** Returns the perturbations involved in the factored fast marching method.
 Input : x= relative position w.r.t the seed, e finite difference offset.*/
 void factor_sym(const Scalar x[ndim], const Int e[ndim], 
 	Scalar fact[2] ORDER2(,Scalar fact2[2])){
 	// Compute some scalar products and norms
-	const Scalar * m = factor_metric;
-	const Scalar xx=scal_vmv(x,m,x), xe=scal_vmv(x,m,e), ee=scal_vmv(e,m,e);
-	euclidean_factor_sym(xx,xe,ee,fact ORDER2(, fact2));
+	const Scalar * m = factor_metric; // m[symdim]
+	const Scalar * w = factor_metric+symdim; // w[ndim]
+
+	Scalar grad[ndim]; const Scalar Nx = asym_quad_norm(m,w, x,grad);
+	Scalar xpe[ndim],xme[ndim]; add_vv(x,e,xpe); sub_vv(x,e,xme);
+	const Scalar Nxpe = asym_quad_norm(m,w,xpe); 
+	const Scalar Nxme = asym_quad_norm(m,w,xme); 
+
+	ORDER2(
+	Scalar xpe2[ndim],xme2[ndim]; add_vv(xpe,e,xpe2); sub_vv(xme,e,xme2);
+	const Scalar Nxpe2 = asym_quad_norm(m,w,xpe2); 
+	const Scalar Nxme2 = asym_quad_norm(m,w,xme2); 
+	)
+
+	generic_factor_sym(grad_e,Nx,Nxpe,Nxme,fact ORDER2(,Nxpe2,Nxme2,fact2));
 }
 ) 
 

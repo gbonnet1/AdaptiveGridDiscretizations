@@ -15,7 +15,7 @@
 
 const Int nsym = decompdim; // Number of symmetric offsets
 const Int nfwd = 0; // Number of forward offsets
-const Int geom_size = symdim;
+const Int geom_size = symdim DRIFT(+ndim); // DRIFT -> Rander case
 const Int factor_size = symdim;
 
 #include "Constants.h"

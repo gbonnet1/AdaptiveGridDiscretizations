@@ -28,3 +28,20 @@ void euclidean_factor_sym(const Scalar xx, const Scalar xe, const Scalar ee,
 	fact2[1] = 2*fact[1]-(Nx_Nxpe + Nxpe2_Nxpe); // parenth : |x|_m-2|x+e|_m+|x+2e|_m
 	)
 }
+
+/** Returns the perturbation involved in the factored fast marching method,
+for a generic norm.*/
+void generic_factor_sym(const Scalar grad_e[ndim], // Gradient at x in direction e
+	const Scalar Nx, const Scalar Nxpe, const Scalar Nxme, // Norm at x and neighbors
+	Scalar fact[2] // Scheme first order perturbaton 
+	ORDER2(const Scalar Nxpe2, const Scalar Nxme2, // Norm at farther neighbors
+	Scalar fact2[2]) ){ // Scheme second order perturbation
+
+	fact[0] = -grad_e + Nx - Nxme; 
+	fact[1] =  grad_e + Nx - Nxpe; 
+
+	ORDER2(
+	fact2[0] = 2*fact[0]-(Nx - 2*Nxme + Nxme2); 
+	fact2[1] = 2*fact[1]-(Nx - 2*Nxpe + Nxpe2); 
+	)
+}
