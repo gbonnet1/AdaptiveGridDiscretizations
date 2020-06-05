@@ -317,7 +317,7 @@ void recurse(const T values[__restrict__ n],
 template<typename T>
 void variable_length_sort(const T * __restrict__ values, int * __restrict__ order, 
 	int * __restrict__ tmp, int n){
-	const int rec = max(0, 28-__clz(n-1));
+	const int rec = max(0, 28-__clz((unsigned int) (n-1)));
 	if(rec%2==0){
 		for(int i=0; i<n; ++i) order[i]=i;
 		return _VariableLengthSort::recurse<T>(values, order, tmp, n, rec);

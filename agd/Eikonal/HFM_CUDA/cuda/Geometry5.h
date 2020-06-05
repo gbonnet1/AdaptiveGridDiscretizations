@@ -35,7 +35,7 @@ const Int kktdim=20; // Number of support vectors in Voronoi's decomposition
 typedef char small; // Small type to avoid overusing memory
 typedef unsigned char uchar;
 const Int nvertex = 3;
-const Scalar vertex_[nvertex][symdim] = { // The two four dimensional perfect forms
+const Scalar vertex_[nvertex][symdim] = { // The three five dimensional perfect forms
 {2,1,2,1,1,2,1,1,1,2,0,1,1,1,2},
 {2,1,2,1,1,2,1,1,1,2,1,1,1,1,2},
 {2,0.5,2,0.5,0.5,2,-1,-1,-1,2,-1,-1,-1,0.5,2}
