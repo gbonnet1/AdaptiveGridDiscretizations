@@ -11,6 +11,16 @@ from .. import AutomaticDifferentiation as ad
 from ..FiniteDifferences import common_field
 
 class AsymQuad(Base):
+	"""
+	An asymmetric quadratic norm takes the form F(x) = sqrt(<x,m x> + max(0,<w,x>)^2),
+	where m is a given symmetric positive definite tensor, 
+	and w is a given vector.
+
+	Members fields and __init__ arguments : 
+	- m : an array of shape (vdim,vdim,n1,..,nk) where vdim is the ambient space dimension.
+	The array must be symmetric, a.k.a m[i,j] = m[j,i] for all 0<=i<j<vdim.
+	- w : an array of shape (vdim,n1,...,nk)
+	"""
 
 	def __init__(self,m,w):
 		m,w = (ad.asarray(e) for e in (m,w))

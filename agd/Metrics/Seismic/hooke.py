@@ -17,8 +17,19 @@ from .thomsen_data import HexagonalFromTEM
 
 class Hooke(ImplicitBase):
 	"""
-	A norm defined by a Hooke tensor. 
-	Often encountered in seismic traveltime tomography.
+	The *dual* norm defined by a Hooke tensor takes the form 
+	F^*(x) = max_{|y|<=1} sqrt(c_ijkl xi yj xk yl)
+	where c is the Hooke tensor, and y ranges over the unit ball.
+	The primal norm is obtained implicitly, by solving an optimization problem.
+
+	These norms characterize the arrival time of pressure waves in elasticity. 
+	They are often encountered in seismic traveltime tomography.
+
+	Members fields and __init__ arguments : 
+	- hooke : an array of shape (hdim,hdim,n1,...,nk) where hdim = vdim*(vdim+1)/2
+	and vdim is the ambient space dimension. The array must be symmetric, and encodes the
+	hooke tensor c in Voigt notation.
+	- *args,**kwargs (optional) : passed to ImplicitBase
 	"""
 	def __init__(self,hooke,*args,**kwargs):
 		super(Hooke,self).__init__(*args,**kwargs)

@@ -9,7 +9,11 @@ from .. import FiniteDifferences as fd
 
 class Diagonal(Base):
 	"""
-	A diagonal metric, defined through axis dependent costs.
+	A Diagonal norm takes the form F(x) = sqrt(sum_i costs[i]*x[i]^2 ),
+	where costs[i], 0<=i<vdim, are given positive scalars
+
+	Members fields and __init__ arguments : 
+	- cost, an array of shape (vdim,n1,..,nk) where vdim is the ambient space dimension.
 	"""
 
 	def __init__(self,costs):

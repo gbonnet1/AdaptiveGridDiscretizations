@@ -18,11 +18,19 @@ class TTI(ImplicitBase):
 	A family of reduced models, known as Tilted Transversally Anisotropic,
 	and arising in seismic tomography.
 
-	The dual unit ball is defined by an equation of the form
+	The *dual* unit ball is defined by an equation of the form
 	l(X^2+Y^2,Z^2) + q(X^2+Y^2,Z^2) = 1,
 	where l is linear and q is quadratic, where X,Y,Z are the coefficients of the input 
 	vector, usually altered by a linear transformation.
-	In two dimensions, ignore the Z^2 term.
+	In two dimensions, ignore the Y^2 term.
+
+	The primal norm is obtained implicitly, by solving an optimization problem.
+
+	Members fields and __init__ arguments : 
+	- linear : an array of shape (2,n1,...,nk) encoding the linear part l
+	- quadratic : an array of shape (2,2,n1,...,nk) encoding the quadratic part q
+	- vdim (optional) : the ambient space dimension
+	- *args,**kwargs (optional) : passed to implicit_base
 	"""
 
 	def __init__(self,linear,quadratic,vdim=None,*args,**kwargs):

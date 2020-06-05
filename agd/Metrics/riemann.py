@@ -11,6 +11,14 @@ from .. import AutomaticDifferentiation as ad
 from .. import FiniteDifferences as fd
 
 class Riemann(Base):
+	"""
+	A Riemann norm takes the form F(x) = sqrt(<x,m x>), 
+	where m is a given symmetric positive definite tensor.
+
+	Members fields and __init__ arguments : 
+	- m : an array of shape (vdim,vdim,n1,..,nk) where vdim is the ambient space dimension.
+	The array must be symmetric, a.k.a m[i,j] = m[j,i] for all 0<=i<j<vdim.
+	"""
 
 	def __init__(self,m):
 		self.m=ad.asarray(m)

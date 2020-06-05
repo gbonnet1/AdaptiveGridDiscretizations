@@ -11,10 +11,14 @@ from .. import FiniteDifferences as fd
 
 class Rander(Base):
 	"""
-	A Rander norm takes the form F(x) = sqrt(<x,m.x>) + <w,x>.
-	Inputs : 
-	- m : Symmetric positive definite matrix.
-	- w : Vector, obeying <w,m^(-1).w> < 1
+	A Rander norm takes the form F(x) = sqrt(<x,m.x>) + <w,x>,
+	where m is a given symmetric positive definite tensor, 
+	and w is a given vector subject to the consition <w,m^{-1},w> < 1.
+
+	Members fields and __init__ arguments : 
+	- m : an array of shape (vdim,vdim,n1,..,nk) where vdim is the ambient space dimension.
+	The array must be symmetric, a.k.a m[i,j] = m[j,i] for all 0<=i<j<vdim.
+	- w : an array of shape (vdim,n1,...,nk)
 	"""
 	def __init__(self,m,w):
 		m,w = (ad.asarray(e) for e in (m,w))
