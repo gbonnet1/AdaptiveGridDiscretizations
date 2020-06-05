@@ -93,20 +93,26 @@ def RunRaw(hfmIn):
 	return RunDispatch(rawIn,GetBinaryDir("FileHFM","HFMpy"))
 
 
-def RunSmart(hfmIn,returns="out",co_output=None,cache=None):
+def RunSmart(hfmIn,co_output=None,cache=None,returns="out"):
 	"""
 	Calls the HFM library, with pre-processing and post-processing of data.
 
-	tupleIn and tupleOut are intended to make the inputs and outputs 
-	visible to reverse automatic differentiation
-	- returns : string in ('in_raw','out_raw','out')
-		early aborts the run and returns specified data
+	Main input : 
+	- hfmIn, a dictionary like structure, containing the eikonal solver data.
+
+	The C++ library embeds some help information, which can be accessed as follows.
+	* 'verbosity' : set to 1 or 2 to display information on run, including the defaulted keys.
+	 set to 0 to silence the run.
+	* 'keyHelp' : set as a string of keys separated by spaces, to print help on these.
+	 example 'keyHelp':"seeds tips"
+
+	Optional input:
+	- co_output (optional) : used for reverse automatic differentiation.
+	- cache (optional) : store some intermediate results to bypass computations at a later stage. 
+	- returns (optional) : early aborts the run (debug purposes). ('in_raw','out_raw','out')
 	"""
 	
-	#TODO : 
-	#	- geometryFirst (default : all but seeds)
-
-	assert(returns in ('in_raw','out_raw','out'))
+	assert returns in ('in_raw','out_raw','out')
 
 	hfmIn_raw = {}
 

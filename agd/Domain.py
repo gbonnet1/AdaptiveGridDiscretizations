@@ -49,7 +49,11 @@ class Domain:
 		b[b<0]=np.inf
 		return np.minimum(a.min(axis=0),b.min(axis=0))
 
-	def contains_ball(self,x,h):
+	def contains_ball(self,x,h,ball_pattern=None):
+		"""
+		Wether the domain contains the ball of center x and radius h.
+		Approximate predicate based on sampling, using ball_pattern.
+		"""
 		if h==0.: 	return self.contains(x)
 		if h<0.:	return AbsoluteComplement(self).contains_ball(x,-h)
 		level = self.level(x)
@@ -58,12 +62,16 @@ class Domain:
 		# Fix boundary layer
 		mask = np.logical_and(inside,level>-h) # Recall level is 1-Lipschitz
 		xm=x[:,mask]
-		ball_pattern = fd.as_field(self.ball_pattern(),xm.shape[1:],conditional=False)
+		if ball_pattern is None: ball_pattern = self.ball_pattern()
+		ball_pattern = fd.as_field(ball_pattern,xm.shape[1:],conditional=False)
 		xb = np.expand_dims(xm,axis=1)+h*ball_pattern
 		inside[mask] = np.all(self.contains(xb),axis=0)
 		return inside
 
 	def ball_pattern(self,vdim=None,r=1):
+		"""
+		Produces a sampling pattern in a ball, to be used in the contains_ball predicate.
+		"""
 		if vdim is None: vdim = self.vdim
 		if vdim is None: raise ValueError("Unspecified dimension")
 		aX = list(range(-r,r+1))
@@ -91,7 +99,12 @@ class WholeSpace(Domain):
 
 class Ball(Domain):
 	"""
-	This class represents a ball shaped domain
+	This class represents a ball shaped domain.
+
+	__init__ arguments : 
+	- center (optional), array : the center of the ball.
+	- radius (optional), scalar : the radius of the ball.
+	Defaults to defining the unit two-dimensional ball.
 	"""
 
 	def __init__(self,center=(0.,0.),radius=1.):
@@ -136,7 +149,13 @@ class Ball(Domain):
 
 class Box(Domain):
 	"""
-	This class represents a box shaped domain.
+	This class represents a box shaped domain, mathematically defined as the product
+	[a1,b1] x ... x [ak,bk] of some intervals. 
+
+
+	__init__ argument : 
+	- sides (optional) : [[a1,b1], ..., [ak,bk]] the intervals defining the box.
+	 Defaults to defining the two dimensional unit square.
 	"""
 
 	def __init__(self,sides = ((0.,1.),(0.,1.)) ):
@@ -147,11 +166,25 @@ class Box(Domain):
 		self._hlen = (sides[:,1]-sides[:,0])/2.
 	
 	@property
-	def sides(self): return self._sides
+	def sides(self): 
+		"""
+		The intervals defining the box [[a1,b1], ..., [ak,bk]].
+		"""
+		return self._sides
+
 	@property
-	def center(self): return self._center
+	def center(self): 
+		"""
+		The center [ (a1+b1)/2, ..., (ak+bk)/2 ] of the box.
+		"""
+		return self._center
+
 	@property
-	def edgelengths(self): return 2.*self._hlen
+	def edgelengths(self): 
+		"""
+		The edgelengths [ b1-a1, ..., bk-ak ] of the box.
+		"""
+		return 2.*self._hlen
 	@property
 	def vdim(self): return len(self.center)
 
@@ -204,6 +237,9 @@ class Box(Domain):
 class AbsoluteComplement(Domain):
 	"""
 	This class represents the complement, in the entire space R^d, of an existing domain.
+
+	__init__ argument: 
+	- dom : Domain of which to take the complement.
 	"""
 	def __init__(self,dom):
 		super(AbsoluteComplement,self).__init__()
@@ -225,6 +261,9 @@ class AbsoluteComplement(Domain):
 class Intersection(Domain):
 	"""
 	This class represents an intersection of several subdomains.
+
+	__init__ arguments : 
+	- *doms : domains to intersect.
 	"""
 	def __init__(self,*doms):
 		super(Intersection,self).__init__()
@@ -315,7 +354,7 @@ class Intersection(Domain):
 	
 def Complement(dom1,dom2):
 	"""
-	Relative complement dom1 - dom2
+	Relative complement dom1 - dom2 of two domains.
 	"""
 	return Intersection(dom1,AbsoluteComplement(dom2))
 
@@ -328,7 +367,11 @@ def Union(*doms):
 class Band(Domain):
 	"""
 	Defines a banded domain in space, in between two parallel hyperplanes.
-	bounds[0] < <x,direction> < bounds[1]
+	lower_bound < <x,direction> < upper_bound
+
+	__init__ arguments : 
+	- direction : array of shape (vdim,), where vdim is the ambient space dimension.
+	- bounds : [lower_bound, upper_bound]
 	"""
 
 	def __init__(self,direction,bounds):
@@ -372,7 +415,10 @@ class Band(Domain):
 
 def ConvexPolygon(pts):
 	"""
-	Defines a convex polygonal domain from its vertices, given in trigonometric order.
+	Defines a two dimensional convex polygonal domain from its vertices.
+
+	__init__ arguments :
+	- pts : array of shape (2,n). The polygon vertices, given in trigonometric order.
 	"""
 	def params(p,q):
 		pq = q-p
@@ -389,6 +435,7 @@ class AffineTransform(Domain):
 	Defines a domain which is the transformation of another domain
 	by an affine transformation, 
 		x' = mult x + shift
+
 	Inputs : 
 	- mult, scalar, matrix, or None (Eq 1.)
 	- shift, vector, or None (Eq null vector)
@@ -464,24 +511,25 @@ class Dirichlet:
 	Implements Dirichlet boundary conditions.
 	When computing finite differences, values queried outside the domain interior
 	are replaced with values obtained on the boundary along the given direction.
+
+	__init__ arguments :
+	- domain: geometrical description of the domain 
+	- value: a scalar or map yielding the value of the boundary conditions
+	- grid: the cartesian grid. Ex: np.array(np.meshgrid(aX,aY,indexing='ij')) for suitable aX,aY
+
+	- interior (optional): the points regarded as interior to the domain. 
+	- interior_radius (optional): sets
+		interior = domain.contains_ball(interior_radius)
+
+	- grid_values (optional): placeholder values to be used on the grid.
+		Either an array of values, or a function
+
+	member fields : 
+	- interior : mask for the discretization grid points inside the domain.
 	"""
 
 	def __init__(self,domain,value,grid,
 		interior_radius=None,interior=None,grid_values=0.):
-		"""
-		Domain, boundary conditions.
-		Inputs:
-		- domain: geometrical description of the domain 
-		- value: a scalar or map yielding the value of the boundary conditions
-		- grid: the cartesian grid. Ex: np.array(np.meshgrid(aX,aY,indexing='ij')) for suitable aX,aY
-
-		- interior (optional): the points regarded as interior to the domain. 
-		- interior_radius (optional): sets
-			interior = domain.contains_ball(interior_radius)
-
-		- grid_values (defaults to 0.): placeholder values to be used on the grid.
-			Either an array of values, or a function
-		"""
 		self.domain = domain
 
 		if isinstance(value,float):
@@ -520,13 +568,31 @@ class Dirichlet:
 		return hmax
 
 	@property 
-	def shape(self): return self.grid.shape[1:]
-	@property
-	def vdim(self): return len(self.grid)	
-	def as_field(self,arr,**kwargs): return fd.as_field(arr,self.shape,**kwargs)
+	def shape(self): 
+		"""
+		The shape of the domain (discretization grid).
+		"""
+		return self.grid.shape[1:]
 
 	@property
-	def not_interior(self): return np.logical_not(self.interior)
+	def vdim(self): 
+		"""
+		The dimension of the vector space containing the domain.
+		"""
+		return len(self.grid)	
+	def as_field(self,arr,**kwargs): 
+		"""
+		Adds trailing dimensions, and broadcasts arr, if necessary,
+		so that the shape ends with the domain shape. 
+		"""
+		return fd.as_field(arr,self.shape,**kwargs)
+
+	@property
+	def not_interior(self): 
+		"""
+		Mask for the grid points outside the domain.
+		"""
+		return np.logical_not(self.interior)
 	
 	@property
 	def Mock(self):
@@ -573,7 +639,16 @@ class Dirichlet:
 
 	def DiffUpwind(self,u,offsets,reth=False):
 		"""
-		Returns first order finite differences, uses boundary values when needed.
+		First order upwind finite differences of u, along the offsets direction. 
+		Uses boundary values when needed.
+		Input : 
+		- u : array with the domain shape.
+		- offsets :  array of integers, with shape 
+		(vdim, n1,...,nk) or (vdim, n1,...,nk, shape) 
+		where vdim,shape is the ambient space dimension and domain shape, 
+		and n1,...,nk are arbitrary.
+		- reth (optional) : wether to return the grid scale used (differs from the 
+		grid scale on the neighborhood of the boundary).
 		"""
 		assert(isinstance(reth,bool))
 		grid=self.grid
@@ -595,7 +670,7 @@ class Dirichlet:
 
 	def DiffCentered(self,u,offsets):
 		"""
-		First order finite differences, 
+		Centered finite differences of u, along the offsets direction, 
 		computed using the second order accurate centered scheme.
 		Falls back to upwind finite differences close to the boundary.
 		"""
@@ -610,7 +685,7 @@ class Dirichlet:
 
 	def Diff2(self,u,offsets):
 		"""
-		Second order finite differences.
+		Second order finite differences of u, along the offsets direction.
 		Second order accurate in the interior, 
 		but only first order accurate at the boundary.
 		"""
@@ -625,6 +700,12 @@ class MockDirichlet:
 	where the boundary conditions are given on the full domain complement.
 
 	(No geometrical computations involved.)
+
+	__init__ arguments : 
+	- grid_values : the Dirichlet boundary conditions. 
+	 Please set to np.nan the values interior to domain.
+	- gridscale : the discretization grid scale.
+	- padding : the padding values to be used outside the discretization grid.
 	"""
 
 	def __init__(self,grid_values,gridscale,padding=np.nan):
@@ -634,25 +715,59 @@ class MockDirichlet:
 		self.gridscale=gridscale
 		self.padding = padding
 
+	@property
+	def interior(self): 
+		"""
+		The discretization grid points inside the domain.
+		"""
+		return np.isnan(self.grid_values)
+	@property
+	def not_interior(self): 
+		"""
+		The discretization grid points outside the domain.
+		"""
+		return np.logical_not(self.interior)
 
 	@property
-	def interior(self): return np.isnan(self.grid_values)
-	@property
-	def not_interior(self): return np.logical_not(self.interior)
+	def vdim(self): 
+		"""
+		The dimension of the vector space containing the domain.
+		"""
+		return self.grid_values.ndim	
 
 	@property
-	def vdim(self): return self.grid_values.ndim	
-	@property
-	def shape(self): return self.grid_values.shape
-	def as_field(self,arr,**kwargs): return fd.as_field(arr,self.shape,**kwargs)
+	def shape(self): 
+		"""
+		The shape of the domain discretization grid.
+		"""
+		return self.grid_values.shape
+
+	def as_field(self,arr,**kwargs): 
+		"""
+		Adds trailing dimensions, and broadcasts arr, if necessary,
+		so that the shape ends with the discretization grid shape. 
+		"""
+		return fd.as_field(arr,self.shape,**kwargs)
 
 	def DiffUpwind(self,u,offsets,**kwargs): 
+		"""
+		First order upwind finite differences of u, along the offsets direction. 
+		Uses grid_values outside the domain interior.
+		"""
 		return fd.DiffUpwind(u,offsets,self.gridscale,padding=self.padding,**kwargs)
 
 	def DiffCentered(self,u,offsets): 
+		"""
+		First order centered finite differences of u, along the offsets direction. 
+		Uses grid_values outside the domain interior.
+		"""
 		return fd.DiffCentered(u,offsets,self.gridscale,padding=self.padding)
 
 	def Diff2(self,u,offsets,*args): 
+		"""
+		Second order order finite differences of u, along the offsets direction. 
+		Uses grid_values outside the domain interior.
+		"""
 		return fd.Diff2(u,offsets,self.gridscale,*args,padding=self.padding)
 
 	

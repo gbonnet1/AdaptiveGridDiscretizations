@@ -39,7 +39,7 @@ SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
 'ReedsSheppExt2','ReedsSheppForwardExt2','ElasticaExt2','ElasticaExt2_5','DubinsExt2',
 'ReedsShepp3','ReedsSheppForward3'}
 
-# These models do not follow the usual dimension convention (physical dimension last)
+# These models do not follow the usual dimension naming convention (physical dimension last)
 dimModels = {'ElasticaExt2_5':3,'Riemann3_Periodic':3} 
 
 class dictOut(MutableMapping):
@@ -57,7 +57,7 @@ class dictOut(MutableMapping):
 		return f"dictOut({self.store})"
 
 	def __setitem__(self, key, value):
-		if key in _singleOut: key = _singleIn[key]; value = [value]
+		if key in _singleOut: key = _singleOut[key]; value = [value]
 		self.store[key] = value
 
 	def __getitem__(self, key): 
@@ -74,7 +74,11 @@ class dictOut(MutableMapping):
 
 	def __iter__(self): return iter(self.store)
 	def __len__(self):  return len(self.store)
-	def keys(self): return self.store.keys()
+	def keys(self): 
+		"""
+		The keys of the dictionary-like structure.
+		"""
+		return self.store.keys()
 
 def CenteredLinspace(a,b,n):
 	"""
@@ -91,11 +95,11 @@ def CenteredLinspace(a,b,n):
 class dictIn(MutableMapping):
 	"""
 	A dictionary like structure used as input of the Eikonal solvers.
-	- cpu : Run algorithm on host, store data on host
-	- cpu_transfer : Run algorithm on host, store data on device
-	- cpu_raw : Raw call to the HFM CPU library (debug purposes)
-	- gpu : Run algorithm on device, store data on device
-	- gpu_transfer : Run algorithm on device, store data on host
+
+	__init__ arguments: 
+	- store : a dictionary, used for initialization.
+
+	See dictIn().RunHelp() for details on the eikonal solver inputs.
 	"""
 
 	default_mode = 'cpu' # class attribute
@@ -129,17 +133,49 @@ class dictIn(MutableMapping):
 
 	def __copy__(self):     return dictIn(self.store.copy())
 	def __deepcopy__(self): return dictIn(self.store.deepcopy())
-	def copy(self): return self.__copy__()
+	def copy(self): 
+		"""
+		Returns a shallow copy of the structure.
+		"""
+		return self.__copy__()
 
 	@property
-	def mode(self): return self._mode
+	def mode(self): 
+		"""
+		The running mode of the eikonal solver, see the Run method.
+		The input data must be provided using a compatible array module: 
+		numpy in 'cpu' mode, cupy in 'gpu' mode.
+
+		Supported running mode for the eikonal solver : 
+		- 'cpu' : Run algorithm on host, store data on host
+		- 'cpu_transfer' : Run algorithm on host, store data on device
+		- 'cpu_raw' : Raw call to the HFM CPU library (debug purposes)
+		- 'gpu' : Run algorithm on device, store data on device
+		- 'gpu_transfer' : Run algorithm on device, store data on host
+		"""
+		return self._mode
 	@property
-	def float_t(self):return self._float_t
+	def float_t(self):
+		"""
+		The floating point type of the data arrays. Typically np.float64 in 'cpu' mode, 
+		and np.float32 in 'gpu' mode.
+		"""
+		return self._float_t
 	
 	def __repr__(self): 
 		return f"dictIn({self.store})"
 
 	def __setitem__(self, key, value):
+		"""
+		Set a key:value pair in the dictionary like structure.
+
+		Special treatment of keys and values:
+		- The values associated to some keys are converted, if needed, to numeric 
+		arrays of floats for the numpy or cupy module. (key in _array_float_fields) 
+		- The key value pair 'seed':x is converted into 'seeds':[x], (as for setting 
+		 multiple seeds, but their number is just one). (key in _singleIn)
+		- Some keys are readonly, changes will be rejected (key in _readonlyIn.)
+		"""
 		if key=='mode':
 			if _array_module[value]!=_array_module[self.mode]:
 				raise ValueError('Switching between modes with distinct array storage')
@@ -153,6 +189,13 @@ class dictIn(MutableMapping):
 		self.store[key] = value
 
 	def __getitem__(self, key): 
+		"""
+		Get a value associated to a given key, in the dictionary like structure.
+
+		Special treatment of keys and values:
+		- self['seed'] = self['seeds'][0], if self['seeds'] has length one, 
+		and fails otherwise. (key in _singleIn)
+		"""
 		if key in _singleIn:
 			values = self.store[_singleIn[key]]
 			if len(values)!=1: 
@@ -165,12 +208,34 @@ class dictIn(MutableMapping):
 		del self.store[key]
 
 	def __iter__(self): return iter(self.store)
+	
 	def __len__(self):  return len(self.store)
-	def keys(self): return self.store.keys()
+
+	def keys(self): 
+		"""
+		The keys of this dictionary structure.
+		"""
+		return self.store.keys()
+
+	def RunHelp(cls,mode=None):
+		"""
+		Help on the eikonal solver, depending on the running mode.
+		"""
+		if mode is None: mode = self.mode
+		if mode in ('cpu','cpu_raw','cpu_transfer'): 
+			help(run_detail.RunSmart)
+		else:
+			from . import HFM_CUDA
+			help(HFM_CUDA.RunGPU)
 
 	def Run(self,join=None,**kwargs):
 		"""
 		Calls the HFM library, prints log and returns output.
+		Inputs : 
+		- join (optional) : join the dictionary with these additional entries before running.
+		- **kwargs (optional) : passed to the run_detail.RunSmart or HFM_CUDA.RunGPU methods.
+		
+		See dictIn().RunHelp() for additional details, depending on the running mode.
 		"""
 		if join is not None:
 			other = self.copy()
@@ -205,24 +270,33 @@ class dictIn(MutableMapping):
 
 	@property
 	def shape(self):
-		"""Shape of the discretization grid"""
+		"""
+		The shape of the discretization grid.
+		"""
 		dims = self['dims']
 		if ad.cupy_generic.from_cupy(dims): dims = dims.get()
 		return tuple(dims.astype(int))
 
 	@property
 	def size(self): 
-		"""Number of discretization points in the domain"""
+		"""
+		The number of points in the discretization grid.
+		"""
 		return np.prod(self.shape)
 	
 	@property
 	def SE(self):
-		"""Wether the model is based on the Special Euclidean group"""
+		"""
+		Wether the model is based on the Special Euclidean group.
+		True for curvature penalized models.
+		"""
 		return self['model'] in SEModels	
 	
 	@property
 	def vdim(self):
-		"""Dimension of the ambient vector space"""
+		"""
+		The dimension of the ambient vector space.
+		"""
 		model = self['model']
 		if model in dimModels: return dimModels[model]
 		dim = int(model[-1])
@@ -231,7 +305,8 @@ class dictIn(MutableMapping):
 	@property
 	def nTheta(self):
 		"""
-		Number of points for discretizing the interval [0,2 pi] for SE2 and SE3 models
+		Number of points for discretizing the interval [0,2 pi], in the angular space 
+		discretization, for the SE models (a.k.a. curvature penalized models).
 		"""
 		if not self.SE: raise ValueError("Not an SE model")
 		shape = self.shape
@@ -251,6 +326,9 @@ class dictIn(MutableMapping):
 
 	@property
 	def gridScales(self):
+		"""
+		The discretization grid scale along each axis.
+		"""
 		if self.SE:
 			h = self['gridScale']
 			hTheta = 2.*np.pi / self.nTheta
@@ -261,7 +339,10 @@ class dictIn(MutableMapping):
 		
 	@property
 	def corners(self):
-		"""Base point Grid()[0,..,0] for non-SE models, base = origin+gridScales/2"""
+		"""
+		Returns the extreme points grid[:,0,...,0] and grid[:,-1,...,-1] of the 
+		discretization grid.
+		"""
 		dims = self['dims']
 		origin = self.get('origin',self.xp.zeros_like(dims))
 		gridScales = self.gridScales
@@ -271,7 +352,9 @@ class dictIn(MutableMapping):
 		return (origin,origin+gridScales*dims)
 
 	def Axes(self,dims=None):
-		"""Axes of the cartesian discretization grid of the domain"""
+		"""
+		The discretization points used along each coordinate axis.
+		"""
 		bottom,top = self.corners
 		if dims is None: dims=self['dims']
 		return [self.array_float_caster(CenteredLinspace(b,t,d)) 
@@ -280,6 +363,8 @@ class dictIn(MutableMapping):
 	def Grid(self,dims=None):
 		"""
 		Returns a grid of coordinates, containing all the discretization points of the domain.
+		Similar to np.meshgrid(*self.Axes(),indexing='ij')
+		Inputs : 
 		- dims(optional) : use a different sampling of the domain
 		"""
 		axes = self.Axes(dims);
@@ -289,14 +374,19 @@ class dictIn(MutableMapping):
 		else: raise ValueError('Unsupported arrayOrdering : '+ordering)
 
 	def SetUniformTips(self,dims):
-		"""Regularly spaced sample points in the domain"""
+		"""
+		Place regularly spaced tip points all over the domain, 
+		from which to backtrack minimal geodesics.
+		Inputs : 
+		- dims : number of tips to use along each dimension.
+		"""
 		self['tips'] = self.Grid(dims).reshape(self.vdim,-1).T
 
 	def SetRect(self,sides,sampleBoundary=False,gridScale=None,gridScales=None,
 		dimx=None,dims=None):
 		"""
 		Defines a box domain, for the HFM library.
-		Inputs.
+		Inputs:
 		- sides, e.g. ((a,b),(c,d),(e,f)) for the domain [a,b]x[c,d]x[e,f]
 		- sampleBoundary : switch between sampling at the pixel centers, and sampling including the boundary
 		- gridScale, gridScales : side h>0 of each pixel (alt : axis dependent)
@@ -373,6 +463,12 @@ class dictIn(MutableMapping):
 		return point
 
 	def VectorFromOffset(self,offset,to=False):
+		"""
+		Turns a finite difference offset into a vector, by multiplying by the gridscale.
+		Inputs : 
+		- offset : the offset to convert.
+		- to (optional) : if True, produces an offset from a vector (reverse operation).
+		"""
 		offset = self.array_float_caster(offset)
 		if not to: return offset*self.gridScales
 		else: return offset/self.gridScales  

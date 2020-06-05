@@ -4,6 +4,14 @@
 from . import _Interface
 
 def RunGPU(hfmIn,*args,cache=None,**kwargs):
+	"""
+	Runs the GPU eikonal solver.
+
+	Main input:
+	- hfmIn : a dictionary like-structure
+
+	The solver embed some help information, which can be accessed as follows.
+	"""
 	if cache is not None: print(f"Warning : gpu eikonal solver does not support caching")
 	return _Interface.Interface(hfmIn).Run(*args,**kwargs)
 

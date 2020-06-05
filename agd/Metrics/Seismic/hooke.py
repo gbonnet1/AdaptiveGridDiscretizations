@@ -175,6 +175,11 @@ class Hooke(ImplicitBase):
 		else: raise ValueError("Unsupported dimension")
 
 	def to_depth4(self):
+		"""
+		Produces the full Hooke tensor, of shape
+		(vdim,vdim,vdim,vdim, n1,...,nk)
+		where vdim is the ambient space dimension.
+		"""
 		Voigt = self._Voigt
 		d = self.vdim
 		return ad.array([ [ [ [ self.hooke[Voigt[i,j],Voigt[k,l]]

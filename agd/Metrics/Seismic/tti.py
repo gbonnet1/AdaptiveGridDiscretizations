@@ -91,6 +91,11 @@ class TTI(ImplicitBase):
 		return f"TTI{self.vdim}"
 
 	def extract_xz(self):
+		"""
+		Extract a two dimensional Hooke tensor from a three dimensional one, 
+		corresponding to a slice through the X and Z axes.
+		Axes transformation information (rotation) is discarded.
+ 		"""
 		if len(self.shape)==3: raise ValueError("Three dimensional field")
 		if self.inverse_transformation is not None:
 			raise ValueError("Cannot extract XZ slice from tilted norms")
@@ -134,6 +139,9 @@ class TTI(ImplicitBase):
 
 	@classmethod
 	def from_Thomsen(cls,tem,vdim=3):
+		"""
+		Produces a norm from the given Thomsem elasticity parameters.
+		"""
 		hex,ρ = HexagonalFromTEM(tem)
 		return cls.from_hexagonal(*hex,vdim),ρ
 

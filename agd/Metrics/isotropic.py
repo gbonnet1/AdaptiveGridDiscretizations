@@ -20,8 +20,11 @@ class Isotropic(Base):
 			self.vdim = vdim
 
 	@classmethod
-	def from_speed(cls,speed):
-		return cls(1./speed)
+	def from_speed(cls,speed,vdim=None):
+		"""
+		Produces a metric whose cost equals 1/speed.
+		"""
+		return cls(1./speed,vdim)
 
 	def dual(self):
 		other = self.from_speed(self.cost)

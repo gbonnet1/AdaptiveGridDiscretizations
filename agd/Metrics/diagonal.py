@@ -20,7 +20,12 @@ class Diagonal(Base):
 		self.costs = ad.asarray(costs)
 
 	@classmethod
-	def from_speed(cls,speeds): return cls(1./speeds)
+	def from_speed(cls,speeds): 
+		"""
+		Produces a metric whose costs equal 1/speeds
+		"""
+		return cls(1./speeds)
+
 	def dual(self): return self.from_speed(self.costs)
 	def with_costs(self,costs): 
 		self_costs,costs = fd.common_field((self.costs,costs),(1,1))

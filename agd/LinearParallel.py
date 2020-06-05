@@ -6,6 +6,16 @@ from . import AutomaticDifferentiation as ad
 from . import FiniteDifferences as fd
 from .AutomaticDifferentiation import cupy_support as cps
 
+"""
+This module implements some basic linear algebra routines, with the following characteristics.
+- The geometry comes first, a.k.a vector has shape (vdim, n1,...,nk) where vdim is the 
+ ambient vector space dimension, and n1,...,nk are arbitrary. 
+ Note that *numpy uses the opposite convention*, putting vdim in last position.
+- The routines are compatible with forward automatic differentiation, see module
+ AutomaticDifferentiation.
+"""
+
+
 def identity(shape):
 	dim = len(shape)
 	a = np.full((dim,dim)+shape,0.)
@@ -39,15 +49,35 @@ def rotation(theta,axis=None):
 
 # Dot product (vector-vector, matrix-vector and matrix-matrix) in parallel
 def dot_VV(v,w):
+	"""
+	Dot product <v,w> of two vectors.
+	Inputs : 
+	- v,w : arrays of shape (vdim, n1,...,nk), 
+	 where vdim is the ambient vector space dimension
+	"""
 	v=ad.asarray(v); w=ad.asarray(w)
 	if v.shape[0]!=w.shape[0]: raise ValueError('dot_VV : Incompatible shapes')
 	return (v*w).sum(0)
 
 def dot_AV(a,v):
+	"""
+	Dot product a.v of a matrix and vector.
+	Inputs : 
+	- a : array of shape (wdim,vdim, n1,...,nk)
+	- v : array of shape (vdim, n1,...,nk),
+	 where vdim is the ambient vector space dimension
+	"""
 	if a.shape[1]!=v.shape[0]: raise ValueError("dot_AV : Incompatible shapes")
 	return (a*cps.expand_dims(v,axis=0)).sum(1)
 
 def dot_VA(v,a):
+	"""
+	Dot product v^T.a of a vector and matrix.
+	Inputs : 
+	- v : array of shape (vdim, n1,...,nk)
+	- a : array of shape (vdim,wdim, n1,...,nk),
+	 where vdim is the ambient vector space dimension
+	"""
 	m,n = a.shape[:2]
 	bounds = a.shape[2:]
 	if v.shape != (m,)+bounds:
@@ -57,6 +87,12 @@ def dot_VA(v,a):
 
 
 def dot_AA(a,b):
+	"""
+	Dot product a.b of two matrices.
+	Inputs : 
+	- a: array of shape (vdim,wdim, n1,...,nk),
+	- a: array of shape (wdim,xdim, n1,...,nk),	
+	"""
 	m,n=a.shape[:2]
 	bounds = a.shape[2:]
 	k = b.shape[1]
@@ -65,6 +101,13 @@ def dot_AA(a,b):
 	return (a.reshape((m,n,1)+bounds)*b.reshape((1,n,k)+bounds)).sum(1)
 
 def dot_VAV(v,a,w):
+	"""
+	Dot product <v,a.w> of two vectors and a matrix (usually symmetric).
+	Inputs (typical): 
+	- v: array of shape (vdim, n1,...,nk),	
+	- a: array of shape (vdim,vdim, n1,...,nk),
+	- w: array of shape (vdim, n1,...,nk),	
+	"""
 	return dot_VV(v,dot_AV(a,w))
 	
 # Multiplication by scalar, of a vector or matrix
@@ -77,17 +120,33 @@ def mult(k,x):
 	
 
 def perp(v):
+	"""
+	Rotates a vector by pi/2, producing [v[1],v[0]]
+	Inputs: 
+	- v: array of shape (2, n1,...,nk)
+	"""
 	if v.shape[0]!=2:
 		raise ValueError("perp error : Incompatible dimension")		
 	return ad.asarray( (-v[1],v[0]) )
 	
 def cross(v,w):
+	"""
+	Cross product v x w of two vectors.
+	Inputs: 
+	- v,w: arrays of shape (3, n1,...,nk)
+	"""
 	if v.shape[0]!=3 or v.shape!=w.shape:
 		raise ValueError("cross error : Incompatible dimensions")
 	return ad.asarray( (v[1]*w[2]-v[2]*w[1], \
 	v[2]*w[0]-v[0]*w[2], v[0]*w[1]-v[1]*w[0]) )
 	
 def outer(v,w):
+	"""
+	Outer product v w^T of two vectors.
+	Inputs : 
+	- v,w: arrays of shape (vdim, n1,...,nk),
+	 where vdim is the ambient vector space dimension
+	"""
 	if v.shape[1:] != w.shape[1:]:
 		raise ValueError("outer error : Incompatible dimensions")
 	m,n=v.shape[0],w.shape[0]
@@ -95,13 +154,30 @@ def outer(v,w):
 	return v.reshape((m,1)+bounds)*w.reshape((1,n)+bounds)
 
 def outer_self(v):
+	"""
+	Outer product v v^T of a vector with itself.
+	Inputs : 
+	- v: array of shape (vdim, n1,...,nk),
+	 where vdim is the ambient vector space dimension
+	"""
 	v=ad.asarray(v)
 	return outer(v,v)
 
 def transpose(a):
+	"""
+	Transpose a^T of a matrix.
+	Input : 
+	- a: array of shape (vdim,wdim, n1,...,nk),
+	"""
 	return a.transpose( (1,0,)+tuple(range(2,a.ndim)) )
 	
 def trace(a):
+	"""
+	Trace tr(a) of a square matrix, a.k.a sum of the diagonal elements.
+	Input : 
+	- a: array of shape (vdim,vdim, n1,...,nk),
+	 where vdim is the ambient vector space dimension
+	"""
 	vdim = a.shape[0]
 	if a.shape[1]!=vdim:
 		raise ValueError("trace error : incompatible dimensions")
@@ -110,6 +186,12 @@ def trace(a):
 # Low dimensional special cases
 
 def det(a):
+	"""
+	Determinant of a square matrix.
+	Input : 
+	- a: array of shape (vdim,vdim, n1,...,nk),
+	 where vdim is the ambient vector space dimension
+	"""
 	a=ad.asarray(a)
 
 	dim = a.shape[0]
@@ -131,6 +213,12 @@ def det(a):
 
 
 def inverse(a):
+	"""
+	Inverse of a square matrix.
+	Input : 
+	- a: array of shape (vdim,vdim, n1,...,nk),
+	 where vdim is the ambient vector space dimension
+	"""
 	a=ad.asarray(a)
 	if not (ad.is_ad(a) or a.dtype==np.dtype('object')):
 		try: return np.moveaxis(np.linalg.inv(np.moveaxis(a,(0,1),(-2,-1))),(-2,-1),(0,1))
@@ -167,6 +255,13 @@ def inverse(a):
 	raise ValueError(f"Unsupported inverse for {type(a)} with dtype {a.dtype} and dimensions {a.shape}")
 
 def solve_AV(a,v):
+	"""
+	Solution to a linear system (preferably low dimensional).
+	Input : 
+	- a: array of shape (vdim,vdim, n1,...,nk),
+	- v: array of shape (vdim,vdim, n1,...,nk),
+	 where vdim is the ambient vector space dimension
+	"""
 	a=ad.asarray(a)
 	if ad.is_ad(v) or a.dtype==np.dtype('object'): return dot_AV(inverse(a),v) # Inefficient, but compatible with ndarray subclasses
 	return np.moveaxis(np.linalg.solve(np.moveaxis(a,(0,1),(-2,-1)),np.moveaxis(v,0,-1)),-1,0)			

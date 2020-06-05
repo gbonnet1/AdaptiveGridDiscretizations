@@ -26,6 +26,20 @@ def as_field(u,shape,conditional=True,depth=None):
 	else: return np.broadcast_to(u.reshape(u.shape+(1,)*ndim), u.shape+shape)
 
 def common_field(arrays,depths,shape=None):
+	"""
+	Adds trailing dimensions, and broadcasts the given arrays, for suitable interoperation.
+	
+	Inputs: 
+	- arrays : a list [a_1,...,a_n], or iterable, of numeric arrays such that
+	 a_i.shape = shape_i + shape, or a_i.shape = shape_i, for each 1<=i<=n.
+	- depths : defined as [len(shape_i) for 1<=i<=n]
+	- shape (optional) : the trailing shape.
+	
+	Output:
+	- the arrays, with added trailing and dimensions broadcasting so that
+	 a_i.shape = shape_i + shape for each 1<=i<=n.
+
+	"""
 	if shape is None:
 		assert len(arrays)==len(depths)
 		for arr,depth in zip(arrays,depths):
@@ -248,8 +262,9 @@ def DiffGradient(u,offsets=None,dimension=None,**kwargs):
 # ----------- Interpolation ---------
 
 def UniformGridInterpolator1D(bounds,values,mode='clip',axis=-1):
-	"""Interpolation on a uniform grid. mode is in ('clip','wrap', ('fill',fill_value) )"""
-	
+	"""
+	Interpolation on a uniform grid. mode is in ('clip','wrap', ('fill',fill_value) )
+	"""
 	val = values.swapaxes(axis,0)
 	fill_value = None
 	if isinstance(mode,tuple):

@@ -30,11 +30,14 @@ def fixedpoint(f,x,tol=1e-9,nitermax=100):
 	return x
 
 class HamiltonianBase:
-
+	"""
+	Base class for Hamiltonians.
+	
+	__init__ arguments : 
+	- shape_free (optional) : shape of the position and momentum variables
+	- inv_inner (optional): inverse inner product, used for gradient normalization
+	"""
 	def __init__(self,is_separable=False,inv_inner=None,shape_free=None,vdim=-1):
-		"""
-		inv_inner : inverse inner product, used for gradient normalization
-		"""
 		self.is_separable = is_separable
 		self.inv_inner = inv_inner
 		self.shape_free = shape_free

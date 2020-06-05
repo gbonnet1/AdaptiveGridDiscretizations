@@ -37,6 +37,9 @@ class Riemann(Base):
 	def shape(self): return self.m.shape[2:]	
 
 	def eigvals(self):
+		"""
+		Eigenvalues of self.m
+		"""
 		try: return np.moveaxis(np.linalg.eigvalsh(np.moveaxis(self.m,(0,1),(-2,-1))),-1,0)
 		except ValueError: 
 			assert ad.cupy_generic.from_cupy(self.m)
@@ -98,6 +101,9 @@ class Riemann(Base):
 
 	@classmethod
 	def from_diagonal(cls,diag):
+		"""
+		Produces a Riemann norm whose tensors have the given diagonal.
+		"""
 		diag = ad.asarray(diag)
 		z = np.zeros_like(diag[0])
 		vdim = len(diag)

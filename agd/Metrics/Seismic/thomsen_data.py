@@ -20,7 +20,11 @@ ThomsenUnits = TEM('m/s','m/s',1,1,1,1,'g/cm^3')
 HexagonalMaterial = namedtuple('HexagonalMaterial',['c11','c12','c13','c33','c44'])
 
 def get_δ(Vp,Vs,ϵ,η):
-	"""Reconstructs Thomsen parameter δ"""
+	"""
+	Reconstructs Thomsen parameter δ, based on the other parameters, 
+	and the formula in the Thomsen paper.
+	(Note : some of the published ThomsenData appears to be inconsistent in this regard.)
+	"""
 	return 0.5*(ϵ + η/(1.-Vs**2/Vp**2))
 
 def HexagonalFromTEM(tem):
@@ -40,6 +44,10 @@ def HexagonalFromTEM(tem):
 	return HexagonalMaterial(c11,c12,c13,c33,c44),ρ
 
 def TEMFromHexagonal(hex,ρ):
+	"""
+	Produces the Thomsen parameters, from the coefficients 'hex' of 
+	a Hooke tensor with hexagonal symmetry, and the density 'ρ'.
+	"""
 	c11,c12,c13,c33,c44 = hex
 	c66 = (c11-c12)/2
 

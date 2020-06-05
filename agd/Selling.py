@@ -46,7 +46,7 @@ def Decomposition(m,sb=None):
 
 def GatherByOffset(T,Coefs,Offsets):
 	"""
-		Get the coefficient of a each offset
+	Get the coefficient of a each offset
 	"""
 	Coefs,Offsets = map(ad.cupy_generic.cupy_get,(Coefs,Offsets))
 	TimeCoef = {};
@@ -67,7 +67,9 @@ def GatherByOffset(T,Coefs,Offsets):
 
 
 def CanonicalSuperbase(m):
-	"""Returns a superbase with the same dimensions and array type as m"""
+	"""
+	Returns a superbase with the same dimensions and array type as m
+	"""
 	d=len(m); assert m.shape[1]==d
 	shape=m.shape[2:]
 
