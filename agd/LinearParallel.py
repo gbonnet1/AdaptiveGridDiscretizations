@@ -1,11 +1,6 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-import numpy as np
-from . import AutomaticDifferentiation as ad
-from . import FiniteDifferences as fd
-from .AutomaticDifferentiation import cupy_support as cps
-
 """
 This module implements some basic linear algebra routines, with the following characteristics.
 - The geometry comes first, a.k.a vector has shape (vdim, n1,...,nk) where vdim is the 
@@ -15,6 +10,10 @@ This module implements some basic linear algebra routines, with the following ch
  AutomaticDifferentiation.
 """
 
+import numpy as np
+from . import AutomaticDifferentiation as ad
+from . import FiniteDifferences as fd
+from .AutomaticDifferentiation import cupy_support as cps
 
 def identity(shape):
 	dim = len(shape)

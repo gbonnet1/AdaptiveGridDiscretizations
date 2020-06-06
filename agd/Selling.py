@@ -1,9 +1,15 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-# This file implements Selling's algorithm in dimension two and three,
-# which is used to construct tensor decompositions
-# It performs this on parallel on a family of matrices
+"""
+This file implements Selling's algorithm in dimension two and three, which decomposes a 
+symmetric positive definite matrix D, of dimension d<=3, in the form 
+D = sum_i ai ei ei^T,
+where ai >= 0 and ei is a vector with integer coordinates, and 0<= i < d(d+2)/2.
+
+Selling's decomposition is a central tool in the design of adaptive discretization schemes
+for anisotropic partial differential equations, on Cartesian grids.
+"""
 
 import numpy as np
 from itertools import cycle
@@ -19,8 +25,12 @@ iterMax3 = 100
 
 def ObtuseSuperbase(m,sb=None):
 	"""
-	In : symmetric positive definite matrix m. Initial superbase sb (optional).
-	Out : obtuse superbase is stored in input argument sb if it is not None. Else it is returned.
+	Input : 
+	- m : symmetric positive definite matrix, defined as an
+	 array of shape (vdim,vdim, n1,...,nk)
+	- sb (optional) : initial guess for the obtuse superbase.
+
+	Ouput : an m-obtuse superbase 
 	"""
 	dim = len(m)
 	if sb is None: sb = CanonicalSuperbase(m)
@@ -31,10 +41,14 @@ def ObtuseSuperbase(m,sb=None):
 
 def Decomposition(m,sb=None):
 	"""
-		 Use Selling's algorithm to decompose a tensor
+	Use Selling's algorithm to decompose a tensor
 
-		input : symmetric positive definite tensor, d<=3. Superbase (optional).
-		output : coefficients, offsets
+	Input : 
+	- m : symmetric positive definite matrix, defined as an
+	 array of shape (vdim,vdim, n1,...,nk) where vdim<=3
+	- sb (optional) : superbase to use for the decomposition,
+	 array of shape (vdim,vdim+1, n1,...,nk)
+	Output : the coefficients and offsets of the decomposition.
 	"""
 	dim = len(m)
 	if sb is None: sb = ObtuseSuperbase(m,sb)
@@ -46,7 +60,9 @@ def Decomposition(m,sb=None):
 
 def GatherByOffset(T,Coefs,Offsets):
 	"""
-	Get the coefficient of a each offset
+	Get the coefficient of a each offset.
+	This function is essentially used to make nice plots of how the superbase coefficients
+	and offsets vary as the decomposed tensor varies. 
 	"""
 	Coefs,Offsets = map(ad.cupy_generic.cupy_get,(Coefs,Offsets))
 	TimeCoef = {};
@@ -68,7 +84,10 @@ def GatherByOffset(T,Coefs,Offsets):
 
 def CanonicalSuperbase(m):
 	"""
-	Returns a superbase with the same dimensions and array type as m
+	Returns a superbase with the same dimensions and array type as m.
+
+	Input : 
+	 - m : array of shape (vdim,vdim, n1,...,nk)
 	"""
 	d=len(m); assert m.shape[1]==d
 	shape=m.shape[2:]
@@ -82,8 +101,12 @@ def CanonicalSuperbase(m):
 def SuperbasesForConditioning(cond,dim=2):
 	"""
 	Returns a family of superbases. 
-	One of them is M-obtuse, for any positive definite matrix M with condition number below the given bound.
+	For any positive definite matrix M with condition number below the given bound,
+	one of these superbases will be M-obtuse.
 	(Condition number is the ratio of the largest to the smallest eigenvalue.)
+
+	Input : 
+	 - cond (scalar) : the bound on the condition number.
 	"""
 	if   dim==1: return _SuperbasesForConditioning1(cond)
 	elif dim==2: return _SuperbasesForConditioning2(cond)

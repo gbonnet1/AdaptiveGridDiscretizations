@@ -1,6 +1,26 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
+"""
+This module implements some finite differences operations, as well as related array 
+reshaping and broadcasting operations. The main functions are the following, see the 
+the detailed help below.
+
+Elementary finite differences:
+- DiffUpwind
+- DiffCentered
+- Diff2
+
+Array broadcasting:
+- as_field
+- common_field
+
+Block based array reshaping:
+- block_expand
+- block_squeeze
+
+"""
+
 import numpy as np
 import itertools
 from . import AutomaticDifferentiation as ad

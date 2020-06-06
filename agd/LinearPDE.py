@@ -1,17 +1,9 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-import numpy as np
-import scipy.sparse as sp
-
-from . import Selling
-from . import LinearParallel as LP
-
-diff = np.zeros((3,3,2,2))
-diff[:,:,0,0]=1
-diff[:,:,1,1]=1
-
 """
+This module is DEPRECATED, but kept for compatibility.
+
  Constructs a linear operator sparse matrix, given as input 
 - an array of psd matrices, denoted diff
 - an array of vectors (optionnal), denoted omega
@@ -28,6 +20,18 @@ replace the first term with Tr(diff * hess u) in non-divergence form.
 
 Returns : a list of triplets, for building a coo matrix
 """
+
+import numpy as np
+import scipy.sparse as sp
+
+from . import Selling
+from . import LinearParallel as LP
+
+diff = np.zeros((3,3,2,2))
+diff[:,:,0,0]=1
+diff[:,:,1,1]=1
+
+
 def OperatorMatrix(diff,omega=None,mult=None, \
 		gridScale=1,
 		boundaryConditions='Periodic', 

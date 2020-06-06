@@ -1,6 +1,19 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
+"""
+The Eikonal package embeds CPU and GPU numerical solvers of (generalized) eikonal 
+equations. These are variants of the fast marching and fast sweeping method, based on 
+suitable discretizations of the PDE, and written and C++.
+
+Please see the illustrative notebooks for detailed usage instructions and examples:
+https://github.com/Mirebeau/AdaptiveGridDiscretizations
+
+Main object : 
+- dictIn : a dictionary-like structure, used to gathers the arguments of the 
+eikonal solver, and eventually call it.
+"""
+
 import numpy as np
 import importlib
 import functools

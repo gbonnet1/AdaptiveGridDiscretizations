@@ -1,6 +1,11 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
+"""
+This module gathers a few helper functions for plotting data, that are used throughout the 
+illustrative notebooks.
+"""
+
 from os import path
 import matplotlib.pyplot as plt
 from matplotlib import animation

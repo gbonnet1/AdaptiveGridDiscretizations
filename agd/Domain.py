@@ -1,6 +1,11 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
+"""
+This module allows to define domains of R^d by combinations of elementary shapes, 
+and to compute finite differences within these domains with Dirichlet boundary conditions.
+"""
+
 from . import FiniteDifferences as fd
 from . import AutomaticDifferentiation as ad
 from . import LinearParallel as lp

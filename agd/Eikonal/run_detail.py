@@ -95,12 +95,14 @@ def RunRaw(hfmIn):
 
 def RunSmart(hfmIn,co_output=None,cache=None,returns="out"):
 	"""
-	Calls the HFM library, with pre-processing and post-processing of data.
+	Calls the HFM library, a CPU eikonal solver written in C++,
+	with pre-processing and post-processing of data.
 
 	Main input : 
 	- hfmIn, a dictionary like structure, containing the eikonal solver data.
 
-	The C++ library embeds some help information, which can be accessed as follows.
+	The C++ library embeds some help information, which can be accessed using the 
+	following key:value pairs in hfmIn.
 	* 'verbosity' : set to 1 or 2 to display information on run, including the defaulted keys.
 	 set to 0 to silence the run.
 	* 'keyHelp' : set as a string of keys separated by spaces, to print help on these.

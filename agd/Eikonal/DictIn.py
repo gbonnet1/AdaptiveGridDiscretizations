@@ -217,7 +217,7 @@ class dictIn(MutableMapping):
 		"""
 		return self.store.keys()
 
-	def RunHelp(cls,mode=None):
+	def RunHelp(self,mode=None):
 		"""
 		Help on the eikonal solver, depending on the running mode.
 		"""

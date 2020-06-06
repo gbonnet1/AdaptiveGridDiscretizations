@@ -1,6 +1,12 @@
 # Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
+"""
+This file implements some spline interpolation methods, on uniform grids,
+in a manner compatible with automatic differentiation.
+"""
+
+
 import numpy as np
 import itertools
 import scipy.linalg
@@ -8,11 +14,6 @@ import scipy.linalg
 from . import AutomaticDifferentiation as ad
 from .AutomaticDifferentiation import cupy_support as cps
 
-
-"""
-This file implements some basic spline interpolation methods,
-in a manner compatible with automatic differentiation.
-"""
 
 #TODO : use a smaller stencil (3 pts instead of 4) for 2nd degree interpolation 
 # when far from the boundary, in non-periodic mode. (Introduce interior nodes.)
