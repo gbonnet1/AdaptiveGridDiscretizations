@@ -24,9 +24,9 @@ def VoronoiDecomposition(m,offset_t=np.int32,flattened=False,blockDim=None):
 	shape = m.shape[1:]
 	size = m.size/symdim
 
-	if not (2<=ndim and ndim<=5): 
+	if not (2<=ndim and ndim<=6): 
 		raise ValueError(f"Voronoi decomposition not implemented in dimension {ndim}")
-	decompdim = [0,1,3,6,12,15][ndim]
+	decompdim = [0,1,3,6,12,15,21][ndim]
 
 	float_t = np.float32
 	int_t = np.int32
@@ -61,7 +61,7 @@ def VoronoiDecomposition(m,offset_t=np.int32,flattened=False,blockDim=None):
 
 	cupy_kernel = module.get_function("VoronoiDecomposition")
 
-	if blockDim is None: blockDim = (32 if ndim==5 else 128)
+	if blockDim is None: blockDim = [128,128,128,128,128,32,32][ndim]
 	gridDim = int(np.ceil(size/blockDim))
 
 	cupy_kernel((gridDim,),(blockDim,),(m,weights,offsets))
