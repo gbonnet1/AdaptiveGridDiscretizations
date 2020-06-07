@@ -23,8 +23,8 @@ template<typename T>
 void copy_vV(const T x[ndim], T out[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){out[i]=x[i];}} 
 
-template<typename T>
-void copy_mM(const T m[symdim], T out[__restrict__ symdim]){
+template<typename T, typename Tout>
+void copy_mM(const T m[symdim], Tout out[__restrict__ symdim]){
 	for(Int i=0; i<symdim; ++i){out[i]=m[i];}} 
 
 template<typename T, typename Tout>
@@ -97,6 +97,7 @@ template<typename T>
 void madd_kvV(const T k, const T x[ndim], T y[__restrict__ ndim]){
 	for(Int i=0; i<ndim; ++i){y[i]+=k*x[i];} }
 
+
 // ----------- Scalar products -----------
 
 /// Euclidean scalar product
@@ -118,7 +119,7 @@ Scalar scal_vmv(const Tx x[ndim], const Scalar m[symdim], const Ty y[ndim]){
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
 		for(Int j=0; j<=i; ++j){
-			result += (i==j ? x[i]*y[i] : (x[i]*y[j]+x[j]*y[i]))*m[k]; 
+			result += (i==j ? x[i]*y[i] : (x[i]*y[j]+x[j]*y[i]))*m[k];
 			++k;
 		}
 	}
@@ -171,6 +172,10 @@ void self_outer_relax_v(const Scalar x[ndim], const Scalar relax,
 	}
 }
 
+template<typename T>
+void madd_kmM(const T k, const T x[symdim], T y[__restrict__ symdim]){
+	for(Int i=0; i<symdim; ++i){y[i]+=k*x[i];} }
+
 // ------ Special matrices ------
 
 template<typename T>
@@ -189,14 +194,16 @@ void canonicalsuperbase(T sb[ndim+1][ndim]){
 }
 // ------- Matrix products ------
 
-Scalar coef_m(const Scalar m[symdim], const Int i, const Int j){
+template<typename T>
+T coef_m(const T m[symdim], const Int i, const Int j){
 	const Int i_ = max(i,j), j_=min(i,j);
-	return (i_*(i_+1))/2+j_;
+	return m[(i_*(i_+1))/2+j_];
 }
 
 /// Dot product of symmetric matrix times vector
-void dot_mv(const Scalar m[symdim], const Scalar v[ndim], Scalar out[__restrict__ ndim]){
-	fill_kV(Scalar(0),out);
+template<typename Tm,typename Tv, typename Tout>
+void dot_mv(const Tm m[symdim], const Tv v[ndim], Tout out[__restrict__ ndim]){
+	zero_V(out);
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
 		for(Int j=0; j<=i; ++j){
@@ -217,26 +224,67 @@ void tdot_av(const Scalar a[ndim][ndim], const Scalar x[ndim], Scalar out[__rest
 	for(Int i=0; i<ndim; ++i) {for(Int j=0; j<ndim; ++j) out[i] += a[j][i]*x[j];}}
 
 /// Matrix transposition
-void trans_a(const Scalar a[ndim][ndim], Scalar out[__restrict__ ndim][ndim]){
+template<typename Ta, typename Tout>
+void trans_a(const Ta a[ndim][ndim], Tout out[__restrict__ ndim][ndim]){
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j) out[i][j]=a[j][i];}}
 
 /// Matrix-Matrix product
-void dot_aa(const Scalar a[ndim][ndim], const Scalar b[ndim][ndim], 
-	Scalar out[__restrict__ ndim][ndim]){
+template<typename Ta,typename Tb,typename Tout>
+void dot_aa(const Ta a[ndim][ndim], const Tb b[ndim][ndim],
+	Tout out[__restrict__ ndim][ndim]){
 	zero_A(out);
 	for(Int i=0; i<ndim; ++i){for(Int j=0; j<ndim; ++j){for(Int k=0; k<ndim; ++k){
 		out[i][k]+=a[i][j]*b[j][k];}}}
 }
 
-void tgram_am(const Scalar a[ndim][ndim], const Scalar m[symdim], 
-	Scalar out[__restrict__ symdim]){
+template<typename Ta, typename Tm, typename Tout>
+void tgram_am(const Ta a[ndim][ndim], const Tm m[symdim],
+	Tout out[__restrict__ symdim]){
 	Int k=0; 
 	for(Int i=0; i<ndim; ++i){
-		Scalar mai[ndim]; dot_mv(m,a[i],mai);
+		Tout mai[ndim]; dot_mv(m,a[i],mai);
 		for(Int j=0; j<=i; ++j){
-			out[k] = scal_vv(a[j],mai);
+			out[k] = scal_vv(mai,a[j]); // Accumulates with type Tout
 			++k;
 		}
 	}
 }
 
+// ----- Display ------
+
+#ifdef IOSTREAM
+template<typename T>
+void show_v(std::ostream & os, const T v[ndim]){
+	for(int i=0; i<ndim; ++i){
+		os << (i==0 ? "{" : ",");
+		os << Scalar(v[i]);
+		if(i==ndim-1) os << "}";
+	}
+}
+
+template<typename T>
+void show_m(std::ostream & os, const T m[symdim]){
+	for(int i=0; i<ndim; ++i){
+		os << (i==0 ? "{" : ",");
+		for(int j=0; j<ndim; ++j){
+			os << (j==0 ? "{" : ",");
+			os << Scalar(coef_m(m,i,j));
+			if(j==ndim-1) os << "}";
+		}
+		if(i==ndim-1) os << "}";
+	}
+}
+
+template<typename T>
+void show_a(std::ostream & os, const T a[ndim][ndim]){
+	for(int i=0; i<ndim; ++i){
+		os << (i==0 ? "{" : ",");
+		for(int j=0; j<ndim; ++j){
+			os << (j==0 ? "{" : ",");
+			os << Scalar(a[i][j]);
+			if(j==ndim-1) os << "}";
+		}
+		if(i==ndim-1) os << "}";
+	}
+}
+#endif
