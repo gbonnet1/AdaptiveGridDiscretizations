@@ -45,6 +45,7 @@ const Int decompdim=symdim;
 
 // The seven six dimensional perfect forms, vertices of Ryskov's polyhedron
 const Int nvertex = 7;
+
 const Scalar vertex_[nvertex][symdim] = {
  {2. ,1. ,2. ,1. ,1. ,2. ,1. ,1. ,1. ,2. ,1. ,1. ,1. ,1. ,2. ,1. ,1. ,1. ,1. ,1. ,2. },
  {2. ,0. ,2. ,1. ,1. ,2. ,1. ,1. ,1. ,2. ,1. ,1. ,1. ,1. ,2. ,1. ,1. ,1. ,1. ,1. ,2. },
@@ -60,6 +61,7 @@ const Scalar vertex_[nvertex][symdim] = {
 // Number of neighbors of the perfect forms. (Guess which is the wicked one.)
 const Int nneigh_[nvertex] = {21, 144, 38124, 21, 621, 46, 21};
 
+/*
 // The class of the neighbor vertex of a perfect form, in the list.
 const uchar * neigh_vertex_[nvertex] =
 {neigh_vertex0,neigh_vertex1,neigh_vertex2,neigh_vertex3,neigh_vertex4,neigh_vertex5,neigh_vertex6};
@@ -68,24 +70,26 @@ const unsigned int * neigh_choice_[nvertex] =
 {neigh_choice0,neigh_choice1,neigh_choice2,neigh_choice3,neigh_choice4,neigh_choice5,neigh_choice6};
 const uchar * neigh_signs_[nvertex] =
 {neigh_signs0,neigh_signs1,neigh_signs2,neigh_signs3,neigh_signs4,neigh_signs5,neigh_signs6};
-
+*/
 
 // Number of classes of neighbors of each perfect form
 const int nneigh_base_[7] = {1, 8, 11, 3, 3, 5, 1} ;
+/*
 // The vertex type of each neighbor class
 const int * neigh__base_v[7] =
 {neigh0_base_v,neigh1_base_v,neigh2_base_v,neigh3_base_v,neigh4_base_v,neigh5_base_v,neigh6_base_v};
 // The change of variables from the neighbor, to the reference perfect form
 const chgi_jT * neigh__base_c[7] =
 {neigh0_base_c,neigh1_base_c,neigh2_base_c,neigh3_base_c,neigh4_base_c,neigh5_base_c,neigh6_base_c};
-
+*/
 
 // The number of active constraints, at each perfect form
 const int nsupport_[7] = {21, 30, 36, 21, 27, 22, 21} ;
 typedef const small (*vertex_supportT)[6]; // small[][6]
-const vertex_supportT vertex_support_[7] =
+/*
+ const vertex_supportT vertex_support_[7] =
 {vertex_support0,vertex_support1,vertex_support2,vertex_support3,vertex_support4,vertex_support5,vertex_support6};
-
+*/
 
 // ----- For Better neighbor ------
 
@@ -96,24 +100,57 @@ const int ndiff_[nvertex] = {ndiff0,ndiff1,ndiff2,ndiff3,ndiff4,ndiff5,ndiff6};
 
 // Some key neighbors are given fully, to avoid roundoff error accumulation
 typedef const small (*keyT)[symdim]; // small[][symdim]
+/*
 const keyT key_[nvertex] = {key0,key1,key2,key3,key4,key5,key6};
 
 // The place where successive neighbors differ
 const uchar * diff__i[nvertex] = {diff0_i,diff1_i,diff2_i,diff3_i,diff4_i,diff5_i,diff6_i};
 // By how much the successive neighbors differ, at the given place
 const small * diff__v[nvertex] = {diff0_v,diff1_v,diff2_v,diff3_v,diff4_v,diff5_v,diff6_v};
-
+*/
 // ----- For KKT -----
 
 typedef const small (*kkt_2weightsT)[symdim]; // small[symdim][symdim]
+/*
 const kkt_2weightsT kkt_2weights_[nvertex] =
 {kkt_2weights0,kkt_2weights1,kkt_2weights2,kkt_2weights3,kkt_2weights4,kkt_2weights5,kkt_2weights6};
 //typedef const small (*kkt_constraintsT)[symdim]; // small[][symdim] // Already done
 const kkt_constraintsT kkt_constraints_[nvertex] =
 {kkt_constraints0,kkt_constraints1,kkt_constraints2,kkt_constraints3,kkt_constraints4,kkt_constraints5,kkt_constraints6};
+*/
 
-
-// ----- Group all 
+// ----- Group all those things togeter ----
+struct vertex_dataT {
+	const Scalar * vertex;
+	
+	const Int nneigh;
+	const uchar * neigh_vertex;
+	const unsigned int * neigh_choice;
+	const uchar * neigh_signs;
+	
+	const int nneigh_base;
+	const int * neigh_base_v;
+	const chgi_jT * neigh_base_c;
+	
+	const int nsupport;
+	const vertex_supportT vertex_support;
+	
+	const int ndiff;
+	const keyT key;
+	const uchar * diff_i;
+	const small * diff_v;
+	
+	const kkt_2weightsT kkt_2weights;
+	const kkt_constraintsT kkt_constraints;
+} vertex_data_[nvertex] = {
+	{vertex_[0], nneigh_[0],neigh_vertex0,neigh_choice0,neigh_signs0, nneigh_base_[0],neigh0_base_v,neigh0_base_c, nsupport_[0],vertex_support0, ndiff0,key0,diff0_i,diff0_v, kkt_2weights0,kkt_constraints0},
+	{vertex_[1], nneigh_[1],neigh_vertex1,neigh_choice1,neigh_signs1, nneigh_base_[1],neigh1_base_v,neigh1_base_c, nsupport_[1],vertex_support1, ndiff1,key1,diff1_i,diff1_v, kkt_2weights1,kkt_constraints1},
+	{vertex_[2], nneigh_[2],neigh_vertex2,neigh_choice2,neigh_signs2, nneigh_base_[2],neigh2_base_v,neigh2_base_c, nsupport_[2],vertex_support2, ndiff2,key2,diff2_i,diff2_v, kkt_2weights2,kkt_constraints2},
+	{vertex_[3], nneigh_[3],neigh_vertex3,neigh_choice3,neigh_signs3, nneigh_base_[3],neigh3_base_v,neigh3_base_c, nsupport_[3],vertex_support3, ndiff3,key3,diff3_i,diff3_v, kkt_2weights3,kkt_constraints3},
+	{vertex_[4], nneigh_[4],neigh_vertex4,neigh_choice4,neigh_signs4, nneigh_base_[4],neigh4_base_v,neigh4_base_c, nsupport_[4],vertex_support4, ndiff4,key4,diff4_i,diff4_v, kkt_2weights4,kkt_constraints4},
+	{vertex_[5], nneigh_[5],neigh_vertex5,neigh_choice5,neigh_signs5, nneigh_base_[5],neigh5_base_v,neigh5_base_c, nsupport_[5],vertex_support5, ndiff5,key5,diff5_i,diff5_v, kkt_2weights5,kkt_constraints5},
+	{vertex_[6], nneigh_[6],neigh_vertex6,neigh_choice6,neigh_signs6, nneigh_base_[6],neigh6_base_v,neigh6_base_c, nsupport_[6],vertex_support6, ndiff6,key6,diff6_i,diff6_v, kkt_2weights6,kkt_constraints6},
+};
 
 
 /** Generates an isometry for the given vertex, 
@@ -122,12 +159,14 @@ Returns the index of the reference form.
 */
 int GroupElem(const int ivertex, const int neighbor,
 	small g[__restrict__ ndim][ndim]){
-	const vertex_supportT support = vertex_support_[ivertex];
-	const int nsupport = nsupport_[ivertex];
+	const vertex_dataT & data = vertex_data_[ivertex];
+	
+//	const vertex_supportT support = vertex_support_[ivertex];
+	const int nsupport = data.nsupport;
 
-	const char edge = neigh_vertex_[ivertex][neighbor];
-	uint choice = neigh_choice_[ivertex][neighbor];
-	char sign = neigh_signs_[ivertex][neighbor];
+	const char edge = data.neigh_vertex[neighbor]; // neigh_vertex_[ivertex][neighbor];
+	uint choice = data.neigh_choice[neighbor]; //neigh_choice_[ivertex][neighbor];
+	char sign = data.neigh_signs[neighbor]; //neigh_signs_[ivertex][neighbor];
 
 	/*
 	std::cout << "choice " << choice << " and sign" << int(sign) << std::endl;
@@ -146,7 +185,7 @@ int GroupElem(const int ivertex, const int neighbor,
 	small g0[ndim][ndim];
 	for(int j=0; j<ndim; ++j){
 		const uint k = choices[j];
-		const small * v = support[k];
+		const small * v = data.vertex_support[k];
 //		show_v(std::cout,v);
 		const small s = signs[j];
 //		std::cout << k << " " << int(s) << std::endl;
@@ -160,28 +199,29 @@ int GroupElem(const int ivertex, const int neighbor,
 	std::cout << "g0 " << std::endl;
 	show_a(std::cout, g0); std::cout << std::endl;*/
 	// If necessary, compose with the base change of variables
-	chgi_jT chg = neigh__base_c[ivertex][edge];
+	chgi_jT chg = data.neigh_base_c[edge]; //neigh__base_c[ivertex][edge];
 	if(chg==nullptr){copy_aA(g0,g);}
 	else {dot_aa(chg,g0,g);}
 
-	return neigh__base_v[ivertex][edge];
+	return data.neigh_base_v[edge]; // neigh__base_v[ivertex][edge];
 }
 
 /** Returns a better neighbor, with a lower energy, for Voronoi's reduction.
 If none exists, returns false*/
 bool BetterNeighbor(SimplexStateT & state){
 	const int ivertex = state.vertex;
-	const uchar * diff_i = diff__i[ivertex];
-	const small * diff_v = diff__v[ivertex];
-	const keyT key = key_[ivertex];
-	const int ndiff = ndiff_[ivertex];
+	const vertex_dataT & data = vertex_data_[ivertex];
+//	const uchar * diff_i = diff__i[ivertex];
+//	const small * diff_v = diff__v[ivertex];
+//	const keyT key = key_[ivertex];
+//	const int ndiff = ndiff_[ivertex];
 
-	Scalar obj = dim_symdim::scal_vv(state.m,key[0]);
+	Scalar obj = dim_symdim::scal_vv(state.m,data.key[0]);
 	int best_neigh = 0;
 	Scalar best_obj = obj;
-	for(int idiff=0,ineigh=1; idiff<ndiff; ++idiff){
-		const uchar index = diff_i[idiff];
-		obj += diff_v[idiff] * state.m[index & 31];
+	for(int idiff=0,ineigh=1; idiff<data.ndiff; ++idiff){
+		const uchar index = data.diff_i[idiff];
+		obj += data.diff_v[idiff] * state.m[index & 31];
 		if(index & 32){ // Completed neighbor
 			if(obj<best_obj){
 				best_obj = obj;
@@ -213,10 +253,11 @@ bool BetterNeighbor(SimplexStateT & state){
 
 void KKT(const SimplexStateT & state, Scalar weights[symdim], 
 	OffsetT offsets[symdim][ndim]){
-	const int vertex = state.vertex;
-	const vertex_supportT support = vertex_support_[vertex];
+	const vertex_dataT data = vertex_data_[state.vertex];
+	
+//	const vertex_supportT support = vertex_support_[vertex];
 	// Compute a decomposition, possibly with negative entries
-	dim_symdim::dot_av(kkt_2weights_[vertex],state.m,weights);
+	dim_symdim::dot_av(data.kkt_2weights,state.m,weights);
 	dim_symdim::div_Vk(weights, 2);
 	
 	// Change of variables toward original coordinates.
@@ -224,10 +265,10 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 	Int aInv[ndim][ndim]; round_a(aInv_,aInv);
 
 	// Number of minimal vectors for the perfect form
-	const int nsupport = nsupport_[vertex];
+	const int nsupport = data.nsupport;
 	const int nsupport_max = 36; // Upper bound
 	OffsetT offsets_[nsupport_max][ndim]; // Using [nsupport][ndim]
-	for(int i=0; i<nsupport; ++i){dot_av(aInv,support[i],offsets_[i]);}
+	for(int i=0; i<nsupport; ++i){dot_av(aInv,data.vertex_support[i],offsets_[i]);}
 
 
 	
@@ -246,7 +287,6 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 				
 		// ---- Define the half spaces intersections. (linear constraints) ----
 		Scalar halves[(nsupport_max+1)*(d_max+1)]; // used as Scalar[nsupport+1][d+1];
-		const kkt_constraintsT constraints = kkt_constraints_[vertex];
 		
 		Scalar maxWeight = 0;
 		for(Int i=0; i<symdim; ++i) maxWeight = max(maxWeight,abs(weights[i]));
@@ -255,7 +295,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		// The old components must remain positive
 		for(int i=0; i<symdim; ++i){
 			for(int j=0; j<d; ++j){
-				halves[i*(d+1)+j] = constraints[j][i];}
+				halves[i*(d+1)+j] = data.kkt_constraints[j][i];}
 			halves[i*(d+1)+d] = weights[i]/maxWeight;
 		}
 		
