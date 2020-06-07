@@ -2,9 +2,10 @@
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-
 #include "TypeTraits.h"
-const Int ndim=6;
+
+#define ndim_macro 6
+const int ndim=ndim_macro;
 #include "Geometry_.h"
 #include "Inverse_.h"
 #include "NetworkSort.h"
@@ -26,7 +27,10 @@ typedef unsigned char uchar;
 #include "Geometry6/Geometry6_data.h"
 #include "Geometry6/Geometry6_datag.h"
 #include "Geometry6/Geometry6_datakkt.h"
-#include "Geometry6/Geometry6_data2.h"
+
+#ifndef GEOMETRY6_DATA2//This file is a bit huge, so it is not embedded in the agd library
+#include "../../../../Miscellaneous/Geometry6_data2.h"
+#endif
 
 
 struct SimplexStateT {
@@ -41,7 +45,6 @@ struct SimplexStateT {
 
 // We implement below Voronoi's reduction of four dimensional positive definite matrices.
 const Int maxiter=100;
-const Int decompdim=symdim;
 
 // The seven six dimensional perfect forms, vertices of Ryskov's polyhedron
 const Int nvertex = 7;
@@ -60,63 +63,15 @@ const Scalar vertex_[nvertex][symdim] = {
 
 // Number of neighbors of the perfect forms.
 const Int nneigh_[nvertex] = {21, 6336, 38124, 21, 621, 46, 21};
-
-/*
-// The class of the neighbor vertex of a perfect form, in the list.
-const uchar * neigh_vertex_[nvertex] =
-{neigh_vertex0,neigh_vertex1,neigh_vertex2,neigh_vertex3,neigh_vertex4,neigh_vertex5,neigh_vertex6};
-// The change of variable toward that perfect form.
-const unsigned int * neigh_choice_[nvertex] =
-{neigh_choice0,neigh_choice1,neigh_choice2,neigh_choice3,neigh_choice4,neigh_choice5,neigh_choice6};
-const uchar * neigh_signs_[nvertex] =
-{neigh_signs0,neigh_signs1,neigh_signs2,neigh_signs3,neigh_signs4,neigh_signs5,neigh_signs6};
-*/
-
 // Number of classes of neighbors of each perfect form
 const int nneigh_base_[7] = {1, 8, 11, 3, 3, 5, 1} ;
-/*
-const int * neigh__base_v[7] =
-{neigh0_base_v,neigh1_base_v,neigh2_base_v,neigh3_base_v,neigh4_base_v,neigh5_base_v,neigh6_base_v};
-// The change of variables from the neighbor, to the reference perfect form
-const chgi_jT * neigh__base_c[7] =
-{neigh0_base_c,neigh1_base_c,neigh2_base_c,neigh3_base_c,neigh4_base_c,neigh5_base_c,neigh6_base_c};
-*/
-
 // The number of active constraints, at each perfect form
 const int nsupport_[7] = {21, 30, 36, 21, 27, 22, 21} ;
 typedef const small (*vertex_supportT)[6]; // small[][6]
-/*
- const vertex_supportT vertex_support_[7] =
-{vertex_support0,vertex_support1,vertex_support2,vertex_support3,vertex_support4,vertex_support5,vertex_support6};
-*/
-
-// ----- For Better neighbor ------
-
-// The number of elementwise differences between the successive neighbors
 const int ndiff_[nvertex] = {ndiff0,ndiff1,ndiff2,ndiff3,ndiff4,ndiff5,ndiff6};
-// The number of key neighbors (a single one, except for forms 1 and 2 to avoid roundoff errors)
-//const int nkey_[nvertex] = {nkey0,nkey1,nkey2,nkey3,nkey4,nkey5,nkey6};
-
-// Some key neighbors are given fully, to avoid roundoff error accumulation
 typedef const small (*keyT)[symdim]; // small[][symdim]
-/*
-const keyT key_[nvertex] = {key0,key1,key2,key3,key4,key5,key6};
-
-// The place where successive neighbors differ
-const uchar * diff__i[nvertex] = {diff0_i,diff1_i,diff2_i,diff3_i,diff4_i,diff5_i,diff6_i};
-// By how much the successive neighbors differ, at the given place
-const small * diff__v[nvertex] = {diff0_v,diff1_v,diff2_v,diff3_v,diff4_v,diff5_v,diff6_v};
-*/
-// ----- For KKT -----
-
 typedef const small (*kkt_2weightsT)[symdim]; // small[symdim][symdim]
-/*
-const kkt_2weightsT kkt_2weights_[nvertex] =
-{kkt_2weights0,kkt_2weights1,kkt_2weights2,kkt_2weights3,kkt_2weights4,kkt_2weights5,kkt_2weights6};
-//typedef const small (*kkt_constraintsT)[symdim]; // small[][symdim] // Already done
-const kkt_constraintsT kkt_constraints_[nvertex] =
-{kkt_constraints0,kkt_constraints1,kkt_constraints2,kkt_constraints3,kkt_constraints4,kkt_constraints5,kkt_constraints6};
-*/
+
 
 // ----- Group all those things togeter ----
 struct vertex_dataT {
@@ -343,7 +298,12 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 			21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37};
 		int prev[size_max] = {BadIndex,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,
 			18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35};
-		slinprog(halves, 0, size, n_vec, d_vec, d, opt, work, next, prev, size_max);
+#ifdef DOUBLE
+		dlinprog
+#else
+		slinprog
+#endif
+		(halves, 0, size, n_vec, d_vec, d, opt, work, next, prev, size_max);
 		// TODO : check that status is correct
 
 		// The solution is "projective". Let's normalize it, dividing by the last coord.
@@ -374,3 +334,6 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 
 
 } // Namespace Voronoi
+
+const Int decompdim=symdim;
+#include "Voronoi_.h"

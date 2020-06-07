@@ -8,22 +8,6 @@ for Voronoi's first reduction of quadratic forms.*/
 namespace Voronoi {
 
 
-void SetNeighbor(SimplexStateT & state,const Int neigh){
-	// Record the new change of coordinates
-//	const small * neigh_chg_flat = state.vertex==0 ? neigh_chg0[neigh] : neigh_chg1[neigh];
-//	typedef const small (*smallMatrixT)[ndim];
-//	const small (* neigh_chg)[ndim] = (smallMatrixT) neigh_chg_flat;
-	Scalar a[ndim][ndim];  copy_aA(neigh_chg_[state.vertex][neigh],a); 
-	Scalar sa[ndim][ndim]; copy_aA(state.a,sa); 
-	dot_aa(a,sa,state.a);
-	
-	// Apply it to the reduced positive definite matrix
-	Scalar sm[symdim]; copy_mM(state.m,sm); 
-	tgram_am(a,sm,state.m);
-
-	state.vertex = neigh_vertex_[state.vertex][neigh];
-}
-
 void KKT(const SimplexStateT & state, Scalar weights[decompdim], OffsetT offsets[decompdim][ndim]);
 
 void FirstGuess(SimplexStateT & state){
@@ -34,6 +18,23 @@ void FirstGuess(SimplexStateT & state){
 		state.vertex=ivertex;
 		state.objective=obj;
 	}
+}
+
+#if ndim_macro<6
+void SetNeighbor(SimplexStateT & state,const Int neigh){
+	// Record the new change of coordinates
+//	const small * neigh_chg_flat = state.vertex==0 ? neigh_chg0[neigh] : neigh_chg1[neigh];
+//	typedef const small (*smallMatrixT)[ndim];
+//	const small (* neigh_chg)[ndim] = (smallMatrixT) neigh_chg_flat;
+	Scalar a[ndim][ndim];  copy_aA(neigh_chg_[state.vertex][neigh],a);
+	Scalar sa[ndim][ndim]; copy_aA(state.a,sa);
+	dot_aa(a,sa,state.a);
+	
+	// Apply it to the reduced positive definite matrix
+	Scalar sm[symdim]; copy_mM(state.m,sm);
+	tgram_am(a,sm,state.m);
+
+	state.vertex = neigh_vertex_[state.vertex][neigh];
 }
 
 /** Returns a better neighbor, with a lower energy, for Voronoi's reduction.
@@ -65,7 +66,7 @@ bool BetterNeighbor(SimplexStateT & state){
 	SetNeighbor(state,bestK); // neighs[bestK]
 	return true;
 }
-
+#endif
 } // namespace Voronoi
 
 void decomp_m(const Scalar m[symdim],
