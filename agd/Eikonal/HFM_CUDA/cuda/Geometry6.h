@@ -23,6 +23,8 @@ namespace dim_symdim {
 
 typedef char small; // Small type to avoid overusing memory
 typedef unsigned char uchar;
+typedef unsigned int uint;
+#define nullptr NULL
 
 #include "Geometry6/Geometry6_data.h"
 #include "Geometry6/Geometry6_datag.h"
@@ -110,11 +112,21 @@ struct vertex_dataT {
 	const small * diff_v;
 	
 	// ----- For KKT -----
-
 	const kkt_2weightsT kkt_2weights;
 	const kkt_constraintsT kkt_constraints;
 	
-} vertex_data_[nvertex] = {
+};
+const vertex_dataT vertex_data0 = {vertex_[0], nneigh_[0],neigh_vertex0,neigh_choice0,neigh_signs0, nneigh_base_[0],neigh0_base_v,neigh0_base_c, nsupport_[0],vertex_support0, ndiff0,key0,diff0_i,diff0_v, kkt_2weights0,kkt_constraints0};
+const vertex_dataT vertex_data1 = {vertex_[1], nneigh_[1],neigh_vertex1,neigh_choice1,neigh_signs1, nneigh_base_[1],neigh1_base_v,neigh1_base_c, nsupport_[1],vertex_support1, ndiff1,key1,diff1_i,diff1_v, kkt_2weights1,kkt_constraints1};
+const vertex_dataT vertex_data2 = {vertex_[2], nneigh_[2],neigh_vertex2,neigh_choice2,neigh_signs2, nneigh_base_[2],neigh2_base_v,neigh2_base_c, nsupport_[2],vertex_support2, ndiff2,key2,diff2_i,diff2_v, kkt_2weights2,kkt_constraints2};
+const vertex_dataT vertex_data3 = {vertex_[3], nneigh_[3],neigh_vertex3,neigh_choice3,neigh_signs3, nneigh_base_[3],neigh3_base_v,neigh3_base_c, nsupport_[3],vertex_support3, ndiff3,key3,diff3_i,diff3_v, kkt_2weights3,kkt_constraints3};
+const vertex_dataT vertex_data4 = {vertex_[4], nneigh_[4],neigh_vertex4,neigh_choice4,neigh_signs4, nneigh_base_[4],neigh4_base_v,neigh4_base_c, nsupport_[4],vertex_support4, ndiff4,key4,diff4_i,diff4_v, kkt_2weights4,kkt_constraints4};
+const vertex_dataT vertex_data5 = {vertex_[5], nneigh_[5],neigh_vertex5,neigh_choice5,neigh_signs5, nneigh_base_[5],neigh5_base_v,neigh5_base_c, nsupport_[5],vertex_support5, ndiff5,key5,diff5_i,diff5_v, kkt_2weights5,kkt_constraints5};
+const vertex_dataT vertex_data6 = {vertex_[6], nneigh_[6],neigh_vertex6,neigh_choice6,neigh_signs6, nneigh_base_[6],neigh6_base_v,neigh6_base_c, nsupport_[6],vertex_support6, ndiff6,key6,diff6_i,diff6_v, kkt_2weights6,kkt_constraints6};
+
+const vertex_dataT vertex_data_[nvertex] = {vertex_data0,vertex_data1,vertex_data2,vertex_data3,vertex_data4,vertex_data5,vertex_data6};
+
+/*const vertex_dataT vertex_data_[nvertex] = {
 	{vertex_[0], nneigh_[0],neigh_vertex0,neigh_choice0,neigh_signs0, nneigh_base_[0],neigh0_base_v,neigh0_base_c, nsupport_[0],vertex_support0, ndiff0,key0,diff0_i,diff0_v, kkt_2weights0,kkt_constraints0},
 	{vertex_[1], nneigh_[1],neigh_vertex1,neigh_choice1,neigh_signs1, nneigh_base_[1],neigh1_base_v,neigh1_base_c, nsupport_[1],vertex_support1, ndiff1,key1,diff1_i,diff1_v, kkt_2weights1,kkt_constraints1},
 	{vertex_[2], nneigh_[2],neigh_vertex2,neigh_choice2,neigh_signs2, nneigh_base_[2],neigh2_base_v,neigh2_base_c, nsupport_[2],vertex_support2, ndiff2,key2,diff2_i,diff2_v, kkt_2weights2,kkt_constraints2},
@@ -122,7 +134,7 @@ struct vertex_dataT {
 	{vertex_[4], nneigh_[4],neigh_vertex4,neigh_choice4,neigh_signs4, nneigh_base_[4],neigh4_base_v,neigh4_base_c, nsupport_[4],vertex_support4, ndiff4,key4,diff4_i,diff4_v, kkt_2weights4,kkt_constraints4},
 	{vertex_[5], nneigh_[5],neigh_vertex5,neigh_choice5,neigh_signs5, nneigh_base_[5],neigh5_base_v,neigh5_base_c, nsupport_[5],vertex_support5, ndiff5,key5,diff5_i,diff5_v, kkt_2weights5,kkt_constraints5},
 	{vertex_[6], nneigh_[6],neigh_vertex6,neigh_choice6,neigh_signs6, nneigh_base_[6],neigh6_base_v,neigh6_base_c, nsupport_[6],vertex_support6, ndiff6,key6,diff6_i,diff6_v, kkt_2weights6,kkt_constraints6},
-};
+};*/
 
 
 /** Generates an isometry for the given vertex, 
