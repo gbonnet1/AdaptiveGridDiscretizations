@@ -132,13 +132,10 @@ Returns the index of the reference form.
 int GroupElem(const int ivertex, const int neighbor,
 	small g[__restrict__ ndim][ndim]){
 	const vertex_dataT & data = vertex_data_[ivertex];
-	
-//	const vertex_supportT support = vertex_support_[ivertex];
 	const int nsupport = data.nsupport;
-
-	const char edge = data.neigh_vertex[neighbor]; // neigh_vertex_[ivertex][neighbor];
-	uint choice = data.neigh_choice[neighbor]; //neigh_choice_[ivertex][neighbor];
-	char sign = data.neigh_signs[neighbor]; //neigh_signs_[ivertex][neighbor];
+	const uchar edge = data.neigh_vertex[neighbor]; //unsigned to silence warning
+	uint choice = data.neigh_choice[neighbor];
+	char sign = data.neigh_signs[neighbor];
 
 	/*
 	std::cout << "choice " << choice << " and sign" << int(sign) << std::endl;
@@ -171,11 +168,11 @@ int GroupElem(const int ivertex, const int neighbor,
 	std::cout << "g0 " << std::endl;
 	show_a(std::cout, g0); std::cout << std::endl;*/
 	// If necessary, compose with the base change of variables
-	chgi_jT chg = data.neigh_base_c[edge]; //neigh__base_c[ivertex][edge];
+	chgi_jT chg = data.neigh_base_c[edge];
 	if(chg==nullptr){copy_aA(g0,g);}
 	else {dot_aa(chg,g0,g);}
 
-	return data.neigh_base_v[edge]; // neigh__base_v[ivertex][edge];
+	return data.neigh_base_v[edge];
 }
 
 /** Returns a better neighbor, with a lower energy, for Voronoi's reduction.
@@ -183,10 +180,6 @@ If none exists, returns false*/
 bool BetterNeighbor(SimplexStateT & state){
 	const int ivertex = state.vertex;
 	const vertex_dataT & data = vertex_data_[ivertex];
-//	const uchar * diff_i = diff__i[ivertex];
-//	const small * diff_v = diff__v[ivertex];
-//	const keyT key = key_[ivertex];
-//	const int ndiff = ndiff_[ivertex];
 
 	Scalar obj = dim_symdim::scal_vv(state.m,data.key[0]);
 	int best_neigh = 0;
@@ -227,7 +220,6 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 	OffsetT offsets[symdim][ndim]){
 	const vertex_dataT data = vertex_data_[state.vertex];
 	
-//	const vertex_supportT support = vertex_support_[vertex];
 	// Compute a decomposition, possibly with negative entries
 	dim_symdim::dot_av(data.kkt_2weights,state.m,weights);
 	dim_symdim::div_Vk(weights, 2);
