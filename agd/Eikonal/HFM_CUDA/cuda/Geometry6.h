@@ -58,8 +58,8 @@ const Scalar vertex_[nvertex][symdim] = {
 
 // ------ For GroupElem ------
 
-// Number of neighbors of the perfect forms. (Guess which is the wicked one.)
-const Int nneigh_[nvertex] = {21, 144, 38124, 21, 621, 46, 21};
+// Number of neighbors of the perfect forms.
+const Int nneigh_[nvertex] = {21, 6336, 38124, 21, 621, 46, 21};
 
 /*
 // The class of the neighbor vertex of a perfect form, in the list.
@@ -75,7 +75,6 @@ const uchar * neigh_signs_[nvertex] =
 // Number of classes of neighbors of each perfect form
 const int nneigh_base_[7] = {1, 8, 11, 3, 3, 5, 1} ;
 /*
-// The vertex type of each neighbor class
 const int * neigh__base_v[7] =
 {neigh0_base_v,neigh1_base_v,neigh2_base_v,neigh3_base_v,neigh4_base_v,neigh5_base_v,neigh6_base_v};
 // The change of variables from the neighbor, to the reference perfect form
@@ -123,25 +122,43 @@ const kkt_constraintsT kkt_constraints_[nvertex] =
 struct vertex_dataT {
 	const Scalar * vertex;
 	
+	// ------ For GroupElem ------
+	
+	// Number of neighbors
 	const Int nneigh;
+	// The class of each neighbor vertex
 	const uchar * neigh_vertex;
+	// The next two encode the change of variable from neighbor toward reference form
 	const unsigned int * neigh_choice;
 	const uchar * neigh_signs;
 	
+	// Number of classes of neighbors of each perfect form
 	const int nneigh_base;
+	// The vertex type of each neighbor class
 	const int * neigh_base_v;
+	// The change of variables from the neighbor, to the reference perfect form
 	const chgi_jT * neigh_base_c;
 	
+	// The number and the list of the active constraints, at this vertex
 	const int nsupport;
 	const vertex_supportT vertex_support;
 	
+	// ----- For Better neighbor ------
+
+	// The number of elementwise differences between the successive neighbors
 	const int ndiff;
+	// One key neighbor is placed every 1024, to avoid roundoff error accumulation
 	const keyT key;
+	// The place where successive neighbors differ
 	const uchar * diff_i;
+	// By how much the successive neighbors differ, at the given place
 	const small * diff_v;
 	
+	// ----- For KKT -----
+
 	const kkt_2weightsT kkt_2weights;
 	const kkt_constraintsT kkt_constraints;
+	
 } vertex_data_[nvertex] = {
 	{vertex_[0], nneigh_[0],neigh_vertex0,neigh_choice0,neigh_signs0, nneigh_base_[0],neigh0_base_v,neigh0_base_c, nsupport_[0],vertex_support0, ndiff0,key0,diff0_i,diff0_v, kkt_2weights0,kkt_constraints0},
 	{vertex_[1], nneigh_[1],neigh_vertex1,neigh_choice1,neigh_signs1, nneigh_base_[1],neigh1_base_v,neigh1_base_c, nsupport_[1],vertex_support1, ndiff1,key1,diff1_i,diff1_v, kkt_2weights1,kkt_constraints1},
