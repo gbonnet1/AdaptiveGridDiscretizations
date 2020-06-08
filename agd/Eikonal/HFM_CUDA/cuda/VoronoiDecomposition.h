@@ -22,16 +22,6 @@ typedef char OffsetT;
 //#include "Riemann_.h"
 #endif
 
-/*
-struct mystructT
-{
-	int x;
-	double y;
-	mystructT(int x_,double y_):x(x_),y(y_){};
-};
-
-const mystructT thingy = mystructT(0,1.); // Constant init fails...
-*/
 __constant__ int size_tot;
 const Int nsym = decompdim;
 
