@@ -8,6 +8,7 @@ Prepublication/
 Exo/
 Notebooks_Repro/InPreparation/
 FileHFM_binary_dir.txt
+FileVDQ_binary_dir.txt
 dist/
 *.slides.html
 *_Format.txt

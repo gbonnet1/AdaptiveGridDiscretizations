@@ -19,7 +19,6 @@ typedef char OffsetT;
 #include "Geometry5.h"
 #elif ndim_macro==6
 #include "Geometry6.h"
-//#include "Riemann_.h"
 #endif
 
 __constant__ int size_tot;
