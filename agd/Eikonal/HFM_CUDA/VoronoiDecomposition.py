@@ -35,8 +35,7 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	weights = cp.empty((decompdim,*shape),dtype=float_t)
 	offsets = cp.empty((ndim,decompdim,*shape),dtype=offset_t)
 
-	weights=cp.ascontiguousarray(weights)
-	offsets=cp.ascontiguousarray(offsets)
+	weights,offsets=map(cp.ascontiguousarray,(weights,offsets))
 
 	# Set up the GPU kernel
 	if traits is None: traits = {}
@@ -73,6 +72,7 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	a = cp.empty((ndim,ndim,*shape),dtype=float_t)
 	vertex = cp.empty(shape,dtype=int_t)
 	objective = cp.empty(shape,dtype=int_t)
+	a,vertex,objective = map(cp.ascontiguousarray,(a,vertex,objective))
 
 	cupy_kernel = module.get_function("VoronoiMinimization")
 	cupy_kernel((gridDim,),(blockDim,),(m,a,vertex,objective))

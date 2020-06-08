@@ -324,7 +324,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		const int size = nsupport+1;
 		const int size_max = nsupport_max+1;
 
-		Scalar work[((size_max+3)*(d_max+2)*(d_max-1))/2]; // Scalar[4760]
+		__shared__ Scalar work[((size_max+3)*(d_max+2)*(d_max-1))/2]; // Scalar[4760]
 		//const int worksize_max = ((size_max+3)*(d_max+2)*(d_max-1))/2;
 		//Scalar work[worksize_max]; // Scalar[4641] at worst
 		//Scalar * work = NULL;

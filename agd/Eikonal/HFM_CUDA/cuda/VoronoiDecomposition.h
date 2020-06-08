@@ -31,8 +31,8 @@ void scheme(const Scalar dual_metric[symdim], Scalar weights[nsym], OffsetT offs
 }
 
 #if ndim_macro>=4
-void KKT_(const Voronoi::SimplexStateT & state, Scalar weights[symdim], 
-	OffsetT offsets[symdim][ndim]){
+void KKT_(const Voronoi::SimplexStateT & state, Scalar weights[decompdim], 
+	OffsetT offsets[decompdim][ndim]){
 	KKT(state,weights,offsets);
 }
 #endif
@@ -116,7 +116,7 @@ __global__ void VoronoiKKT(const Scalar * __restrict__ m_t, const Scalar * __res
 	// Solve the linear program
 	Scalar weights[decompdim];
 	OffsetT offsets[decompdim][ndim]; // geometry last
-	KKT(state,weights,offsets);
+	KKT_(state,weights,offsets);
 
 	// Export the results
 	for(int i=0; i<decompdim; ++i){
