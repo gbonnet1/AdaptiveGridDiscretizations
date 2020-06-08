@@ -8,7 +8,8 @@ import os
 from . import cupy_module_helper
 from ...Metrics import Riemann
 
-def VoronoiDecomposition(m,offset_t=np.int32,flattened=False,blockDim=None):
+def VoronoiDecomposition(m,offset_t=np.int32,
+	flattened=False,blockDim=None,traits=None,steps="Both"):
 	"""
 	Returns the Voronoi decomposition of a family of quadratic forms. 
 	- m : the (symmetric) matrices of the quadratic forms to decompose.
@@ -38,12 +39,13 @@ def VoronoiDecomposition(m,offset_t=np.int32,flattened=False,blockDim=None):
 	offsets=cp.ascontiguousarray(offsets)
 
 	# Set up the GPU kernel
-	traits = {
+	if traits is None: traits = {}
+	traits.update({
 		'ndim_macro':ndim,
 		'offsetT':offset_t,
 		'Scalar':float_t,
 		'Int':np.int32,
-		}
+		})
 
 	source = cupy_module_helper.traits_header(traits)
 	cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
@@ -59,10 +61,26 @@ def VoronoiDecomposition(m,offset_t=np.int32,flattened=False,blockDim=None):
 	module = cupy_module_helper.GetModule(source,cuoptions)
 	cupy_module_helper.SetModuleConstant(module,'size_tot',size,int_t)
 
-	cupy_kernel = module.get_function("VoronoiDecomposition")
-
-	if blockDim is None: blockDim = [128,128,128,128,128,32,32][ndim]
+	if blockDim is None: blockDim = [128,128,128,128,128,32,1][ndim]
 	gridDim = int(np.ceil(size/blockDim))
 
-	cupy_kernel((gridDim,),(blockDim,),(m,weights,offsets))
-	return weights,offsets
+	if steps=="Both":
+		cupy_kernel = module.get_function("VoronoiDecomposition")
+		cupy_kernel((gridDim,),(blockDim,),(m,weights,offsets))
+		return weights,offsets
+
+	# To step approch. First minimize
+	a = cp.empty((ndim,ndim,*shape),dtype=float_t)
+	vertex = cp.empty(shape,dtype=int_t)
+	objective = cp.empty(shape,dtype=int_t)
+
+	cupy_kernel = module.get_function("VoronoiMinimization")
+	cupy_kernel((gridDim,),(blockDim,),(m,a,vertex,objective))
+
+	if steps=="Single": return m,a,vertex,objective
+
+	cupy_kernel = module.get_function("VoronoiKKT")
+	cupy_kernel((gridDim,),(blockDim,),(m,a,vertex,objective,weights,offsets))
+
+	return m,a,vertex,objective,weights,offsets
+

@@ -23,6 +23,8 @@ namespace dim_symdim {
 
 typedef char small; // Small type to avoid overusing memory
 typedef unsigned char uchar;
+#define nullptr NULL
+typedef unsigned int uint;
 
 #include "Geometry6/Geometry6_data.h"
 #include "Geometry6/Geometry6_datag.h"
@@ -80,11 +82,11 @@ struct vertex_dataT {
 	// ------ For GroupElem ------
 	
 	// Number of neighbors
-	const Int nneigh;
+	const int nneigh;
 	// The class of each neighbor vertex
 	const uchar * neigh_vertex;
 	// The next two encode the change of variable from neighbor toward reference form
-	const unsigned int * neigh_choice;
+	const uint * neigh_choice; // Note : 2^31 < 36^6 < 2^32
 	const uchar * neigh_signs;
 	
 	// Number of classes of neighbors of each perfect form
@@ -113,8 +115,27 @@ struct vertex_dataT {
 
 	const kkt_2weightsT kkt_2weights;
 	const kkt_constraintsT kkt_constraints;
-	
-} vertex_data_[nvertex] = {
+
+	vertex_dataT(const Scalar * _vertex, 
+		const Int _nneigh, const uchar * _neigh_vertex,
+		const uint * _neigh_choice, const uchar * _neigh_signs, 
+		const int _nneigh_base, const int * _neigh_base_v, const chgi_jT * _neigh_base_c,
+		const int _nsupport, const vertex_supportT _vertex_support,
+		const int _ndiff, const keyT _key, const uchar * _diff_i, const small * _diff_v,
+		const kkt_2weightsT _kkt_2weights, const kkt_constraintsT _kkt_constraints
+		):
+	vertex(_vertex),
+	nneigh(_nneigh),neigh_vertex(_neigh_vertex),
+	neigh_choice(_neigh_choice),neigh_signs(_neigh_signs),
+	nneigh_base(_nneigh_base),neigh_base_v(_neigh_base_v),neigh_base_c(_neigh_base_c),
+	nsupport(_nsupport),vertex_support(_vertex_support),
+	ndiff(_ndiff),key(_key),diff_i(_diff_i),diff_v(_diff_v),
+	kkt_2weights(_kkt_2weights),kkt_constraints(_kkt_constraints){};
+
+};
+
+#ifdef COMPILE_TIME_CSTRUCT
+const vertex_dataT vertex_data_[nvertex] = {
 	{vertex_[0], nneigh_[0],neigh_vertex0,neigh_choice0,neigh_signs0, nneigh_base_[0],neigh0_base_v,neigh0_base_c, nsupport_[0],vertex_support0, ndiff0,key0,diff0_i,diff0_v, kkt_2weights0,kkt_constraints0},
 	{vertex_[1], nneigh_[1],neigh_vertex1,neigh_choice1,neigh_signs1, nneigh_base_[1],neigh1_base_v,neigh1_base_c, nsupport_[1],vertex_support1, ndiff1,key1,diff1_i,diff1_v, kkt_2weights1,kkt_constraints1},
 	{vertex_[2], nneigh_[2],neigh_vertex2,neigh_choice2,neigh_signs2, nneigh_base_[2],neigh2_base_v,neigh2_base_c, nsupport_[2],vertex_support2, ndiff2,key2,diff2_i,diff2_v, kkt_2weights2,kkt_constraints2},
@@ -123,6 +144,22 @@ struct vertex_dataT {
 	{vertex_[5], nneigh_[5],neigh_vertex5,neigh_choice5,neigh_signs5, nneigh_base_[5],neigh5_base_v,neigh5_base_c, nsupport_[5],vertex_support5, ndiff5,key5,diff5_i,diff5_v, kkt_2weights5,kkt_constraints5},
 	{vertex_[6], nneigh_[6],neigh_vertex6,neigh_choice6,neigh_signs6, nneigh_base_[6],neigh6_base_v,neigh6_base_c, nsupport_[6],vertex_support6, ndiff6,key6,diff6_i,diff6_v, kkt_2weights6,kkt_constraints6},
 };
+const vertex_dataT vertex_data(int i){return vertex_data_[i];}
+#else
+const vertex_dataT vertex_data(int i){
+	switch(i){
+		case 0: return vertex_dataT(vertex_[0], nneigh_[0],neigh_vertex0,neigh_choice0,neigh_signs0, nneigh_base_[0],neigh0_base_v,neigh0_base_c, nsupport_[0],vertex_support0, ndiff0,key0,diff0_i,diff0_v, kkt_2weights0,kkt_constraints0);
+		case 1: return vertex_dataT(vertex_[1], nneigh_[1],neigh_vertex1,neigh_choice1,neigh_signs1, nneigh_base_[1],neigh1_base_v,neigh1_base_c, nsupport_[1],vertex_support1, ndiff1,key1,diff1_i,diff1_v, kkt_2weights1,kkt_constraints1);
+		case 2: return vertex_dataT(vertex_[2], nneigh_[2],neigh_vertex2,neigh_choice2,neigh_signs2, nneigh_base_[2],neigh2_base_v,neigh2_base_c, nsupport_[2],vertex_support2, ndiff2,key2,diff2_i,diff2_v, kkt_2weights2,kkt_constraints2);
+		case 3: return vertex_dataT(vertex_[3], nneigh_[3],neigh_vertex3,neigh_choice3,neigh_signs3, nneigh_base_[3],neigh3_base_v,neigh3_base_c, nsupport_[3],vertex_support3, ndiff3,key3,diff3_i,diff3_v, kkt_2weights3,kkt_constraints3);
+		case 4: return vertex_dataT(vertex_[4], nneigh_[4],neigh_vertex4,neigh_choice4,neigh_signs4, nneigh_base_[4],neigh4_base_v,neigh4_base_c, nsupport_[4],vertex_support4, ndiff4,key4,diff4_i,diff4_v, kkt_2weights4,kkt_constraints4);
+		case 5: return vertex_dataT(vertex_[5], nneigh_[5],neigh_vertex5,neigh_choice5,neigh_signs5, nneigh_base_[5],neigh5_base_v,neigh5_base_c, nsupport_[5],vertex_support5, ndiff5,key5,diff5_i,diff5_v, kkt_2weights5,kkt_constraints5);
+		default: // Should not happen
+		case 6: return vertex_dataT(vertex_[6], nneigh_[6],neigh_vertex6,neigh_choice6,neigh_signs6, nneigh_base_[6],neigh6_base_v,neigh6_base_c, nsupport_[6],vertex_support6, ndiff6,key6,diff6_i,diff6_v, kkt_2weights6,kkt_constraints6);
+	}
+}
+
+#endif
 
 
 /** Generates an isometry for the given vertex, 
@@ -131,7 +168,7 @@ Returns the index of the reference form.
 */
 int GroupElem(const int ivertex, const int neighbor,
 	small g[__restrict__ ndim][ndim]){
-	const vertex_dataT & data = vertex_data_[ivertex];
+	const vertex_dataT & data = vertex_data(ivertex);
 	const int nsupport = data.nsupport;
 	const uchar edge = data.neigh_vertex[neighbor]; //unsigned to silence warning
 	uint choice = data.neigh_choice[neighbor];
@@ -179,7 +216,7 @@ int GroupElem(const int ivertex, const int neighbor,
 If none exists, returns false*/
 bool BetterNeighbor(SimplexStateT & state){
 	const int ivertex = state.vertex;
-	const vertex_dataT & data = vertex_data_[ivertex];
+	const vertex_dataT & data = vertex_data(ivertex);
 
 	Scalar obj = dim_symdim::scal_vv(state.m,data.key[0]);
 	int best_neigh = 0;
@@ -218,7 +255,7 @@ bool BetterNeighbor(SimplexStateT & state){
 
 void KKT(const SimplexStateT & state, Scalar weights[symdim], 
 	OffsetT offsets[symdim][ndim]){
-	const vertex_dataT data = vertex_data_[state.vertex];
+	const vertex_dataT & data = vertex_data(state.vertex);
 	
 	// Compute a decomposition, possibly with negative entries
 	dim_symdim::dot_av(data.kkt_2weights,state.m,weights);
@@ -228,13 +265,16 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 	Scalar aInv_[ndim][ndim]; inv_a(state.a,aInv_);
 	Int aInv[ndim][ndim]; round_a(aInv_,aInv);
 
+#ifndef nsupport_max_macro
+	/* Upper bounds for the number of minimal vectors, 
+	and the dimension of the linear program */
+	const int nsupport_max = 36; // Upper bound
+#endif
+
 	// Number of minimal vectors for the perfect form
 	const int nsupport = data.nsupport;
-	const int nsupport_max = 36; // Upper bound
 	OffsetT offsets_[nsupport_max][ndim]; // Using [nsupport][ndim]
 	for(int i=0; i<nsupport; ++i){dot_av(aInv,data.vertex_support[i],offsets_[i]);}
-
-
 	
 	if(nsupport==symdim){
 		// Case where the vertex is non-degenerate.
@@ -283,13 +323,19 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		Scalar opt[d_max+1];
 		const int size = nsupport+1;
 		const int size_max = nsupport_max+1;
+
 		Scalar work[((size_max+3)*(d_max+2)*(d_max-1))/2]; // Scalar[4760]
+		//const int worksize_max = ((size_max+3)*(d_max+2)*(d_max-1))/2;
+		//Scalar work[worksize_max]; // Scalar[4641] at worst
+		//Scalar * work = NULL;
+		//cudaMalloc((void**) &work,4*worksize);
 		
-		const int BadIndex = 1234567890;
-		int next[size_max] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,
-			21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37};
-		int prev[size_max] = {BadIndex,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,
-			18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35};
+		int next[size_max];
+		int prev[size_max];
+		for(int i=0; i<size_max; ++i){
+			next[i] = i+1;
+			prev[i] = i-1;
+		}
 #ifdef DOUBLE
 		dlinprog
 #else
@@ -297,7 +343,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 #endif
 		(halves, 0, size, n_vec, d_vec, d, opt, work, next, prev, size_max);
 		// TODO : check that status is correct
-
+		//cudaFree(work);
 		// The solution is "projective". Let's normalize it, dividing by the last coord.
 		for(int i=0; i<d; ++i){opt[i]/=opt[d];}
 
