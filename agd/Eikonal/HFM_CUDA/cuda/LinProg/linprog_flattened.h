@@ -101,8 +101,8 @@ while(true){
 int linprog_init(const linprog_args & a, linprog_state & s){
 	if(debug_print){
 		printf("Entering linprog_init %d\n", a.d);
-		++linprog_counter;
-		assert(linprog_counter<linprog_counter_max);
+//		++linprog_counter;
+//		assert(linprog_counter<linprog_counter_max);
 	}
 /* // linprog_state
 	int status;
@@ -143,8 +143,8 @@ int linprog_init(const linprog_args & a, linprog_state & s){
 int linprog_loop(const linprog_args & a, linprog_state & s){
 	if(debug_print){
 		printf("linprog_loop %d\n", a.d);
-		++linprog_counter;
-		assert(linprog_counter<linprog_counter_max);
+//		++linprog_counter;
+//		assert(linprog_counter<linprog_counter_max);
 	}
 	for(s.i = a.istart; s.i!=a.m; s.i=a.next[s.i]) {
 #ifdef CHECK
@@ -167,8 +167,8 @@ int linprog_loop(const linprog_args & a, linprog_state & s){
 void linprog_sub_begin(const linprog_args & a, linprog_state & s, linprog_args & b){
 	if(debug_print){
 		printf("linprog_sub_begin %d\n", a.d);
-		++linprog_counter;
-		assert(linprog_counter<linprog_counter_max);
+//		++linprog_counter;
+//		assert(linprog_counter<linprog_counter_max);
 	}
 /* find the largest of the coefficients to eliminate */
     findimax(s.plane_i,a.d,&s.imax);
@@ -208,8 +208,8 @@ void linprog_sub_begin(const linprog_args & a, linprog_state & s, linprog_args &
 int linprog_sub_end(const linprog_args & a, linprog_state & s){
 	if(debug_print){
 		printf("linprog_sub_end %d\n", a.d);
-		++linprog_counter;
-		assert(linprog_counter<linprog_counter_max);
+//		++linprog_counter;
+//		assert(linprog_counter<linprog_counter_max);
 	}
 /* back substitution */
     if(s.status!=INFEASIBLE) {
