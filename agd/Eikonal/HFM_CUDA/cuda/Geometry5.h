@@ -9,7 +9,10 @@ const Int ndim=5;
 #include "Inverse_.h"
 #include "NetworkSort.h"
 
-#define CUDA_DEVICE // Do not include <math.h>
+#define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1)
+#ifndef LINPROG_DIMENSION_MAX 
+#define LINPROG_DIMENSION_MAX 5 // Use a non-recursive linprog
+#endif
 #include "LinProg/Siedel_Hohmeyer_LinProg.h"
 
 namespace Voronoi {
@@ -286,7 +289,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 	int next[max_size] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21};
 	int prev[max_size] = {BadIndex,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
 //	linprog(&halves[0][0], 0, m, n_vec, d_vec, d, opt, work, next, prev, max_size);  
-	linprog_templated<d>::go(&halves[0][0], 0, m, n_vec, d_vec, /*d,*/ opt, work, next, prev, max_size);  
+	linprog(&halves[0][0], 0, m, n_vec, d_vec, d, opt, work, next, prev, max_size);  
 	// TODO : check that status is correct
 	// Get the solution, and find the non-zero weights, which should be positive.
 	// kktdim - symdim = 5

@@ -9,13 +9,6 @@ typedef float Scalar;
 typedef char OffsetT;
 */  
 
-template<int i> struct recurse{
-	static int go(int j,int k,int l,int m){return recurse<i-1>::go(j,k-m,l+j,m+l)+j*i-l*m;}
-};
-template<> struct recurse<0>{
-	static int go(int j,int k,int l,int m){return j*k*l*m+1;}
-};
-
 
 #if ndim_macro==2
 #include "Geometry2.h"
@@ -110,13 +103,6 @@ __global__ void VoronoiKKT(const Scalar * __restrict__ m_t, const Scalar * __res
 	const int n_o = blockIdx.x;
 	const int n_t = n_o*blockDim.x + n_i;
 	if(n_t>=size_tot) return;
-
-	printf("recusing %i\n",recurse<200>::go(n_i,n_o,n_t,size_tot));
-//	return;
-//	size_t myStackSize;
-//	cudaDeviceGetLimit(&myStackSize,cudaLimitStackSize);
-//	printf("Stack size %i\n",myStackSize);
-//	return;
 
 	// Load the data
 	Voronoi::SimplexStateT state;

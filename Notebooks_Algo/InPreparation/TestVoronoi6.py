@@ -29,9 +29,9 @@ def LInfNorm(a):
 
 np.random.seed(42)
 
-D = MakeRandomTensor(6)
-coefs,offsets = VoronoiDecomposition(D,traits={"debug_print":True})
-VoronoiDecomposition(D,steps="Split",traits={"debug_print":True})
+D = MakeRandomTensor(5)
+coefs,offsets = VoronoiDecomposition(D) #,traits={"debug_print":True})
+VoronoiDecomposition(D,steps="Split") #,traits={"debug_print":True})
 
 print("Coefficients : ", coefs)
 print("Offsets : \n", offsets.astype(int))

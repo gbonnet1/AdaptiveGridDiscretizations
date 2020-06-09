@@ -11,10 +11,10 @@ const int ndim=ndim_macro;
 #include "NetworkSort.h"
 
 // linear programming 
-#define CUDA_DEVICE // Do not include <math.h>, and exit(1)
+#define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1)
 //#define CHECK
-#ifndef LINPROG_DIMENSION_MAX
-#define LINPROG_DIMENSION_MAX 15
+#ifndef LINPROG_DIMENSION_MAX 
+#define LINPROG_DIMENSION_MAX 15 // Use a non-recursive linprog
 #endif
 #include "LinProg/Siedel_Hohmeyer_LinProg.h"
 
