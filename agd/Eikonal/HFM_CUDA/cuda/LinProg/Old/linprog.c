@@ -1,4 +1,3 @@
-#pragma once
 /* 
  * linprog.c
  *
@@ -71,13 +70,12 @@ void plane_down(FLOAT elim_eqn[], int ivar, int idim,
 	}
 }
 
-/*
+
 #ifdef DOUBLE
 int dlinprog
 #else
 int slinprog
-#endif*/
-int linprog
+#endif
 (FLOAT halves[], /* halves  --- half spaces */
 	int istart,     /* istart  --- should be zero
 				 unless doing incremental algorithm */
@@ -119,10 +117,6 @@ int linprog
 ** work points to (max_size+3)*(d+2)*(d-1)/2 FLOAT space
 */
 {
-	if(debug_print){
-		printf("Entering linprog %d\n", d);
-	}
-
 	int status;
 	int i, j, imax;
 	#ifdef CHECK

@@ -27,10 +27,10 @@
 #include "localmath.h"
 #include "tol.h"
 
-#include "unit2.c"
-#include "linprog.c"
+
 #include "lp_base_case.c"
+#include "linprog.c"
 #include "vector_up.c"
-#include "linprog_templated.h"
+#include "unit2.c"
 
 #endif /* Siedel_Hohmeyer_LinProg_h */

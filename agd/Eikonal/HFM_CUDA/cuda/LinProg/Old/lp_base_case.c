@@ -1,4 +1,3 @@
-#pragma once 
 /* 
  * lp_base_case.c
  *
@@ -42,7 +41,6 @@ unit2(FLOAT a[],FLOAT b[],FLOAT eps)
  * return the minimum on the projective line
  *
  */
-
 int lp_base_case(FLOAT halves[][2], 	/* halves --- half lines */
 	int m, 				/* m      --- terminal marker */
 	FLOAT n_vec[2],			/* n_vec  --- numerator funciton */

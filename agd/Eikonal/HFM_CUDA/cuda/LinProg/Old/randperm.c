@@ -1,4 +1,3 @@
-#pragma once
 /* 
  * randperm.c
  *
@@ -8,7 +7,7 @@
  * as long as this notice is preserved.  All standard disclaimers apply.
  *       
  */
-//int rand();
+int rand();
 void randperm(int n,int perm[])
 {
 	int i, j, t;

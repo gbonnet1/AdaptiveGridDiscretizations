@@ -11,6 +11,7 @@ const int ndim=ndim_macro;
 #include "NetworkSort.h"
 
 #define CUDA_DEVICE // Do not include <math.h>
+#define CHECK
 #include "LinProg/Siedel_Hohmeyer_LinProg.h"
 
 namespace Voronoi {
@@ -336,12 +337,10 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 			next[i] = i+1;
 			prev[i] = i-1;
 		}
-#ifdef DOUBLE
-		dlinprog
-#else
-		slinprog
-#endif
-		(halves, 0, size, n_vec, d_vec, d, opt, work, next, prev, size_max);
+//		linprog(halves, 0, size, n_vec, d_vec, d, opt, work, next, prev, size);
+		switch(d){
+			case 15: linprog_templated<15>::go(halves, 0, size, n_vec, d_vec, /*d,*/ opt, work, next, prev, size); break;
+		}
 		// TODO : check that status is correct
 		//cudaFree(work);
 		// The solution is "projective". Let's normalize it, dividing by the last coord.

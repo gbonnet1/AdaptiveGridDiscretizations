@@ -16,11 +16,7 @@
 #define MINIMUM 1
 #define UNBOUNDED 2
 #define AMBIGUOUS 3
-
-// ADDED MIREBEAU 2020
-#define ERRORED 4 
-#define INIT_DONE 5
-#define LOOP_INTERRUPTED 6
+#define ERRORED 4
 
 /* status from plane_down */
 #define REDUNDANT 0
@@ -28,7 +24,6 @@
 
 #include "tol.h"
 
-/*
 #ifdef DOUBLE
 #define linprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)  \
 dlinprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)
@@ -36,7 +31,6 @@ dlinprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)
 #define linprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)  \
 slinprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)
 #endif
-*/
 
 /*
 #ifdef __cplusplus
@@ -48,7 +42,7 @@ extern "C" {
     int linprog(FLOAT *v, int istart,int n, FLOAT *num, FLOAT *den,
         int dim, FLOAT *opt, FLOAT *work, int *next, int *prev, int max_size);
     int lp_base_case(FLOAT halves[][2], int m, FLOAT n_vec[2],
-        FLOAT d_vec[2], FLOAT opt[2], int *next, int *prev, int max_halves);
+        FLOAT d_vec[2], FLOAT opt[2], int *next, int *prev);
     int wedge(FLOAT halves[][2], int m, int *next, int *prev,
         FLOAT cw_vec[2], FLOAT ccw_vec[2], int *degen, int max_halves);
     void plane_down(FLOAT *elim_eqn, int ivar, int idim,

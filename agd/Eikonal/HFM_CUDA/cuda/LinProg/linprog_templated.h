@@ -1,90 +1,42 @@
-#pragma once
-/* 
- * linprog.c
- *
- * Copyright (c) 1990 Michael E. Hohmeyer,
- *       hohmeyer@icemcfd.com
- * Permission is granted to modify and re-distribute this code in any manner
- * as long as this notice is preserved.  All standard disclaimers apply.
- *       
- */
-#ifdef CUDA_DEVICE
-#define EXIT1 return ERRORED;
-#else
-#define EXIT1 exit(1);
-#include <math.h>
-#endif
+// templates allow the compiler to determine stack depth statically.
 
+template<int d> struct linprog_templated {
+	static int go(FLOAT halves[], 
+	int istart, 
+	int m,  	
+	FLOAT n_vec[], 	
+	FLOAT d_vec[], 	
+//	int d, 		
+	FLOAT opt[],	
+	FLOAT work[], 	
+	int next[], 	
+	int prev[], 	
+	int max_size);
+};
 
-#include "lp.h"
-#include "localmath.h"
+template<> struct linprog_templated<0> {
+	static int go(FLOAT halves[], 
+	int istart, 
+	int m,  	
+	FLOAT n_vec[], 	
+	FLOAT d_vec[], 	
+//	int d, 		
+	FLOAT opt[],	
+	FLOAT work[], 	
+	int next[], 	
+	int prev[], 	
+	int max_size){return ERRORED;} // Actually stops at dimension 1
+};
 
-int lp_no_constraints(int d,FLOAT n_vec[],FLOAT d_vec[],FLOAT opt[]);
-int move_to_front(int i,int next[],int prev[],int max_halves);
-
-/* unitize a d+1 dimensional point */
-int lp_d_unit(int d, FLOAT a[], FLOAT b[]) {
-	int i;
-	FLOAT size;
-
-	size = 0.0;
-	for(i=0; i<=d; i++) 
-		size += a[i]*a[i];
-	if(size < (d+1)*EPS*EPS) return(1);
-	size = 1.0/sqrt(size);
-	for(i=0; i<=d; i++)
-		b[i] = a[i]*size;
-	return(0);
-}
-void vector_down(FLOAT elim_eqn[], int ivar, int idim,
-		FLOAT old_vec[], FLOAT new_vec[]) {
-	int i;
-	FLOAT fac, ve, ee;
-	ve = 0.0;
-	ee = 0.0;
-	for(i=0; i<=idim; i++) {
-		ve += old_vec[i]*elim_eqn[i];
-		ee += elim_eqn[i]*elim_eqn[i];
-	}
-	fac = ve/ee;
-	for(i=0; i<ivar; i++) {
-		new_vec[i] = old_vec[i] - elim_eqn[i]*fac;
-	}
-	for(i=ivar+1; i<=idim; i++) {
-		new_vec[i-1] = old_vec[i] - elim_eqn[i]*fac;
-	}
-}
-void plane_down(FLOAT elim_eqn[], int ivar, int idim,
-	FLOAT old_plane[], FLOAT new_plane[]) {
-    
-/*	register FLOAT crit;
- 	register int i;*/
-    FLOAT crit;
-    int i;
-    
-	crit = old_plane[ivar]/elim_eqn[ivar];
-	for(i=0; i<ivar; i++)  {
-		new_plane[i] = old_plane[i] - elim_eqn[i]*crit;
-	}
-	for(i=ivar+1; i<=idim; i++)  {
-		new_plane[i-1] = old_plane[i] - elim_eqn[i]*crit;
-	}
-}
-
-/*
-#ifdef DOUBLE
-int dlinprog
-#else
-int slinprog
-#endif*/
-int linprog
+template<int d>
+int linprog_templated<d>::go
 (FLOAT halves[], /* halves  --- half spaces */
 	int istart,     /* istart  --- should be zero
 				 unless doing incremental algorithm */
 	int m,  	/* m       --- terminal marker */
 	FLOAT n_vec[], 	/* n_vec   --- numerator vector */
 	FLOAT d_vec[], 	/* d_vec   --- denominator vector */
-	int d, 		/* d       --- projective dimension */
+//	int d, 		/* d       --- projective dimension */
 	FLOAT opt[],	/* opt     --- optimum */
 	FLOAT work[], 	/* work    --- work space (see below) */
 	int next[], 	/* next    --- array of indices into halves */
@@ -199,8 +151,8 @@ int linprog
 			        plane_down(plane_i,imax,d,d_vec,new_d_vec);
 			    }
 /* solve sub problem */
-			    status = linprog(new_halves,0,i,new_n_vec,
-			    new_d_vec,d-1,new_opt,new_work,next,prev,max_size);
+			    status = linprog_templated<d-1>::go(new_halves,0,i,new_n_vec,
+			    new_d_vec,/*d-1,*/new_opt,new_work,next,prev,max_size);
 /* back substitution */
 			    if(status!=INFEASIBLE) {
 				    vector_up(plane_i,imax,d,new_opt,opt);
@@ -239,64 +191,3 @@ int linprog
  		return(status);
 	}
 }
-/* returns the index of the plane that is in i's place */
-int move_to_front(int i,int next[],int prev[],int max_halves) 
-{
-	int previ;
-	if(i==0 || i == next[0]) return i;
-	previ = prev[i];
-/* remove i from its current position */
-	next[prev[i]] = next[i];
-	if (next[i] != max_halves)
-		prev[next[i]] = prev[i];
-/* put i at the front */
-	next[i] = next[0];
-	prev[i] = 0;
-	prev[next[i]] = i;
-	next[0] = i;
-	return(previ);
-}
-/* optimize the objective function when there are no contraints */
-int lp_no_constraints(int d,FLOAT n_vec[],FLOAT d_vec[],FLOAT opt[])
-{
-	int i;
-	FLOAT n_dot_d, d_dot_d;
-
-	n_dot_d = 0.0;
-	d_dot_d = 0.0;
-	for(i=0; i<=d; i++) {
-		n_dot_d += n_vec[i]*d_vec[i];
-		d_dot_d += d_vec[i]*d_vec[i];
-	}
-	if(d_dot_d < EPS*EPS) {
-		d_dot_d = 1.0;
-		n_dot_d = 0.0;
-	}
-	for(i=0; i<=d; i++) {
-		opt[i] = -n_vec[i] + d_vec[i]*n_dot_d/d_dot_d;
-	}
-/* normalize the optimal point */
-	if(lp_d_unit(d,opt,opt)) {
-		opt[d] = 1.0;
-		return(AMBIGUOUS);
-	} else {
-		return(MINIMUM);
-	}
-}
-/* find the largest coefficient in a plane */
-void findimax(FLOAT pln[],int idim,int *imax) {
-	FLOAT rmax;
-	int i;
-
-	*imax = 0;
-	rmax = ABS(pln[0]);
-	for(i=1; i<=idim; i++) {
-		FLOAT ab;
-                ab = ABS(pln[i]);
-		if(ab>rmax) {
-			*imax = i;
-			rmax = ab;
-		}
-	}
-}
-

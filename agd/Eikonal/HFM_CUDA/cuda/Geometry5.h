@@ -272,7 +272,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 	Scalar sol[kktdim];
 	dim_symdim::dot_av(coef,state.m,sol); // Last 5 entries purposedly uninitialized
 	Scalar maxSol = 0; 
-	for(Int i=0; i<symdim; ++i) maxSol = max(maxSol,abs(sol[i]));
+	for(int i=0; i<symdim; ++i) maxSol = max(maxSol,abs(sol[i]));
 	for(int i=0; i<symdim; ++i){halves[i][5] = sol[i]/maxSol;}
 		
 	// Minimize some arbitrary linear form (we only need a feasible solution)
@@ -285,7 +285,8 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim], OffsetT offsets[sy
 	const int BadIndex = 1234567890;
 	int next[max_size] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21};
 	int prev[max_size] = {BadIndex,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
-	slinprog(&halves[0][0], 0, m, n_vec, d_vec, d, opt, work, next, prev, max_size);
+//	linprog(&halves[0][0], 0, m, n_vec, d_vec, d, opt, work, next, prev, max_size);  
+	linprog_templated<d>::go(&halves[0][0], 0, m, n_vec, d_vec, /*d,*/ opt, work, next, prev, max_size);  
 	// TODO : check that status is correct
 	// Get the solution, and find the non-zero weights, which should be positive.
 	// kktdim - symdim = 5

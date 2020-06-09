@@ -79,7 +79,6 @@ typedef FLOAT plane[4];
 #ifdef DOUBLE
 
 #define unit2(a,b,eps)		d_unit2(a,b,eps)
-			  /*
 #define triple_cross(a,b,c)	d_triple_cross(a,b,c)
 #define cross(a,b,c)		d_cross(a,b,c)
 #define unit(a,b)		d_unit(a,b)
@@ -89,11 +88,10 @@ typedef FLOAT plane[4];
 #define vswap(a,b)		d_vswap(a,b)
 #define Fsort(a,b)		d_sort(a,b)
 #define Fmerge_sort(a,b,c)	d_merge_sort(a,b,c)
-*/
+
 #else
 
 #define unit2(a,b,eps)		s_unit2(a,b,eps)
-			  /*
 #define triple_cross(a,b,c)	s_triple_cross(a,b,c)
 #define cross(a,b,c)		s_cross(a,b,c)
 #define unit(a,b)		s_unit(a,b)
@@ -103,17 +101,16 @@ typedef FLOAT plane[4];
 #define vswap(a,b)		s_vswap(a,b)
 #define Fsort(a,b)		s_sort(a,b)
 #define Fmerge_sort(a,b,c)	s_merge_sort(a,b,c)
-*/
+
 #endif
 
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-//void i_sort(int size, int *list);
+void i_sort(int size, int *list);
 
-/*
 #ifdef DOUBLE
 
 int d_unit2(double *a, double *b, double eps);
@@ -142,13 +139,13 @@ void s_merge_sort(int size, float *list, float *temp);
 int invert3(float from[3][3], float to[3][3]);
 
 #endif
-*/
 
-//#ifdef __cplusplus
-//}
-//#endif
 
-//#define SWAP(type,a,b) {type temp = (a); (a) = (b); (b) = temp; }
-//#define ORDER(type, a, b)       if((a) > (b)) SWAP(type, a, b);
+#ifdef __cplusplus
+}
+#endif
+
+#define SWAP(type,a,b) {type temp = (a); (a) = (b); (b) = temp; }
+#define ORDER(type, a, b)       if((a) > (b)) SWAP(type, a, b);
 
 #endif
