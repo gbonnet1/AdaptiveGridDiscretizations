@@ -44,7 +44,7 @@ def VoronoiDecomposition(arr,mode=None,*args,**kwargs):
 		bin_dir = GetBinaryDir("FileVDQ",None)
 		vdqIn ={'tensors':np.moveaxis(misc.flatten_symmetric_matrix(arr),0,-1)}
 		vdqOut = FileIO.WriteCallRead(vdqIn, "FileVDQ", bin_dir)
-		return np.moveaxis(vdqOut['weights'],-1,0),np.moveaxis(vdqOut['offsets'],[-1,-2],[0,1])
+		return np.moveaxis(vdqOut['weights'],-1,0),np.moveaxis(vdqOut['offsets'],[-1,-2],[0,1]).astype(int)
 	else: raise ValueError(f"VoronoiDecomposition unsupported mode {mode}")
 
 VoronoiDecomposition.default_mode = 'cpu'
