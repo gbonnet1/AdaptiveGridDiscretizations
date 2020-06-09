@@ -318,13 +318,20 @@ class Hooke(ImplicitBase):
 		where rho_i is a non-negative coefficient, m_i is symmetric and has integer 
 		entries, and sum_i rho_i is maximal. 
 		"""
-		assert(self.vdim<=2)
 		assert(self.inverse_transformation is None)
-		coefs,offsets = Selling.Decomposition(self.hooke)
+		if self.vdim<=2: coefs,offsets = Selling.Decomposition(self.hooke)
+		else: 
+			from ... import Eikonal
+			coefs,offsets = Eikonal.VoronoiDecomposition(self.hooke)
 		if self.vdim==1: 
 			moffsets = np.expand_dims(offsets,axis=0)
 		elif self.vdim==2:
 			moffsets = ad.array(((offsets[0],offsets[2]),(offsets[2],offsets[1])))
+		elif self.vdim==3:
+			moffsets = ad.array(( #Voigt notation
+				(offsets[0],offsets[5],offsets[4]),
+				(offsets[5],offsets[1],offsets[3]),
+				(offsets[4],offsets[3],offsets[2])))
 		else :
 			raise ValueError("Unsupported dimension")
 		return coefs,moffsets

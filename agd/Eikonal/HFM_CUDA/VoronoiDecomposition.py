@@ -60,7 +60,7 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	module = cupy_module_helper.GetModule(source,cuoptions)
 	cupy_module_helper.SetModuleConstant(module,'size_tot',size,int_t)
 
-	if blockDim is None: blockDim = [128,128,128,128,128,32,1][ndim]
+	if blockDim is None: blockDim = [128,128,128,128,128,32,32][ndim]
 	gridDim = int(np.ceil(size/blockDim))
 
 	if steps=="Both":
