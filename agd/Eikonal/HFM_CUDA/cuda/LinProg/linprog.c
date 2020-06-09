@@ -8,13 +8,6 @@
  * as long as this notice is preserved.  All standard disclaimers apply.
  *       
  */
-#ifdef CUDA_DEVICE
-#define EXIT1 return ERRORED;
-#else
-#define EXIT1 exit(1);
-#include <math.h>
-#endif
-
 
 #include "lp.h"
 #include "localmath.h"
@@ -71,13 +64,7 @@ void plane_down(FLOAT elim_eqn[], int ivar, int idim,
 	}
 }
 
-/*
-#ifdef DOUBLE
-int dlinprog
-#else
-int slinprog
-#endif*/
-int linprog
+int linprog_recursive
 (FLOAT halves[], /* halves  --- half spaces */
 	int istart,     /* istart  --- should be zero
 				 unless doing incremental algorithm */
@@ -199,7 +186,7 @@ int linprog
 			        plane_down(plane_i,imax,d,d_vec,new_d_vec);
 			    }
 /* solve sub problem */
-			    status = linprog(new_halves,0,i,new_n_vec,
+			    status = linprog_recursive(new_halves,0,i,new_n_vec,
 			    new_d_vec,d-1,new_opt,new_work,next,prev,max_size);
 /* back substitution */
 			    if(status!=INFEASIBLE) {

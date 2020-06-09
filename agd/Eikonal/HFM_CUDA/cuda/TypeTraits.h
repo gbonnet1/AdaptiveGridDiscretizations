@@ -24,7 +24,7 @@ typedef unsigned char BoolAtom;
 
 /// A positive value may cause debug messages to be printed
 #ifndef debug_print_macro
-const Int debug_print = 0;
+const int debug_print = 0;
 #endif
 
 #define bilevel_grid_macro

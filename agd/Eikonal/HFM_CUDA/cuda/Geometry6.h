@@ -10,8 +10,12 @@ const int ndim=ndim_macro;
 #include "Inverse_.h"
 #include "NetworkSort.h"
 
-#define CUDA_DEVICE // Do not include <math.h>
-#define CHECK
+// linear programming 
+#define CUDA_DEVICE // Do not include <math.h>, and exit(1)
+//#define CHECK
+#ifndef LINPROG_DIMENSION_MAX
+#define LINPROG_DIMENSION_MAX 15
+#endif
 #include "LinProg/Siedel_Hohmeyer_LinProg.h"
 
 namespace Voronoi {
@@ -325,7 +329,7 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		const int size = nsupport+1;
 		const int size_max = nsupport_max+1;
 
-		__shared__ Scalar work[((size_max+3)*(d_max+2)*(d_max-1))/2]; // Scalar[4760]
+		Scalar work[((size_max+3)*(d_max+2)*(d_max-1))/2]; // Scalar[4760]
 		//const int worksize_max = ((size_max+3)*(d_max+2)*(d_max-1))/2;
 		//Scalar work[worksize_max]; // Scalar[4641] at worst
 		//Scalar * work = NULL;
@@ -337,10 +341,12 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 			next[i] = i+1;
 			prev[i] = i-1;
 		}
-//		linprog(halves, 0, size, n_vec, d_vec, d, opt, work, next, prev, size);
-		switch(d){
-			case 15: linprog_templated<15>::go(halves, 0, size, n_vec, d_vec, /*d,*/ opt, work, next, prev, size); break;
-		}
+		linprog(halves, 0, size, n_vec, d_vec, d, opt, work, next, prev, size);
+		
+		//switch(d){
+		//	case 15: linprog_templated<15>::go(halves, 0, size, n_vec, d_vec, /*d,*/ opt, work, next, prev, size); break;
+		//}
+	
 		// TODO : check that status is correct
 		//cudaFree(work);
 		// The solution is "projective". Let's normalize it, dividing by the last coord.

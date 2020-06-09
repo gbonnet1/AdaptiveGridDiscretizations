@@ -21,9 +21,33 @@
 #define Siedel_Hohmeyer_LinProg_h
 
 // #define DOUBLE // Define this macro for double
-// #define CUDA_DEVICE // Define this macro to NOT include include math.h
+
+/* A non-recursive version is used if this variable is set to a positive value
+Can be better on gpus, probably not on cpus */
+#ifndef LINPROG_DIMENSION_MAX
+#define LINPROG_DIMENSION 0
+#endif
+
+#ifdef CUDA_DEVICE // math.h and exit(1) are not available on cuda
+#define NOINCLUDE_MATH_H
+#define NOEXIT1
+#endif
+
+
+// Define this macro to NOT include include math.h 
+#ifndef NOINCLUDE_MATH_H
+#include <math.h>
+#endif
 
 #include "lp.h"
+
+// Define this macro to NOT use exit(1) 
+#ifdef NOEXIT1
+#define EXIT1 return ERRORED;
+#else
+#define EXIT1 exit(1);
+#endif
+
 #include "localmath.h"
 #include "tol.h"
 
@@ -31,6 +55,16 @@
 #include "linprog.c"
 #include "lp_base_case.c"
 #include "vector_up.c"
-#include "linprog_templated.h"
+//#include "linprog_templated.h"
+
+
+#if LINPROG_DIMENSION_MAX==0
+#define linprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)  \
+linprog_recursive(v,istart, n,num,den,dim,opt,work,next,prev,max_size)
+#else
+#include "LinProg/linprog_flattened.h"
+#define linprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)  \
+linprog_flattened(v,istart, n,num,den,dim,opt,work,next,prev,max_size)
+#endif
 
 #endif /* Siedel_Hohmeyer_LinProg_h */

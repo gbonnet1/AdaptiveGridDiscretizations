@@ -1,6 +1,3 @@
-#ifndef CUDA_DEVICE
-#include <math.h>
-#endif
 
 #ifdef DOUBLE
 int

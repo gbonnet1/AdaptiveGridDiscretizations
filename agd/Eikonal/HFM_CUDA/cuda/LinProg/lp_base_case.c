@@ -8,9 +8,6 @@
  * as long as this notice is preserved.  All standard disclaimers apply.
  *
  */
-#ifndef CUDA_DEVICE // No math needed
-#include <math.h>
-#endif
 
 #include "localmath.h"
 #define not_zero(a) ((a) >= 2*EPS || (a) <= -2*EPS)
