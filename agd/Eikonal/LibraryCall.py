@@ -10,6 +10,7 @@ import os
 
 def SetInput(hfm,params):
 	for key,val in params.items():
+		if isinstance(val,np.ndarray) and val.ndim==0: val = val.flat[0]
 		if isinstance(val,numbers.Number):
 			hfm.set_scalar(key,val)
 		elif isinstance(val,str):

@@ -111,7 +111,7 @@ def ToColab(filename,output_dir):
 		else: raise ValueError(f"File {filename} does not import agd")
 
 		#Use the GPU eikonal solver 
-		UpdateConfig.EikonalGPU_config = True
+		UpdateConfig.GPU_config = True
 		UpdateConfig.silent = True
 		UpdateConfig(filename,data)
 
