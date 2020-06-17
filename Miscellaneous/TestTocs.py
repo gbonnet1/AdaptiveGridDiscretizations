@@ -12,7 +12,7 @@ of the notebooks are all correct, and reports any inconsistency.
 Optional arguments :
 	--update, the tables of contents are updated.
 	--show, the tables of contents are shown
-	--EikonalGPU_config=True/False, turn on or off gpu config
+	--GPU_config=True/False, turn on or off gpu config
 	--check_raise, raise an exception if toc is incorrect
 """
 
