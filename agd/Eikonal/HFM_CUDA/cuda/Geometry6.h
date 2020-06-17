@@ -11,12 +11,16 @@ const int ndim=ndim_macro;
 #include "NetworkSort.h"
 
 // linear programming 
-#define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1)
+#define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1) in linprog
 //#define CHECK
 #ifndef LINPROG_DIMENSION_MAX 
 #define LINPROG_DIMENSION_MAX 15 // Use a non-recursive linprog
 #endif
 #include "LinProg/Siedel_Hohmeyer_LinProg.h"
+
+#ifndef GEOMETRY6_NORMALIZE_SOLUTION
+#define GEOMETRY6_NORMALIZE_SOLUTION 1
+#endif
 
 namespace Voronoi {
 
@@ -258,6 +262,9 @@ bool BetterNeighbor(SimplexStateT & state){
 	return true;
 }
 
+// Sign of b-a, zero in the equality case.
+template<typename T> int sign_diff(const T& a, const T& b){return (a<b) - (b<a);}
+
 void KKT(const SimplexStateT & state, Scalar weights[symdim], 
 	OffsetT offsets[symdim][ndim]){
 	const vertex_dataT & data = vertex_data(state.vertex);
@@ -289,10 +296,79 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 	} else {
 		// Case where the vertex is degenerate.
 		// Solve a linear program to find a non-negative decomposition
-		
+
 		// Dimension of the linear program
 		const int d = nsupport - symdim;
 		const int d_max = nsupport_max - symdim;
+
+#if GEOMETRY6_NORMALIZE_SOLUTION
+		// We want the 'best' solution, w.r.t suitable ordering of the support vectors
+		int offset_norm2_[nsupport_max]; 
+		for(int k=0; k<nsupport; ++k){
+			// First, normalize those, so that their first coordinate is a positive number
+			OffsetT * offset = offsets_[k];
+			OffsetT sign=0;
+			for(int i=0; i<ndim; ++i){if(offset[i]!=0) {sign=2*(offset[i]>0)-1;break;}}
+			for(int i=0; i<ndim; ++i){offset[i]*=sign;}
+			// Also, we want to promote small vectors, so let us compute the norms
+			int & offset_norm2 = offset_norm2_[k];
+			offset_norm2=0;
+			for(int i=0; i<ndim; ++i){offset_norm2+=int(offset[i])*int(offset[i]);}
+		}
+		
+//		for(int k=0; k<nsupport; ++k){
+//			show_v(std::cout, offsets_[k]); std::cout << std::endl;}
+
+		// We use a basic bubble sort to sort the keys
+		// We do not use the sorting functions, as it would require 
+		// to define a struct with comparison operators... 
+		int support_order[nsupport_max];
+		for(int k=0; k<nsupport_max; ++k) support_order[k]=k;
+		for(int k=0; k<nsupport; ++k){
+			for(int l=0; l<nsupport-k-1; ++l){
+				const int u = support_order[l], v = support_order[l+1];
+				// Norm equality, then lexicographic ordering
+				int ordered = sign_diff(offset_norm2_[u], offset_norm2_[v]);
+				for(int i=0; i<ndim; ++i){
+					if(ordered==0) ordered = sign_diff(offsets_[u][i],offsets_[v][i]);}
+				// Put the smallest norm first
+				if(ordered==-1){support_order[l]=v; support_order[l+1]=u;}
+			}
+		}
+		Int support_priority[nsupport_max]; Int support_tmp[nsupport_max];
+		variable_length_sort(support_order,support_priority,support_tmp,nsupport);
+		std::cout<< "offset_norm2_,priority "; for(int i=0; i<nsupport; ++i) std::cout << "(" << offset_norm2_[i]<<","<< support_priority[i]<<")"; std::cout<<std::endl;
+
+		
+		// Now, we must reflect this ordering on the linear programming variables
+		// Priority : lower number goes first
+		int priority[d_max]; 
+		int direction[d_max];
+		for(int k=0; k<d; ++k) {
+			priority[k]  = support_priority[symdim+k];
+			direction[k] = 1;
+			for(int l=0; l<symdim; ++l){
+				if(data.kkt_constraints[k][l]!=0 && support_priority[l]<priority[k]){
+					priority[k] = support_priority[l];
+					direction[k] = data.kkt_constraints[k][l]>0;
+				}
+			}
+			direction[k] = 2*direction[k]-1; // Turn sign bit into +/- value
+		}
+		// Set the objective function to favor unknowns with low priority number
+		Int unknowns_order[d_max]; Int unknowns_tmp[d_max];
+		variable_length_sort(priority,unknowns_order,unknowns_tmp,d);
+		Scalar objective[d_max]; Scalar w=1.;
+		for(int i=0; i<d; ++i) {
+			const int j=unknowns_order[i];
+			objective[j] = -direction[j] * w;
+			w/=16.;
+		}
+		
+		
+//		std::cout<< "offset_norm2_ "; for(int i=0; i<nsupport; ++i) std::cout << offset_norm2_[i]<<","; std::cout<<std::endl;
+//		std::cout<< "support_priority ";for(int i=0; i<nsupport; ++i) std::cout << support_priority[i]<<","; std::cout<<std::endl;
+#endif // Normalize solution
 				
 		// ---- Define the half spaces intersections. (linear constraints) ----
 		Scalar halves[(nsupport_max+1)*(d_max+1)]; // used as Scalar[nsupport+1][d+1];
@@ -319,11 +395,17 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		for(int j=0; j<d; ++j){halves[nsupport*(d+1)+j] = 0;}
 		halves[nsupport*(d+1)+d] = 1;
 						
-		// Minimize some arbitrary linear form (we only need a feasible solution)
 		Scalar n_vec[d_max+1]; // used as Scalar[d+1]
 		Scalar d_vec[d_max+1]; // used as Scalar[d+1]
-		for(int i=0; i<d; ++i) {n_vec[i]=1; d_vec[i]=0;}
-		n_vec[d]=1; d_vec[d]=1;
+#if GEOMETRY6_NORMALIZE_SOLUTION
+		for(int i=0; i<d; ++i) {n_vec[i]=objective[i];}
+#else
+		// Minimize some arbitrary linear form (we only need a feasible solution)
+		for(int i=0; i<d; ++i) {n_vec[i]=1;}
+#endif
+		for(int i=0; i<d; ++i) {d_vec[i]=0;}
+		n_vec[d]=0; d_vec[d]=1;
+
 			
 		Scalar opt[d_max+1];
 		const int size = nsupport+1;

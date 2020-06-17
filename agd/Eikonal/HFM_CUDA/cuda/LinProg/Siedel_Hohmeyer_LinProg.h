@@ -62,7 +62,7 @@ Can be better on gpus, probably not on cpus */
 #define linprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)  \
 linprog_recursive(v,istart, n,num,den,dim,opt,work,next,prev,max_size)
 #else
-#include "LinProg/linprog_flattened.h"
+#include "linprog_flattened.h"
 #define linprog(v,istart, n,num,den,dim,opt,work,next,prev,max_size)  \
 linprog_flattened(v,istart, n,num,den,dim,opt,work,next,prev,max_size)
 #endif
