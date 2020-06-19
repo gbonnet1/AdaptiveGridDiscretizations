@@ -135,10 +135,10 @@ class Ball(Domain):
 		begin = np.full(x.shape[1:],np.inf)
 		end = begin.copy()
 
-		# Solve |x+hv|^2=r, which is a quadratic equation a h^2 + 2 b h + c =0
+		# Solve |x+hv|^2=r^2, which is a quadratic equation a h^2 + 2 b h + c =0
 		a = lp.dot_VV(v,v)
 		b = lp.dot_VV(xc,v)
-		c = lp.dot_VV(xc,xc)-self.radius
+		c = lp.dot_VV(xc,xc)-self.radius**2
 
 		delta = b*b-a*c
 
