@@ -292,7 +292,7 @@ class UniformGridInterpolation:
 	def __init__(self,grid,values=None,order=1,periodic=False,check_grid=True):
 		"""
 		- grid (ndarray) : must be a uniform grid. E.g. np.meshgrid(aX,aY,indexing='ij')
-		 where aX,aY have uniform spacing. Alternatively
+		 where aX,aY have uniform spacing. Alternatively, provide only the axes.
 		- values (ndarray) : interpolated values.
 		- order (int, tuple of ints) : spline interpolation order (<=3), along each axis.
 		- periodic (bool, tuple of bool) : wether periodic interpolation, along each axis.
