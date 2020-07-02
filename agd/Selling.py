@@ -50,6 +50,10 @@ def Decomposition(m,sb=None):
 	 array of shape (vdim,vdim+1, n1,...,nk)
 	Output : the coefficients and offsets of the decomposition.
 	"""
+	if ad.cupy_generic.from_cupy(m):
+		from . import Eikonal
+		return Eikonal.VoronoiDecomposition(m,mode='gpu') # Faster and safer
+
 	dim = len(m)
 	if sb is None: sb = ObtuseSuperbase(m,sb)
 	if   dim==1: return _Decomposition1(m,sb)	
@@ -147,18 +151,21 @@ def _ObtuseSuperbase2(m,sb):
 	for iter,(i,j,k) in zip(range(iterMax2), cycle([(0,1,2),(1,2,0),(2,0,1)]) ):
 		# Test for a positive angle, and modify superbase if necessary
 		acute = dot_VV(sb[:,i],dot_AV(m,sb[:,j])) > 0
+#		print(f"nacute : {np.sum(acute)}, {np.max(dot_VV(sb[:,i],dot_AV(m,sb[:,j])))}")
 		if np.any(acute):
 			try:
 				sb[:,k,acute] = sb[:,i,acute]-sb[:,j,acute]
 				sb[:,i,acute] = -sb[:,i,acute]
 			except ValueError: # Some cupy versions require simpler indexing
+				# Works with numpy, but often fails on cupy at the time of testing
+				# -> Bypass using Eikonal.VoronoiDecomposition
 				sb[:,k][:,acute] = sb[:,i][:,acute]-sb[:,j][:,acute]
 				sb[:,i][:,acute] = -sb[:,i][:,acute]
 			iterReduced=0
 		elif iterReduced<3: iterReduced+=1
 		else: return sb
 
-	raise ValueError("Selling's algorithm did not terminate in iterMax2={iterMax2} iterations")
+	raise ValueError(f"Selling's algorithm did not terminate in iterMax2={iterMax2} iterations")
 	
 # Produce the matrix decomposition
 def _Decomposition2(m,sb):
@@ -235,7 +242,7 @@ def _ObtuseSuperbase3(m,sb):
 			iterReduced=0
 		elif iterReduced<6: iterReduced+=1
 		else: return sb
-	raise ValueError("Selling's algorithm did not terminate in iterMax3={iterMax3} iterations")
+	raise ValueError(f"Selling's algorithm did not terminate in iterMax3={iterMax3} iterations")
 	
 def _Decomposition3(m,sb):
 	"""

@@ -371,8 +371,8 @@ class UniformGridInterpolation:
 			try:
 				result[...,interior_x] = interior_result
 				result[...,boundary_x] = boundary_result
-			except ValueError:
-				# Some old cupy versions do not handle Ellipsis correctly
+			except (ValueError,IndexError):
+				# Some cupy versions do not handle Ellipsis correctly
 				ellipsis = (slice(None),)*len(self.oshape)
 				result.__setitem__((*ellipsis,interior_x),interior_result)
 				result.__setitem__((*ellipsis,boundary_x),boundary_result)
