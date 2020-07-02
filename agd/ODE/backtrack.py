@@ -22,7 +22,7 @@ def odeint_array(f,y,t,grid,t_delay=0,t_substeps=2,**kwargs):
 	- **kwargs : passed to UniformGridInterpolation
 	"""
 	nt = len(t)
-	solution = np.full((nt,*y.shape),np.nan)
+	solution = np.full_like(y,np.nan,shape=(nt,*y.shape))
 	y0 = copy.copy(y)
 	fit = iter(f)
 	f1 = UniformGridInterpolation(grid,next(fit),  **kwargs)
