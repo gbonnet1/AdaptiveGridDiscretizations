@@ -56,7 +56,7 @@ VolumeFilenames = {
 	"LinearMonotoneSchemes2D","NonlinearMonotoneFirst2D",
 	"NonlinearMonotoneSecond2D",
 	"MongeAmpere","EikonalEulerian",
-	"BoatRouting_Time", #"ShapeFromShading",
+	"BoatRoutingGeneric_Time","BoatRouting_Time", #"ShapeFromShading",
 ],
 'Div':["Time1D_Div","Elliptic","EllipticAsymmetric","VaradhanGeodesics"],
 'Algo':[
