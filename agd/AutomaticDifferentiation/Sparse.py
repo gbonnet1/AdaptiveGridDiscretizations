@@ -60,8 +60,11 @@ class spAD(Base.baseAD):
 		return "spAD"+repr((self.value,self.coef,self.index))	
 
 	# Operators
-	def as_func(self,h):
-		"""Replaces the symbolic perturbation with h"""
+	def as_func(self,h=None):
+		"""Replaces the symbolic perturbation with h, if specified."""
+		if h is None: 
+			lin = self.tangent_operator()
+			return lambda h : (lin*h).reshape(self.shape) + misc.add_ndim(self.value,h.ndim-1)
 		value,coef = (misc.add_ndim(e,h.ndim-1) for e in (self.value,self.coef))
 		return value+(coef*h[self.index]).sum(axis=self.ndim)
 
