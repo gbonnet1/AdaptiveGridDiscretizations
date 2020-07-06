@@ -9,7 +9,9 @@
  silent call)
 */
 
-#ifndef CUDA_DEVICE
+#ifdef CUDA_DEVICE
+#define INFINITY (1./0.)
+#else
 // Those are actually needed, but explicit inclusion bugs the nvcc cuda compiler
 #include <math.h>
 #include <iostream>
@@ -282,7 +284,7 @@ inline int initialise_simplex(SimplexData & d)
 
 // Runs the simplex algorithm to optimise the LP.
 // Returns a vector starting with -1 if unbounded, -2 if infeasible.
-double simplex(SimplexData & d, double ret[SIMPLEX_MAX_M+SIMPLEX_MAX_N])
+Scalar simplex(SimplexData & d, Scalar ret[SIMPLEX_MAX_M+SIMPLEX_MAX_N])
 {
     if (initialise_simplex(d) == -1) { // infeasible
 		ret[0]=-2;

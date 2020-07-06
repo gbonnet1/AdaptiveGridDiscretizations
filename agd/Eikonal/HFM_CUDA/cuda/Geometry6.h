@@ -349,7 +349,10 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		}
 		Int support_priority[nsupport_max]; Int support_tmp[nsupport_max];
 		variable_length_sort(support_order,support_priority,support_tmp,nsupport);
-		std::cout<< "offset_norm2_,priority "; for(int i=0; i<nsupport; ++i) std::cout << "(" << offset_norm2_[i]<<","<< support_priority[i]<<")"; std::cout<<std::endl;
+/*		std::cout<< "offset_norm2_,priority "; 
+		for(int i=0; i<nsupport; ++i) std::cout << "(" << offset_norm2_[i]<<
+		","<< support_priority[i]<<")"; std::cout<<std::endl;
+		*/
 
 		
 		// Now, we must reflect this ordering on the linear programming variables
