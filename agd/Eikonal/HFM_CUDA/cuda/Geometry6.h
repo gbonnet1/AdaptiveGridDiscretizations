@@ -246,6 +246,12 @@ bool BetterNeighbor(SimplexStateT & state){
 		const uchar index = data.diff_i[idiff];
 		obj += data.diff_v[idiff] * state.m[index & 31];
 		if(index & 32){ // Completed neighbor
+			if((ineigh & 1023)==0){
+				// Use the key points to avoid roundoff error accumulation
+//				const Scalar obj_old = obj;
+				obj = dim_symdim::scal_vv(state.m, data.key[ineigh>>10]);
+//				std::cout << obj << "," << (obj-obj_old) << std::endl;
+			}
 			if(obj<best_obj){
 				best_obj = obj;
 				best_neigh = ineigh;
