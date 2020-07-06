@@ -17,7 +17,6 @@ const int ndim=ndim_macro;
 #ifdef SIMPLEX_VERBOSE // Use simplex algorithm
 #define SIMPLEX_MAX_M 21 // Number of constraints
 #define SIMPLEX_MAX_N 16 // Number of variables. Initialization increases dimension by one.
-//#define SIMPLEX_AUX_TOL 1e-8 // Not defined : linear program is guaranteed to be feasible
 #include "LinProg/SimplexAlgorithm.h"
 
 #else // Use Siedel Homeyer algorithm
@@ -392,29 +391,37 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 #endif // Normalize solution
 
 #ifdef SIMPLEX_VERBOSE // Simplex algorithm
+		
 		SimplexData sdata;
 		sdata.n = d; // number of variables (all positive)
 		sdata.m = symdim; // Number of constraints (all positivity constraits)
-
-		for(int i=0; i<symdim; ++i){ // Specify the constraints
-			for(int j=0; j<d; ++j){
-				sdata.A[i][j] = data.kkt_constraints[j][i];}
-			sdata.b[i] = weights[i]; // No normalization here
-		}
-
-
-		for(int i=0; i<sdata.n; ++i){
-			sdata.c[i] = // Linear form to be maximized
-			#if GEOMETRY6_NORMALIZE_SOLUTION
-			objective[i]; // Select Lipschitz continuous representative
-			#else 
-			1; // Arbitrary
-			#endif
-		}
-
 		Scalar opt[nsupport_max]; // optimal solution
-		const Scalar value = simplex(sdata,opt);
-		
+		Scalar wfeas = 0; // Added to ensure feasibility
+
+		for(int k=0; k<2; ++k){
+			
+			for(int i=0; i<symdim; ++i){ // Specify the constraints
+				for(int j=0; j<d; ++j){
+					sdata.A[i][j] = data.kkt_constraints[j][i];}
+				sdata.b[i] = weights[i] + wfeas; // No normalization here
+			}
+
+			for(int i=0; i<sdata.n; ++i){
+				sdata.c[i] = // Linear form to be maximized
+				#if GEOMETRY6_NORMALIZE_SOLUTION
+				objective[i]; // Select Lipschitz continuous representative
+				#else
+				1; // Arbitrary
+				#endif
+			}
+
+			const Scalar value = simplex(sdata,opt);
+			
+			if(k==0 && value==-INFINITY){
+			// Found infeasible problem, which must be due to floating point roundoff errors.
+				wfeas = 2 * opt[0]; // Make problem feasible. Must be > opt[0]
+			} else {break;} // Linear problem solved !
+		}
 		
 /*		std::cout << "Value of the linear program " << value << std::endl;
 		if(isinf(value)) {std::cout << opt[0] << std::endl;}

@@ -164,7 +164,7 @@ inline int iterate_simplex(SimplexData & d)
 
 // (Possibly) converts the LP into a slack form with a feasible basic solution.
 // Returns 0 if OK, -1 if INFEASIBLE
-inline int initialise_simplex(SimplexData & d)
+inline Scalar initialise_simplex(SimplexData & d)
 {
     int k = -1;
     Scalar min_b = -1;
@@ -210,10 +210,10 @@ inline int initialise_simplex(SimplexData & d)
     
     assert(code == 1); // aux. LP cannot be unbounded!!!
     
-    #ifdef SIMPLEX_AUX_TOL
-//    std::cout << "Value of auxiliary problem" << d.v << std::endl;
-    if (abs(d.v) > SIMPLEX_AUX_TOL) return -1; // infeasible!
-    #endif
+	/* The value of the auxiliary problem is non-positive.
+	 It is zero if feasible, and negative if infeasible. (Returned value in that case.)*/
+//	std::cout << "Value of initial problem " << d.v << std::endl;
+	if(d.v<0){--d.n; return -d.v;}
 
     int z_basic = -1;
     for (int i=0;i<d.m;i++)
@@ -227,7 +227,7 @@ inline int initialise_simplex(SimplexData & d)
     
     // if x_n basic, perform one degenerate pivot to make it nonbasic
     if (z_basic != -1) pivot(z_basic, d.n - 1, d);
-    
+
     int z_nonbasic = -1;
     for (int j=0;j<d.n;j++)
     {
@@ -283,26 +283,25 @@ inline int initialise_simplex(SimplexData & d)
 }
 
 // Runs the simplex algorithm to optimise the LP.
-// Returns a vector starting with -1 if unbounded, -2 if infeasible.
+// If infeasible, returns -Infinity.
+// If unbounded, returns +Infinity.
 Scalar simplex(SimplexData & d, Scalar ret[SIMPLEX_MAX_M+SIMPLEX_MAX_N])
 {
-    if (initialise_simplex(d) == -1) { // infeasible
-		ret[0]=-2;
-		return INFINITY;
+	const double infeasible = initialise_simplex(d);
+    if (infeasible) { // infeasible
+		ret[0] = infeasible; // How much to offset the constraint values to be feasible
+		return -INFINITY;
     }
     
+	for (int i=0;i<d.m;i++) std::cout << d.b[i] << ","; std::cout << std::endl;
+
     int code;
     while (!(code = iterate_simplex(d)));
     
-	if (code == -1) { // unbounded
-		ret[0]=-1;
-		return INFINITY;
-	}
+	if (code == -1) { return INFINITY;} // unbounded
     
-    for (int j=0;j<d.n;j++){
-		ret[d.N[j]] = 0;}
-    for (int i=0;i<d.m;i++){
-        ret[d.B[i]] = d.b[i];}
+    for (int j=0;j<d.n;j++){ret[d.N[j]] = 0;}
+    for (int i=0;i<d.m;i++){ret[d.B[i]] = d.b[i];}
     
 	return d.v;
 }
