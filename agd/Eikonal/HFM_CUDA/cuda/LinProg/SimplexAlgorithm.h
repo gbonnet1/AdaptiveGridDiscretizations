@@ -9,8 +9,11 @@
  silent call)
 */
 
+#ifndef CUDA_DEVICE
+// Those are actually needed, but explicit inclusion bugs the nvcc cuda compiler
 #include <math.h>
 #include <iostream>
+#endif
 
 #ifndef SIMPLEX_VERBOSE
 #define SIMPLEX_VERBOSE 1

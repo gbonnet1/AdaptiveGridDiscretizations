@@ -11,6 +11,7 @@ const int ndim=ndim_macro;
 #include "NetworkSort.h"
 
 #define SIMPLEX_VERBOSE 0
+#define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1) in linprog
 
 // linear programming 
 #ifdef SIMPLEX_VERBOSE // Use simplex algorithm
@@ -20,7 +21,6 @@ const int ndim=ndim_macro;
 #include "LinProg/SimplexAlgorithm.h"
 
 #else // Use Siedel Homeyer algorithm
-#define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1) in linprog
 //#define CHECK
 #ifndef LINPROG_DIMENSION_MAX 
 #define LINPROG_DIMENSION_MAX 15 // Use a non-recursive linprog
