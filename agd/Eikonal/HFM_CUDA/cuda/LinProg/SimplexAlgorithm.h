@@ -293,8 +293,6 @@ Scalar simplex(SimplexData & d, Scalar ret[SIMPLEX_MAX_M+SIMPLEX_MAX_N])
 		return -INFINITY;
     }
     
-	for (int i=0;i<d.m;i++) std::cout << d.b[i] << ","; std::cout << std::endl;
-
     int code;
     while (!(code = iterate_simplex(d)));
     
