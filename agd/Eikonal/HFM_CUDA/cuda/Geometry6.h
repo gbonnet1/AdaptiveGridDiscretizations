@@ -10,14 +10,26 @@ const int ndim=ndim_macro;
 #include "Inverse_.h"
 #include "NetworkSort.h"
 
+#define SIMPLEX_VERBOSE 0
+
 // linear programming 
+#ifdef SIMPLEX_VERBOSE // Use simplex algorithm
+#define SIMPLEX_MAX_M 21 // Number of constraints
+#define SIMPLEX_MAX_N 16 // Number of variables. Initialization increases dimension by one.
+//#define SIMPLEX_AUX_TOL 1e-8 // Not defined : linear program is guaranteed to be feasible
+#include "LinProg/SimplexAlgorithm.h"
+
+#else // Use Siedel Homeyer algorithm
 #define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1) in linprog
 //#define CHECK
 #ifndef LINPROG_DIMENSION_MAX 
 #define LINPROG_DIMENSION_MAX 15 // Use a non-recursive linprog
 #endif
+#endif
 #include "LinProg/Siedel_Hohmeyer_LinProg.h"
 
+
+// Select a Voronoi decomposition with Lipschitz dependency w.r.t parameters 
 #ifndef GEOMETRY6_NORMALIZE_SOLUTION
 #define GEOMETRY6_NORMALIZE_SOLUTION 1
 #endif
@@ -369,7 +381,41 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 //		std::cout<< "offset_norm2_ "; for(int i=0; i<nsupport; ++i) std::cout << offset_norm2_[i]<<","; std::cout<<std::endl;
 //		std::cout<< "support_priority ";for(int i=0; i<nsupport; ++i) std::cout << support_priority[i]<<","; std::cout<<std::endl;
 #endif // Normalize solution
-				
+
+#ifdef SIMPLEX_VERBOSE // Simplex algorithm
+		SimplexData sdata;
+		sdata.n = d; // number of variables (all positive)
+		sdata.m = symdim; // Number of constraints (all positivity constraits)
+
+		for(int i=0; i<symdim; ++i){ // Specify the constraints
+			for(int j=0; j<d; ++j){
+				sdata.A[i][j] = data.kkt_constraints[j][i];}
+			sdata.b[i] = weights[i]; // No normalization here
+		}
+
+
+		for(int i=0; i<sdata.n; ++i){
+			sdata.c[i] = // Linear form to be maximized
+			#if GEOMETRY6_NORMALIZE_SOLUTION
+			objective[i]; // Select Lipschitz continuous representative
+			#else 
+			1; // Arbitrary
+			#endif
+		}
+
+		Scalar opt[nsupport_max]; // optimal solution
+		const Scalar value = simplex(sdata,opt);
+		
+		
+/*		std::cout << "Value of the linear program " << value << std::endl;
+		if(isinf(value)) {std::cout << opt[0] << std::endl;}
+		std::cout << "state.vertex" << state.vertex << std::endl;*/
+		Scalar sol[nsupport_max]; // solution
+		for(int i=0; i<d; ++i){sol[symdim+i] = opt[i];}
+		for(int i=0; i<symdim; ++i){sol[i] = opt[d+i];}
+
+#else // Siedel Homeyer linprog
+
 		// ---- Define the half spaces intersections. (linear constraints) ----
 		Scalar halves[(nsupport_max+1)*(d_max+1)]; // used as Scalar[nsupport+1][d+1];
 		
@@ -412,10 +458,6 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		const int size_max = nsupport_max+1;
 
 		Scalar work[((size_max+3)*(d_max+2)*(d_max-1))/2]; // Scalar[4760]
-		//const int worksize_max = ((size_max+3)*(d_max+2)*(d_max-1))/2;
-		//Scalar work[worksize_max]; // Scalar[4641] at worst
-		//Scalar * work = NULL;
-		//cudaMalloc((void**) &work,4*worksize);
 		
 		int next[size_max];
 		int prev[size_max];
@@ -430,9 +472,9 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		//}
 	
 		// TODO : check that status is correct
-		//cudaFree(work);
 		// The solution is "projective". Let's normalize it, dividing by the last coord.
 		for(int i=0; i<d; ++i){opt[i]/=opt[d];}
+
 
 		// Get the solution, and find the non-zero weights, which should be positive.
 		Scalar sol[nsupport_max]; // Using sol[nsupport]
@@ -443,6 +485,8 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 			sol[i]=s+weights[i];
 		}
 		for(int i=0; i<d; ++i){sol[symdim+i] = maxWeight*opt[i];}
+#endif // Siedel Homeyer linprog
+
 		// We only need to exclude the d smallest elements. For simplicity, we sort all.
 		Int ord[nsupport_max], tmp[nsupport_max]; // using Int[nsupport]
 		variable_length_sort(sol, ord, tmp, nsupport);
