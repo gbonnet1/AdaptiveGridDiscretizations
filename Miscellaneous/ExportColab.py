@@ -69,7 +69,7 @@ google_drive_link = {
 	"Notebooks_FMM/TTI.ipynb":"https://drive.google.com/file/d/1bqWUzPHfEc3CEypMdIY-aGrTcEDfc6iL/view?usp=sharing",
 	"Notebooks_Div/ElasticWave.ipynb":"https://drive.google.com/file/d/1UIRej7tSGDuPJdr7-cgLgyLvMDMT43EE/view?usp=sharing",
 	"Notebooks_Div/ElasticEnergy.ipynb":"https://drive.google.com/file/d/1nZOJVpDG2Ja49jvIgGFWXIsTivSLBlsq/view?usp=sharing",
-	"Notebooks_NonDiv/BoatRoutingGeneric_Time.ipynb":"https://drive.google.com/file/d/1inrFDVVhmph34e2xjcAaIVvAjgLX6pla/view?usp=sharing",
+	"Notebooks_NonDiv/BoatRoutingGeneric_Time.ipynb":"https://drive.google.com/file/d/1d9oYJL2o0GhTd5BwKlsADWJjP-eES5ME/view?usp=sharing",
 	}
 
 
@@ -105,7 +105,7 @@ def ToColab(filename,output_dir):
 		# Import the agd package from pip
 		for cell in data['cells']:
 			if (cell['cell_type']=='code' and len(cell['source'])>0 
-				and cell['source'][0].startswith('import sys; sys.path.insert(0,"..")')):
+				and cell['source'][0].startswith('import sys; sys.path.insert(0,"..")')): 
 				cell['source'] = ['pip install agd']
 				# Do not forget to turn on GPU mode in Google Colab (R) parameters if necessary
 				break

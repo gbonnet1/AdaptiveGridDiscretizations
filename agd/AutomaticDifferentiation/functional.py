@@ -81,7 +81,7 @@ def map_iterables2(f,a,b,iterables):
 				return from_generator(type_iterable)(map_iterables2(f,ai,bi,iterables) for ai,bi in zip(a,b))
 	return f(a,b)
 
-# -------- Decorators --------
+# -------- Decorator related functions --------
 
 def recurse(step,niter=1):
 	def operator(rhs):
@@ -131,6 +131,16 @@ def decorate_module_functions(module,decorator,
 		decorated.append(key)
 		module.__dict__[key] = decorator(value)
 	return (module,decorated) if ret_decorated else module
+
+def func_except_alt(func,exception,alt):
+	"""
+	Returns a callable which evaluates func, but falls back to alt if exception is caught.
+	"""
+	@functools.wraps(func)
+	def wrapper(*args,**kwargs):
+		try: return func(*args,**kwargs)
+		except exception: return alt(*args,**kwargs)
+	return wrapper
 
  # ------ CRTP ------
 

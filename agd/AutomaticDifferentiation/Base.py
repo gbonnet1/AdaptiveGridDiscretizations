@@ -330,15 +330,10 @@ def implements_cupy_alt(numpy_function,exception):
 	"""Register an alternative to a numpy function only partially supported by cupy"""
 	def decorator(func):
 		cupy_alt_overloads[numpy_function] = (func,exception)
-		@functools.wraps(func)
-		def wrapper(*args,**kwargs):
-			try: return numpy_function(*args,**kwargs)
-			except exception: return func(*args,**kwargs)
-		return wrapper
+		return functional.func_except_alt(numpy_function,exception,func)
 	return decorator
 
 def _array_function_overload(self,func,types,args,kwargs,cupy_alt=True):
-
 	if cupy_alt and self.cupy_based() and func in cupy_alt_overloads:
 		func_alt,exception = cupy_alt_overloads[func]
 		try: return _array_function_overload(self,func,types,args,kwargs,cupy_alt=False)

@@ -182,6 +182,12 @@ def cupy_friendly(arg):
 				return np.allclose(*args,**kwargs)
 			return allclose
 
+		if arg in Base.cupy_alt_overloads: 
+			alt,exception = Base.cupy_alt_overloads[arg] 
+			print("Adding (partial) support for (old versions of) cupy"
+			" versions to function {arg.__name__}")
+			return alt
+
 		# Default behavior
 		print(f"Returning a copy of function {arg.__name__} which accepts cupy arrays as input.")
 		return cupy_get_args(arg)
