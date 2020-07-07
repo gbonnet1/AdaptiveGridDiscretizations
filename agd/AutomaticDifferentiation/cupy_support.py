@@ -77,7 +77,7 @@ def packbits(arr,bitorder='big'):
 		arr = arr.reshape(shape)
 	return cp.packbits(arr)
 
-@implements_cupy_alt(np.nanmean,TypeError):
+@implements_cupy_alt(np.nanmean,TypeError)
 def nanmean(arr):
 	pos = np.logical_not(np.isnan(arr))
 	return np.mean(arr[pos])

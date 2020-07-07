@@ -4,6 +4,9 @@
 """
 This file implements some spline interpolation methods, on uniform grids,
 in a manner compatible with automatic differentiation.
+
+If none of the involved arrays use automatic differentiation, and if the options are 
+compatible, then a bypass through ndimage may be used.
 """
 
 
@@ -18,6 +21,50 @@ from .AutomaticDifferentiation import cupy_support as cps
 #TODO : use a smaller stencil (3 pts instead of 4) for 2nd degree interpolation 
 # when far from the boundary, in non-periodic mode. (Introduce interior nodes.)
 
+def _origin_scale_shape(grid):
+	"""
+	This function is indended for extracting the origin, step, and length,
+	of a uniform coordinate system provided as a meshgrid.
+	"""
+	def _orig_step_len(a,axis):
+		a = ad.asarray(a)
+		assert a.ndim==1 or a.ndim>=axis
+		if a.ndim>1:a=a.__getitem__((0,)*axis+(slice(None,),)+(0,)*(a.ndim-axis-1))
+		return a[0],a[1]-a[0],len(a)
+	origin_scale_shape = [_orig_step_len(a,axis) for axis,a in enumerate(grid)]
+	origin,scale,shape = [list(l) for l in zip(*origin_scale_shape)]
+	return ad.asarray(origin),ad.asarray(scale),tuple(shape)
+
+
+def _append_dims(x,ndim):
+	"""Appends specified number of singleton dimensions"""
+	return np.reshape(x,x.shape+(1,)*ndim)
+
+def map_coordinates(input,coordinates,*args,grid=None,depth=0,**kwargs):
+	"""
+	Thin wrapper over the ndimage.map_coordinates function, which adds the possibility of 
+	rescaling the coordinates using a reference grid, and interpolating tensors.
+	Will dispatch to cupyx.scipy.ndimage.map_coordinates if needed.
+
+	Additional inputs : 
+	- grid : reference coordinate system, which must be uniform
+	- depth : depth of interpolated objects 0->scalar, 1->vector, 2->matrix
+	"""
+	if ad.cupy_generic.from_cupy(input):
+		from cupyx.scipy.ndimage.interpolation import map_coordinates
+	else: from scipy.ndimage.interpolation import map_coordinates
+
+	if grid is None: return map_coordinates(input,coordinates,*args,**kwargs)
+	origin,scale,_ = _origin_scale_shape(grid)
+	origin,scale = (_append_dims(e,coordinates.ndim-1) for e in (origin,scale))
+	y = (coordinates-origin)/scale
+	
+	if depth==0: return map_coordinates(input,y,*args,**kwargs)
+	oshape = input.shape[:depth]
+	input = input.reshape((-1,)+input.shape[depth:])
+	out = ad.array([map_coordinates(input_,y,*args,**kwargs) for input_ in input])
+	out.reshape(oshape+y.shape[1:])
+	return out
 
 class _spline_univariate:
 	"""
@@ -280,9 +327,6 @@ class _spline_tensor:
 				np.moveaxis(values,i,0),overwrite_values=overwrite_values),0,i)
 		return values
 
-def _append_dims(x,ndim):
-	return np.reshape(x,x.shape+(1,)*ndim)
-
 class UniformGridInterpolation:
 	"""
 	Interpolates values on a uniform grid, in arbitrary dimension, using splines of 
@@ -304,16 +348,7 @@ class UniformGridInterpolation:
 			if grid.get('cell_centered',False): 
 				self.origin += self.scale/2 # Convert to node_centered origin
 		else:
-			def get_origin_step_len(a,axis):
-				a = ad.asarray(a)
-				assert a.ndim==1 or a.ndim>=axis
-				if a.ndim>1:a=a.__getitem__((0,)*axis+(slice(None,),)+(0,)*(a.ndim-axis-1))
-				return a[0],a[1]-a[0],len(a)
-			origin_scale_shape = [get_origin_step_len(a,axis) for axis,a in enumerate(grid)]
-			origin,scale,shape = [list(l) for l in zip(*origin_scale_shape)]
-			self.origin = ad.asarray(origin)
-			self.scale  = ad.asarray(scale)
-			self.shape = tuple(shape)
+			self.origin,self.scale,self.shape = _origin_scale_shape(grid)
 			if check_grid and grid[0].ndim>1:
 				assert np.allclose(grid,self._grid(),atol=1e-5) #Atol allows float32 types
 
@@ -330,7 +365,6 @@ class UniformGridInterpolation:
 		self.boundary_nodes = self.spline.nodes(interior=False)
 
 		self.coef = None if values is None else self.make_coefs(values)
-
 
 	@property
 	def vdim(self):
@@ -351,6 +385,7 @@ class UniformGridInterpolation:
 		"""
 		x=ad.asarray(x)
 		assert len(x)==self.vdim
+		
 		pdim = x.ndim-1 # Number of dimensions of position
 		origin,scale = (_append_dims(e,pdim) for e in (self.origin,self.scale))
 
