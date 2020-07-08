@@ -14,7 +14,7 @@ import types
 from copy import copy
 
 from . import functional
-from .Base import cp,isndarray,from_cupy,is_ad,array # dummy cp and _cp_ndarray if not in the system
+from .Base import cp,isndarray,from_cupy,is_ad,array,cupy_alt_overloads
 
 def get_array_module(data,iterables=tuple()):
 	"""Returns the cupy module or the numpy module, depending on data"""
@@ -182,10 +182,10 @@ def cupy_friendly(arg):
 				return np.allclose(*args,**kwargs)
 			return allclose
 
-		if arg in Base.cupy_alt_overloads: 
-			alt,exception = Base.cupy_alt_overloads[arg] 
+		if arg in cupy_alt_overloads: 
+			alt,exception = cupy_alt_overloads[arg] 
 			print("Adding (partial) support for (old versions of) cupy"
-			" versions to function {arg.__name__}")
+			f" versions to function {arg.__name__}")
 			return alt
 
 		# Default behavior
