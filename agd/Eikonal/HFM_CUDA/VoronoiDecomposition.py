@@ -6,19 +6,26 @@ import cupy as cp
 import os
 
 from . import cupy_module_helper
-from ...Metrics import Riemann
+from ...Metrics.misc import flatten_symmetric_matrix,expand_symmetric_matrix
+from ... import LinearParallel as lp
+
+def Reconstruct(coefs,offsets):
+     return lp.mult(coefs,lp.outer_self(offsets)).sum(2)
 
 def VoronoiDecomposition(m,offset_t=np.int32,
-	flattened=False,blockDim=None,traits=None,steps="Both"):
+	flattened=False,blockDim=None,traits=None,steps="Both",retry64_tol=2e-5):
 	"""
 	Returns the Voronoi decomposition of a family of quadratic forms. 
 	- m : the (symmetric) matrices of the quadratic forms to decompose.
 	- offset_t : the type of offsets to be returned. 
 	- flattened : wether the input matrices are flattened
+	- retry64_tol (optional) : retries decomposition using 64bit floats if this error 
+	 is exceeded relative to matrix trace. (Set retry64_tol = 0 to use double precision.)
 	"""
 
 	# Prepare the inputs and outputs
-	if not flattened: m = Riemann(m).flatten()
+	if flattened: m_exp = None
+	else: m_exp = m; m = flatten_symmetric_matrix(m)
 	symdim = len(m)
 	ndim = int(np.sqrt(2*symdim))
 	assert symdim==ndim*(ndim+1)/2
@@ -29,7 +36,8 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 		raise ValueError(f"Voronoi decomposition not implemented in dimension {ndim}")
 	decompdim = [0,1,3,6,12,15,21][ndim]
 
-	float_t = np.float32
+	float_t = np.float32 if retry64_tol else np.float64
+	tol = {np.float32:1e-5, np.float64:2e-14}[float_t]
 	int_t = np.int32
 	m = cp.ascontiguousarray(m,dtype=float_t)
 	weights = cp.empty((decompdim,*shape),dtype=float_t)
@@ -44,6 +52,7 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 		'offsetT':offset_t,
 		'Scalar':float_t,
 		'Int':np.int32,
+		'SIMPLEX_TOL_macro':tol,
 		})
 
 	source = cupy_module_helper.traits_header(traits)
@@ -66,9 +75,20 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	if steps=="Both":
 		cupy_kernel = module.get_function("VoronoiDecomposition")
 		cupy_kernel((gridDim,),(blockDim,),(m,weights,offsets))
+		if retry64_tol and ndim==6:
+			if m_exp is None: m_exp = expand_symmetric_matrix(m)
+			mrec = Reconstruct(weights,offsets)
+			error = np.sum(np.abs(m_exp-mrec),axis=(0,1))
+			bad = np.logical_not(error < (retry64_tol * lp.trace(m_exp)))
+			if np.any(bad):
+#				print(f"nrecomputed {np.sum(bad)}")
+				weights64,offsets64 = VoronoiDecomposition(m[:,bad],offset_t=offset_t,
+					flattened=True,traits=traits,retry64_tol=0.)
+				weights[:,bad] = weights64
+				offsets[:,:,bad] = offsets64
 		return weights,offsets
 
-	# To step approch. First minimize
+	# Two step approch. First minimize
 	a = cp.empty((ndim,ndim,*shape),dtype=float_t)
 	vertex = cp.empty(shape,dtype=int_t)
 	objective = cp.empty(shape,dtype=int_t)

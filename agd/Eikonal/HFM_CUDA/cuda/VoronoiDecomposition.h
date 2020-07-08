@@ -19,6 +19,7 @@ typedef char OffsetT;
 #elif ndim_macro==5
 #include "Geometry5.h"
 #elif ndim_macro==6
+#define SIMPLEX_TOL SIMPLEX_TOL_macro
 #include "Geometry6.h"
 #endif
 

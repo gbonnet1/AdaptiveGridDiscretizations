@@ -10,14 +10,14 @@ const int ndim=ndim_macro;
 #include "Inverse_.h"
 #include "NetworkSort.h"
 
-#define SIMPLEX_VERBOSE 0
+#define SIMPLEX_VERBOSE 0 
 #define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1) in linprog
 
 // linear programming 
 #ifdef SIMPLEX_VERBOSE // Use simplex algorithm
 #define SIMPLEX_MAX_M 21 // Number of constraints
 #define SIMPLEX_MAX_N 16 // Number of variables. Initialization increases dimension by one.
-#include "LinProg/SimplexAlgorithm.h"
+#include "SimplexAlgorithm.h"
 
 #else // Use Siedel Homeyer algorithm
 //#define CHECK
@@ -25,17 +25,16 @@ const int ndim=ndim_macro;
 #define LINPROG_DIMENSION_MAX 15 // Use a non-recursive linprog
 #endif
 #endif
-#include "LinProg/Siedel_Hohmeyer_LinProg.h"
+//#include "LinProg/Siedel_Hohmeyer_LinProg.h" 
 
 
 // Select a Voronoi decomposition with Lipschitz dependency w.r.t parameters 
 #ifndef GEOMETRY6_NORMALIZE_SOLUTION
-#define GEOMETRY6_NORMALIZE_SOLUTION 1
+#define GEOMETRY6_NORMALIZE_SOLUTION 0
 #endif
-
+ 
 namespace Voronoi {
 
-/** This code is adapted from the c++ code in the CPU HFM library*/
 namespace dim_symdim {
 	const Int ndim=symdim;
 	#include "Geometry_.h"
@@ -396,33 +395,28 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		sdata.n = d; // number of variables (all positive)
 		sdata.m = symdim; // Number of constraints (all positivity constraits)
 		Scalar opt[nsupport_max]; // optimal solution
-		Scalar wfeas = 0; // Added to ensure feasibility
+		Scalar wfeas = 0.; //SIMPLEX_TOL; // Added to ensure feasibility
 
-		for(int k=0; k<2; ++k){
-			
-			for(int i=0; i<symdim; ++i){ // Specify the constraints
-				for(int j=0; j<d; ++j){
-					sdata.A[i][j] = data.kkt_constraints[j][i];}
-				sdata.b[i] = weights[i] + wfeas; // No normalization here
-			}
+//		for(int i=0; i<symdim;++i) printf(" %f",weights[i]); printf("\n");
 
-			for(int i=0; i<sdata.n; ++i){
-				sdata.c[i] = // Linear form to be maximized
-				#if GEOMETRY6_NORMALIZE_SOLUTION
-				objective[i]; // Select Lipschitz continuous representative
-				#else
-				1; // Arbitrary
-				#endif
-			}
-
-			const Scalar value = simplex(sdata,opt);
-			
-			if(k==0 && value==-INFINITY){
-			// Found infeasible problem, which must be due to floating point roundoff errors.
-				wfeas = 2 * opt[0]; // Make problem feasible. Must be > opt[0]
-			} else {break;} // Linear problem solved !
+		for(int i=0; i<symdim; ++i){ // Specify the constraints
+			for(int j=0; j<d; ++j){
+				sdata.A[i][j] = data.kkt_constraints[j][i];}
+			sdata.b[i] = weights[i] + wfeas; // No normalization here
 		}
-		
+
+		for(int i=0; i<sdata.n; ++i){
+			sdata.c[i] = // Linear form to be maximized
+			#if GEOMETRY6_NORMALIZE_SOLUTION
+			objective[i]; // Select Lipschitz continuous representative
+			#else
+			1; // Arbitrary
+			#endif
+		}
+
+		const Scalar value = simplex(sdata,opt);   
+//		assert(!isinf(value)); 
+
 /*		std::cout << "Value of the linear program " << value << std::endl;
 		if(isinf(value)) {std::cout << opt[0] << std::endl;}
 		std::cout << "state.vertex" << state.vertex << std::endl;*/

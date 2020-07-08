@@ -21,9 +21,13 @@
 #define SIMPLEX_VERBOSE 1
 #define SIMPLEX_MAX_N 1001 // Max number of variables
 #define SIMPLEX_MAX_M 1001 // Max number of constraints
-#define SIMPLEX_AUX_TOL 1e-8 // Tolerance for the feasibility of auxiliary problem
 typedef double Scalar;
 #endif
+
+//#ifndef SIMPLEX_TOL
+//#define SIMPLEX_TOL 0
+// Typical nonzero values : 1e-5 for float, 2e-14 for double
+//#endif
 
 void swap_int(int & a, int & b){
 	const Scalar c = a; a=b; b=c;}
@@ -131,7 +135,7 @@ inline int iterate_simplex(SimplexData & d)
     int ind = -1, best_var = -1;
     for (int j=0;j<d.n;j++)
     {
-        if (d.c[j] > 0)
+        if (d.c[j] > SIMPLEX_TOL)
         {
             if (best_var == -1 || d.N[j] < ind)
             {
@@ -140,13 +144,18 @@ inline int iterate_simplex(SimplexData & d)
             }
         }
     }
+
+/*    for(int j=0; j<d.n; ++j) printf("%f ",1000*d.c[j]); printf("\n");
+    for(int j=0; j<d.n; ++j) printf("%i ",d.c[j]>SIMPLEX_TOL); printf("\n");
+    printf("best_var %i", best_var);*/
+
     if (ind == -1) return 1;
     
     Scalar max_constr = INFINITY;
     int best_constr = -1;
     for (int i=0;i<d.m;i++)
     {
-        if (d.A[i][best_var] < 0)
+        if (d.A[i][best_var] < -SIMPLEX_TOL)
         {
             Scalar curr_constr = -d.b[i] / d.A[i][best_var];
             if (curr_constr < max_constr)
@@ -206,14 +215,14 @@ inline Scalar initialise_simplex(SimplexData & d)
     
     // now solve aux. LP
     int code;
-    while (!(code = iterate_simplex(d)));
+    while (!(code = iterate_simplex(d))); 
     
     assert(code == 1); // aux. LP cannot be unbounded!!!
     
 	/* The value of the auxiliary problem is non-positive.
 	 It is zero if feasible, and negative if infeasible. (Returned value in that case.)*/
 //	std::cout << "Value of initial problem " << d.v << std::endl;
-	if(d.v<0){--d.n; return -d.v;}
+	if(d.v < -SIMPLEX_TOL){--d.n; return -d.v;}
 
     int z_basic = -1;
     for (int i=0;i<d.m;i++)
@@ -289,6 +298,7 @@ Scalar simplex(SimplexData & d, Scalar ret[SIMPLEX_MAX_M+SIMPLEX_MAX_N])
 {
 	const double infeasible = initialise_simplex(d);
     if (infeasible) { // infeasible
+        printf("infeasible ? %f, %i\n",1000000*infeasible, infeasible!=0);
 		ret[0] = infeasible; // How much to offset the constraint values to be feasible
 		return -INFINITY;
     }
