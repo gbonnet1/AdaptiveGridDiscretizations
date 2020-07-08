@@ -277,14 +277,17 @@ def from_cupy(x):
 	"""Wether the variable is an instance of a cupy ndarray (incudes AD types)"""
 	return isinstance(x,_cp_ndarray)
 
-def array(a,copy=True):
+def array(a,copy=True,caster=None):
 	"""
 	Similar to np.array, but does not cast AD subclasses of np.ndarray to the base class.
 	Turns a list or tuple of arrays with the same dimensions. 
 	Turns a scalar into an array scalar.
+	Inputs : 
+	- caster : used to cast a scalar into an array scalar (overrides default)
 	"""
 	if isinstance(a,(list,tuple)): return stack([asarray(e) for e in a],axis=0)
 	elif isndarray(a): return a.copy() if copy else a
+	elif caster is not None: caster(a)
 	else: return array.caster(a) 
 
 array.caster = np.asarray

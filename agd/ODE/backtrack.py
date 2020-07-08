@@ -32,7 +32,6 @@ def odeint_array(f,y,t,grid,t_delay=0,t_substeps=2,order=1,**kwargs):
 			depth=1,order=order,**kwargs)
 
 	f1 = next(fit)
-
 	for i in range(nt-1):
 		f0,f1 = f1,next(fit) # Vector fields to be interpolated
 		t0,t1 = t[i],t[i+1]

@@ -33,7 +33,8 @@ def origin_scale_shape(grid):
 		return a[0],a[1]-a[0],len(a)
 	origin_scale_shape = [_orig_step_len(a,axis) for axis,a in enumerate(grid)]
 	origin,scale,shape = [list(l) for l in zip(*origin_scale_shape)]
-	return ad.asarray(origin),ad.asarray(scale),tuple(shape)
+	caster = ad.cupy_generic.array_float_caster(grid,iterables=(list,tuple))
+	return caster(origin),caster(scale),tuple(shape)
 
 
 def _append_dims(x,ndim):
