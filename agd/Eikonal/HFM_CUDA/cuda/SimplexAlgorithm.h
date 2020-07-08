@@ -26,7 +26,7 @@ typedef double Scalar;
 
 //#ifndef SIMPLEX_TOL
 //#define SIMPLEX_TOL 0
-// Typical nonzero values : 1e-5 for float, 2e-14 for double
+// Typical values : 1e-5 for float, 2e-14 for double
 //#endif
 
 void swap_int(int & a, int & b){

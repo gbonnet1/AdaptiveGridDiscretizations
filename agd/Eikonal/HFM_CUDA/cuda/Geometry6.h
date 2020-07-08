@@ -19,13 +19,14 @@ const int ndim=ndim_macro;
 #define SIMPLEX_MAX_N 16 // Number of variables. Initialization increases dimension by one.
 #include "SimplexAlgorithm.h"
 
-#else // Use Siedel Homeyer algorithm
+#else /* Use Siedel Homeyer algorithm. 
+This is left here for comparison in case the simplex fails, testing, but should not really
+be used since it is extremely slow in dimension 15.*/
 //#define CHECK
 #ifndef LINPROG_DIMENSION_MAX 
 #define LINPROG_DIMENSION_MAX 15 // Use a non-recursive linprog
 #endif
 #endif
-//#include "LinProg/Siedel_Hohmeyer_LinProg.h" 
 
 
 // Select a Voronoi decomposition with Lipschitz dependency w.r.t parameters 
