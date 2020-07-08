@@ -21,9 +21,9 @@ from .AutomaticDifferentiation import cupy_support as cps
 #TODO : use a smaller stencil (3 pts instead of 4) for 2nd degree interpolation 
 # when far from the boundary, in non-periodic mode. (Introduce interior nodes.)
 
-def _origin_scale_shape(grid):
+def origin_scale_shape(grid):
 	"""
-	This function is indended for extracting the origin, step, and length,
+	This function is indended for extracting the origin, scale, and shape,
 	of a uniform coordinate system provided as a meshgrid.
 	"""
 	def _orig_step_len(a,axis):
@@ -40,22 +40,25 @@ def _append_dims(x,ndim):
 	"""Appends specified number of singleton dimensions"""
 	return np.reshape(x,x.shape+(1,)*ndim)
 
-def map_coordinates(input,coordinates,*args,grid=None,depth=0,**kwargs):
+def map_coordinates(input,coordinates,*args,
+	grid=None,origin=None,scale=None,depth=0,**kwargs):
 	"""
 	Thin wrapper over the ndimage.map_coordinates function, which adds the possibility of 
 	rescaling the coordinates using a reference grid, and interpolating tensors.
 	Will dispatch to cupyx.scipy.ndimage.map_coordinates if needed.
 
 	Additional inputs : 
-	- grid : reference coordinate system, which must be uniform
+	- grid (optional) : reference coordinate system, which must be uniform
+	- origin,scale (optional) : obtained from origin_scale_shape(grid)
 	- depth : depth of interpolated objects 0->scalar, 1->vector, 2->matrix
 	"""
 	if ad.cupy_generic.from_cupy(input):
 		from cupyx.scipy.ndimage.interpolation import map_coordinates
 	else: from scipy.ndimage.interpolation import map_coordinates
 
-	if grid is None: return map_coordinates(input,coordinates,*args,**kwargs)
-	origin,scale,_ = _origin_scale_shape(grid)
+	if grid is not None: origin,scale,_ = origin_scale_shape(grid)
+	assert (origin is None) == (scale is None)
+	if origin is None: return map_coordinates(input,coordinates,*args,**kwargs)
 	origin,scale = (_append_dims(e,coordinates.ndim-1) for e in (origin,scale))
 	y = (coordinates-origin)/scale
 	
@@ -348,7 +351,7 @@ class UniformGridInterpolation:
 			if grid.get('cell_centered',False): 
 				self.origin += self.scale/2 # Convert to node_centered origin
 		else:
-			self.origin,self.scale,self.shape = _origin_scale_shape(grid)
+			self.origin,self.scale,self.shape = origin_scale_shape(grid)
 			if check_grid and grid[0].ndim>1:
 				assert np.allclose(grid,self._grid(),atol=1e-5) #Atol allows float32 types
 

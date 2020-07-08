@@ -106,7 +106,10 @@ def ToColab(filename,output_dir):
 		for cell in data['cells']:
 			if (cell['cell_type']=='code' and len(cell['source'])>0 
 				and cell['source'][0].startswith('import sys; sys.path.insert(0,"..")')): 
-				cell['source'] = ['pip install agd']
+				cell['source'] = ["!pip install agd"]
+				if 'tags' in cell and 'cupy_update' in tags:
+					cell['source'] += ["!pip show cupy-cuda101", 
+					"!pip install cupy-cuda101 --upgrade"]
 				# Do not forget to turn on GPU mode in Google Colab (R) parameters if necessary
 				break
 		else: raise ValueError(f"File {filename} does not import agd")

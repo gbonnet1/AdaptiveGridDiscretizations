@@ -5,9 +5,9 @@
 import itertools
 import copy
 import numpy as np
-from ..Interpolation import UniformGridInterpolation
+from ..Interpolation import map_coordinates,origin_scale_shape #UniformGridInterpolation
 
-def odeint_array(f,y,t,grid,t_delay=0,t_substeps=2,**kwargs):
+def odeint_array(f,y,t,grid,t_delay=0,t_substeps=2,order=1,**kwargs):
 	"""
 	Solve an ODE where the vector field is interpolated from an array.
 	The vector field is linearly interpolated, and the Euler midpoint scheme is used.
@@ -19,18 +19,22 @@ def odeint_array(f,y,t,grid,t_delay=0,t_substeps=2,**kwargs):
 	- grid : interpolation grid for the vector field f
 	- t_delay : number of time steps to drop initially 
 	- t_substeps : number of substeps
+	- order : passed to odeint_array
 	- **kwargs : passed to UniformGridInterpolation
 	"""
 	nt = len(t)
 	solution = np.full_like(y,np.nan,shape=(nt,*y.shape))
 	y0 = copy.copy(y)
 	fit = iter(f)
-	f1 = UniformGridInterpolation(grid,next(fit),  **kwargs)
+	origin,scale,_ = origin_scale_shape(grid)
+	def I(values,positions): # Interpolation
+		return map_coordinates(values,positions,origin=origin,scale=scale,
+			depth=1,order=order,**kwargs)
+
+	f1 = next(fit)
 
 	for i in range(nt-1):
-		# Interpolate the relevant vector field
-		f0,f1 = f1,UniformGridInterpolation(grid,next(fit),  **kwargs)
-
+		f0,f1 = f1,next(fit) # Vector fields to be interpolated
 		t0,t1 = t[i],t[i+1]
 		dt = (t1-t0)/t_substeps
 		solution[i][:,t_delay==i] = y[:,t_delay==i] # Insert initial values
@@ -38,9 +42,9 @@ def odeint_array(f,y,t,grid,t_delay=0,t_substeps=2,**kwargs):
 		y0 = solution[i] if np.all(valid) else solution[i][:,valid]
 		for s in range(t_substeps):
 			w = s/t_substeps
-			y1 = y0 + 0.5*dt * ((1-w)*f0(y0) + w*f1(y0)) # Compute midpoint
+			y1 = y0 + 0.5*dt * ((1-w)*I(f0,y0) + w*I(f1,y0)) # Compute midpoint
 			w = (s+0.5)/t_substeps
-			y0 = y0 +     dt * ((1-w)*f0(y1) + w*f1(y1)) # Make step
+			y0 = y0 +     dt * ((1-w)*I(f0,y1) + w*I(f1,y1)) # Make step
 		if np.all(valid): solution[i+1] = y0
 		else: solution[i+1][:,valid]=y0 
 
