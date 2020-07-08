@@ -1,5 +1,5 @@
 import numpy as np
-from .Base import implements_cupy_alt,expand_dims,cp
+from .Base import implements_cupy_alt,expand_dims,cp,is_ad
 
 """
 This file implements a few numpy functions that not well supported by the
@@ -18,6 +18,8 @@ def flat(a):
 
 @implements_cupy_alt(np.full_like,TypeError)
 def full_like(arr,*args,**kwargs): # cupy (old version ?) lacks the shape argument
+	if is_ad(arr): 
+		return type(arr)(np.full_like(arr.value,*args,**kwargs))
 	shape = kwargs.pop('shape')
 	if arr.size>0:
 		arr = np.broadcast_to(arr.reshape(-1)[0], shape)
@@ -26,7 +28,9 @@ def full_like(arr,*args,**kwargs): # cupy (old version ?) lacks the shape argume
 		kwargs.setdefault('dtype',arr.dtype)
 		return cp.full(shape,*args,**kwargs)
 
+@implements_cupy_alt(np.zeros_like,TypeError)
 def zeros_like(a,*args,**kwargs): return full_like(a,0.,*args,**kwargs)
+@implements_cupy_alt(np.ones_like,TypeError)
 def ones_like(a,*args,**kwargs):  return full_like(a,1.,*args,**kwargs)
 
 def _along_axis(arr,indices,axis):
