@@ -33,7 +33,7 @@ def TestNotebook(notebook_filename, result_path):
 	ep = ExecutePreprocessor(timeout=600,kernel_name='python3')
 	success = True
 	try:
-		out = ep.preprocess(nb,{}) #, {'metadata': {'path': run_path}}
+		out = ep.preprocess(nb,{}) 
 	except CellExecutionError as e:
 		if 'DeliberateNotebookError' in str(e):
 			DeliberateMsg = str(e).split('\n')[-2]
