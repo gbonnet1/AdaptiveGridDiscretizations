@@ -53,7 +53,19 @@ def TestNotebook(notebook_filename, result_path):
 
 if __name__ == '__main__':
 #	if not os.path.exists(result_path): os.mkdir(result_path)
-	notebook_filenames = sys.argv[1:] if len(sys.argv)>=2 else ListNotebooks()
+	args = sys.argv[1:]
+	included,excluded = [],[]
+	for arg in args: 
+		if arg.startswith('-'): excluded.append(arg)
+		else: included.append(arg)
+
+	def keep(filepath):
+		split = os.path.split(filepath)
+		if any(e==filepath or e in split for e in excluded): return False
+		if len(included)==0: return True
+		return any(e==filepath or e in split for e in included)
+
+	notebook_filenames = [f for f in ListNotebooks() if keep(f)]
 	notebooks_failed = []
 	for notebook_filename in notebook_filenames:
 		if not TestNotebook(notebook_filename,result_path):
