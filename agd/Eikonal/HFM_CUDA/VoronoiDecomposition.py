@@ -72,9 +72,9 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	if blockDim is None: blockDim = [128,128,128,128,128,32,32][ndim]
 	gridDim = int(np.ceil(size/blockDim))
 
-	weights=None; offsets=None; out=None
 	def retry64():
 		if retry64_tol==0 or ndim!=6: return
+		nonlocal m_exp
 		if m_exp is None: m_exp = expand_symmetric_matrix(m)
 		mrec = Reconstruct(weights,offsets)
 		error = np.sum(np.abs(m_exp-mrec),axis=(0,1))
