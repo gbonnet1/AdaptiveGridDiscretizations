@@ -91,7 +91,7 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	# Two step approch. First minimize
 	a = cp.empty((ndim,ndim,*shape),dtype=float_t)
 	vertex = cp.empty(shape,dtype=int_t)
-	objective = cp.empty(shape,dtype=int_t)
+	objective = cp.empty(shape,dtype=float_t)
 	a,vertex,objective = map(cp.ascontiguousarray,(a,vertex,objective))
 
 	cupy_kernel = module.get_function("VoronoiMinimization")
@@ -101,6 +101,7 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 
 	cupy_kernel = module.get_function("VoronoiKKT")
 	cupy_kernel((gridDim,),(blockDim,),(m,a,vertex,objective,weights,offsets))
+	if shape==(): vertex,objective = (e.reshape(()) for e in (vertex,objective))
 
-	return m,a,vertex,objective,weights,offsets
+	return a,vertex,objective,weights,offsets
 

@@ -60,7 +60,7 @@ VolumeFilenames = {
 ],
 'Div':["Time1D_Div","Elliptic","EllipticAsymmetric","VaradhanGeodesics"],
 'Algo':[
-"TensorSelling","TensorVoronoi",
+"TensorSelling","TensorVoronoi","TensorVoronoi6",
 "SternBrocot","VoronoiVectors",
 "Dense","Sparse","Reverse","ADBugs",
 "SubsetRd","FiniteDifferences"

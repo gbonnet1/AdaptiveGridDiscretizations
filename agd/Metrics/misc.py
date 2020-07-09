@@ -21,7 +21,7 @@ def expand_symmetric_matrix(arr,d=None,extra_length=False):
 	assert(extra_length or len(arr)==(d*(d+1))//2)
 	
 	def index(i,j):
-		i,j = min(i,j),max(i,j)
+		i,j = max(i,j),min(i,j)
 		return (i*(i+1))//2+j
 	return ad.asarray([ [ arr[index(i,j)] for i in range(d)] for j in range(d) ])
 
