@@ -49,5 +49,6 @@ from .ad_generic import array,asarray,is_ad,remove_ad,common_cast,min_argmin, \
 from .ad_specific import simplify_ad,apply,compose
 from .cupy_generic import isndarray,cupy_friendly
 
-
-
+class DeliberateNotebookError(Exception):
+	def __init__(self,message):
+		super(DeliberateNotebookError,self).__init__(message)

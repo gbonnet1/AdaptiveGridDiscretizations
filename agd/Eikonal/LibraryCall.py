@@ -86,6 +86,10 @@ In order to do this automatically in the future, please set this path
 in the first line of a file named '"""+fileName+"""' in the current directory\n
 >>> with open('"""+fileName+"""','w+') as file: file.write('"""+pathExample+"""')
 """
+	fileName_parent = os.path.join('..',fileName)
+	if os.path.isfile(fileName_parent) and not os.path.isfile(fileName):
+		fileName = fileName_parent
+		
 	try:
 		# Try reading the file
 		with open(fileName,'r') as f:

@@ -35,11 +35,14 @@ def TestNotebook(notebook_filename, result_path):
 	try:
 		out = ep.preprocess(nb,{}) #, {'metadata': {'path': run_path}}
 	except CellExecutionError as e:
-		msg = 'Error executing the notebook "%s".\n\n' % notebook_filename
-		msg += 'See notebook "%s" for the traceback.' % filename_out+extension
-		print(msg)
-		print(str(e))
-		success=False
+		if 'DeliberateNotebookError' in str(e):
+			DeliberateMsg = str(e).split('\n')[-2]
+			print(f"Notebook {notebook_filename} stopped deliberately -- {DeliberateMsg}")
+		else:
+			print(f"Error executing the notebook {notebook_filename}")
+			print(f"See notebook {filename_out} for the traceback.")
+			print(str(e))
+			success=False
 	finally:
 		subdir,file = os.path.split(filename_out)
 		os.makedirs(os.path.join(subdir,result_path),exist_ok=True)
