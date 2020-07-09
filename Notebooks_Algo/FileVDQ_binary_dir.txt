@@ -1,3 +1,4 @@
 /Users/mirebeau/bin/VoronoiDecompositionQuadratic/Release
+/Users/mirebeau/bin/VoronoiDecompositionQuadratic/Debug
 
 # !! Important !! To use the VDEUtils library from NumericalSchemes (tensor decomposition in dimension 4, 5 and 6), please provide the path to the compiled c++ library FileVDE, in the first line of this file.

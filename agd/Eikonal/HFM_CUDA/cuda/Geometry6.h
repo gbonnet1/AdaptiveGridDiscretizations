@@ -11,7 +11,6 @@ const int ndim=ndim_macro;
 #include "NetworkSort.h"
 
 #define SIMPLEX_VERBOSE 0 
-#define CUDA_DEVICE // Do not include <math.h>, and do not use exit(1) in linprog
 
 // linear programming 
 #ifdef SIMPLEX_VERBOSE // Use simplex algorithm
@@ -29,7 +28,8 @@ be used since it is extremely slow in dimension 15.*/
 #endif
 
 
-// Select a Voronoi decomposition with Lipschitz dependency w.r.t parameters 
+/* Select a Voronoi decomposition with Lipschitz dependency w.r.t parameters
+Not yet implemented. */
 #ifndef GEOMETRY6_NORMALIZE_SOLUTION
 #define GEOMETRY6_NORMALIZE_SOLUTION 0
 #endif
@@ -416,7 +416,11 @@ void KKT(const SimplexStateT & state, Scalar weights[symdim],
 		}
 
 		const Scalar value = simplex(sdata,opt);   
-//		assert(!isinf(value)); 
+//		assert(!isinf(value));
+		/* +/-Infinity values mean failure (unbounded or infeasible problem).
+		 However, we choose not to crash the program, but to detect the
+		 invalid decompositions a posteriori, and recompute them differently.
+		 (Typical : failure using floats, success using double.) */
 
 /*		std::cout << "Value of the linear program " << value << std::endl;
 		if(isinf(value)) {std::cout << opt[0] << std::endl;}

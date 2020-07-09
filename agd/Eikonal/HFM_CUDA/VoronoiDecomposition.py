@@ -72,23 +72,39 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	if blockDim is None: blockDim = [128,128,128,128,128,32,32][ndim]
 	gridDim = int(np.ceil(size/blockDim))
 
+	weights=None; offsets=None; out=None
+	def retry64():
+		if retry64_tol==0 or ndim!=6: return
+		if m_exp is None: m_exp = expand_symmetric_matrix(m)
+		mrec = Reconstruct(weights,offsets)
+		error = np.sum(np.abs(m_exp-mrec),axis=(0,1))
+		bad = np.logical_not(error < (retry64_tol * lp.trace(m_exp)))
+		if np.any(bad):
+#				print(f"nrecomputed {np.sum(bad)}")
+			out64 = VoronoiDecomposition(m[:,bad],offset_t=offset_t,
+				flattened=True,traits=traits,retry64_tol=0.,steps=steps)
+			for a,b in zip(out,out64): a[...,bad]=b
+
 	if steps=="Both":
 		cupy_kernel = module.get_function("VoronoiDecomposition")
 		cupy_kernel((gridDim,),(blockDim,),(m,weights,offsets))
-		if retry64_tol and ndim==6:
-			if m_exp is None: m_exp = expand_symmetric_matrix(m)
-			mrec = Reconstruct(weights,offsets)
-			error = np.sum(np.abs(m_exp-mrec),axis=(0,1))
-			bad = np.logical_not(error < (retry64_tol * lp.trace(m_exp)))
-			if np.any(bad):
-#				print(f"nrecomputed {np.sum(bad)}")
-				weights64,offsets64 = VoronoiDecomposition(m[:,bad],offset_t=offset_t,
-					flattened=True,traits=traits,retry64_tol=0.)
-				weights[:,bad] = weights64
-				offsets[:,:,bad] = offsets64
-		return weights,offsets
+		out = weights,offsets
+		retry64()
+		return out
 
-	# Two step approch. First minimize
+#		if retry64_tol and ndim==6:
+#			if m_exp is None: m_exp = expand_symmetric_matrix(m)
+#			mrec = Reconstruct(weights,offsets)
+#			error = np.sum(np.abs(m_exp-mrec),axis=(0,1))
+#			bad = np.logical_not(error < (retry64_tol * lp.trace(m_exp)))
+#			if np.any(bad):
+#				weights64,offsets64 = VoronoiDecomposition(m[:,bad],offset_t=offset_t,
+#					flattened=True,traits=traits,retry64_tol=0.)
+#				weights[:,bad] = weights64
+#				offsets[:,:,bad] = offsets64
+#		return weights,offsets
+
+	# Two steps approach. First minimize
 	a = cp.empty((ndim,ndim,*shape),dtype=float_t)
 	vertex = cp.empty(shape,dtype=int_t)
 	objective = cp.empty(shape,dtype=float_t)
@@ -97,11 +113,16 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	cupy_kernel = module.get_function("VoronoiMinimization")
 	cupy_kernel((gridDim,),(blockDim,),(m,a,vertex,objective))
 
-	if steps=="Single": return m,a,vertex,objective
+	if steps=="Single": 
+		out = a,vertex,objective
+		retry64()
+		return out
 
 	cupy_kernel = module.get_function("VoronoiKKT")
 	cupy_kernel((gridDim,),(blockDim,),(m,a,vertex,objective,weights,offsets))
 	if shape==(): vertex,objective = (e.reshape(()) for e in (vertex,objective))
 
-	return a,vertex,objective,weights,offsets
+	out = a,vertex,objective,weights,offsets
+	retry64()
+	return out
 

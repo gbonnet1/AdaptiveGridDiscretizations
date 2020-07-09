@@ -23,7 +23,7 @@ from .run_detail import Cache
 from .DictIn import dictIn,dictOut,CenteredLinspace
 
 
-def VoronoiDecomposition(arr,mode=None,*args,**kwargs):
+def VoronoiDecomposition(arr,mode=None,steps='Both',*args,**kwargs):
 	"""
 	Calls the FileVDQ library to decompose the provided quadratic form(s),
 	as based on Voronoi's first reduction of quadratic forms.
@@ -34,19 +34,31 @@ def VoronoiDecomposition(arr,mode=None,*args,**kwargs):
 	from ..AutomaticDifferentiation.cupy_generic import cupy_set,cupy_get,from_cupy
 	if mode is None: mode = VoronoiDecomposition.default_mode
 	if mode is None: mode = 'gpu' if from_cupy(arr) else 'cpu'
-	if mode=='gpu':
+	if mode in ('gpu','gpu_transfer'):
 		from .HFM_CUDA.VoronoiDecomposition import VoronoiDecomposition as VD
-		return VD(arr,*args,**kwargs)
-	elif mode=='gpu_transfer':
-		from .HFM_CUDA.VoronoiDecomposition import VoronoiDecomposition as VD
-		return cupy_get(VD(cupy_set(arr),*args,**kwargs),iterables=(tuple,))
+		if mode=='gpu_transfer': arr = cupy_set(arr)
+		out = VD(arr,*args,steps=steps,**kwargs)
+		if mode=='gpu_transfer': out = cupy_get(out,iterables=(tuple,))
+		return out
 	elif mode=='cpu':
 		from ..Metrics import misc
 		from . import FileIO
 		bin_dir = GetBinaryDir("FileVDQ",None)
-		vdqIn ={'tensors':np.moveaxis(misc.flatten_symmetric_matrix(arr),0,-1)}
+		dim = arr.shape[0]; shape = arr.shape[2:]
+		arr = arr.reshape( (dim,dim,np.prod(shape,dtype=int)) )
+		arr = np.moveaxis(misc.flatten_symmetric_matrix(arr),0,-1)
+		vdqIn ={'tensors':arr,'steps':steps}
 		vdqOut = FileIO.WriteCallRead(vdqIn, "FileVDQ", bin_dir)
-		return np.moveaxis(vdqOut['weights'],-1,0),np.moveaxis(vdqOut['offsets'],[-1,-2],[0,1]).astype(int)
+		weights = np.moveaxis(vdqOut['weights'],-1,0)
+		offsets = np.moveaxis(vdqOut['offsets'],(-1,-2),(0,1)).astype(int)
+		weights,offsets = (e.reshape(e.shape[:depth]+shape) 
+			for (e,depth) in zip((weights,offsets),(1,2)))
+		if steps=='Both': return weights,offsets
+		objective = vdqOut['objective'].reshape(shape)
+		vertex = vdqOut['vertex'].reshape(shape).astype(int)
+		chg = np.moveaxis(vdqOut['chg'],(-1,-2),(0,1)) 
+		chg=chg.reshape((dim,dim)+shape)
+		return chg,vertex,objective,weights,offsets
 	else: raise ValueError(f"VoronoiDecomposition unsupported mode {mode}")
 
 VoronoiDecomposition.default_mode = None
