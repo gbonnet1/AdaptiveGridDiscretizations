@@ -70,6 +70,7 @@ google_drive_link = {
 	"Notebooks_Div/ElasticWave.ipynb":"https://drive.google.com/file/d/1UIRej7tSGDuPJdr7-cgLgyLvMDMT43EE/view?usp=sharing",
 	"Notebooks_Div/ElasticEnergy.ipynb":"https://drive.google.com/file/d/1nZOJVpDG2Ja49jvIgGFWXIsTivSLBlsq/view?usp=sharing",
 	"Notebooks_NonDiv/BoatRoutingGeneric_Time.ipynb":"https://drive.google.com/file/d/1d9oYJL2o0GhTd5BwKlsADWJjP-eES5ME/view?usp=sharing",
+	"Notebooks_Algo/TensorVoronoi6.ipynb":"https://drive.google.com/file/d/1tnHiYIMhTuGrrn36G3ZLaD58-yK_EQ4M/view?usp=sharing",
 	}
 
 
