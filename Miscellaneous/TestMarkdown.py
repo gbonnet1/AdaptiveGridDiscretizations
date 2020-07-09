@@ -65,7 +65,9 @@ def TestMarkdownCell(where,cell,cache,dirname):
 	eqn = None
 	prevLine="\n"
 	for line in cell['source']:
-		if line=="$$" or line=="$$\n":
+		if line in ("$$","$$\n",
+			"\\begin{equation*}\n","\\end{equation*}\n",
+			"\\begin{align*}\n","\\end{align*}\n"):
 			eqn = "" if eqn is None else None
 			continue
 		if eqn is None:
