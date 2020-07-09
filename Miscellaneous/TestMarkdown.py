@@ -31,9 +31,26 @@ my comment
 
 ---
 Another issue is that the command \\rm is not interpreted in the same manner depending
-on the markdown front-end : it may apply to all the following characters, on only one. 
+on the markdown front-end : it may apply to all the following characters, or only one. 
 Prefer \\mathrm.
+
+----
+We also test for invalid links within the AdaptiveGridDiscretizations directory
 """
+
+import os.path
+
+def check_link(a,s,dirname,where,cell):
+	# Exclude web links, or internal links
+	if a.startswith('http') or a.startswith('#'): return 
+	# Check link
+	if os.path.isfile(os.path.join(dirname,a)): return 
+	print(f"Found invalid link {a}, in file {where}, line contents : \n {s}")
+	showcell(cell)
+	 
+def check_links(s,*args):
+	for a in s.split("](")[1:]:
+		check_link(a.split(")")[0],s,*args)
 
 def showcell(cell,source_only=True,show=None,check_raise=None): 
 	if show is None: show=showcell.show
@@ -44,14 +61,16 @@ def showcell(cell,source_only=True,show=None,check_raise=None):
 		else: print("'Cell contents) : ",cell)
 	if check_raise: raise ValueError("Error found")
 
-def TestMarkdownCell(where,cell,cache):
+def TestMarkdownCell(where,cell,cache,dirname):
 	eqn = None
 	prevLine="\n"
 	for line in cell['source']:
 		if line=="$$" or line=="$$\n":
 			eqn = "" if eqn is None else None
 			continue
-		if eqn is not None:
+		if eqn is None:
+			check_links(line,dirname,where,cell)
+		else:
 			eqn = eqn+line
 			l = line.lstrip()
 			if line[0]=='<' or (l[0] in ['+','-','*'] and l[1]==' '):
@@ -85,13 +104,14 @@ def TestCodeCell(where,cell,cache):
 		cache['csqcount']=False
 		showcell(cell,check_raise=False,show=False)
 
-def TestNotebook(filepath):
+def TestNotebook(dirname,filename):
+	filepath = os.path.join(dirname,filename)
 	with open(filepath, encoding='utf8') as data_file:
 		data = json.load(data_file)
 	cache={'execution_count':1}
 	for cell in data["cells"]:
 		where = f" in file {filepath}, expected cell number {cache['execution_count']}"
-		if cell['cell_type']=='markdown': TestMarkdownCell(where,cell,cache)
+		if cell['cell_type']=='markdown': TestMarkdownCell(where,cell,cache,dirname)
 #		if cell['cell_type']=='code': TestCodeCell(where,cell,cache)
 
 def Main(show=False,check_raise=False):
@@ -101,7 +121,7 @@ def Main(show=False,check_raise=False):
 		if not dirname.startswith("Notebooks_"): continue
 		for filename in os.listdir(dirname):
 			if not filename.endswith(".ipynb"): continue
-			TestNotebook(os.path.join(dirname,filename))
+			TestNotebook(dirname,filename)
 
 if __name__ == '__main__':
 	kwargs = {"show":False,"check_raise":False}
