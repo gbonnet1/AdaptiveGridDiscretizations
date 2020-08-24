@@ -401,3 +401,9 @@ def pad(array, pad_width, *args,**kwargs):
 	if len(pad_width)==1:
 		pad_width = pad_width*array.ndim
 	return array.pad(pad_width,*args,**kwargs)
+
+@implements(np.mean)
+def mean(array, *args, **kwargs):
+	out = np.sum(array, *args, **kwargs)
+	out *= out.size / array.size 
+	return out
