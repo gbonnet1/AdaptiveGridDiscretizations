@@ -128,7 +128,7 @@ class _spline_univariate:
 		"""
 		A piecewise linear spline, defined over [-1,1].
 		"""
-		x=xa-xs
+		x=xa-xs.astype(xa.dtype) # Avoid float32 + int32 -> float64 cast on GPU
 		result = np.zeros_like(x)
 		seg=ad.asarray(np.floor(x+1))
 		
@@ -449,7 +449,6 @@ class UniformGridInterpolation:
 		
 		# Spline weights
 		weight = self.spline(y,ys)
-
 		return (coef*weight).sum(axis=ondim)
 
 	def set_values(self,values):

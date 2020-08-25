@@ -3,17 +3,20 @@ import cupy as cp
 from . import cupy_module_helper
 from . import inf_convolution
 from ...AutomaticDifferentiation import cupy_support as cps
+from ... import AutomaticDifferentiation as ad
 from ... import FiniteDifferences as fd
 
 def GetGeodesics(self):
 		if not self.hasTips: return
 		if self.tips is not None: tips = self.hfmIn.PointFromIndex(self.tips,to=True)
+		values = ad.remove_ad(self.values).astype(self.float_t)
+		
 		if self.isCurvature and self.tips_Unoriented is not None:
 			tipsU = self.tips_Unoriented
 			tipsU = self.hfmIn.OrientedPoints(tipsU)
 			tipsU = self.hfmIn.PointFromIndex(tipsU,to=True)
 			tipIndicesU = np.round(tipsU).astype(int)
-			valuesU = self.values[tuple(np.moveaxis(tipIndicesU,-1,0))]
+			valuesU = values[tuple(np.moveaxis(tipIndicesU,-1,0))]
 			amin = np.argmin(valuesU,axis=0) # Select most favorable value
 			amin = amin.reshape((1,*amin.shape,1))
 			amin = np.broadcast_to(amin,(*amin.shape[:-1],3))
@@ -112,7 +115,6 @@ def GetGeodesics(self):
 		flow = self.kernel_data['flow']
 		flow_vector    = self.flow_vector
 		flow_weightsum = fd.block_squeeze(flow.args['flow_weightsum'],self.shape)
-		values = self.values.astype(self.float_t)
 		args = (flow_vector,flow_weightsum,values,eucl)
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)
 

@@ -155,6 +155,7 @@ def SolveAD(self):
 		val = self.values
 		self.values = ad.Dense.new(val,cp.asarray(coef,val.dtype))
 
+
 	if self.reverseAD:
 		# Get the rhs
 		rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
