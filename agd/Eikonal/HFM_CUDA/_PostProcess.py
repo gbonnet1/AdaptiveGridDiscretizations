@@ -145,7 +145,9 @@ def SolveAD(self):
 	weights = flow.args['flow_weights']
 
 	if self.forwardAD:
-		rhs = self.rhs.gradient()
+		grad = self.rhs.gradient()
+		rhs = np.where(self.seedTags, grad, grad*self.rhs.value)
+
 		if self.model_=='Rander': rhs*=self.flow_normalization
 		rhs = fd.block_expand(rhs,self.shape_i,mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')

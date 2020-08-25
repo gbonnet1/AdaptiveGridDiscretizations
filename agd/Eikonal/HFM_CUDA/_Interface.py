@@ -165,7 +165,7 @@ class Interface(object):
 			elif ishape==shape[:2]: # Physical field
 				return np.broadcast_to(e.reshape(oshape+ishape+(1,)), oshape+shape)
 		raise ValueError(f"Field {name} has incorrect dimensions. Found {e.shape}, "
-			f"whereas domain has shape {shapeRef}")
+			f"whereas domain has shape {shape}")
 
 	def FinalCheck(self):
 		if self.GetValue('exportValues',False,help="Return the solution numerical values"):

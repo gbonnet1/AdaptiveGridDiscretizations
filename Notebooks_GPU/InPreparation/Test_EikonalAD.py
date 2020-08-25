@@ -1,7 +1,6 @@
 import sys; sys.path.insert(0,"../..") # Allow import of agd from parent directory 
 
-from agd import HFMUtils
-from agd.HFMUtils import HFM_CUDA
+from agd import Eikonal
 import cupy as cp
 import numpy as np
 import time
@@ -27,7 +26,8 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
     formatter=dict(float=lambda x: "%5.3g" % x))
 
 n=7
-hfmIn = HFMUtils.dictIn({
+hfmIn = Eikonal.dictIn({
+	'mode':'gpu',
     'model':'Isotropic2',
     'exportValues':1,
 #    'order':2,
@@ -43,7 +43,7 @@ hfmIn = HFMUtils.dictIn({
 #    'values_float64':True,
 
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((n,n)),
+	'dims':(n,n),
 	'origin':[-0.5,-0.5],
 	'gridScale':1.,
 #	'order':2,
@@ -85,9 +85,9 @@ if False:
 #print(help(hfmIn.SetRect))
 
 #hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
-forwardAD=False
+forwardAD=True
 if forwardAD:
-	hfmIn['cost'] = 1.+ad.Dense.identity(constant=cp.ones(1,dtype=np.float32) )
+	hfmIn['cost'] = ad.Dense.identity(constant=cp.array(2,dtype=np.float32) )
 else: 
 	hfmIn['cost']=1.
 	nSens=1
@@ -101,8 +101,9 @@ else:
 #in_raw = hfmIn.RunGPU(returns='in_raw'); print(in_raw['in_raw']['source'])
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
-hfmOut = hfmIn.RunGPU()
-print('values\n',hfmOut['values'])
+hfmOut = hfmIn.Run()
+print('values\n',hfmOut['values'].value)
+print('gradient\n',hfmOut['values'].gradient(0))
 if not forwardAD: 
 	print(hfmOut['costSensitivity'][...,0])
 	print(hfmOut['seedValueSensitivity'][...,0])
