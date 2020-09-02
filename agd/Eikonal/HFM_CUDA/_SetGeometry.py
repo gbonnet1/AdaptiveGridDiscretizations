@@ -16,7 +16,7 @@ def CostMetric(self,x):
 	return self._CostMetric.at(x)
 
 def SetGeometry(self):
-	if self.verbosity>=1: print("Prepating the domain data (shape,metric,...)")
+	if self.verbosity>=1: print("Preparing the domain data (shape,metric,...)")
 	eikonal = self.kernel_data['eikonal']
 	policy = eikonal.policy
 

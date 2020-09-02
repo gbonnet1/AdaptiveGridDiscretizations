@@ -75,15 +75,19 @@ class AsymQuad(Base):
 
 
 	@classmethod
-	def needle(cls,u,cost_parallel,cost_orthogonal):
+	def needle(cls,u,cost_forward,cost_orthogonal,cost_reverse=None):
 		"""
-		Defines a one-sided needle like metric, 
-		if cost-parallel >= cost_orthogonal.
-
-		Undefined behavior if if cost-parallel < cost_orthogonal.
+		Defines a needle like metric
+		- u : reference direction. Denote U = u/|u|, and V the orthogonal unit vector.
+		- cost_forward =  norm(U)
+		- cost_orthogonal = norm(V) = norm(-V)
+		- cost_reverse = norm(-U). (Defaults to cost_orthogonal)
 		"""
+		if cost_reverse is None: cost_reverse = cost_orthogonal
+		cost_parallel = np.minimum(cost_forward,cost_reverse)
 		riem,_u = Riemann.needle(u,cost_parallel,cost_orthogonal,ret_u=True)
-		return cls(riem.m,-(cost_orthogonal-cost_parallel)*_u)
+		cost_diff = cost_forward**2-cost_reverse**2
+		return cls(riem.m,np.sign(cost_diff)*np.sqrt(np.abs(cost_diff))*_u)
 
 	@classmethod
 	def from_cast(cls,metric): 
