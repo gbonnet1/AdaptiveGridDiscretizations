@@ -49,7 +49,7 @@ VolumeFilenames = {
     "Curvature","Curvature3","DeviationHorizontality",
     "Geodesics","HighAccuracy","Sensitivity","SensitivitySL", #"SmartIO",
     "Illusion","Tubular","FisherRao","DubinsZermelo","MedialAxis","BoatRouting",
-    "Seismic","TTI",
+    "Seismic","TTI","ClosedPaths","RadarModels",
 ],
 'NonDiv':[
 	"MonotoneSchemes1D","Time1D_NonDiv","OTBoundary1D",
@@ -58,7 +58,10 @@ VolumeFilenames = {
 	"MongeAmpere","EikonalEulerian",
 	"BoatRoutingGeneric_Time","BoatRouting_Time", #"ShapeFromShading",
 ],
-'Div':["Time1D_Div","Elliptic","EllipticAsymmetric","VaradhanGeodesics"],
+'Div':["Time1D_Div","Elliptic","EllipticAsymmetric",
+"ElasticEnergy","ElasticWave",
+"VaradhanGeodesics","AnisotropicDiffusion",
+],
 'Algo':[
 "TensorSelling","TensorVoronoi","TensorVoronoi6",
 "SternBrocot","VoronoiVectors",
