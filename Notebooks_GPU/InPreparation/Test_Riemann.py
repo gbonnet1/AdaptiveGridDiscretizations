@@ -1,9 +1,7 @@
 import sys; sys.path.insert(0,"../..") # Allow import of agd from parent directory 
 
-from agd import HFMUtils
-from agd.HFMUtils import HFM_CUDA
-import cupy as cp
-import numpy as np
+from agd import Eikonal
+import numpy as np; xp=np
 import time
 from agd.AutomaticDifferentiation.Optimization import norm_infinity
 from agd import AutomaticDifferentiation as ad
@@ -12,9 +10,10 @@ from agd import Metrics
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
+xp,Eikonal = [ad.cupy_friendly(e) for e in (xp,Eikonal)]
 
 n=200
-hfmIn = HFMUtils.dictIn({
+hfmIn = Eikonal.dictIn({
     'model':'Riemann2',
 #    'verbosity':1,
     'arrayOrdering':'RowMajor',
@@ -29,7 +28,7 @@ hfmIn = HFMUtils.dictIn({
 	'exportValues':True,
 
 #    'help':['nitermax_o','traits'],
-	'dims':np.array((n,n)),
+	'dims':(n,n),
 	'origin':[-0.5,-0.5],
 	'gridScale':1.,
 #	'order':2,
@@ -49,18 +48,19 @@ hfmIn = HFMUtils.dictIn({
     'strict_iter_i_macro':1,
 	'pruning_macro':0,
 	'strict_iter_o_macro':1,
+    'precompute_scheme_indep_macro':1,
     },
 #    'nonzero_untidy_kwargs':{'log2_size_i':8,'size2_i':256},
 })
 
 
-hfmIn['metric'] = cp.array([1.,0.5,1.],dtype=np.float32) #Metrics.Riemann(cp.eye(2,dtype=np.float32))
-hfmOut = hfmIn.RunGPU()
+hfmIn['metric'] = xp.array([1.,0.5,1.],dtype=np.float32) #Metrics.Riemann(cp.eye(2,dtype=np.float32))
+hfmOut = hfmIn.Run()
 if n<=20: print(hfmOut['values'])
 
 cpuIn = hfmIn.copy()
-for key in ('traits','array_float_caster'): cpuIn.pop(key)
-cpuIn['metric'] = np.array(cpuIn['metric'].get(),dtype=np.float64)
+cpuIn.pop('traits',None)
+cpuIn['mode']='cpu_transfer'
 cpuOut = cpuIn.Run()
 
 diff = cpuOut['values']-hfmOut['values'].get()

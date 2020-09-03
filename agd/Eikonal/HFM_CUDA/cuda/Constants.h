@@ -37,8 +37,15 @@ __constant__ Int size_o;
 
 /// Shape of the full domain
 __constant__ Int shape_tot[ndim]; // shape_i * shape_o
-__constant__ Int size_tot; // product(shape_tot)
-IO_SCHEME(__constant__ Int size_scheme;) // Scheme may depend on a subset of coordinates
+//__constant__ Int size_tot; // product(shape_tot)
+
+// If geometry only depends on a subset of coordinates
+#if geom_indep_macro
+__constant__ Int size_geom_o;
+__constant__ Int size_geom_i;
+#endif
+__constant__ Int size_geom_tot; // size_geom_o * size_geom_i
+
 
 #if factor_macro
 __constant__ Scalar factor_metric[factor_size]; 

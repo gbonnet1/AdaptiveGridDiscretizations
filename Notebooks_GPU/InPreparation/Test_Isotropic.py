@@ -1,32 +1,18 @@
 import sys; sys.path.insert(0,"../..") # Allow import of agd from parent directory 
 
-from agd import HFMUtils
-from agd.HFMUtils import HFM_CUDA
-import cupy as xp
-import numpy as np
+from agd import Eikonal
+import numpy as np; xp=np
 import time
 from agd.AutomaticDifferentiation.Optimization import norm_infinity
 from agd import AutomaticDifferentiation as ad
 
-"""
-shape=(4000,4000)
-print('making grid')
-grid = np.meshgrid(*(xp.arange(s) for s in shape), 
-				indexing='ij')
-print('done grid')
-grid = ad.array(grid)
-print('put together')
-grid = xp.array(grid,dtype='float32')
-print('converted')
-raise
-"""
-
-
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%5.3g" % x))
 
+xp,Eikonal = [ad.cupy_friendly(e) for e in (xp,Eikonal)]
+
 n=8
-hfmIn = HFMUtils.dictIn({
+hfmIn = Eikonal.dictIn({
     'model':'Isotropic2',
     'exportValues':1,
 
@@ -41,7 +27,7 @@ hfmIn = HFMUtils.dictIn({
     'multiprecision':False,
 #    'values_float64':True,
 
-	'dims':np.array((n,n)),
+	'dims':(n,n),
 	'origin':[-0.5,-0.5],
 	'gridScale':1.,
 
@@ -90,13 +76,13 @@ if False:
 #print(help(hfmIn.SetRect))
 
 #hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
-hfmIn['cost'] = xp.ones(hfmIn['dims'].astype(int),dtype='float32')
+hfmIn['cost'] = xp.ones(hfmIn.shape,dtype='float32')
 
 
 #in_raw = hfmIn.RunGPU(returns='in_raw'); print(in_raw['in_raw']['source'])
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
-hfmOut = hfmIn.RunGPU()
+hfmOut = hfmIn.Run()
 
 #print(hfmOut['values'].shape)
 #print(hfmOut)
@@ -109,6 +95,7 @@ if len(hfmOut['values'])<32: print(hfmOut['values'])
 #Comparison with CPU.
 
 hfmInCPU = hfmIn.copy()
+hfmInCPU['mode'] = 'cpu_transfer'
 for key in ('traits','niter_o','solver','raiseOnNonConvergence','nitermax_o',
 	'array_float_caster'): 
 		hfmInCPU.pop(key,None)

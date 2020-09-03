@@ -67,24 +67,23 @@ __global__ void Update(
 	ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
 	DRIFT(Scalar drift[nmix][ndim];)
 
-	EXPORT_SCHEME(if(n_o>=size_scheme_o || n_i>=size_scheme_i) return;)
-	IO_SCHEME(const int n_scheme=(n_o%size_scheme_o)*size_scheme_i + (n_i%size_scheme_i);)
+	#if geom_indep_macro
+	const int n_geom = (n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i)
+	EXPORT_SCHEME(if(n_o>=size_geom_o || n_i>=size_geom_i) return;)
+	#else
+	const int n_geom = n_t; 
+	#endif
 
 	#if import_scheme_macro
-		const Int n_scheme = n_t % size_scheme;
 		for(Int i=0; i<nactx; ++i) {
-			weights_t[n_scheme*nactx+i]=weights[i];
-			for(Int j=0; j<ndim; ++j){offsets[i][j] = offsets_t[(n_scheme*nactx+i)*ndim+j];}
+			weights[i] = weights_t[i*size_geom_tot + n_geom];
+			for(Int j=0; j<ndim; ++j){
+				offsets[i][j] = offsets_t[(j*nactx+i)*size_geom_tot+n_geom];}
 		}
-		DRIFT("Deliberate error (unsupported drift scheme io)")
-/*	#if curvature_macro && precomputed_scheme_macro
-	const Int iTheta = x_t[2];
-	const Scalar * weights      = precomp_weights_s[iTheta];
-	const OffsetT (* offsets)[ndim] = precomp_offsets_s[iTheta];
-	*/
+		DRIFT("Sorry drift is not (yet) compatible with scheme io")
 	#else
 		GEOM(Scalar geom[geom_size];
-		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];})
+		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_geom_tot*k];})
 		ADAPTIVE_MIX(const bool mix_is_min = )
 		scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets DRIFT(,drift) );
 	#endif
@@ -95,8 +94,9 @@ __global__ void Update(
 		models, which have complicated stencils, yet usually depending on 
 		a single parameter : the angular coordinate.*/
 		for(Int i=0; i<nactx; ++i) {
-			weights_t[n_scheme*nactx+i]=weights[i]; // By construction n_t < size_scheme
-			for(Int j=0; j<ndim; ++j){offsets_t[(n_scheme*nactx+i)*ndim+j] = offsets[i][j];}
+			weights_t[i*size_geom_tot + n_geom] = weights[i]; 
+			for(Int j=0; j<ndim; ++j){
+				offsets_t[(j*nactx+i)*size_geom_tot+n_geom] = offsets[i][j];}
 		}
 
 /*	#if curvature_macro

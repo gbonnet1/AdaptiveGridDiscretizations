@@ -90,6 +90,7 @@ def SetKernel(self):
 	eikonal = self.kernel_data['eikonal']
 	policy = eikonal.policy
 	traits = eikonal.traits
+	traits['import_scheme_macro'] = self.precompute_scheme
 	if self.periodic != self.periodic_default:
 		traits['periodic_macro']=1
 		traits['periodic_axes']=self.periodic
@@ -109,11 +110,6 @@ def SetKernel(self):
 		if   model == 'Rander':   model = 'Riemann' # Rander = Riemann + drift
 		elif model == 'Diagonal': model = 'Isotropic' # Same file handles both
 		model_source = f'#include "{model}_.h"\n' 
-
-	# Number of variable coordinates the scheme is independent of
-	precomputed_scheme_indep_macro = traits.get('precomputed_scheme_indep_macro',None)
-	precomputed_scheme = precomputed_scheme_indep_macro is not None
-	traits['import_scheme_macro'] = precomputed_scheme
 	
 	self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 	date_modified = cupy_module_helper.getmtime_max(self.cuda_path)
@@ -155,11 +151,11 @@ def SetKernel(self):
 	modules.append(flow.module)
 
 	# ---- Produce a third kernel for precomputing the stencils (if requested) ----
-	if precomputed_scheme:
+	if precompute_scheme:
 		scheme = self.kernel_data['scheme']
 		scheme.traits = {
 			**eikonal.traits,
-			'import_scheme_macro':0
+			'import_scheme_macro':0,
 			'export_scheme_macro':1,
 			}
 		for key in ('strict_iter_o_macro','multiprecision_macro',
@@ -174,7 +170,7 @@ def SetKernel(self):
 		modules.append(scheme.module)
 
 	# Set the constants
-	def SetCst(*args):
+	def SetCst(*args,modules=modules):
 		for module in modules: SetModuleConstant(module,*args)
 
 	float_t,int_t = self.float_t,self.int_t
@@ -185,16 +181,23 @@ def SetKernel(self):
 
 	size_tot = self.size_o * np.prod(self.shape_i)
 	SetCst('shape_tot',self.shape,int_t) # Used for periodicity
-	SetCst('size_tot', size_tot,  int_t) # Used for geom indexing
+	#SetCst('size_tot', size_tot,  int_t) # Used for geom indexing
 
+
+	shape_geom_i,shape_geom_o = [s[self.geom_indep:] for e in (self.shape_i,self.shape_o)]
+	if self.geom_indep: # Geometry only depends on a subset of coordinates
+		size_geom_i,size_geom_o = [np.prod(s,dtype=int) for s in (shape_geom_i,shape_geom_o)]
+		for key,value in [('size_geom_i',size_geom_i),('size_geom_o',size_geom_o),
+			('size_geom_tot',size_geom_i*size_geom_o)]: SetCst(key,value,int_t)
+	else: SetCst('size_geom_tot',size_tot,int_t)
 
 	if policy.multiprecision:
 		# Choose power of two, significantly less than h
 		h = float(np.min(self.h))
 		self.multip_step = 2.**np.floor(np.log2(h/10)) 
-		SetCst('multip_step',self.multip_step, float_t)
+		SetCst('multip_step',self.multip_step, float_t, modules=(eikonal.module,flow.module))
 		self.multip_max = np.iinfo(self.int_t).max*self.multip_step/2
-		SetCst('multip_max', self.multip_max,  float_t)
+		SetCst('multip_max', self.multip_max, float_t, modules=(eikonal.module,flow.module))
 
 	if self.factoringRadius:
 		SetCst('factor_radius2',self.factoringRadius**2,float_t)
@@ -226,19 +229,12 @@ def SetKernel(self):
 			SetCst('cosTheta_s',np.cos(theta),float_t)
 			SetCst('sinTheta_s',np.sin(theta),float_t)
 
-	if precomputed_scheme:
-		indep = precomputed_scheme_indep_macro
-		size_scheme_i = np.prod(self.shape_i[indep:])
-		size_scheme_o = np.prod(self.shape_o[indep:])
+	if precompute_scheme:
 		nactx = self.nscheme['nactx']
+		weights=cp.zeros((          nactx,*shape_geom_o,*shape_geom_i),float_t)
+		offsets=cp.zeros((self.ndim,nactx,*shape_geom_o,*shape_geom_i),self.offset_t)
 
-		weights=cp.zeros((size_scheme_o,size_scheme_i,nactx),float_t)
-		offsets=cp.zeros((size_scheme_o,size_scheme_i,nactx,self.ndim),offset_t)
-
-		SetCst('size_scheme_i',size_scheme_i, int_t)
-		SetCst('size_scheme_o',size_scheme_o, int_t)
-
-		updateList_o = cp.arange(size_scheme_o,dtype=int_t)
+		updateList_o = cp.arange(np.prod(shape_geom_o,dtype=int_t),dtype=int_t)
 		dummy = cp.array(0,dtype=float_t) #; weights[0,0]=1; offsets[0,0,0]=2
 		scheme.kernel = scheme.module.get_function("Update")
 		# args : u_t,geom_t,seeds_t,rhs_t,..,..,..,updateNext_o

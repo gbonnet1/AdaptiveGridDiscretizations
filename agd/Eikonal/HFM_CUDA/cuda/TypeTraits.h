@@ -218,6 +218,7 @@ const Int geom_size = geom_macro;
 #endif
 
 #define io_scheme_macro (export_scheme_macro || import_scheme_macro)
+
 #if io_scheme_macro 
 #define IO_SCHEME(...) __VA_ARGS__
 #else

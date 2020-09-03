@@ -92,11 +92,7 @@ def SetGeometry(self):
 		traits['xi_var_macro']    = self.ixi.ndim>0
 		traits['kappa_var_macro'] = self.kappa.ndim>0
 		traits['theta_var_macro'] = self.theta.ndim>0
-		if self.theta.ndim==0: traits['nTheta']=self.shape[2];
-		if all(traits[e]==0 for e in ('xi_var_macro','kappa_var_macro','theta_var_macro')):
-			# The scheme stencil is independent of the first two coordinates. (x,y,theta)
-			traits['precomputed_scheme_indep_macro']=2
-
+		if self.theta.ndim==0: traits['nTheta']=self.shape[2]
 		if self.ixi.ndim>0:   self.ixi  =self.as_field(self.ixi,'xi')
 		if self.kappa.ndim>0: self.kappa=self.as_field(self.kappa,'kappa')
 		if self.theta.ndim>0: self.theta=self.as_field(self.theta,'theta')
@@ -104,7 +100,7 @@ def SetGeometry(self):
 		geom = [e for e in (self.ixi,self.kappa,
 			np.cos(self.theta),np.sin(self.theta)) if e.ndim>0]
 		if len(geom)>0: self.geom = ad.array(geom)
-		else: self.geom = cp.zeros((0,)+self.shape, dtype=self.float_t)
+		else: self.geom = cp.zeros((0,self.shape[2]), dtype=self.float_t)
 
 	else:
 		if self._metric is not None: self._metric = self._metric.with_costs(self.h)
@@ -126,11 +122,21 @@ def SetGeometry(self):
 			self.geom = self.dualMetric.flatten(solve_w=True)
 		else: raise ValueError("Unrecognized model")
 		
-	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(
-		self.geom,self.shape),self.shape_i,mode='constant',constant_values=np.inf))
-#	if self.drift is not None:
-#		eikonal.args['drift'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(
-#			self.drift,self.shape),self.shape_i,mode='constant',constant_values=np.nan))
+	# Check wether the geometry only depends on a subset of the coordinates
+	geom_shape = self.geom.shape[1:]
+	self.geom_indep = len(self.shape)-len(geom_shape)
+	eikonal.traits['geom_indep_macro'] = self.geom_indep
+	if geom_shape!=self.shape[self.geom_indep:]:
+		raise ValueError("Inconsistent dimensions for geometry data. "
+			"It should match (the last coordinates of) domain shape.")
+	if self.isCurvature: assert self.geom_indep<=2
+
+	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(
+		self.geom,self.shape_i[self.geom_indep:],mode='constant',constant_values=np.inf))
+
+	self.precompute_scheme = self.GetValue('precompute_scheme',
+		self.geom_indep>0 and self.model_ not in ('Isotropic','Diagonal'),
+		"Precompute and store the finite difference scheme stencils")
 
 	# geometrical data related with geodesics 
 	self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,
