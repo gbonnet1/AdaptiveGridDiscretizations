@@ -94,7 +94,8 @@ def SetGeometry(self):
 		traits['theta_var_macro'] = self.theta.ndim>0
 		if self.theta.ndim==0: traits['nTheta']=self.shape[2];
 		if all(traits[e]==0 for e in ('xi_var_macro','kappa_var_macro','theta_var_macro')):
-			traits['precomputed_scheme_macro']=1
+			# The scheme stencil is independent of the first two coordinates. (x,y,theta)
+			traits['precomputed_scheme_indep_macro']=2
 
 		if self.ixi.ndim>0:   self.ixi  =self.as_field(self.ixi,'xi')
 		if self.kappa.ndim>0: self.kappa=self.as_field(self.kappa,'kappa')

@@ -28,6 +28,10 @@ __global__ void Update(
 	const BoolPack * __restrict__ seeds_t, const Scalar * __restrict__ rhs_t, 
 	WALLS(const WallT * __restrict__ wallDist_t,)
 
+	// Export or import the finite differences scheme 
+	IO_SCHEME( 	IMPORT_SCHEME(const) Scalar  * __restrict__ weights_t,
+				IMPORT_SCHEME(const) OffsetT * __restrict__ offsets_t,)
+
 	// Causality based freezing
 	MINCHG_FREEZE(const Scalar * __restrict__ minChgPrev_o, Scalar * __restrict__ minChgNext_o,)
 
@@ -37,7 +41,6 @@ __global__ void Update(
 	FLOW_OFFSETS(  OffsetT * __restrict__ flow_offsets_t,) 
 	FLOW_INDICES(  Int     * __restrict__ flow_indices_t,) 
 	FLOW_VECTOR(   Scalar  * __restrict__ flow_vector_t,) 
-	EXPORT_SCHEME(Scalar * __restrict__ weights_t, OffsetT * __restrict__ offsets_t,)
 
 	// where to update
 	Int * __restrict__ updateList_o, 
@@ -60,27 +63,44 @@ __global__ void Update(
 	for(Int k=0; k<ndim; ++k){x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
 	const Int n_t = n_o*size_i + n_i;
 
-	#if curvature_macro && precomputed_scheme_macro
-	const Int iTheta = x_t[2];
-	const Scalar * weights      = precomp_weights_s[iTheta];
-	const OffsetT (* offsets)[ndim] = precomp_offsets_s[iTheta];
-	#else
-	GEOM(Scalar geom[geom_size];
-	for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];})
-	
 	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 	ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
 	DRIFT(Scalar drift[nmix][ndim];)
 
-	ADAPTIVE_MIX(const bool mix_is_min = )
-	scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets DRIFT(,drift) );
+	EXPORT_SCHEME(if(n_o>=size_scheme_o || n_i>=size_scheme_i) return;)
+	IO_SCHEME(const int n_scheme=(n_o%size_scheme_o)*size_scheme_i + (n_i%size_scheme_i);)
+
+	#if import_scheme_macro
+		const Int n_scheme = n_t % size_scheme;
+		for(Int i=0; i<nactx; ++i) {
+			weights_t[n_scheme*nactx+i]=weights[i];
+			for(Int j=0; j<ndim; ++j){offsets[i][j] = offsets_t[(n_scheme*nactx+i)*ndim+j];}
+		}
+		DRIFT("Deliberate error (unsupported drift scheme io)")
+/*	#if curvature_macro && precomputed_scheme_macro
+	const Int iTheta = x_t[2];
+	const Scalar * weights      = precomp_weights_s[iTheta];
+	const OffsetT (* offsets)[ndim] = precomp_offsets_s[iTheta];
+	*/
+	#else
+		GEOM(Scalar geom[geom_size];
+		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_tot*k];})
+		ADAPTIVE_MIX(const bool mix_is_min = )
+		scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets DRIFT(,drift) );
 	#endif
 
+
 	EXPORT_SCHEME( 
-	#if curvature_macro
-		/* This precomputation step is intended for the curvature penalized
+		/* This precomputation step is mostly intended for the curvature penalized
 		models, which have complicated stencils, yet usually depending on 
 		a single parameter : the angular coordinate.*/
+		for(Int i=0; i<nactx; ++i) {
+			weights_t[n_scheme*nactx+i]=weights[i]; // By construction n_t < size_scheme
+			for(Int j=0; j<ndim; ++j){offsets_t[(n_scheme*nactx+i)*ndim+j] = offsets[i][j];}
+		}
+
+/*	#if curvature_macro
+		
 		if(debug_print && threadIdx.x==0&& blockIdx.x==0){
 			printf("offsets0 %i,%i,%i\n",offsets[0][0],offsets[0][1],offsets[0][2]);}
 		const Int iTheta = x_t[2];
@@ -90,8 +110,8 @@ __global__ void Update(
 				for(Int j=0; j<ndim; ++j){
 					offsets_t[(iTheta*nactx+i)*ndim+j] = offsets[i][j];}}
 		} // if curvature_macro
-	#endif
-	return;
+	#endif*/
+		return;
 	)
 
 	const Scalar u_old = u_t[n_t]; 

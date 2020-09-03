@@ -207,6 +207,23 @@ const Int geom_size = geom_macro;
 #define EXPORT_SCHEME(...) 
 #endif
 
+#ifndef import_scheme_macro
+#define import_scheme_macro 0
+#endif
+
+#if import_scheme_macro
+#define IMPORT_SCHEME(...) __VA_ARGS__
+#else
+#define IMPORT_SCHEME(...) 
+#endif
+
+#define io_scheme_macro (export_scheme_macro || import_scheme_macro)
+#if io_scheme_macro 
+#define IO_SCHEME(...) __VA_ARGS__
+#else
+#define IO_SCHEME(...)
+#endif
+
 /** Wether the model depends on local geometrical data, aside from the cost function.*/
 #ifndef geom_macro
 #define geom_macro 1

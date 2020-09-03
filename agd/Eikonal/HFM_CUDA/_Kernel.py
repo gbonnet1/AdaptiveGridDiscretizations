@@ -83,6 +83,9 @@ def SetKernel(self):
 	Setup the eikonal kernel, and (partly) the flow kernel
 	"""
 	if self.verbosity>=1: print("Preparing the GPU kernel")
+	modules = []
+
+	# ---- Produce a first kernel, for solving the eikonal equation ----
 	# Set a few last traits
 	eikonal = self.kernel_data['eikonal']
 	policy = eikonal.policy
@@ -107,6 +110,11 @@ def SetKernel(self):
 		elif model == 'Diagonal': model = 'Isotropic' # Same file handles both
 		model_source = f'#include "{model}_.h"\n' 
 
+	# Number of variable coordinates the scheme is independent of
+	precomputed_scheme_indep_macro = traits.get('precomputed_scheme_indep_macro',None)
+	precomputed_scheme = precomputed_scheme_indep_macro is not None
+	traits['import_scheme_macro'] = precomputed_scheme
+	
 	self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 	date_modified = cupy_module_helper.getmtime_max(self.cuda_path)
 	self.cuda_date_modified = f"// Date cuda code last modified : {date_modified}\n"
@@ -116,6 +124,8 @@ def SetKernel(self):
 
 	eikonal.source += model_source+self.cuda_date_modified
 	eikonal.module = GetModule(eikonal.source,self.cuoptions)
+	modules.append(eikonal.module)
+
 	# ---- Produce a second kernel for computing the geodesic flow ---
 	flow = self.kernel_data['flow']
 	flow.traits = {
@@ -135,16 +145,37 @@ def SetKernel(self):
 		for key in ('flow_vector','flow_weightsum'): 
 			flow.traits[key+"_macro"]=1
 	if self.exportGeodesicFlow: flow.traits['flow_vector_macro']=1
-	if self.model_=='Rander' and (self.forwardAD or self.reverseAD): flow.traits['flow_vector_macro']=1
+	if self.model_=='Rander' and (self.forwardAD or self.reverseAD): 
+		flow.traits['flow_vector_macro']=1
 
 	flow.source = cupy_module_helper.traits_header(flow.traits,
 		join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"
 	flow.source += model_source+self.cuda_date_modified
 	flow.module = GetModule(flow.source,self.cuoptions)
+	modules.append(flow.module)
+
+	# ---- Produce a third kernel for precomputing the stencils (if requested) ----
+	if precomputed_scheme:
+		scheme = self.kernel_data['scheme']
+		scheme.traits = {
+			**eikonal.traits,
+			'import_scheme_macro':0
+			'export_scheme_macro':1,
+			}
+		for key in ('strict_iter_o_macro','multiprecision_macro',
+			'walls_macro','minChg_freeze_macro'):
+			scheme.traits.pop(key,None)
+
+		scheme.source = cupy_module_helper.traits_header(scheme.traits,
+		join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"
+		scheme.source += model_source+self.cuda_date_modified
+		scheme.module = GetModule(scheme.source,self.cuoptions)
+
+		modules.append(scheme.module)
 
 	# Set the constants
 	def SetCst(*args):
-		for module in (eikonal.module,flow.module): SetModuleConstant(module,*args)
+		for module in modules: SetModuleConstant(module,*args)
 
 	float_t,int_t = self.float_t,self.int_t
 
@@ -189,8 +220,50 @@ def SetKernel(self):
 			help='Relaxation parameter for the curvature penalized models')
 		SetCst('decomp_v_relax',eps**2,float_t)
 
-		if traits.get('precomputed_scheme_macro',False):
-			# Precompute the curvature penalizing complex stencils
+		if traits['xi_var_macro']==0:    SetCst('ixi',  self.ixi,  float_t) # ixi = 1/xi
+		if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
+		if traits['theta_var_macro']==0: 
+			SetCst('cosTheta_s',np.cos(theta),float_t)
+			SetCst('sinTheta_s',np.sin(theta),float_t)
+
+	if precomputed_scheme:
+		indep = precomputed_scheme_indep_macro
+		size_scheme_i = np.prod(self.shape_i[indep:])
+		size_scheme_o = np.prod(self.shape_o[indep:])
+		nactx = self.nscheme['nactx']
+
+		weights=cp.zeros((size_scheme_o,size_scheme_i,nactx),float_t)
+		offsets=cp.zeros((size_scheme_o,size_scheme_i,nactx,self.ndim),offset_t)
+
+		SetCst('size_scheme_i',size_scheme_i, int_t)
+		SetCst('size_scheme_o',size_scheme_o, int_t)
+
+		updateList_o = cp.arange(size_scheme_o,dtype=int_t)
+		dummy = cp.array(0,dtype=float_t) #; weights[0,0]=1; offsets[0,0,0]=2
+		scheme.kernel = scheme.module.get_function("Update")
+		# args : u_t,geom_t,seeds_t,rhs_t,..,..,..,updateNext_o
+		args=(dummy,dummy,dummy,dummy,weights,offsets,updateList_o,dummy)
+		scheme.kernel((updateList_o.size,),(self.size_i,),args)
+
+		eikonal.args['weights']=weights
+		eikonal.args['offsets']=offsets
+
+	# Set the kernel arguments
+	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,
+		help="Maximum number of iterations of the solver")
+	self.raiseOnNonConvergence = self.GetValue('raiseOnNonConvergence',default=True,
+		help="Raise an exception if a solver fails to converge")
+
+	# Sort the kernel arguments
+	args = eikonal.args
+	argnames = ('values','valuesq','valuesNext','valuesqNext',
+		'geom','seedTags','rhs','wallDist','weights','offsets')
+	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
+#	print(eikonal.args['wallDist'].dtype)
+	flow.args = eikonal.args.copy() # Further arguments added later
+
+
+"""
 			offset_t=self.offset_t
 			scheme = self.kernel_data['scheme']
 			scheme.traits = {'xi_var_macro':0,'kappa_var_macro':0,'theta_var_macro':0,
@@ -219,27 +292,4 @@ def SetKernel(self):
 			SetCst('precomp_weights_s',weights,float_t)
 			SetCst('precomp_offsets_s',offsets,offset_t)
 			self.hfmOut.update({'scheme_weights':weights,'scheme_offsets':offsets})
-
-		else: # Not a precomputed scheme
-			if traits['xi_var_macro']==0:    SetCst('ixi',  self.ixi,  float_t) # ixi = 1/xi
-			if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
-			if traits['theta_var_macro']==0: 
-				SetCst('cosTheta_s',np.cos(theta),float_t)
-				SetCst('sinTheta_s',np.sin(theta),float_t)
-
-
-	# Set the kernel arguments
-	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,
-		help="Maximum number of iterations of the solver")
-	self.raiseOnNonConvergence = self.GetValue('raiseOnNonConvergence',default=True,
-		help="Raise an exception if a solver fails to converge")
-
-	# Sort the kernel arguments
-	args = eikonal.args
-	argnames = ('values','valuesq','valuesNext','valuesqNext',
-		'geom','seedTags','rhs','wallDist')
-	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
-#	print(eikonal.args['wallDist'].dtype)
-	flow.args = eikonal.args.copy() # Further arguments added later
-
-#def PrecomputeStencil(self): #TODO
+"""

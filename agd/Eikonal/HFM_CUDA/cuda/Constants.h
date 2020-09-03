@@ -38,6 +38,7 @@ __constant__ Int size_o;
 /// Shape of the full domain
 __constant__ Int shape_tot[ndim]; // shape_i * shape_o
 __constant__ Int size_tot; // product(shape_tot)
+IO_SCHEME(__constant__ Int size_scheme;) // Scheme may depend on a subset of coordinates
 
 #if factor_macro
 __constant__ Scalar factor_metric[factor_size]; 
@@ -75,11 +76,6 @@ __constant__ Scalar cosTheta_s[nTheta]; // cos(2*pi*i/nTheta)
 __constant__ Scalar sinTheta_s[nTheta]; // sin(...)
 #endif
 
-#if precomputed_scheme_macro
-// const int nTheta // Must be defined in including file
-__constant__ Scalar  precomp_weights_s[nTheta][nactx];
-__constant__ OffsetT precomp_offsets_s[nTheta][nactx][ndim];
-#else
 void get_ixi_kappa_theta(
 	GEOM(const Scalar geom[geom_size],) const Int x[ndim],
 	XI_VAR(Scalar & ixi,) KAPPA_VAR(Scalar & kappa,) 
@@ -97,5 +93,4 @@ void get_ixi_kappa_theta(
 	sinTheta = sinTheta_s[iTheta];
 	#endif // theta_var_macro
 }
-#endif // precomputed_scheme_macro
 #endif // curvature_macro
