@@ -54,7 +54,11 @@ def map_coordinates(input,coordinates,*args,
 	- depth : depth of interpolated objects 0->scalar, 1->vector, 2->matrix
 	"""
 	if ad.cupy_generic.from_cupy(input):
-		from cupyx.scipy.ndimage.interpolation import map_coordinates
+		from cupyx.scipy.ndimage.interpolation import map_coordinates as mc
+		def map_coordinates(arr,x,*args,**kwargs):
+			# Cupy (version 7.8) requires the coordinates array to be flattened
+			shape = x.shape[1:]
+			return mc(arr,x.reshape((len(x),-1)),*args,**kwargs).reshape(shape)
 	else: from scipy.ndimage.interpolation import map_coordinates
 
 	if grid is not None: origin,scale,_ = origin_scale_shape(grid)
