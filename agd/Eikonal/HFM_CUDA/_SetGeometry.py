@@ -47,7 +47,6 @@ def SetGeometry(self):
 
 	self.h_broadcasted = fd.as_field(self.h,self.shape,depth=1)
 
-
 	# Get the metric 
 	if   self.model_=='Diagonal':metricClass = Metrics.Diagonal
 	elif self.model_=='Riemann': metricClass = Metrics.Riemann
@@ -125,7 +124,7 @@ def SetGeometry(self):
 		elif self.model_ == 'AsymmetricQuadratic':
 			self.geom = self.dualMetric.flatten(solve_w=True)
 		else: raise ValueError("Unrecognized model")
-
+		
 	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(fd.as_field(
 		self.geom,self.shape),self.shape_i,mode='constant',constant_values=np.inf))
 #	if self.drift is not None:

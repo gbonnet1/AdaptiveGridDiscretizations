@@ -262,7 +262,10 @@ def solve_AV(a,v):
 	 where vdim is the ambient vector space dimension
 	"""
 	a=ad.asarray(a)
-	if ad.is_ad(v) or a.dtype==np.dtype('object'): return dot_AV(inverse(a),v) # Inefficient, but compatible with ndarray subclasses
+	if ad.is_ad(v) or a.dtype==np.dtype('object') or (len(a)<=3 and ad.cupy_generic.from_cupy(a)): 
+		# Inefficient, but compatible with ndarray subclasses
+		# Also cupy.linalg.solve as a performance issue (cupy version 7.8) 
+		return dot_AV(inverse(a),v) 
 	return np.moveaxis(np.linalg.solve(np.moveaxis(a,(0,1),(-2,-1)),np.moveaxis(v,0,-1)),-1,0)			
 
 
