@@ -7,6 +7,7 @@ import copy
 
 from . import inf_convolution
 from ... import FiniteDifferences as fd
+from ... import LinearParallel as lp
 from ... import AutomaticDifferentiation as ad
 from ... import Metrics
 

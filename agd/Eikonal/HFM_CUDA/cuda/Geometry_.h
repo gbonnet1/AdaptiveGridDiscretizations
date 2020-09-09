@@ -108,6 +108,7 @@ Tout scal_vv(const Tx x[ndim], const Ty y[ndim]){
 		result+=x[i]*y[i];}
 	return result;
 }
+// Squared Euclidean norm
 template<typename T>
 T norm2_v(const T x[ndim]){return scal_vv(x,x);}
 Scalar norm_v(const Scalar x[ndim]){return sqrt(norm2_v<Scalar>(x));}
@@ -125,6 +126,10 @@ Scalar scal_vmv(const Tx x[ndim], const Scalar m[symdim], const Ty y[ndim]){
 	}
 	return result;
 }
+/// Squared norm associated with a symmetric matrix
+template<typename T>
+T norm2_vm(const T x[ndim], const Scalar m[symdim]){return scal_vmv(x,m,x);}
+
 
 // Scalar product associated with a diagonal matrix
 template<typename Tx, typename Ty>
