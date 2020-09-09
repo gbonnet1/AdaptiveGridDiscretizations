@@ -37,7 +37,7 @@ __constant__ Int size_o;
 
 /// Shape of the full domain
 __constant__ Int shape_tot[ndim]; // shape_i * shape_o
-//__constant__ Int size_tot; // product(shape_tot)
+__constant__ Int size_tot; // product(shape_tot)
 
 // If geometry only depends on a subset of coordinates
 #if geom_indep_macro

@@ -17,7 +17,7 @@ const Int nfwd = symdim; // Number of forward offsets
 const bool mix_is_min = true; 
 
 
-#if !precomputed_scheme_macro
+#if !import_scheme_macro
 bool scheme(GEOM(const Scalar geom[geom_size],) Int x[ndim],
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
 	XI_VAR(Scalar ixi;) KAPPA_VAR(Scalar kappa;) 

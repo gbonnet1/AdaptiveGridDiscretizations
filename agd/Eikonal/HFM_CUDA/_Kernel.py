@@ -181,7 +181,7 @@ def SetKernel(self):
 
 	size_tot = self.size_o * np.prod(self.shape_i)
 	SetCst('shape_tot',self.shape,int_t) # Used for periodicity
-	#SetCst('size_tot', size_tot,  int_t) # Used for geom indexing
+	SetCst('size_tot', size_tot,  int_t) # Used for geom indexing
 
 
 	shape_geom_i,shape_geom_o = [s[self.geom_indep:] for s in (self.shape_i,self.shape_o)]
