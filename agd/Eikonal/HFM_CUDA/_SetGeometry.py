@@ -122,11 +122,12 @@ def SetGeometry(self):
 		elif self.model_ == 'AsymmetricQuadratic':
 			self.geom = self.dualMetric.flatten(solve_w=True)
 		elif self.model_ == 'SubRiemann':
-			pruning_metric = self.GetValue('pruning_metric',None,
-				"""Finite difference offset is discarded if this norm exceeds the Euclidean norm.""")
+			pruning_metric = self.GetValue('pruning_metric', default = None,
+				help = """Finite difference offset is discarded """
+				"""if this norm exceeds the Euclidean norm.""")
 			if pruning_metric is None:
-				pruning_eps = self.GetValue('pruning_eps',None,
-					"""Approximation of the Riemannian relaxation parameter,"""
+				pruning_eps = self.GetValue('pruning_eps',default = None,
+					help = """Approximation of the Riemannian relaxation parameter,"""
 					""" used for pruning the finite difference offsets.""")
 				rho = np.sqrt(lp.trace(self.dualMetric.m)/self.dualMetric.vdim)*pruning_eps
 				pruning_metric = self.metric.with_cost(rho)
@@ -148,9 +149,11 @@ def SetGeometry(self):
 		self.geom,self.shape_i[self.geom_indep:],mode='constant',constant_values=np.inf))
 
 	self.precompute_scheme = self.GetValue('precompute_scheme',
-		self.geom_indep>0 and self.model_ not in ('Isotropic','Diagonal'),
-		"Precompute and store the finite difference scheme stencils")
+		default = self.geom_indep>0 and self.model_ not in ('Isotropic','Diagonal'),
+		help = "Precompute and store the finite difference scheme stencils")
 
+	print("_SetGeometry",self.precompute_scheme, geom_shape, self.geom_indep, eikonal.args['geom'].shape)
+	
 	# geometrical data related with geodesics 
 	self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,
 		help="Export the upwind geodesic flow (direction of the geodesics)")

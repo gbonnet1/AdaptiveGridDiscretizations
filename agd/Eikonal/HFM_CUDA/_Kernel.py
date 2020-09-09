@@ -151,7 +151,7 @@ def SetKernel(self):
 	modules.append(flow.module)
 
 	# ---- Produce a third kernel for precomputing the stencils (if requested) ----
-	if precompute_scheme:
+	if self.precompute_scheme:
 		scheme = self.kernel_data['scheme']
 		scheme.traits = {
 			**eikonal.traits,
@@ -184,11 +184,12 @@ def SetKernel(self):
 	#SetCst('size_tot', size_tot,  int_t) # Used for geom indexing
 
 
-	shape_geom_i,shape_geom_o = [s[self.geom_indep:] for e in (self.shape_i,self.shape_o)]
+	shape_geom_i,shape_geom_o = [s[self.geom_indep:] for s in (self.shape_i,self.shape_o)]
 	if self.geom_indep: # Geometry only depends on a subset of coordinates
 		size_geom_i,size_geom_o = [np.prod(s,dtype=int) for s in (shape_geom_i,shape_geom_o)]
 		for key,value in [('size_geom_i',size_geom_i),('size_geom_o',size_geom_o),
 			('size_geom_tot',size_geom_i*size_geom_o)]: SetCst(key,value,int_t)
+		print("_Kernel : ",size_geom_i," ",size_geom_o)
 	else: SetCst('size_geom_tot',size_tot,int_t)
 
 	if policy.multiprecision:
@@ -229,7 +230,7 @@ def SetKernel(self):
 			SetCst('cosTheta_s',np.cos(theta),float_t)
 			SetCst('sinTheta_s',np.sin(theta),float_t)
 
-	if precompute_scheme:
+	if self.precompute_scheme:
 		nactx = self.nscheme['nactx']
 		weights=cp.zeros((          nactx,*shape_geom_o,*shape_geom_i),float_t)
 		offsets=cp.zeros((self.ndim,nactx,*shape_geom_o,*shape_geom_i),self.offset_t)
@@ -238,11 +239,13 @@ def SetKernel(self):
 		dummy = cp.array(0,dtype=float_t) #; weights[0,0]=1; offsets[0,0,0]=2
 		scheme.kernel = scheme.module.get_function("Update")
 		# args : u_t,geom_t,seeds_t,rhs_t,..,..,..,updateNext_o
-		args=(dummy,dummy,dummy,dummy,weights,offsets,updateList_o,dummy)
+		args=(dummy,eikonal.args['geom'],dummy,dummy,weights,offsets,updateList_o,dummy)
 		scheme.kernel((updateList_o.size,),(self.size_i,),args)
 
 		eikonal.args['weights']=weights
 		eikonal.args['offsets']=offsets
+
+		print('Hi there', weights, offsets, weights.dtype)
 
 	# Set the kernel arguments
 	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,

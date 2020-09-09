@@ -3,6 +3,7 @@
 
 from .. import AutomaticDifferentiation as ad
 from .. import FiniteDifferences as fd
+import numpy as np
 
 def flatten_symmetric_matrix(m):
 	"""
@@ -10,15 +11,15 @@ def flatten_symmetric_matrix(m):
 	Output : a vector containing the lower triangular entries
 	"""
 	d=m.shape[0]
-	assert(d==m.shape[1])
-	return ad.asarray([ m[i,j] for i in range(d) for j in range(i+1)])
+	assert d==m.shape[1]
+	return np.concatenate([m[i,:(i+1)] for i in range(d)],axis=0)
 
 def expand_symmetric_matrix(arr,d=None,extra_length=False):
 	if d is None:
 		d=0
 		while (d*(d+1))//2 < len(arr):
 			d+=1
-	assert(extra_length or len(arr)==(d*(d+1))//2)
+	assert (extra_length or len(arr)==(d*(d+1))//2)
 	
 	def index(i,j):
 		i,j = max(i,j),min(i,j)

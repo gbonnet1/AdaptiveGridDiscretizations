@@ -68,7 +68,10 @@ __global__ void Update(
 	DRIFT(Scalar drift[nmix][ndim];)
 
 	#if geom_indep_macro
-	const int n_geom = (n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i)
+	const int n_geom = (n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i);
+	if(debug_print && n_t==2){
+		printf("Update.h n_geom %i\n",n_geom);
+	}
 	EXPORT_SCHEME(if(n_o>=size_geom_o || n_i>=size_geom_i) return;)
 	#else
 	const int n_geom = n_t; 
@@ -83,7 +86,7 @@ __global__ void Update(
 		DRIFT("Sorry drift is not (yet) compatible with scheme io")
 	#else
 		GEOM(Scalar geom[geom_size];
-		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_t+size_geom_tot*k];})
+		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_geom+size_geom_tot*k];})
 		ADAPTIVE_MIX(const bool mix_is_min = )
 		scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets DRIFT(,drift) );
 	#endif
@@ -93,6 +96,9 @@ __global__ void Update(
 		/* This precomputation step is mostly intended for the curvature penalized
 		models, which have complicated stencils, yet usually depending on 
 		a single parameter : the angular coordinate.*/
+		if(debug_print && n_t==2){
+			printf("weight %f offset %i",weights[0],offsets[0][0]);
+		}
 		for(Int i=0; i<nactx; ++i) {
 			weights_t[i*size_geom_tot + n_geom] = weights[i]; 
 			for(Int j=0; j<ndim; ++j){

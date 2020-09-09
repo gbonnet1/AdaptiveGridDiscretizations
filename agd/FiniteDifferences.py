@@ -89,6 +89,7 @@ def block_expand(arr,shape_i,renumber_ad=False,**kwargs):
 	 - original shape
 	"""
 	ndim = len(shape_i)
+	if ndim==0: return arr # Empty block
 	shape_pre = arr.shape[:-ndim]
 	ndim_pre = len(shape_pre)
 	shape_tot=np.array(arr.shape[-ndim:])
@@ -116,6 +117,7 @@ def block_squeeze(arr,shape,renumber_ad=False):
 	Inverse operation to block_expand.
 	"""
 	ndim = len(shape)
+	if ndim==0: return arr # Empty block
 	shape_pre = arr.shape[:-2*ndim]
 	ndim_pre = len(shape_pre)
 	shape_o = arr.shape[(-2*ndim):-ndim]
