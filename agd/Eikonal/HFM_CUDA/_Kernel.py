@@ -107,8 +107,8 @@ def SetKernel(self):
 		model_source = f'#include "{self.model}.h"\n'
 	else: 
 		model = self.model_ # Dimension generic
-		if   model == 'Rander':   model = 'Riemann' # Rander = Riemann + drift
-		elif model == 'Diagonal': model = 'Isotropic' # Same file handles both
+		if model == 'Diagonal': model = 'Isotropic' # Same file handles both
+		elif   model in ('Rander','SubRiemann'): model = 'Riemann' # Rander = Riemann + drift
 		model_source = f'#include "{model}_.h"\n' 
 	
 	self.cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")

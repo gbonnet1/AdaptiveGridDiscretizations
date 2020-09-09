@@ -121,6 +121,18 @@ def SetGeometry(self):
 			self.geom = self.metric.flatten(transposed_transformation=True)
 		elif self.model_ == 'AsymmetricQuadratic':
 			self.geom = self.dualMetric.flatten(solve_w=True)
+		elif self.model_ == 'SubRiemann':
+			pruning_metric = self.GetValue('pruning_metric',None,
+				"""Finite difference offset is discarded if this norm exceeds the Euclidean norm.""")
+			if pruning_metric is None:
+				pruning_eps = self.GetValue('pruning_eps',None,
+					"""Approximation of the Riemannian relaxation parameter,"""
+					""" used for pruning the finite difference offsets.""")
+				rho = np.sqrt(lp.trace(self.dualMetric.m)/self.dualMetric.vdim)*pruning_eps
+				pruning_metric = self.metric.with_cost(rho)
+			self.geom = np.stack([self.dualMetric.flatten(),pruning_metric.flatten()],axis=0)
+			eikonal.traits['SubRiemann_Pruning_macro']=1
+			
 		else: raise ValueError("Unrecognized model")
 		
 	# Check wether the geometry only depends on a subset of the coordinates
