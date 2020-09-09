@@ -245,7 +245,7 @@ def SetKernel(self):
 		eikonal.args['weights']=weights
 		eikonal.args['offsets']=offsets
 
-		print('Hi there', weights, offsets, weights.dtype)
+		print('DEBUG _kernel.py', offsets.shape, weights.dtype)
 
 	# Set the kernel arguments
 	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,

@@ -152,8 +152,8 @@ def SetGeometry(self):
 		default = self.geom_indep>0 and self.model_ not in ('Isotropic','Diagonal'),
 		help = "Precompute and store the finite difference scheme stencils")
 
-	print("_SetGeometry",self.precompute_scheme, geom_shape, self.geom_indep, eikonal.args['geom'].shape)
-	
+	print("DEBUG _SetGeometry.py ",self.precompute_scheme, geom_shape, self.geom_indep, eikonal.args['geom'].shape)
+
 	# geometrical data related with geodesics 
 	self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,
 		help="Export the upwind geodesic flow (direction of the geodesics)")
