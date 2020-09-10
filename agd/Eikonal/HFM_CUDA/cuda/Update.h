@@ -74,19 +74,21 @@ __global__ void Update(
 	#endif
 
 	#if import_scheme_macro
+	
 		const Scalar * weights = weights_t+nactx*n_geom;
 		typedef const OffsetT (*OffsetVecT)[ndim]; // OffsetVecT[][ndim]
 		const OffsetVecT offsets = (OffsetVecT) (offsets_t + ndim*nactx*n_geom);
-		/*
+		
+		/* // Strangely, simply copying the data at this point makes the code twice slower
+		ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
+		ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
+		for(Int i=0; i<nactx; ++i) {weights[i] = weights_t[i+nactx*n_geom];}
 		for(Int i=0; i<nactx; ++i) {
-//			weights[i] = weights_t[i*size_geom_tot + n_geom];
-			weights[i] = weights_t[i+nactx*n_geom];
 			for(Int j=0; j<ndim; ++j){
-//				offsets[i][j] = offsets_t[(j*nactx+i)*size_geom_tot+n_geom];}
 				offsets[i][j] = offsets_t[j+ndim*(i+nactx*n_geom)];}
-
-		}*/
-		DRIFT("Sorry drift is not (yet) compatible with scheme io")
+		}
+		*/
+		DRIFT("Sorry drift is not (yet) compatible with scheme precomputation")
 	#else
 		ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 		ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
