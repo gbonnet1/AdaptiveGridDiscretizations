@@ -37,7 +37,7 @@ hfmIn = Eikonal.dictIn({
     'speed':1.,    
     
     'seed':(0,0,0), # Central seed, with horizontal tangent
-    'tips':[(np.cos(t),np.sin(t),0) for t in np.linspace(0,2*np.pi,20)], # Tips on circle, with horizontal tangents    
+#    'tips':[(np.cos(t),np.sin(t),0) for t in np.linspace(0,2*np.pi,20)], # Tips on circle, with horizontal tangents    
 })
 hfmIn.SetRect(sides=[[-1.5,1.5],[-1.5,1.5]],dimx = 151) # Physical domain
 hfmIn.nTheta = 96 # Angular resolution
