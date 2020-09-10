@@ -63,10 +63,6 @@ __global__ void Update(
 	for(Int k=0; k<ndim; ++k){x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
 	const Int n_t = n_o*size_i + n_i;
 
-	ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
-	ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
-	DRIFT(Scalar drift[nmix][ndim];)
-
 	#if geom_indep_macro
 	const int n_geom = (n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i);
 	if(debug_print && n_t==2){
@@ -78,13 +74,24 @@ __global__ void Update(
 	#endif
 
 	#if import_scheme_macro
+		const Scalar * weights = weights_t+nactx*n_geom;
+		typedef const OffsetT (*OffsetVecT)[ndim]; // OffsetVecT[][ndim]
+		const OffsetVecT offsets = (OffsetVecT) (offsets_t + ndim*nactx*n_geom);
+		/*
 		for(Int i=0; i<nactx; ++i) {
-			weights[i] = weights_t[i*size_geom_tot + n_geom];
+//			weights[i] = weights_t[i*size_geom_tot + n_geom];
+			weights[i] = weights_t[i+nactx*n_geom];
 			for(Int j=0; j<ndim; ++j){
-				offsets[i][j] = offsets_t[(j*nactx+i)*size_geom_tot+n_geom];}
-		}
+//				offsets[i][j] = offsets_t[(j*nactx+i)*size_geom_tot+n_geom];}
+				offsets[i][j] = offsets_t[j+ndim*(i+nactx*n_geom)];}
+
+		}*/
 		DRIFT("Sorry drift is not (yet) compatible with scheme io")
 	#else
+		ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
+		ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
+		DRIFT(Scalar drift[nmix][ndim];)
+
 		GEOM(Scalar geom[geom_size];
 		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_geom+size_geom_tot*k];})
 		ADAPTIVE_MIX(const bool mix_is_min = )
@@ -100,9 +107,11 @@ __global__ void Update(
 			printf("weight %f offset %i",weights[0],offsets[0][0]);
 		}
 		for(Int i=0; i<nactx; ++i) {
-			weights_t[i*size_geom_tot + n_geom] = weights[i]; 
+//			weights_t[i*size_geom_tot + n_geom] = weights[i]; 
+			weights_t[i+nactx*n_geom] = weights[i];
 			for(Int j=0; j<ndim; ++j){
-				offsets_t[(j*nactx+i)*size_geom_tot+n_geom] = offsets[i][j];}
+//				offsets_t[j+ndim*(i+nactx*nj*nactx+i)*size_geom_tot+n_geom] = offsets[i][j];}
+				offsets_t[j+ndim*(i+nactx*n_geom)] = offsets[i][j];}
 		}
 
 /*	#if curvature_macro

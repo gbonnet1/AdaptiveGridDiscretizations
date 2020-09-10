@@ -232,8 +232,10 @@ def SetKernel(self):
 
 	if self.precompute_scheme:
 		nactx = self.nscheme['nactx']
-		weights=cp.zeros((          nactx,*shape_geom_o,*shape_geom_i),float_t)
-		offsets=cp.zeros((self.ndim,nactx,*shape_geom_o,*shape_geom_i),self.offset_t)
+#		weights=cp.zeros((          nactx,*shape_geom_o,*shape_geom_i),float_t)
+#		offsets=cp.zeros((self.ndim,nactx,*shape_geom_o,*shape_geom_i),self.offset_t)
+		weights=cp.zeros((*shape_geom_o,*shape_geom_i,nactx),float_t)
+		offsets=cp.zeros((*shape_geom_o,*shape_geom_i,nactx,self.ndim),self.offset_t)
 
 		updateList_o = cp.arange(np.prod(shape_geom_o,dtype=int_t),dtype=int_t)
 		dummy = cp.array(0,dtype=float_t) #; weights[0,0]=1; offsets[0,0,0]=2
