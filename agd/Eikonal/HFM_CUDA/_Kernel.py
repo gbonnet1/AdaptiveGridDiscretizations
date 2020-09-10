@@ -189,7 +189,6 @@ def SetKernel(self):
 		size_geom_i,size_geom_o = [np.prod(s,dtype=int) for s in (shape_geom_i,shape_geom_o)]
 		for key,value in [('size_geom_i',size_geom_i),('size_geom_o',size_geom_o),
 			('size_geom_tot',size_geom_i*size_geom_o)]: SetCst(key,value,int_t)
-		print("_Kernel : ",size_geom_i," ",size_geom_o)
 	else: SetCst('size_geom_tot',size_tot,int_t)
 
 	if policy.multiprecision:
@@ -232,8 +231,7 @@ def SetKernel(self):
 
 	if self.precompute_scheme:
 		nactx = self.nscheme['nactx']
-#		weights=cp.zeros((          nactx,*shape_geom_o,*shape_geom_i),float_t)
-#		offsets=cp.zeros((self.ndim,nactx,*shape_geom_o,*shape_geom_i),self.offset_t)
+		# Convention 'geometry last turns' out to be much faster than the contrary.
 		weights=cp.zeros((*shape_geom_o,*shape_geom_i,nactx),float_t)
 		offsets=cp.zeros((*shape_geom_o,*shape_geom_i,nactx,self.ndim),self.offset_t)
 
@@ -246,8 +244,6 @@ def SetKernel(self):
 
 		eikonal.args['weights']=weights
 		eikonal.args['offsets']=offsets
-
-		print('DEBUG _kernel.py', offsets.shape, weights.dtype)
 
 	# Set the kernel arguments
 	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,

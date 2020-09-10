@@ -4,6 +4,8 @@
 import numpy as np
 import cupy as cp
 import os
+import numbers
+
 from . import cupy_module_helper
 from .cupy_module_helper import SetModuleConstant
 from ... import AutomaticDifferentiation as ad
@@ -58,7 +60,7 @@ def inf_convolution(arr,kernel,out=None,niter=1,periodic=False,
 	else: traits['lower_saturation_macro']=1
 	traits['T_Inf']=(lower_saturation,conv_t)
 
-	if not isinstance(periodic,tuple): periodic = (periodic,)*arr.ndim
+	if isinstance(periodic,numbers.Number): periodic = (periodic,)*arr.ndim
 	if any(periodic): 
 		traits['periodic_macro'] = 1
 		traits['periodic_axes'] = periodic

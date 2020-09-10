@@ -45,7 +45,7 @@ def GetGeodesics(self):
 			}
 		traits.update(self.GetValue('geodesic_traits',default=traits,
 			help='Traits for the geodesic backtracking kernel') )
-		if any(self.periodic): 
+		if any(self.periodic):
 			traits['periodic'] = 1
 			traits['periodic_axes'] = self.periodic
 		traits.update({ # Non-negotiable
