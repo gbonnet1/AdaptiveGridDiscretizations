@@ -12,7 +12,8 @@ from ..FiniteDifferences import common_field
 
 class AsymQuad(Base):
 	"""
-	An asymmetric quadratic norm takes the form F(x) = sqrt(<x,m x> + max(0,<w,x>)^2),
+	An asymmetric quadratic norm takes the form 
+	F(x) = sqrt(<x,m x> + max(0,<w,x>)^2),
 	where m is a given symmetric positive definite tensor, 
 	and w is a given vector.
 

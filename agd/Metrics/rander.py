@@ -94,51 +94,51 @@ class Rander(Base):
 	@classmethod
 	def from_Zermelo(cls,metric,drift):
 		"""
-Zermelo's navigation problem consists in computing a minimal path for 
-whose velocity is unit w.r.t. a Riemannian metric, and which is subject 
-to a drift. The accessible velocities take the form 
-	x+drift where <x,m.x> <= 1
-This function reformulates it as a shortest path problem 
-in a Rander manifold.
-Inputs : 
-- metric : Symmetric positive definite matrix (Riemannian metric)
-- drift : Vector field, obeying <drift,metric.drift> < 1 (Drift)
-Outputs : 
-- the Rander metric.
-"""
+		Zermelo's navigation problem consists in computing a minimal path for 
+		whose velocity is unit w.r.t. a Riemannian metric, and which is subject 
+		to a drift. The accessible velocities take the form 
+			x+drift where <x,m.x> <= 1
+		This function reformulates it as a shortest path problem 
+		in a Rander manifold.
+		Inputs : 
+		- metric : Symmetric positive definite matrix (Riemannian metric)
+		- drift : Vector field, obeying <drift,metric.drift> < 1 (Drift)
+		Outputs : 
+		- the Rander metric.
+		"""
 		return cls(lp.inverse(metric),drift).dual()
 
 	def to_Zermelo(self):
 		"""
-Input : Parameters of a Rander metric.
-Output : Parameters of the corresponding Zermelo problem, of motion on a 
-Riemannian manifold with a drift.
-"""
+		Input : Parameters of a Rander metric.
+		Output : Parameters of the corresponding Zermelo problem, of motion on a 
+		Riemannian manifold with a drift.
+		"""
 		self_dual = self.dual()
 		return lp.inverse(self_dual.m), self_dual.w
 
 	def to_Varadhan(eps=1):
 		"""
-The Rander eikonal equation can be reformulated in an (approximate)
-linear form, using a logarithmic transformation
-	u + 2 eps <omega,grad u> - eps**2 Tr(D hess u).
-Then -eps log(u) solves the Rander eikonal equation, 
-up to a small additional diffusive term.
-Inputs : 
-- m and w, parameters of the Rander metric
-- eps (optionnal), relaxation parameter
-Outputs : 
-- D and 2*omega, parameters of the linear PDE. 
- (D*eps**2 and 2*omega*eps if eps is specified)
-"""
+		The Rander eikonal equation can be reformulated in an (approximate)
+		linear form, using a logarithmic transformation
+			u + 2 eps <omega,grad u> - eps**2 Tr(D hess u).
+		Then -eps log(u) solves the Rander eikonal equation, 
+		up to a small additional diffusive term.
+		Inputs : 
+		- m and w, parameters of the Rander metric
+		- eps (optionnal), relaxation parameter
+		Outputs : 
+		- D and 2*omega, parameters of the linear PDE. 
+		 (D*eps**2 and 2*omega*eps if eps is specified)
+		"""
 		return self.Varadhan_from_Zermelo(self.to_Zermelo(),eps)
 
 	@staticmethod
 	def Varadhan_from_Zermelo(metric,drift,eps=1):
 		"""
-Zermelo's navigation problem can be turned into a Rander shortest path problem,
-which itself can be (approximately) expressed in linear form using the logarithmic
-transformation. This function composes the above two steps.
-"""
+		Zermelo's navigation problem can be turned into a Rander shortest path problem,
+		which itself can be (approximately) expressed in linear form using the logarithmic
+		transformation. This function composes the above two steps.
+		"""
 		return eps**2*(lp.inverse(metric)-lp.outer_self(drift)), 2.*eps*drift
 
