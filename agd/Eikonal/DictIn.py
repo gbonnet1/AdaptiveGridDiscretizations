@@ -10,7 +10,7 @@ _array_float_fields = {
 	'seedValues','seedValues_Unoriented','seedValueVariation','seedFlags',
 	'cost','speed','costVariation',
 	'inspectSensitivity','inspectSensitivityWeights','inspectSensitivityLengths',
-	'exportVoronoiFlags'
+	'exportVoronoiFlags','factoringIndexShift',
 }
 
 # Alternative key for setting or getting a single element
@@ -500,5 +500,97 @@ class dictIn(MutableMapping):
 
 		return neigh[np.logical_and(close,inRange)]
 
+	def SetFactor(self,radius=None,value=None,gradient=None):
+		"""
+		This function setups additive factorization around the seeds.
+		Inputs (optional): 
+		- radius.
+			Positive number -> approximate radius, in pixels, of source factorization.
+			-1 -> Factorization over all the domain. 
+			None -> source factorization over all the domain
+		- value (optional).
+		  callable, array -> approximate values of the solution. 
+		  None -> reconstructed from the metric.
+		- gradient (optional) 
+		  callable, array -> approximate gradient of the solution.
+		  Obtained from the values by automatic differentiation if unspecified.
 
+		Outputs : the subgrid used for factorization
+		Side effect : sets 'factoringValue', 'factoringGradient', 
+		   and in the case of a subgrid 'factoringIndexShift'
+		"""
+
+		# Set the factoring grid points
+		if radius is None:
+			radius = self.get('factoringRadius',10)
+
+		if radius<0:
+			factGrid = self.Grid()
+		else:
+			seed_ci =  self.PointFromIndex(self['seed'],to=True)
+			bottom = [max(0,int(np.floor(ci)-radius)) for ci in self.seed_ci]
+			top = [min(si,int(np.ceil(ci)+radius)+1) for ci,si in zip(seed_ci,self.shape)]
+			self['factoringIndexShift'] = bottom
+			aX = [self.xp.arange(bi,ti) for bi,ti in zip(bottom,top)]
+			factGrid = ad.array(np.meshgrid(*aX,indexing='ij'))
+#			raise ValueError("dictIn.SetFactor : unsupported radius type")
+
+		# Set the values
+		if 'factoringPointChoice' in self:
+			assert value is None
+			value = self['factoringPointChoice']
+
+		if isinstance(value,str):
+			seed = self['seed']
+			metric = self['metric']
+			if cost in self: metric = metric.with_cost(self['cost'])
+			fullGrid = factGrid if factGrid.shape[1:]==self.shape else self.Grid()
+			metric.set_interpolation(fullGrid)
+
+			diff = lambda x : x-fd.as_field(seed,x.shape[1:],depth=1)
+			if value in ('Key','Seed'):
+				value = metric.at(seed)
+			elif value=='Current':
+				value = lambda x : metric.at(x).norm(diff(x))
+				#Cheating : not differentiating w.r.t position, but should be enough
+				gradient = lambda x: metric.at(x).gradient(diff(x)) 
+			elif value=='Both':
+				# Pray that AD goes well ...
+				value = lambda x : 0.5*(metric.at(seed).norm(diff(x)) + 
+					metric.at(x).norm(diff(x)))
+
+		if callable(value):
+			if gradient is None:
+				factGrid_ad = ad.Dense.identity(constant=grid, shape_free=(self.vdim,))
+				value = value(factGrid_ad)
+			else:
+				value = value(factGrid)
+
+		if isinstance(value,Metrics.Base):
+			factDiff = factGrid - fd.as_field(self['seed'],factGrid.shape[1:],depth=1)
+			if gradient is None: 
+				gradient = value.gradient(factDiff)
+				# Avoids recomputation. But maybe care about NaN ?
+				value = lp.dot_VV(gradient,factDiff) 
+			else:
+				value = value.norm(factDiff)
+
+		if ad.is_ad(value):
+			gradient = value.gradient()
+			value = value.value
+
+		if not ad.isndarray(value): 
+			raise ValueError("dictIn.SetFactor : unsupported value type")
+
+		#Set the gradient
+		if callable(gradient):
+			gradient_arr = gradient(factGrid)
+
+		if not ad.isndarray(gradient): 
+			raise ValueError("dictIn.SetFactor : unsupported gradient type")
+
+		self["factoringValue"] = value
+		self["factoringGradient"] = gradient
+
+		return factGrid
 
