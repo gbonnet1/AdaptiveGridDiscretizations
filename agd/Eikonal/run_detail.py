@@ -118,10 +118,10 @@ def RunSmart(hfmIn,co_output=None,cache=None,returns="out"):
 
 	# Intercept and replace old source factorization convention
 	oldFactKeys = ('factoringRadius', 'factoringPointChoice')
-	if any(key in hfmIn for key in oldFactKeys):
+	if any(key in hfmIn for key in oldFactKeys) and 'factoringValues' not in hfmIn:
 		hfmIn = hfmIn.copy()
 		hfmIn.SetFactor()
-		for key in oldFactKeys: hfmIn.pop(key)
+		for key in oldFactKeys: hfmIn.pop(key,None)
 
 	hfmIn_raw = {}
 

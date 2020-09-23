@@ -1,6 +1,8 @@
 import numpy as np
 from collections.abc import MutableMapping
 from .. import AutomaticDifferentiation as ad
+from .. import FiniteDifferences as fd
+from .. import LinearParallel as lp
 from . import run_detail
 from .. import Metrics
 
@@ -524,26 +526,27 @@ class dictIn(MutableMapping):
 		if radius is None:
 			radius = self.get('factoringRadius',10)
 
-		if radius<0:
+		if radius<0 or radius>=np.max(self.shape):
 			factGrid = self.Grid()
+			self.pop('factoringIndexShift',None)
 		else:
 			seed_ci =  self.PointFromIndex(self['seed'],to=True)
-			bottom = [max(0,int(np.floor(ci)-radius)) for ci in self.seed_ci]
+			bottom = [max(0,int(np.floor(ci)-radius)) for ci in seed_ci]
 			top = [min(si,int(np.ceil(ci)+radius)+1) for ci,si in zip(seed_ci,self.shape)]
 			self['factoringIndexShift'] = bottom
-			aX = [self.xp.arange(bi,ti) for bi,ti in zip(bottom,top)]
+			aX = [self.xp.arange(bi,ti,dtype=self.float_t) for bi,ti in zip(bottom,top)]
 			factGrid = ad.array(np.meshgrid(*aX,indexing='ij'))
+			factGrid = np.moveaxis(self.PointFromIndex(np.moveaxis(factGrid,0,-1)),-1,0)
 #			raise ValueError("dictIn.SetFactor : unsupported radius type")
 
 		# Set the values
-		if 'factoringPointChoice' in self:
-			assert value is None
-			value = self['factoringPointChoice']
+		if value is None:
+			value = self.get('factoringPointChoice','Seed')
 
 		if isinstance(value,str):
 			seed = self['seed']
 			metric = self['metric']
-			if cost in self: metric = metric.with_cost(self['cost'])
+			if 'cost' in self: metric = metric.with_cost(self['cost'])
 			fullGrid = factGrid if factGrid.shape[1:]==self.shape else self.Grid()
 			metric.set_interpolation(fullGrid)
 
@@ -558,6 +561,9 @@ class dictIn(MutableMapping):
 				# Pray that AD goes well ...
 				value = lambda x : 0.5*(metric.at(seed).norm(diff(x)) + 
 					metric.at(x).norm(diff(x)))
+			else:
+				raise ValueError(f"dictIn.SetFactor error : unsupported "
+					"value string : {value} . (Factoring point choice).")
 
 		if callable(value):
 			if gradient is None:
@@ -570,8 +576,9 @@ class dictIn(MutableMapping):
 			factDiff = factGrid - fd.as_field(self['seed'],factGrid.shape[1:],depth=1)
 			if gradient is None: 
 				gradient = value.gradient(factDiff)
-				# Avoids recomputation. But maybe care about NaN ?
-				value = lp.dot_VV(gradient,factDiff) 
+				# Avoids recomputation, but generates NaNs at the seed points.
+				value = lp.dot_VV(gradient,factDiff)
+				value[np.isnan(value)]=0 
 			else:
 				value = value.norm(factDiff)
 
@@ -580,17 +587,17 @@ class dictIn(MutableMapping):
 			value = value.value
 
 		if not ad.isndarray(value): 
-			raise ValueError("dictIn.SetFactor : unsupported value type")
+			raise ValueError(f"dictIn.SetFactor : unsupported value type {type(value)}")
 
 		#Set the gradient
 		if callable(gradient):
 			gradient_arr = gradient(factGrid)
 
 		if not ad.isndarray(gradient): 
-			raise ValueError("dictIn.SetFactor : unsupported gradient type")
+			raise ValueError(f"dictIn.SetFactor : unsupported gradient type {type(gradient)}")
 
-		self["factoringValue"] = value
-		self["factoringGradient"] = gradient
+		self["factoringValues"] = value
+		self["factoringGradients"] = np.moveaxis(gradient,0,-1) # Geometry last in c++ code...
 
 		return factGrid
 
