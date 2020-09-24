@@ -556,9 +556,12 @@ class dictIn(MutableMapping):
 
 			diff = lambda x : x-fd.as_field(seed,x.shape[1:],depth=1)
 			if value in ('Key','Seed'):
+				metric.set_interpolation(fullGrid) # Default order 1 interpolation suffices
 				value = metric.at(seed)
 			elif value=='Current':
-				metric.set_interpolation(fullGrid) # Default order 1 suffices
+				# Strictly speaking, we are not interpolating the metric, 
+				# since the point x at which it is evaluated lies on the grid
+				metric.set_interpolation(fullGrid) 
 				value = lambda x : metric.at(x).norm(diff(x))
 				#Cheating : not differentiating w.r.t position, but should be enough here
 				gradient = lambda x: metric.at(x).gradient(diff(x)) 
