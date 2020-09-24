@@ -522,6 +522,9 @@ class dictIn(MutableMapping):
 		   and in the case of a subgrid 'factoringIndexShift'
 		"""
 
+		# Only static factoring is supported
+		if self.get('factoringMethod','Static') != 'Static': return
+
 		# Set the factoring grid points
 		if radius is None:
 			radius = self.get('factoringRadius',10)
@@ -545,20 +548,23 @@ class dictIn(MutableMapping):
 
 		if isinstance(value,str):
 			seed = self['seed']
-			metric = self['metric']
+			if 'metric' in self: metric = self['metric']
+			elif self['model'].startswith('Isotropic'): metric = Metrics.Isotropic(1)
+			else: raise ValueError("dictIn.SetFactor error : no metric found")
 			if 'cost' in self: metric = metric.with_cost(self['cost'])
 			fullGrid = factGrid if factGrid.shape[1:]==self.shape else self.Grid()
-			metric.set_interpolation(fullGrid)
 
 			diff = lambda x : x-fd.as_field(seed,x.shape[1:],depth=1)
 			if value in ('Key','Seed'):
 				value = metric.at(seed)
 			elif value=='Current':
+				metric.set_interpolation(fullGrid) # Default order 1 suffices
 				value = lambda x : metric.at(x).norm(diff(x))
-				#Cheating : not differentiating w.r.t position, but should be enough
+				#Cheating : not differentiating w.r.t position, but should be enough here
 				gradient = lambda x: metric.at(x).gradient(diff(x)) 
 			elif value=='Both':
 				# Pray that AD goes well ...
+				metric.set_interpolation(fullGrid,order=3) # Need to differentiate w.r.t x
 				value = lambda x : 0.5*(metric.at(seed).norm(diff(x)) + 
 					metric.at(x).norm(diff(x)))
 			else:
@@ -567,7 +573,7 @@ class dictIn(MutableMapping):
 
 		if callable(value):
 			if gradient is None:
-				factGrid_ad = ad.Dense.identity(constant=grid, shape_free=(self.vdim,))
+				factGrid_ad = ad.Dense.identity(constant=factGrid, shape_free=(self.vdim,))
 				value = value(factGrid_ad)
 			else:
 				value = value(factGrid)
