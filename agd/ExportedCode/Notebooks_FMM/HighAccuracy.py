@@ -42,10 +42,13 @@ def RiemannExact(diag,diff,x,y):
 
 M=((1.25,0.5),(0.5,2.))
 
-def v(x,y,γ=0.8): return γ*np.sin(np.pi*x)*np.sin(np.pi*y)/np.pi
+def v(x,y,γ): return γ*np.sin(np.pi*x)*np.sin(np.pi*y)/np.pi
 
-def RanderMetric(x,y):
+def RanderMetric(x,y,γ=0.8):
     X_ad = ad.Dense.identity(constant=(x,y),shape_free=(2,))
-    omega = v(*X_ad).gradient()
+    omega = v(*X_ad,γ).gradient()
     return Metrics.Rander(M,omega)
+
+def RanderSolution(x,y,γ=0.8):
+    return Metrics.Riemann(M).norm((x,y)) + v(x,y,γ)
 
