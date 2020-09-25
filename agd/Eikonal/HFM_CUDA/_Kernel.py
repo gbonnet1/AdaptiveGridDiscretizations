@@ -245,6 +245,9 @@ def SetKernel(self):
 		eikonal.args['weights']=weights
 		eikonal.args['offsets']=offsets
 
+		print(weights)
+		print(weights.shape)
+
 	# Set the kernel arguments
 	policy.nitermax_o = self.GetValue('nitermax_o',default=2000,
 		help="Maximum number of iterations of the solver")

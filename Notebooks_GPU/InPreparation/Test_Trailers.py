@@ -40,7 +40,8 @@ hfmIn = Eikonal.dictIn({
     'traits':{'niter_i':3},
     'raiseOnNonConvergence':False,
     'exportValues':True,
-    'maxiter':10,
+    'nitermax_o':100,
+#    'precompute_scheme':False,
 })
 
 #hfmIn.SetRect([[-0.5,0.5],[-0.5,0.5],[-np.pi,np.pi],[-np.pi,np.pi]],dims=[51,51,64,64])
@@ -77,3 +78,5 @@ print("Voronoi coefs",np.isfinite(coefs).sum()/coefs.size)
 print(Eikonal.VoronoiDecomposition(diff[:,:,5,8]))
 print(coefs.shape,coefs[:,5,8])
 
+
+# Error : expected 12 coefficients, not 10, for the four dimensional reduction, in the eikonal solver
