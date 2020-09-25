@@ -22,7 +22,7 @@ class ImplicitBase(Base):
 
 	def norm(self,v):
 		v=ad.asarray(v)
-		return lp.dot_VV(v,self.gradient(v))
+		return lp.dot_VV(v,self.gradient(ad.remove_ad(v)))
 
 	def gradient(self,v):
 		v=ad.asarray(v)
@@ -63,7 +63,7 @@ class ImplicitBase(Base):
 		Gradient, ignoring self.a
 		Note : modifies v where null
 		"""
-		v=ad.asarray(v)
+		v=ad.asarray(v) 
 		zeros = np.all(v==0.,axis=0)
 		v[:,zeros]=np.nan
 		grad = sequential_quadratic(v,self._dual_level,params=self._dual_params(v.shape[1:]),

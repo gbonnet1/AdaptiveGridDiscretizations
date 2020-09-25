@@ -83,7 +83,8 @@ class Hooke(ImplicitBase):
 
 	def with_cost(self,cost):
 		other = copy.copy(self)
-		other.hooke = self.hooke * cost**2
+		hooke,cost = fd.common_field((self.hooke,cost),depths=(2,0))
+		other.hooke = hooke / cost**2
 		return other
 
 	def _to_common_field(self,*args,**kwargs):

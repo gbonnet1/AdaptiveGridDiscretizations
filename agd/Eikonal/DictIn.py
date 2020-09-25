@@ -1,6 +1,8 @@
 import numpy as np
 from collections.abc import MutableMapping
 from .. import AutomaticDifferentiation as ad
+from .. import FiniteDifferences as fd
+from .. import LinearParallel as lp
 from . import run_detail
 from .. import Metrics
 
@@ -10,7 +12,7 @@ _array_float_fields = {
 	'seedValues','seedValues_Unoriented','seedValueVariation','seedFlags',
 	'cost','speed','costVariation',
 	'inspectSensitivity','inspectSensitivityWeights','inspectSensitivityLengths',
-	'exportVoronoiFlags'
+	'exportVoronoiFlags','factoringIndexShift',
 }
 
 # Alternative key for setting or getting a single element
@@ -500,5 +502,111 @@ class dictIn(MutableMapping):
 
 		return neigh[np.logical_and(close,inRange)]
 
+	def SetFactor(self,radius=None,value=None,gradient=None):
+		"""
+		This function setups additive factorization around the seeds.
+		Inputs (optional): 
+		- radius.
+			Positive number -> approximate radius, in pixels, of source factorization.
+			-1 -> Factorization over all the domain. 
+			None -> source factorization over all the domain
+		- value (optional).
+		  callable, array -> approximate values of the solution. 
+		  None -> reconstructed from the metric.
+		- gradient (optional) 
+		  callable, array -> approximate gradient of the solution.
+		  Obtained from the values by automatic differentiation if unspecified.
 
+		Outputs : the subgrid used for factorization
+		Side effect : sets 'factoringValue', 'factoringGradient', 
+		   and in the case of a subgrid 'factoringIndexShift'
+		"""
+
+		# Only static factoring is supported
+		if self.get('factoringMethod','Static') != 'Static': return
+
+		# Set the factoring grid points
+		if radius is None:
+			radius = self.get('factoringRadius',10)
+
+		if radius<0 or radius>=np.max(self.shape):
+			factGrid = self.Grid()
+			self.pop('factoringIndexShift',None)
+		else:
+			seed_ci =  self.PointFromIndex(self['seed'],to=True)
+			bottom = [max(0,int(np.floor(ci)-radius)) for ci in seed_ci]
+			top = [min(si,int(np.ceil(ci)+radius)+1) for ci,si in zip(seed_ci,self.shape)]
+			self['factoringIndexShift'] = bottom
+			aX = [self.xp.arange(bi,ti,dtype=self.float_t) for bi,ti in zip(bottom,top)]
+			factGrid = ad.array(np.meshgrid(*aX,indexing='ij'))
+			factGrid = np.moveaxis(self.PointFromIndex(np.moveaxis(factGrid,0,-1)),-1,0)
+#			raise ValueError("dictIn.SetFactor : unsupported radius type")
+
+		# Set the values
+		if value is None:
+			value = self.get('factoringPointChoice','Seed')
+
+		if isinstance(value,str):
+			seed = self['seed']
+			if 'metric' in self: metric = self['metric']
+			elif self['model'].startswith('Isotropic'): metric = Metrics.Isotropic(1)
+			else: raise ValueError("dictIn.SetFactor error : no metric found")
+			if 'cost' in self: metric = metric.with_cost(self['cost'])
+			fullGrid = factGrid if factGrid.shape[1:]==self.shape else self.Grid()
+
+			diff = lambda x : x-fd.as_field(seed,x.shape[1:],depth=1)
+			if value in ('Key','Seed'):
+				metric.set_interpolation(fullGrid) # Default order 1 interpolation suffices
+				value = metric.at(seed)
+			elif value=='Current':
+				# Strictly speaking, we are not interpolating the metric, 
+				# since the point x at which it is evaluated lies on the grid
+				metric.set_interpolation(fullGrid) 
+				value = lambda x : metric.at(x).norm(diff(x))
+				#Cheating : not differentiating w.r.t position, but should be enough here
+				gradient = lambda x: metric.at(x).gradient(diff(x)) 
+			elif value=='Both':
+				# Pray that AD goes well ...
+				metric.set_interpolation(fullGrid,order=3) # Need to differentiate w.r.t x
+				value = lambda x : 0.5*(metric.at(seed).norm(diff(x)) + 
+					metric.at(x).norm(diff(x)))
+			else:
+				raise ValueError(f"dictIn.SetFactor error : unsupported "
+					"value string : {value} . (Factoring point choice).")
+
+		if callable(value):
+			if gradient is None:
+				factGrid_ad = ad.Dense.identity(constant=factGrid, shape_free=(self.vdim,))
+				value = value(factGrid_ad)
+			else:
+				value = value(factGrid)
+
+		if isinstance(value,Metrics.Base):
+			factDiff = factGrid - fd.as_field(self['seed'],factGrid.shape[1:],depth=1)
+			if gradient is None: 
+				gradient = value.gradient(factDiff)
+				# Avoids recomputation, but generates NaNs at the seed points.
+				value = lp.dot_VV(gradient,factDiff)
+				value[np.isnan(value)]=0 
+			else:
+				value = value.norm(factDiff)
+
+		if ad.is_ad(value):
+			gradient = value.gradient()
+			value = value.value
+
+		if not ad.isndarray(value): 
+			raise ValueError(f"dictIn.SetFactor : unsupported value type {type(value)}")
+
+		#Set the gradient
+		if callable(gradient):
+			gradient_arr = gradient(factGrid)
+
+		if not ad.isndarray(gradient): 
+			raise ValueError(f"dictIn.SetFactor : unsupported gradient type {type(gradient)}")
+
+		self["factoringValues"] = value
+		self["factoringGradients"] = np.moveaxis(gradient,0,-1) # Geometry last in c++ code...
+
+		return factGrid
 
