@@ -22,7 +22,7 @@ class ImplicitBase(Base):
 
 	def norm(self,v):
 		v=ad.asarray(v)
-		return lp.dot_VV(v,self.gradient(v))
+		return lp.dot_VV(v,self.gradient(ad.remove_ad(v)))
 
 	def gradient(self,v):
 		v=ad.asarray(v)
