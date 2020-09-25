@@ -3,6 +3,8 @@
 from ... import Eikonal
 from ... import Metrics
 from agd.Metrics.Seismic import Hooke
+from ... import FiniteDifferences as fd
+from ... import LinearParallel as lp
 from ... import AutomaticDifferentiation as ad
 from agd.Plotting import savefig; #savefig.dirName = 'Figures/HighAccuracy'
 
@@ -51,4 +53,29 @@ def RanderMetric(x,y,γ=0.8):
 
 def RanderSolution(x,y,γ=0.8):
     return Metrics.Riemann(M).norm((x,y)) + v(x,y,γ)
+
+def ConformalMap(x):
+    """
+    Implements the mapping x -> (1/2) * x^2, where x is seen as a complex variable.
+    """
+    return ad.array([0.5*(x[0]**2-x[1]**2), x[0]*x[1]])
+
+def ConformalApply(norm,f,x,decomp=True):
+    """
+    Applies a conformal change of coordinates to a norm.
+    decomp : decompose the Jacobian into a scaling and rotation.
+    """
+    x_ad = ad.Dense.identity(constant=x,shape_free=(2,))
+    Jac = np.moveaxis(f(x_ad).gradient(),0,1)
+    if not decomp: return norm.inv_transform(Jac)
+    
+    # Assuming Jac is a homothety-rotation
+    α = np.power(lp.det(Jac), 1/norm.vdim)
+    R = Jac/α
+    return norm.with_cost(α).rotate(lp.transpose(R))
+    
+
+def MappedNormValues(norm,f,x,seed):
+    seed = fd.as_field(seed,x.shape[1:])
+    return norm.norm(f(x)-f(seed))
 
