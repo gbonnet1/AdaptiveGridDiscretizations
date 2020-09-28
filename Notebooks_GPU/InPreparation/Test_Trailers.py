@@ -77,6 +77,21 @@ print("Voronoi coefs",np.isfinite(coefs).sum()/coefs.size)
 
 print(Eikonal.VoronoiDecomposition(diff[:,:,5,8]))
 print(coefs.shape,coefs[:,5,8])
+print("minimal coefficient : ",np.min(coefs))
+print("mean coefficient : ",np.mean(coefs))
+small_coefs = coefs<1e-5
+print("Proportion of small coefficients : ", small_coefs.sum()/small_coefs.size)
+print("Min number of small coefficients : ", small_coefs.sum(axis=0).min())
+
+
+print(coefs)
+
+reconstruct = (coefs*lp.outer_self(offsets)).sum(axis=2)
+coefs = np.maximum(coefs,0.)
+reconstruct_pos = (coefs*lp.outer_self(offsets)).sum(axis=2)
+#error = 
+print("Reconstruction error : ", norm_infinity(reconstruct - diff), 
+    "positive parts of coefficients : ", norm_infinity(reconstruct_pos - diff))
 
 
 # Error : expected 12 coefficients, not 10, for the four dimensional reduction, in the eikonal solver

@@ -58,7 +58,7 @@ def nscheme(self):
 	nfwd=0 # Number of forward offsets
 	nmix=1 # maximum or minimum of nmix schemes
 	if model=='Isotropic':              nsym = ndim
-	elif model in ('Riemann','Rander'): nsym = symdim
+	elif model in ('Riemann','Rander'): nsym = 12 if ndim==4 else symdim
 	elif model=='ReedsShepp':           nsym = symdim
 	elif model=='ReedsSheppForward':    nsym = 1; nfwd = symdim
 	elif model=='Dubins':               nfwd = symdim; nmix = 2

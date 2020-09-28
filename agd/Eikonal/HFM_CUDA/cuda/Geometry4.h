@@ -93,6 +93,7 @@ void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kk
 	for(int i=0; i<kktdim; ++i){dot_av(aInv,support[i],offsets[i]);}
 
 	if(state.vertex==1){
+		for(int i=0; i<symdim; ++i){ weights[i] = max(weights[i],0.);} 
 		for(int i=symdim; i<kktdim; ++i){weights[i] = 0.;}
 		return;
 	}
@@ -125,6 +126,8 @@ void KKT(const SimplexStateT & state, Scalar weights[kktdim], OffsetT offsets[kk
 	weights[10]=c[0];
 	weights[11]=c[1];
 	
+	// Weights cannot be negative, except for roundoff errors
+	for(int i=0; i<kktdim; ++i){ weights[i] = max(weights[i],0.);} 
 }
 
 } // namespace Voronoi

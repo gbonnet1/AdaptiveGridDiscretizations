@@ -65,6 +65,7 @@ def VoronoiDecomposition(m,offset_t=np.int32,
 	cuoptions = ("-default-device", f"-I {cuda_path}") 
 
 	source="\n".join(source)
+	print(f"Voronoi source :\n {source}")
 	
 	module = cupy_module_helper.GetModule(source,cuoptions)
 	cupy_module_helper.SetModuleConstant(module,'size_tot',size,int_t)
