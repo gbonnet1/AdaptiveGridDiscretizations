@@ -84,7 +84,7 @@ print("Proportion of small coefficients : ", small_coefs.sum()/small_coefs.size)
 print("Min number of small coefficients : ", small_coefs.sum(axis=0).min())
 
 
-print(coefs)
+#print(coefs)
 
 reconstruct = (coefs*lp.outer_self(offsets)).sum(axis=2)
 coefs = np.maximum(coefs,0.)
