@@ -60,7 +60,7 @@ assert np.allclose(aθ[0],-np.pi) and np.allclose(aϕ[0],-np.pi)
 r0=0.2; κ0=1/r0
 r1=0.2; κ1=1/r1
 κs = [κ0,κ1]
-hfmIn['dualMetric'] = Metrics.Riemann(Hamiltonian(ω(θs,ϕs,*κs),ω_(θs,ϕs,*κs),ϵ=1.))
+hfmIn['dualMetric'] = Metrics.Riemann(Hamiltonian(ω(θs,ϕs,*κs),ω_(θs,ϕs,*κs),ϵ=0.1))
 
 hfmOut = hfmIn.Run()
 
