@@ -558,7 +558,7 @@ class dictIn(MutableMapping):
 			if value in ('Key','Seed'):
 				metric.set_interpolation(fullGrid) # Default order 1 interpolation suffices
 				value = metric.at(seed)
-			elif value=='Current':
+			elif value=='Current': # Not really working ?
 				# Strictly speaking, we are not interpolating the metric, 
 				# since the point x at which it is evaluated lies on the grid
 				metric.set_interpolation(fullGrid) 
@@ -600,7 +600,7 @@ class dictIn(MutableMapping):
 
 		#Set the gradient
 		if callable(gradient):
-			gradient_arr = gradient(factGrid)
+			gradient = gradient(factGrid)
 
 		if not ad.isndarray(gradient): 
 			raise ValueError(f"dictIn.SetFactor : unsupported gradient type {type(gradient)}")
