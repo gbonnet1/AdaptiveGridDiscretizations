@@ -254,6 +254,7 @@ class dictIn(MutableMapping):
 		elif self.mode=='cpu_raw': return to_dictOut(run_detail.RunRaw(self.store,**kwargs))
 		elif self.mode=='cpu_transfer':
 			cpuIn = ad.cupy_generic.cupy_get(self,dtype64=True,iterables=(dictIn,Metrics.Base))
+			cpuIn.xp = np; cpuIn._mode = 'cpu'; cpuIn['mode'] = 'cpu'
 			for key in list(cpuIn.keys()): 
 				if key.startswith('traits'): cpuIn.pop(key)
 			return to_dictOut(run_detail.RunSmart(cpuIn,**kwargs))

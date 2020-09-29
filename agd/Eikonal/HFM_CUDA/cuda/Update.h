@@ -109,25 +109,10 @@ __global__ void Update(
 			printf("weight %f offset %i",weights[0],offsets[0][0]);
 		}
 		for(Int i=0; i<nactx; ++i) {
-//			weights_t[i*size_geom_tot + n_geom] = weights[i]; 
 			weights_t[i+nactx*n_geom] = weights[i];
 			for(Int j=0; j<ndim; ++j){
-//				offsets_t[j+ndim*(i+nactx*nj*nactx+i)*size_geom_tot+n_geom] = offsets[i][j];}
 				offsets_t[j+ndim*(i+nactx*n_geom)] = offsets[i][j];}
 		}
-
-/*	#if curvature_macro
-		
-		if(debug_print && threadIdx.x==0&& blockIdx.x==0){
-			printf("offsets0 %i,%i,%i\n",offsets[0][0],offsets[0][1],offsets[0][2]);}
-		const Int iTheta = x_t[2];
-		if(x_t[0]==0 && x_t[1]==0 && iTheta<nTheta){
-			for(Int i=0; i<nactx; ++i) {
-				weights_t[iTheta*nactx+i]=weights[i];
-				for(Int j=0; j<ndim; ++j){
-					offsets_t[(iTheta*nactx+i)*ndim+j] = offsets[i][j];}}
-		} // if curvature_macro
-	#endif*/
 		return;
 	)
 

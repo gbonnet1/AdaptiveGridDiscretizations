@@ -8,6 +8,12 @@ import agd.AutomaticDifferentiation.cupy_generic as cugen
 norm_infinity = ad.Optimization.norm_infinity
 Eikonal.dictIn.default_mode = 'gpu'
 
+import cupy as cp
+import numpy as np
+import itertools
+from matplotlib import pyplot as plt
+np.set_printoptions(edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%5.3g" % x))
+
 cp = ad.functional.decorate_module_functions(cp,cugen.set_output_dtype32) # Use float32 and int32 types in place of float64 and int64
 plt = ad.functional.decorate_module_functions(plt,cugen.cupy_get_args)
 

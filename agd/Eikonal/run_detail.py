@@ -113,7 +113,6 @@ def RunSmart(hfmIn,co_output=None,cache=None,returns="out"):
 	- cache (optional) : store some intermediate results to bypass computations at a later stage. 
 	- returns (optional) : early aborts the run (debug purposes). ('in_raw','out_raw','out')
 	"""
-	
 	assert returns in ('in_raw','out_raw','out')
 
 	# Intercept and replace old source factorization convention
