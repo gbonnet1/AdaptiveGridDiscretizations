@@ -46,7 +46,7 @@ VolumeTitle = {
 VolumeFilenames = {
 'FMM':[
     "Isotropic","Riemannian","Rander","AsymmetricQuadratic",
-    "Curvature","Curvature3","DeviationHorizontality",
+    "Curvature","Curvature3","DeviationHorizontality","Trailers",
     "Geodesics","HighAccuracy","Sensitivity","SensitivitySL", #"SmartIO",
     "Illusion","Tubular","FisherRao","DubinsZermelo","MedialAxis","BoatRouting",
     "Seismic","TTI","ClosedPaths","RadarModels",
