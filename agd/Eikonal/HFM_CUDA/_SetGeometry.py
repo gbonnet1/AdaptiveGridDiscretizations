@@ -148,8 +148,14 @@ def SetGeometry(self):
 	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(
 		self.geom,self.shape_i[self.geom_indep:],mode='constant',constant_values=np.inf))
 
+	precompute_excluded_schemes = (
+		'Isotropic','Diagonal', # Precomputation is useless, since stencil is trivial
+		'AsymmetricQuadratic','Rander', # TODO : precomputation does not handle dift yet
+		'TTI' # TODO : precomputation does not handle adaptive mix_is_min yet
+		)
+
 	self.precompute_scheme = self.GetValue('precompute_scheme',
-		default = self.geom_indep>0 and self.model_ not in ('Isotropic','Diagonal'),
+		default = self.geom_indep>0 and self.model_ not in precompute_excluded_schemes,
 		help = "Precompute and store the finite difference scheme stencils")
 
 	# geometrical data related with geodesics 

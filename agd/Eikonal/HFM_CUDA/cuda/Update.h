@@ -88,7 +88,7 @@ __global__ void Update(
 				offsets[i][j] = offsets_t[j+ndim*(i+nactx*n_geom)];}
 		}
 		*/
-		DRIFT("Sorry drift is not (yet) compatible with scheme precomputation")
+		DRIFT(Sorry_drift_is_not_yet_compatible_with_scheme_precomputation;)
 	#else
 		ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 		ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
