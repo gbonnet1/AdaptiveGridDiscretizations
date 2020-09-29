@@ -70,7 +70,8 @@ VolumeFilenames = {
 ],
 "Repro":[
 "PucciMongeAmpere","EikonalRate",
-"Isotropic_Repro","Riemann_Repro","Rander_Repro","Curvature_Repro","Flow_Repro"
+"Isotropic_GPU","Riemann_GPU","Rander_GPU","Curvature_GPU","Flow_GPU",
+"Seismic_GPU","Walls_GPU","EikonalAD_GPU",
 ]
 }
 

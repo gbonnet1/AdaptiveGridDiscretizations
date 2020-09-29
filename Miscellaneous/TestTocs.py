@@ -101,7 +101,7 @@ def UpdateHeader(filepath,data):
 	'Notebooks_NonDiv':	"## Volume : Non-divergence form PDEs",
 	'Notebooks_FMM':	"",
 	'Notebooks_Repro':	"## Volume : Reproducible research",
-	'Notebooks_GPU':    "## Volume : GPU accelerated methods",
+#	'Notebooks_GPU':    "## Volume : GPU accelerated methods",
 	}[dirname]
 
 	if line1!=line1_ref:

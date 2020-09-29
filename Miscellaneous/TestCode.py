@@ -18,7 +18,7 @@ def ListNotebooks(dir=None):
 	filenames_extensions = [os.path.splitext(f) for f in os.listdir(dir)]
 	filenames = [filename for filename,extension in filenames_extensions if extension==".ipynb"]
 	subdirectories = [filename for filename,extension in filenames_extensions 
-	if extension=="" and filename.startswith("Notebooks_") and filename!="Notebooks_Repro"]
+	if extension=="" and filename.startswith("Notebooks_")] # and filename!="Notebooks_Repro"
 	subfilenames = [os.path.join(subdir,file) for subdir in subdirectories for file in ListNotebooks(subdir)]
 	return filenames+subfilenames
 

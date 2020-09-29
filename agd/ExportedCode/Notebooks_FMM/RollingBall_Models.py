@@ -1,4 +1,4 @@
-# Code automatically exported from notebook RollingBall_Models.ipynb in directory Notebooks_GPU
+# Code automatically exported from notebook RollingBall_Models.ipynb in directory Notebooks_FMM
 # Do not modify
 from ... import AutomaticDifferentiation as ad
 from ... import LinearParallel as lp

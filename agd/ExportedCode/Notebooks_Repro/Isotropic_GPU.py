@@ -1,13 +1,8 @@
-# Code automatically exported from notebook Isotropic_Repro.ipynb in directory Notebooks_GPU
+# Code automatically exported from notebook Isotropic_GPU.ipynb in directory Notebooks_Repro
 # Do not modify
-import cupy as cp
-import numpy as np
-import itertools
-from matplotlib import pyplot as plt
-np.set_printoptions(edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%5.3g" % x))
-
-from ... import Eikonal
 from ... import AutomaticDifferentiation as ad
+if ad.cupy_generic.cp is None: raise ad.DeliberateNotebookError('Cupy module required')
+from ... import Eikonal
 from ... import Metrics
 import agd.AutomaticDifferentiation.cupy_generic as cugen
 norm_infinity = ad.Optimization.norm_infinity
