@@ -71,6 +71,24 @@ google_drive_link = {
 	"Notebooks_Div/ElasticEnergy.ipynb":"https://drive.google.com/file/d/1nZOJVpDG2Ja49jvIgGFWXIsTivSLBlsq/view?usp=sharing",
 	"Notebooks_NonDiv/BoatRoutingGeneric_Time.ipynb":"https://drive.google.com/file/d/1d9oYJL2o0GhTd5BwKlsADWJjP-eES5ME/view?usp=sharing",
 	"Notebooks_Algo/TensorVoronoi6.ipynb":"https://drive.google.com/file/d/1tnHiYIMhTuGrrn36G3ZLaD58-yK_EQ4M/view?usp=sharing",
+	
+	"Notebooks_Repro/AsymQuad_GPU.ipynb":"https://drive.google.com/file/d/1CIMtLAu8UxcBMMGmlTA41LkPWCEzyt2B/view?usp=sharing",
+	"Notebooks_Repro/Curvature_GPU.ipynb":"https://drive.google.com/file/d/1RxrI8V1e9BcP2-xR-l1bcdTQRYCtkI7D/view?usp=sharing",
+	"Notebooks_Repro/EikonalAD_GPU.ipynb":"https://drive.google.com/file/d/1QHEwhAqGEwBdnSAlv_SM3YpA0Eeq9dBB/view?usp=sharing",
+	"Notebooks_Repro/EikonalRate.ipynb":"https://drive.google.com/file/d/1uhIZ5hHtVTxGcH7iSPwbK-N0D0hW3hNy/view?usp=sharing",
+	"Notebooks_Repro/Flow_GPU.ipynb":"https://drive.google.com/file/d/1IPKBrhDTcW-3nDfBeFkSxhdxQ1yNgUpN/view?usp=sharing",
+	"Notebooks_Repro/Isotropic_GPU.ipynb":"https://drive.google.com/file/d/1ocuJyWb4afxZbQjPnuSgz-KDlxLVnsNI/view?usp=sharing",
+	"Notebooks_Repro/PucciMongeAmpere.ipynb":"https://drive.google.com/file/d/1omNnBgBRLwsBmrBkKJP5RtlTtRzP01gR/view?usp=sharing",
+	"Notebooks_Repro/Rander_GPU.ipynb":"https://drive.google.com/file/d/1cI6g1qjwW0xZdeGAISxQdeO62X105X59/view?usp=sharing",
+	"Notebooks_Repro/Riemann_GPU.ipynb":"https://drive.google.com/file/d/14iIjOmTXuTBLwYgyktofIy_wNerOJn7a/view?usp=sharing",
+	"Notebooks_Repro/Seismic_GPU.ipynb":"https://drive.google.com/file/d/1nDEKp9jZN8aObnLdUtdxTGdkrfDDchJ9/view?usp=sharing",
+	"Notebooks_Repro/Summary.ipynb":"https://drive.google.com/file/d/1I3nRG41PwyqNAYl1dZjMwsVoY75q_sX0/view?usp=sharing",
+	"Notebooks_Repro/Walls_GPU.ipynb":"https://drive.google.com/file/d/1WTdp1mW-6nmiSLueE4jUtCHIXnuTvXXR/view?usp=sharing",
+	"Notebooks_FMM/ClosedPaths.ipynb":"https://drive.google.com/file/d/1DzahicDNiLe7SDKNgxtcW8nAW0VLabQu/view?usp=sharing",
+	"Notebooks_FMM/Trailers.ipynb":"https://drive.google.com/file/d/1Iy4AL2B86aObPsFx-jVij7bfbaSPnFO0/view?usp=sharing",
+	"Notebooks_FMM/RadarModels.ipynb":"https://drive.google.com/file/d/1Ix3cROvnvkb4xmCaZemjr67X1W2Uab1N/view?usp=sharing",
+	"Notebooks_FMM/RollingBall_Models.ipynb":"https://drive.google.com/file/d/1gdOl3BtyYU3oGCs-hxiVP_lNNqs7PTEx/view?usp=sharing",
+	"Notebooks_Div/AnisotropicDiffusion.ipynb":"https://drive.google.com/file/d/1u6_XthpxwycWYIusJoP26x37n2Fvbevh/view?usp=sharing",
 	}
 
 
