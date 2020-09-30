@@ -179,9 +179,9 @@ def SetKernel(self):
 	SetCst('shape_o',self.shape_o,int_t)
 	SetCst('size_o', self.size_o, int_t)
 
-	size_tot = self.size_o * np.prod(self.shape_i)
+	self.size_tot = self.size_o * np.prod(self.shape_i)
 	SetCst('shape_tot',self.shape,int_t) # Used for periodicity
-	SetCst('size_tot', size_tot,  int_t) # Used for geom indexing
+	SetCst('size_tot', self.size_tot,  int_t) # Used for geom indexing
 
 
 	shape_geom_i,shape_geom_o = [s[self.geom_indep:] for s in (self.shape_i,self.shape_o)]
@@ -189,7 +189,7 @@ def SetKernel(self):
 		size_geom_i,size_geom_o = [np.prod(s,dtype=int) for s in (shape_geom_i,shape_geom_o)]
 		for key,value in [('size_geom_i',size_geom_i),('size_geom_o',size_geom_o),
 			('size_geom_tot',size_geom_i*size_geom_o)]: SetCst(key,value,int_t)
-	else: SetCst('size_geom_tot',size_tot,int_t)
+	else: SetCst('size_geom_tot', self.size_tot,int_t)
 
 	if policy.multiprecision:
 		# Choose power of two, significantly less than h

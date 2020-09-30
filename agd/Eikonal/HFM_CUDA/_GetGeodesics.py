@@ -9,13 +9,13 @@ from ... import FiniteDifferences as fd
 def GetGeodesics(self):
 		if not self.hasTips: return
 		if self.tips is not None: tips = self.hfmIn.PointFromIndex(self.tips,to=True)
-		values = ad.remove_ad(self.values).astype(self.float_t)
 		
 		if self.isCurvature and self.tips_Unoriented is not None:
 			tipsU = self.tips_Unoriented
 			tipsU = self.hfmIn.OrientedPoints(tipsU)
 			tipsU = self.hfmIn.PointFromIndex(tipsU,to=True)
 			tipIndicesU = np.round(tipsU).astype(int)
+			values = ad.remove_ad(self.values).astype(self.float_t)
 			valuesU = values[tuple(np.moveaxis(tipIndicesU,-1,0))]
 			amin = np.argmin(valuesU,axis=0) # Select most favorable value
 			amin = amin.reshape((1,*amin.shape,1))
@@ -65,10 +65,13 @@ def GetGeodesics(self):
 		def SetCst(*args):
 			cupy_module_helper.SetModuleConstant(geodesic.module,*args)
 		# Note: geodesic solver does not use bilevel array structure
+		SetCst('shape_i',self.shape_i,self.int_t)
+		SetCst('shape_o',self.shape_o,self.int_t)
 		shape_tot = self.shape
-		size_tot = int(np.prod(shape_tot))  #distinct from size_tot used for solver
 		SetCst('shape_tot',shape_tot,self.int_t)
-		SetCst('size_tot', size_tot, self.int_t)
+#		size_tot = int(np.prod(shape_tot))  #distinct from size_tot used for solver
+#		SetCst('size_tot', size_tot, self.int_t)
+		SetCst('size_tot',self.size_tot,self.int_t)
 		typical_len = int(max(40,0.5*np.max(shape_tot)/geodesic_step))
 		typical_len = self.GetValue('geodesic_typical_length',default=typical_len,
 			help="Typical expected length of geodesics (number of points).")
@@ -96,6 +99,7 @@ def GetGeodesics(self):
 		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,periodic=self.periodic,
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
+		eucl = fd.block_expand(eucl,self.shape_i,mode='constant',constant_values=eucl_max)
 		eucl=cp.ascontiguousarray(eucl)
 
 		# Run the geodesic ODE solver
@@ -113,9 +117,11 @@ def GetGeodesics(self):
 			help="Maximum allowed length of geodesics.")
 		
 		flow = self.kernel_data['flow']
-		flow_vector    = self.flow_vector
-		flow_weightsum = fd.block_squeeze(flow.args['flow_weightsum'],self.shape)
-		args = (flow_vector,flow_weightsum,values,eucl)
+#		flow_vector    = self.flow_vector
+#		flow_weightsum = fd.block_squeeze(flow.args['flow_weightsum'],self.shape)
+#		args = (flow_vector,flow_weightsum,values,eucl)
+		args = (flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl)
+
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)
 
 		geoIt=0; geoMaxIt = int(np.ceil(max_len/typical_len))

@@ -15,22 +15,46 @@ from ... import AutomaticDifferentiation as ad
 
 # This file implements some member functions of the Interface class of HFM_CUDA
 
+def values_expand(self):
+	if self._values_expand is None:
+		eikonal = self.kernel_data['eikonal']
+		values = eikonal.args['values']
+		if eikonal.policy.multiprecision:
+			valuesq = eikonal.args['valuesq']
+			if self.GetValue('values_float64',default=False,
+				help="Export values using the float64 data type"):
+				float64_t = np.dtype('float64').type
+				self._values_expand = (values.astype(float64_t) 
+					+ float64_t(self.multip_step) * valuesq)
+			else:
+				self._values_expand = (values+valuesq.astype(self.float_t)*self.multip_step)
+		else:
+			self._values_expand = values
+	return self._values_expand
+
+def values(self): # TODO : AD...
+	if self._values is None:
+		self._values = fd.block_squeeze(self.values_expand,self.shape)
+	return self._values
+
+
 def PostProcess(self):
 	if self.verbosity>=1: print("Post-Processing")
 	eikonal = self.kernel_data['eikonal']
 
-	values = fd.block_squeeze(eikonal.args['values'],self.shape)
-	if eikonal.policy.multiprecision:
-		valuesq = fd.block_squeeze(eikonal.args['valuesq'],self.shape)
-		if self.GetValue('values_float64',default=False,
-			help="Export values using the float64 data type"):
-			float64_t = np.dtype('float64').type
-			self.values = (values.astype(float64_t) 
-				+ float64_t(self.multip_step) * valuesq)
-		else:
-			self.values = (values+valuesq.astype(self.float_t)*self.multip_step)
-	else:
-		self.values = values
+	# values are now extracted only if needed
+#	values = fd.block_squeeze(eikonal.args['values'],self.shape)
+#	if eikonal.policy.multiprecision:
+#		valuesq = fd.block_squeeze(eikonal.args['valuesq'],self.shape)
+#		if self.GetValue('values_float64',default=False,
+#			help="Export values using the float64 data type"):
+#			float64_t = np.dtype('float64').type
+#			self.values = (values.astype(float64_t) 
+#				+ float64_t(self.multip_step) * valuesq)
+#		else:
+#			self.values = (values+valuesq.astype(self.float_t)*self.multip_step)
+#	else:
+#		self.values = values
 
 	# Compute the geodesic flow, if needed, and related quantities
 	shape_oi = self.shape_o+self.shape_i
@@ -56,13 +80,23 @@ def PostProcess(self):
 	if self.flow_needed:
 		self.Solve('flow')
 
-	if 'flow_vector' in flow.args:
-		self.flow_vector = fd.block_squeeze(flow.args['flow_vector'],self.shape)
+	flow_normalization_needed = self.forwardAD or self.reverseAD or self.exportGeodesicFlow
+	if flow_normalization_needed:
+		flow_vector = fd.block_squeeze(flow.args['flow_vector'],self.shape)
 		if self.model_ in ('Rander','AsymmetricQuadratic'):
-			self.flow_normalization=np.where(self.seedTags,1.,self.metric.norm(-self.flow_vector))
-			self.flow_vector/=self.flow_normalization
+			self.flow_normalization = np.where(self.seedTags,1.,self.metric.norm(-self.flow_vector))
 		if self.exportGeodesicFlow:
-			self.hfmOut['flow'] = - self.flow_vector * self.h_broadcasted
+			flow_vector/=self.flow_normalization # Flow on adimensionized grid
+			flow_vector *= -self.h_broadcasted  
+			self.hfmOut['flow'] = flow_vector
+
+#	if 'flow_vector' in flow.args:
+#		self.flow_vector = fd.block_squeeze(flow.args['flow_vector'],self.shape)
+#		if self.model_ in ('Rander','AsymmetricQuadratic'):
+#			self.flow_normalization=np.where(self.seedTags,1.,self.metric.norm(-self.flow_vector))
+#			self.flow_vector/=self.flow_normalization
+#		if self.exportGeodesicFlow:
+#			self.hfmOut['flow'] = - self.flow_vector * self.h_broadcasted
 	
 def SolveLinear(self,rhs,diag,indices,weights,chg,kernelName):
 	"""
@@ -148,14 +182,14 @@ def SolveAD(self):
 		grad = self.rhs.gradient()
 		rhs = np.where(self.seedTags, grad, grad*self.rhs.value)
 
-		if self.model_=='Rander': rhs*=self.flow_normalization
+		if self.model_=='Rander': rhs*=self.flow_normalization # TODO : whenever it is not None
 		rhs = fd.block_expand(rhs,self.shape_i,mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
 		coef = np.moveaxis(fd.block_squeeze(valueVariation,self.shape),0,-1)
 #		coef[self.walls]=np.nan
 #		self.hfmOut['valueVariation'] = coef
 		val = self.values
-		self.values = ad.Dense.new(val,cp.asarray(coef,val.dtype))
+		self._values = ad.Dense.new(val,cp.asarray(coef,val.dtype))
 
 
 	if self.reverseAD:
@@ -178,7 +212,7 @@ def SolveAD(self):
 		pos = tuple(self.seedIndices.T)
 		seedSensitivity = allSensitivity[pos]
 		allSensitivity[pos]=0
-		if self.model_=='Rander': 
+		if self.model_=='Rander': # TODO : Whenever it is not None
 			allSensitivity/=ad.cupy_support.expand_dims(self.flow_normalization,axis=-1)
 		self.hfmOut['costSensitivity'] = allSensitivity 
 
