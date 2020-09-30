@@ -13,6 +13,7 @@ and not on others (including nbviewer).
 
 The solution is to replace + with {+} in the start of a line, 
 if the next character is a blank space. Likewise for - and *.
+I have once encountered a rare similar bug with =, but was not able to reproduce.
 
 ---
 Another issue was encountered in an equation of the form
@@ -75,7 +76,7 @@ def TestMarkdownCell(where,cell,cache,dirname):
 		else:
 			eqn = eqn+line
 			l = line.lstrip()
-			if line[0]=='<' or (l[0] in ['+','-','*'] and l[1]==' '):
+			if line[0]=='<' or (l[0] in ['+','-','*'] and l[1]==' '): # also '=' ? 
 				print(f"--- Markdown displaymath issue ", where, " : ---")
 				print(eqn)
 				showcell(cell)
