@@ -519,7 +519,7 @@ class dictIn(MutableMapping):
 		  Obtained from the values by automatic differentiation if unspecified.
 
 		Outputs : the subgrid used for factorization
-		Side effect : sets 'factoringValue', 'factoringGradient', 
+		Side effect : sets 'factoringValues', 'factoringGradients', 
 		   and in the case of a subgrid 'factoringIndexShift'
 		"""
 
