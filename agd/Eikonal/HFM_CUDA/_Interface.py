@@ -137,6 +137,11 @@ class Interface(object):
 	adaptive_gauss_siedel_iteration = _solvers.adaptive_gauss_siedel_iteration
 	set_minChg_thres = _solvers.set_minChg_thres
 	SolveLinear = _PostProcess.SolveLinear
+	
+	@property
+	def values_expand(self): return _PostProcess.values_expand(self)
+	@property
+	def values(self): return _PostProcess.values(self)
 
 
 	@property

@@ -65,8 +65,9 @@ def GetGeodesics(self):
 		def SetCst(*args):
 			cupy_module_helper.SetModuleConstant(geodesic.module,*args)
 		# Note: geodesic solver does not use bilevel array structure
-		SetCst('shape_i',self.shape_i,self.int_t)
 		SetCst('shape_o',self.shape_o,self.int_t)
+		SetCst('shape_i',self.shape_i,self.int_t)
+		SetCst('size_i', self.size_i, self.int_t)
 		shape_tot = self.shape
 		SetCst('shape_tot',shape_tot,self.int_t)
 #		size_tot = int(np.prod(shape_tot))  #distinct from size_tot used for solver

@@ -41,18 +41,19 @@ const Int ndim = 2;
 //const bool periodic[ndim]={false,true}; //must be defined
 #endif
 
-#include "Geometry_.h"
-#include "Grid.h"
-
 const Int ncorners = 1<<ndim;
 __constant__ Int shape_tot[ndim];
 __constant__ Int size_tot;
 
 #define bilevel_grid_macro 
 #ifdef bilevel_grid_macro 
-__constant__ Int shape_i[ndim]; 
 __constant__ Int shape_o[ndim]; 
+__constant__ Int shape_i[ndim]; 
+__constant__ Int size_i;
 #endif
+
+#include "Geometry_.h"
+#include "Grid.h"
 
 __constant__ Int nGeodesics;
 __constant__ Int max_len = 200; // Max geodesic length
@@ -143,7 +144,7 @@ ODEStop::Enum NormalizedFlow(
 				dist_cache[icorner]=infinity(); 
 				continue;}
 
-			#if bilevel_grid_macro
+			#ifdef bilevel_grid_macro
 			const Int ny = Grid::Index_tot(yq);
 			#else
 			const Int ny = Grid::Index_per(yq,shape_tot);
@@ -176,7 +177,7 @@ ODEStop::Enum NormalizedFlow(
 	Int yq[ndim]; copy_vV(xq,yq); 
 	for(Int k=0; k<ndim; ++k){if((imin>>k)&1) {yq[k]+=1;}}
 
-	#if bilevel_grid_macro
+	#ifdef bilevel_grid_macro
 	const Int ny = Grid::Index_tot(yq);
 	#else
 	const Int ny = Grid::Index_per(yq,shape_tot);

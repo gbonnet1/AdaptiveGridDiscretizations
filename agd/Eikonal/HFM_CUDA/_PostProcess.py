@@ -16,6 +16,9 @@ from ... import AutomaticDifferentiation as ad
 # This file implements some member functions of the Interface class of HFM_CUDA
 
 def values_expand(self):
+	"""
+	Returns the solution to the eikonal equation, expanded in the kernel adapted block format.
+	"""
 	if self._values_expand is None:
 		eikonal = self.kernel_data['eikonal']
 		values = eikonal.args['values']
@@ -32,7 +35,10 @@ def values_expand(self):
 			self._values_expand = values
 	return self._values_expand
 
-def values(self): # TODO : AD...
+def values(self):
+	"""
+	Returns the solution to the eikonal equation.
+	"""
 	if self._values is None:
 		self._values = fd.block_squeeze(self.values_expand,self.shape)
 	return self._values
@@ -42,6 +48,8 @@ def PostProcess(self):
 	if self.verbosity>=1: print("Post-Processing")
 	eikonal = self.kernel_data['eikonal']
 
+	self._values_expand=None
+	self._values=None
 	# values are now extracted only if needed
 #	values = fd.block_squeeze(eikonal.args['values'],self.shape)
 #	if eikonal.policy.multiprecision:
