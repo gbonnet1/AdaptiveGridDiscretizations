@@ -88,13 +88,16 @@ def PostProcess(self):
 	if self.flow_needed:
 		self.Solve('flow')
 
-	flow_normalization_needed = self.forwardAD or self.reverseAD or self.exportGeodesicFlow
-	if flow_normalization_needed:
+	self.flow_normalization = None
+	flow_normalization_needed = ( (self.forwardAD or self.reverseAD) 
+		and (self.model_ in ('Rander','AsymmetricQuadratic')) )
+
+	if flow_normalization_needed or self.exportGeodesicFlow:
 		flow_vector = fd.block_squeeze(flow.args['flow_vector'],self.shape)
-		if self.model_ in ('Rander','AsymmetricQuadratic'):
-			self.flow_normalization = np.where(self.seedTags,1.,self.metric.norm(-self.flow_vector))
-		if self.exportGeodesicFlow:
+		if flow_normalization_needed:
+			self.flow_normalization = np.where(self.seedTags,1.,self.metric.norm(-flow_vector))
 			flow_vector/=self.flow_normalization # Flow on adimensionized grid
+		if self.exportGeodesicFlow:
 			flow_vector *= -self.h_broadcasted  
 			self.hfmOut['flow'] = flow_vector
 
@@ -190,7 +193,8 @@ def SolveAD(self):
 		grad = self.rhs.gradient()
 		rhs = np.where(self.seedTags, grad, grad*self.rhs.value)
 
-		if self.model_=='Rander': rhs*=self.flow_normalization # TODO : whenever it is not None
+		if self.flow_normalization is not None: rhs*=self.flow_normalization
+#		if self.model_=='Rander': rhs*=self.flow_normalization # TODO : whenever it is not None
 		rhs = fd.block_expand(rhs,self.shape_i,mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
 		coef = np.moveaxis(fd.block_squeeze(valueVariation,self.shape),0,-1)
@@ -220,7 +224,8 @@ def SolveAD(self):
 		pos = tuple(self.seedIndices.T)
 		seedSensitivity = allSensitivity[pos]
 		allSensitivity[pos]=0
-		if self.model_=='Rander': # TODO : Whenever it is not None
+		if self.flow_normalization is not None:
+#		if self.model_=='Rander': # TODO : Whenever it is not None
 			allSensitivity/=ad.cupy_support.expand_dims(self.flow_normalization,axis=-1)
 		self.hfmOut['costSensitivity'] = allSensitivity 
 
