@@ -46,11 +46,9 @@ __constant__ Int shape_tot[ndim];
 __constant__ Int size_tot;
 
 #define bilevel_grid_macro 
-#ifdef bilevel_grid_macro 
 __constant__ Int shape_o[ndim]; 
 __constant__ Int shape_i[ndim]; 
 __constant__ Int size_i;
-#endif
 
 #include "Geometry_.h"
 #include "Grid.h"
@@ -143,12 +141,8 @@ ODEStop::Enum NormalizedFlow(
 			if(!Grid::InRange_per(yq,shape_tot)){
 				dist_cache[icorner]=infinity(); 
 				continue;}
-
-			#ifdef bilevel_grid_macro
 			const Int ny = Grid::Index_tot(yq);
-			#else
-			const Int ny = Grid::Index_per(yq,shape_tot);
-			#endif
+			
 			// Load distance and flow 
 			dist_cache[icorner] = dist_t[ny];
 			for(Int k=0; k<ndim; ++k){
@@ -176,12 +170,7 @@ ODEStop::Enum NormalizedFlow(
 	if(dist_min==infinity()){return ODEStop::InWall;}
 	Int yq[ndim]; copy_vV(xq,yq); 
 	for(Int k=0; k<ndim; ++k){if((imin>>k)&1) {yq[k]+=1;}}
-
-	#ifdef bilevel_grid_macro
 	const Int ny = Grid::Index_tot(yq);
-	#else
-	const Int ny = Grid::Index_per(yq,shape_tot);
-	#endif
 	
 	// Set the distance threshold
 	if(ny!=nymin){

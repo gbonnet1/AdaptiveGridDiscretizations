@@ -70,8 +70,6 @@ def GetGeodesics(self):
 		SetCst('size_i', self.size_i, self.int_t)
 		shape_tot = self.shape
 		SetCst('shape_tot',shape_tot,self.int_t)
-#		size_tot = int(np.prod(shape_tot))  #distinct from size_tot used for solver
-#		SetCst('size_tot', size_tot, self.int_t)
 		SetCst('size_tot',self.size_tot,self.int_t)
 		typical_len = int(max(40,0.5*np.max(shape_tot)/geodesic_step))
 		typical_len = self.GetValue('geodesic_typical_length',default=typical_len,
@@ -118,9 +116,6 @@ def GetGeodesics(self):
 			help="Maximum allowed length of geodesics.")
 		
 		flow = self.kernel_data['flow']
-#		flow_vector    = self.flow_vector
-#		flow_weightsum = fd.block_squeeze(flow.args['flow_weightsum'],self.shape)
-#		args = (flow_vector,flow_weightsum,values,eucl)
 		args = (flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl)
 
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)
