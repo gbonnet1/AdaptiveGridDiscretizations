@@ -98,15 +98,20 @@ def SetRHS(self):
 			[(seeds,seedsU),(seedIndices,seedIndicesU),(seedValues,seedValuesU)])
 
 	if seeds is None and seedsU is None:
-		if eikonal.solver=='global_iteration': return
+		self.rhs = rhs
+		self.forwardAD = ad.is_ad(rhs)
+		self.seedTags = seedTags
+
+		if eikonal.policy.solver=='global_iteration': return
 		trigger = self.GetValue('trigger',
 			help="Points which trigger the eikonal solver front propagation")
 		# Fatten the trigger a little bit
 		trigger = cp.asarray(trigger,dtype=np.uint8)
 		conv_kernel = cp.ones( (3,)*self.ndim,dtype=np.uint8)
-		trigger = inf_convolution(trigger,conv_kernel,self.periodic,mix_is_min=False)
+		trigger = inf_convolution(trigger,conv_kernel,
+			periodic=self.periodic,mix_is_min=False)
 		eikonal.trigger = trigger
-		return rhs,seedTags
+		return 
 
 	rhs,seedValues = ad.common_cast(rhs,seedValues)
 	pos = tuple(seedIndices.T)

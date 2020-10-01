@@ -25,6 +25,18 @@ def RunGPU(hfmIn,*args,cache=None,**kwargs):
 	if cache is not None: print(f"Warning : gpu eikonal solver does not support caching")
 	return _Interface.Interface(hfmIn).Run(*args,**kwargs)
 
+	# Arguments for glued domains : glue, far, niter, nitergeo
+	# Run niter times, while pasting the values
+	# Extract geodesics. Stop them when too far.
+	# -> reintroduce suitable seed
+	# -> stop when leave domain. Use InWall stopping criterion, 
+	# by setting the distance to infinity when far (?)
+	# In that case, we do not really need a predicate...
+	# -> Present geodesics as successions of pieces
+
+
+
+
 class EikonalGPU_NotImplementedError(Exception):
 	def __init__(self,message):
 		super(EikonalGPU_NotImplementedError,self).__init__(message)
