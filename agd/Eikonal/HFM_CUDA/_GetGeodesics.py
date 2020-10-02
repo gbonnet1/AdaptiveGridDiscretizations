@@ -164,3 +164,5 @@ def GetGeodesics(self):
 		if self.isCurvature and self.tips_Unoriented is not None:
 			self.hfmOut['geodesics_Unoriented']=geodesics[-len(self.tips_Unoriented):]
 		self.hfmOut['geodesic_stopping_criteria'] = stopping_criterion
+
+		if self.chart is not None: self.chart.pop('mapping') # Was modified ...
