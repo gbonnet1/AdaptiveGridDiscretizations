@@ -13,6 +13,7 @@ from . import _GetGeodesics
 from . import _PostProcess
 from . import _SetGeometry
 from . import _SetArgs
+from . import _Chart
 
 from ... import AutomaticDifferentiation as ad
 from ... import Metrics
@@ -20,7 +21,7 @@ from ... import LinearParallel as lp
 
 class Interface(object):
 	"""
-	This class carries out the RunGPU function work. 
+	This class carries out the RunGPU function work. n
 	It should not be used directly.
 	"""
 	def __init__(self,hfmIn):
@@ -128,7 +129,7 @@ class Interface(object):
 	SetArgs = _SetArgs.SetArgs
 	SetKernel = _Kernel.SetKernel
 	Solve = _solvers.Solve
-	ChartInter = _Chart.ChartIter
+	ChartGlue = _Chart.ChartGlue
 	PostProcess = _PostProcess.PostProcess
 	SolveAD = _PostProcess.SolveAD
 	GetGeodesics = _GetGeodesics.GetGeodesics

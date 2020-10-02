@@ -53,7 +53,7 @@ def GetGeodesics(self):
 			'Int':self.int_t,
 			'Scalar':self.float_t})
 
-		eucl_t = geodesic.traits['EuclT']
+		eucl_t = traits['EuclT']
 		eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
 		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
 		if self.chart is not None: 

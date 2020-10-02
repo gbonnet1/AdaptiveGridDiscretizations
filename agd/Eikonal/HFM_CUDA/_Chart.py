@@ -8,8 +8,13 @@ glued along a band along their boundary.
 It works by gluing the appropriate values, selecting the smallest ones each time, 
 and calling again the solver, a prescribed number of times.
 """
-
+import os
 import cupy as cp
+import numpy as np
+
+from . import cupy_module_helper
+from .cupy_module_helper import SetModuleConstant
+from ... import FiniteDifferences as fd
 
 chart_help = """Use for a manifold defined by several local charts.
 Dictionary with members : 
@@ -23,8 +28,8 @@ def ChartGlue(self):
 	self.chart = self.GetValue('chart',default=None,help=chart_help)
 	if self.chart is None: return
 	
-	neik = self.chart['neik']
-	if neik<=1: return
+	neik = self.chart['niter']
+#	if neik<=1: return
 
 	# Adimensionize the mapping
 	mapping = cp.ascontiguousarray(cp.asarray(self.chart['mapping'],dtype=self.float_t))
@@ -34,11 +39,11 @@ def ChartGlue(self):
 	mapping -= 0.5
 
 	self.chart['mapping'] = mapping # Cast useful in geodesic solver also
-	paste = cp.ascontiguousarray(cp.asarray(self.chart['paste'],dtype=self.boolatom_t))
+	paste = cp.ascontiguousarray(cp.asarray(self.chart['paste'],dtype=bool))
 
 	ndim_s = len(shape_s)
-	ndim_b = self.ndim-self.ndim_s
-	if ndim_b<0 or self.shape[ndim_b:]!=self.shape_s or len(mapping)!=self.vdim:
+	ndim_b = self.ndim-ndim_s
+	if ndim_b<0 or self.shape[ndim_b:]!=shape_s or len(mapping)!=self.ndim:
 		raise ValueError(f"Inconsistent shape of field chart['mapping'] : {mapping.shape}")
 	if paste.shape!=shape_s:
 		raise ValueError(f"Inconsistent shape of field chart['paste'] : {paste.shape}, expected {shape_s}")
@@ -50,7 +55,7 @@ def ChartGlue(self):
 	traits = {
 		'Int':self.int_t,
 		'Scalar':self.float_t,
-		'ndim':self.vdim,
+		'ndim':self.ndim,
 		'ndim_s':ndim_s,
 		'multiprecision_macro':multip,
 	}
@@ -61,6 +66,7 @@ def ChartGlue(self):
 	source += [
 	'#include "Paste.h"',
 	f"// Date cuda code last modified : {date_modified}"]
+	cuoptions = ("-default-device", f"-I {cuda_path}") 
 	source="\n".join(source)
 	module = cupy_module_helper.GetModule(source,cuoptions)
 
@@ -71,11 +77,17 @@ def ChartGlue(self):
 	SetModuleConstant(module,'size_s',np.prod(shape_s),self.int_t)
 	if multip: SetModuleConstant(multip,'multip_step',self.multip_step,self.float_t)
 
+	# Trigger not adequate : ill shaped, and must be preserved for geodesics, etc
 	args = (eikonal.args['values'],eikonal.trigger,mapping,paste) 
 	if multip: args = (args[:1]+(eikonal.args['valuesq'],eikonal.args['valuesNext'],
 		eikonal.args['valuesqNext'])+args[1:])
 	kernel = module.get_function('Paste')
 	
+	print("vals",args[0].shape,args[0].dtype)
+	print("trigger",args[1].shape,args[1].dtype)
+	print("mapping",args[2].shape,args[2].dtype)
+	print("paste",args[3].shape,args[3].dtype)
+
 	for i in range(neik-1):
 		kernel((self.size_o,),(self.size_i,),args)
 		self.Solve("eikonal")

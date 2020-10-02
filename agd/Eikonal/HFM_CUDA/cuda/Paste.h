@@ -33,6 +33,7 @@ const Int ndim_s; // Number of dimensions of broadcasted arrays
 
 const Scalar boundary_tol = 1e-4;
 const Int ncorner_s = 1<<ndim_s;
+typedef unsigned char BoolAtom;
 
 // Shape of the cartesian grid on which the solution is defined
 __constant__ Int shape_tot[ndim];
@@ -40,6 +41,8 @@ __constant__ Int shape_o[ndim];
 __constant__ Int shape_i[ndim]; 
 __constant__ Int size_i;
 __constant__ Int size_s; // Size of broadcasted array
+#define bilevel_grid_macro
+#include "Grid.h"
 
 #if multiprecision_macro
 #define MULTIP(...) __VA_ARGS__
@@ -67,7 +70,7 @@ __global__ void Paste(
 	BoolAtom * __restrict__ trigger_t,
 
 	// Where to paste
-	const Scalar * __restrict__ mapping_s
+	const Scalar * __restrict__ mapping_s,
 	const BoolAtom * __restrict__ pasting_s
 	){
 
@@ -122,7 +125,7 @@ for(Int icorner=0; icorner<ncorner_s; ++icorner){
 		y_t[ndim_b+i] = q_t[i] + eps;
 		w *= eps ? r_t[i] : (1-r_t[i]);
 	}
-	ny_t = Grid::Index_tot(y_t);
+	const Int ny_t = Grid::Index_tot(y_t);
 	u_mapped += w * (u_t[ny_t] MULTIP(+(uq_t[ny_t]-uq_orig)*multip_step) );
 }
 
