@@ -225,6 +225,7 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 	const Int ndim_b = ndim - ndim_s;
 	Int    xq_s[ndim_s]; // xq_s[ndim_s]
 	Scalar xr_s[ndim_s];
+	Scalar * x_s = x+ndim_b; // x_s[ndim_s]
 	for(Int i=0; i<ndim_s; ++i){
 		xq_s[i] = floor(x_s[i]); // Integer part
 		xr_s[i] = x_s[i]-xq_s[i]; // Fractional part
@@ -240,17 +241,17 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 	for(Int i=0; i<ndim_s; ++i){mapping_sum[i]=0; mapping_sqs[i]=0;}
 	#endif
 
-	for(Int icorner=0; icorner<ncorner_s; ++i){
+	for(Int icorner=0; icorner<ncorner_s; ++icorner){
 		Scalar w=1.; // Interpolation weight
 		for(Int i=0; i<ndim_s; ++i){
 			const Int eps = (icorner>>i) & 1;
 			yq[ndim_b+i] = xq_s[i] + eps;
 			w *= eps ? xr_s[i] : (1.-xr_s[i]);
 		}
-		const Int ny_s = Index_per(yq,shape_tot); // % size_s (un-necessary)
+		const Int ny_s = Grid::Index_per(yq,shape_tot); // % size_s (un-necessary)
 		for(Int i=0; i<ndim_b; ++i){
 			const Scalar mapping = mapping_s[size_s*i+ny_s];
-			x[ndim_b+i] += w * mapping;
+			x_s[i] += w * mapping;
 			#ifdef chart_variance_macro
 			mapping_sum_s[i]+=mapping;
 			mapping_sqs_s[i]+=mapping*mapping;
@@ -270,7 +271,7 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 	// Using mapping from nearest point
 	for(Int i=0; i<ndim_s; ++i){ yq[ndim_b+i] = xq_s[i] + (xr_s[i]>0.5 ? 1 : 0);}
 	const Int ny_s = Index_per(yq,shape_tot); // % size_s (un-necessary)
-	for(Int i=0; i<ndim_b; ++i){x[ndim_b+i] = mapping_s[size_s*i+ny_s];}
+	for(Int i=0; i<ndim_b; ++i){x_s[i] = mapping_s[size_s*i+ny_s];}
 	#endif // chart_variance_macro
 }
 #else

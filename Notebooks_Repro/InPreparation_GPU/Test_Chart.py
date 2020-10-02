@@ -5,6 +5,7 @@ from agd import AutomaticDifferentiation as ad
 from agd import Metrics
 from agd import LinearParallel as lp
 from agd.Interpolation import map_coordinates
+from agd.AutomaticDifferentiation.Optimization import norm
 
 from agd.ExportedCode.Notebooks_Algo import RollingBall_Models
 
@@ -78,6 +79,7 @@ if True:
 		'mapping':glue(X),
 		'paste':xp.full(hfmIn.shape,True,dtype=bool),
 		'niter':1,
+		'jump':norm(X)>=1.05
 	}
 
 	hfmIn.Run()
