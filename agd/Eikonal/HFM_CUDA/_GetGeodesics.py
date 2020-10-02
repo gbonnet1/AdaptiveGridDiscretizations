@@ -52,6 +52,17 @@ def GetGeodesics(self):
 			'ndim':self.ndim,
 			'Int':self.int_t,
 			'Scalar':self.float_t})
+
+		eucl_t = geodesic.traits['EuclT']
+		eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
+		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
+		if self.chart is not None: 
+			eucl_chart = eucl_max-1 if eucl_integral else np.finfo(eucl_t).max
+			mapping = self.chart['mapping']
+			traits.update({
+				'chart_macro':1,
+				'EuclT_chart':eucl_chart,
+				'ndim_s':mapping.ndim-1})
 		geodesic.traits=traits
 
 		# Get the module
@@ -85,9 +96,6 @@ def GetGeodesics(self):
 		eucl_bound_default = 12 if self.isCurvature else 6
 		eucl_bound = self.GetValue('geodesic_targetTolerance',default=eucl_bound_default,
 			help="Tolerance, in pixels, for declaring a seed as reached.")
-		eucl_t = geodesic.traits['EuclT']
-		eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
-		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
 		# Note: self.seedTags includes the walls, which we do not want here, hence trigger
 		seeds = self.kernel_data['eikonal'].trigger
 		eucl = np.full_like(seeds,eucl_max,dtype=eucl_t)
@@ -98,6 +106,10 @@ def GetGeodesics(self):
 		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,periodic=self.periodic,
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
+		if self.chart is not None: 
+			eucl[eucl==eucl_chart]=eucl_max
+			eucl[self.chart['jump']] = eucl_chart
+			SetCst('size_s',mapping.size/len(mapping),self.int_t)
 		eucl = fd.block_expand(eucl,self.shape_i,mode='constant',constant_values=eucl_max)
 		eucl=cp.ascontiguousarray(eucl)
 
@@ -116,7 +128,8 @@ def GetGeodesics(self):
 			help="Maximum allowed length of geodesics.")
 		
 		flow = self.kernel_data['flow']
-		args = (flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl)
+		args = [flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl]
+		if self.chart is not None: args.append(mapping)
 
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)
 

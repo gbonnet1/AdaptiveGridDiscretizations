@@ -109,6 +109,7 @@ class Interface(object):
 		self.SetArgs()
 		self.SetKernel()
 		self.Solve('eikonal')
+		self.ChartGlue()
 		self.PostProcess()
 		self.SolveAD()
 		self.GetGeodesics()
@@ -127,6 +128,7 @@ class Interface(object):
 	SetArgs = _SetArgs.SetArgs
 	SetKernel = _Kernel.SetKernel
 	Solve = _solvers.Solve
+	ChartInter = _Chart.ChartIter
 	PostProcess = _PostProcess.PostProcess
 	SolveAD = _PostProcess.SolveAD
 	GetGeodesics = _GetGeodesics.GetGeodesics
@@ -142,7 +144,6 @@ class Interface(object):
 	def values_expand(self): return _PostProcess.values_expand(self)
 	@property
 	def values(self): return _PostProcess.values(self)
-
 
 	@property
 	def isCurvature(self):

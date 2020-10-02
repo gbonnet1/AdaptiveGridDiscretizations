@@ -196,13 +196,95 @@ ODEStop::Enum NormalizedFlow(
 	return result;
 }
 
+#ifdef chart_macro
+#define CHART(...) __VA_ARGS__
+/* 
+This function jumps the current geodesic point to a prescribed position. 
+It is required in the case of a manifold defined by local charts, when the geodesic leaves 
+a given chart. The provided mapping should map in the interior of another chart.
+
+When three or more local charts are used, the mapping is discontinuous. 
+Optionally, this can be detected, and the average jump be replaced with a 
+jump from rounded point.
+
+// The following must be defined externally
+const Int ndim_s; // Number of dimensions in mapping (first are broadcasted)
+const EuclT EuclT_chart; // EuclT value when a jump is to be done
+
+// Optionally
+#define chart_variance_macro
+const Scalar chart_variance; // Maximum variance allowed for the jump
+*/
+const Int ncorner_s = 1<<ndim_s;
+__constant__ Int size_s;
+
+void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
+	// Replaces x with mapped point.	
+
+	// Get integer and floating point part of x. Care about array broadcasting
+	const Int ndim_b = ndim - ndim_s;
+	Int    xq_s[ndim_s]; // xq_s[ndim_s]
+	Scalar xr_s[ndim_s];
+	for(Int i=0; i<ndim_s; ++i){
+		xq_s[i] = floor(x_s[i]); // Integer part
+		xr_s[i] = x_s[i]-xq_s[i]; // Fractional part
+		x_s[i] = 0; // Erase position, for future averaging
+	}
+
+	Int    yq[ndim]; // Interpolation point
+	for(Int i=0; i<ndim_b; ++i) yq[i]=0; // Broadcasting first dimensions
+	
+	#ifdef chart_variance_macro
+	Scalar mapping_sum_s[ndim_s]; // Coordinates sum
+	Scalar mapping_sqs_s[ndim_s]; // Squared coordinates sum
+	for(Int i=0; i<ndim_s; ++i){mapping_sum[i]=0; mapping_sqs[i]=0;}
+	#endif
+
+	for(Int icorner=0; icorner<ncorner_s; ++i){
+		Scalar w=1.; // Interpolation weight
+		for(Int i=0; i<ndim_s; ++i){
+			const Int eps = (icorner>>i) & 1;
+			yq[ndim_b+i] = xq_s[i] + eps;
+			w *= eps ? xr_s[i] : (1.-xr_s[i]);
+		}
+		const Int ny_s = Index_per(yq,shape_tot); // % size_s (un-necessary)
+		for(Int i=0; i<ndim_b; ++i){
+			const Scalar mapping = mapping_s[size_s*i+ny_s];
+			x[ndim_b+i] += w * mapping;
+			#ifdef chart_variance_macro
+			mapping_sum_s[i]+=mapping;
+			mapping_sqs_s[i]+=mapping*mapping;
+			#endif
+		}
+	} // for icorner
+
+	#ifdef chart_variance_macro 
+	// Check the variance of the mapped values. If too large, use jump at rounded point.
+	Scalar mapping_var = 0.;
+	for(Int i=0; i<ndim_s; ++i){
+		mapping_var += mapping_sqs_s[i]/ncorner_s // Variance of i-th coordinate of mapping
+		 - (mapping_sum_s[i]*mapping_sum_s[i])/(ncorner_s*ncorner_s);}
+	if(mapping_var < chart_variance) return;
+
+	// Variance of mapped values is too large. Chart discontinuity detected. 
+	// Using mapping from nearest point
+	for(Int i=0; i<ndim_s; ++i){ yq[ndim_b+i] = xq_s[i] + (xr_s[i]>0.5 ? 1 : 0);}
+	const Int ny_s = Index_per(yq,shape_tot); // % size_s (un-necessary)
+	for(Int i=0; i<ndim_b; ++i){x[ndim_b+i] = mapping_s[size_s*i+ny_s];}
+	#endif // chart_variance_macro
+}
+#else
+#define CHART(...) 
+#endif // chart_macro
 
 extern "C" {
 
 __global__ void GeodesicODE(
 	const Scalar * flow_vector_t, const Scalar * flow_weightsum_t,
 	const Scalar * dist_t, const EuclT * eucl_t,
-	Scalar * x_s, Int * len_s, ODEStopT * stop_s){
+	CHART(const Scalar * mapping_s,)
+	Scalar * x_s, Int * len_s, ODEStopT * stop_s
+	){
 
 	const Int tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if(tid>=nGeodesics) return;
@@ -242,6 +324,11 @@ __global__ void GeodesicODE(
 		// Check PastSeed and Stationnary stopping criteria
 		nymin_p[l] = nymin;
 		eucl_p[l] = eucl_t[nymin];
+		
+		#ifdef chart_macro 
+		const bool chart = eucl_p[l]==EuclT_chart; // Detect wether chart change needed
+		if(chart) {eucl_p[l] = eucl_p[(l-1+hlen)%hlen];} // use previous value
+		#endif
 
 		if(nymin     == nymin_p[(l-nymin_delay+hlen)%hlen]){
 						stop = ODEStop::Stationnary; break;}
@@ -261,6 +348,9 @@ __global__ void GeodesicODE(
 
 		madd_kvv(geodesicStep,flow,xPrev,x);
 		copy_vV(x,x_s + (tid*max_len + len)*ndim);
+
+		CHART(if(chart) {ChartJump(mapping_s,x);})
+
 	}
 
 	len_s[tid] = len;

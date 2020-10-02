@@ -149,6 +149,8 @@ def SolveAD(self):
 	Forward and reverse differentiation of the HFM.
 	"""
 	if not (self.forwardAD or self.reverseAD): return
+	if self.chart is not None: 
+		raise ValueError("Sorry, forward and reversed AD not yet supported with charts")
 	eikonal = self.kernel_data['eikonal']
 	flow = self.kernel_data['flow']
 	traits = eikonal.traits
