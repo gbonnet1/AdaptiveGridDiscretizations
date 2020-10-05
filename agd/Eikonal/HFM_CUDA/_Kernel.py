@@ -258,35 +258,3 @@ def SetKernel(self):
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
 #	print(eikonal.args['wallDist'].dtype)
 	flow.args = eikonal.args.copy() # Further arguments added later
-
-
-"""
-			offset_t=self.offset_t
-			scheme = self.kernel_data['scheme']
-			scheme.traits = {'xi_var_macro':0,'kappa_var_macro':0,'theta_var_macro':0,
-				'Scalar':float_t,'Int':int_t,'OffsetT':offset_t,
-				'shape_i':self.shape_i,'nTheta':nTheta,'nFejer_macro':traits.get('nFejer_macro',5),
-				'niter_i':1,'export_scheme_macro':1}
-			scheme.source = cupy_module_helper.traits_header(scheme.traits,
-			join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"
-			scheme.source += model_source+self.cuda_date_modified
-			scheme.module = GetModule(scheme.source,self.cuoptions)
-			for args in ( ('shape_o',self.shape_o,int_t),('size_o',self.size_o,int_t),
-				('shape_tot',self.shape,int_t),('size_tot',size_tot,int_t),
-				('ixi',  self.ixi,float_t), ('kappa',self.kappa,float_t),
-				('cosTheta_s',np.cos(theta),float_t), ('sinTheta_s',np.sin(theta),float_t),
-				('decomp_v_relax',eps**2,float_t)):
-				SetModuleConstant(scheme.module,*args)
-			nactx = self.nscheme['nactx']
-			weights = cp.ascontiguousarray(cp.zeros((nTheta,nactx),float_t))
-			offsets = cp.ascontiguousarray(cp.zeros((nTheta,nactx,self.ndim),offset_t))
-			updateList_o = cp.arange(int(np.ceil(nTheta/self.shape_i[2])),dtype=int_t)
-			dummy = cp.array(0,dtype=float_t) #; weights[0,0]=1; offsets[0,0,0]=2
-			scheme.kernel = scheme.module.get_function("Update")
-			# args : u_t,geom_t,seeds_t,rhs_t,..,..,..,updateNext_o
-			args=(dummy,dummy,dummy,dummy,weights,offsets,updateList_o,dummy)
-			scheme.kernel((updateList_o.size,),(self.size_i,),args)
-			SetCst('precomp_weights_s',weights,float_t)
-			SetCst('precomp_offsets_s',offsets,offset_t)
-			self.hfmOut.update({'scheme_weights':weights,'scheme_offsets':offsets})
-"""
