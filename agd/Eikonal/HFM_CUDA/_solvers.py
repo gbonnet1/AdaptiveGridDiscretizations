@@ -79,14 +79,17 @@ def global_iteration(self,data):
 	updateNow_o  = cp.ones(	self.shape_o,   dtype='uint8')
 	updateNext_o = cp.zeros(self.shape_o,   dtype='uint8')
 	updateList_o = cp.ascontiguousarray(cp.flatnonzero(updateNow_o),dtype=self.int_t)
-	nitermax_o = data.policy.nitermax_o
+	policy = data.policy
+	nitermax_o = policy.nitermax_o
 
 	for niter_o in range(nitermax_o):
 		val_old = data.args['values'].copy()
 		data.kernel((updateList_o.size,),(self.size_i,), 
 			KernelArgs(data) + (updateList_o,updateNext_o))
-		if cp.any(updateNext_o): updateNext_o.fill(0)
-		else: return niter_o
+		if policy.stop(updateNext_o): return niter_o
+		updateNext_o.fill(0)
+#		if cp.any(updateNext_o): updateNext_o.fill(0)
+#		else: return niter_o
 	return nitermax_o
 
 def adaptive_gauss_siedel_iteration(self,data):
@@ -154,11 +157,12 @@ def adaptive_gauss_siedel_iteration(self,data):
 
 	else: # No pruning
 		for niter_o in range(nitermax_o):
+			if policy.stop(update_o): return niter_o
 			updateList_o = cp.ascontiguousarray(cp.flatnonzero(update_o), dtype=self.int_t)
-#			print(update_o.astype(int)); print()
-			if policy.count_updates: nupdate_o += update_o
 			update_o.fill(0)
-			if updateList_o.size==0: return niter_o
+#			if policy.count_updates: nupdate_o += update_o
+#			print(update_o.astype(int)); print()
+#			if updateList_o.size==0: return niter_o
 #			for key,value in self.block.items(): print(key,type(value))
 			data.kernel((updateList_o.size,),(self.size_i,), 
 				KernelArgs(data) + (updateList_o,update_o))
