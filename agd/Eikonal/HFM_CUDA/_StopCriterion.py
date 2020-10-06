@@ -52,8 +52,9 @@ def InitStop(self,kernel_data):
 				kernel_data.args['valuesNext'],kernel_data.args['valuesqNext'],
 				kernel_data.args['values'],kernel_data.args['valuesq'])
 
-		# TODO set some char_kernel constants, for 
-		# forwardAD or reverseAD which need several values to be pasted at each point
+		# TODO. Deal with forwardAD and reverseAD. 
+		# However, issue with the decision to paste or not ? 
+		# Also, several values to paste instead of a single one.
 		if self.forwardAD or self.reverseAD: raise ValueError("Not supported yet")
 
 	# Stopping criterion depends on update_o, which is the list of blocks marked for update.

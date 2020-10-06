@@ -124,7 +124,7 @@ for(Int icorner=0; icorner<ncorner_s; ++icorner){
 }
 
 // Compare values, update if necessary
-if(u_mapped < u_orig){ // Should exclude NaNs, Infs, from u_mapped. Compatible with multip.
+if(u_mapped < u_orig){ // Excludes NaNs, +Infs, from u_mapped. Compatible with multip.
 	update_o[n_o] = 1;
 	#if multiprecision_macro
 	const Int uq_delta = floor(u_mapped/multip_step);
