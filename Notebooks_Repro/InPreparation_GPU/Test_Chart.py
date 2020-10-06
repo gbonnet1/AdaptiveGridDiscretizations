@@ -53,7 +53,7 @@ X = hfmIn.Grid()
 hfmIn['cost']=cost(X)
 hfmIn.SetUniformTips((4,4))
 
-if False:
+if True:
 	# ----------------- No glue ---------------
 	hfmOut = hfmIn.Run()
 
@@ -73,7 +73,7 @@ if False:
 
 	plt.show()
 
-if True:
+if False:
 	# Second 
 	hfmIn['chart'] = {
 		'mapping':glue(X),

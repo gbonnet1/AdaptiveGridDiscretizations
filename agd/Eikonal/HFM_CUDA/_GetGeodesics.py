@@ -132,7 +132,7 @@ def GetGeodesics(self):
 		
 		flow = self.kernel_data['flow']
 		args = [flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl]
-		if self.hasChart is not None: args.append(mapping)
+		if self.hasChart: args.append(mapping)
 
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)
 

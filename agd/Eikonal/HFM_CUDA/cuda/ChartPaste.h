@@ -58,7 +58,7 @@ Array suffix convention :
 
 extern "C" {
 
-__global__ void Paste(
+__global__ void ChartPaste(
 	const Scalar * __restrict__ mapping_s,
 
 	// Solution values

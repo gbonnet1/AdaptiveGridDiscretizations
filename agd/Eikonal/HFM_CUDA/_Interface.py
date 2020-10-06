@@ -13,7 +13,7 @@ from . import _GetGeodesics
 from . import _PostProcess
 from . import _SetGeometry
 from . import _SetArgs
-from . import _Chart
+from . import _StopCriterion
 
 from ... import AutomaticDifferentiation as ad
 from ... import Metrics
@@ -109,7 +109,7 @@ class Interface(object):
 		self.SetGeometry()
 		self.SetArgs()
 		self.SetKernel()
-		self.SetStop()
+		self.SetChart()
 		self.Solve('eikonal')
 		self.PostProcess()
 		self.SolveAD()
@@ -128,7 +128,8 @@ class Interface(object):
 	SetGeometry = _SetGeometry.SetGeometry
 	SetArgs = _SetArgs.SetArgs
 	SetKernel = _Kernel.SetKernel
-	SetStop = _SetStop.SetStop
+	InitStop = _StopCriterion.InitStop
+	SetChart = _StopCriterion.SetChart
 	Solve = _solvers.Solve
 	PostProcess = _PostProcess.PostProcess
 	SolveAD = _PostProcess.SolveAD

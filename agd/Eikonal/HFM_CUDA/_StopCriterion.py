@@ -18,9 +18,6 @@ from .cupy_module_helper import SetModuleConstant
 from ... import FiniteDifferences as fd
 
 
-
-
-
 def InitStop(self,kernel_data):
 	"""
 	Returns the stopping criterion for the given kernel. 
@@ -37,12 +34,13 @@ def InitStop(self,kernel_data):
 		nupdate_o = cp.zeros(self.shape_o,dtype=self.int_t)
 		data.stats['nupdate_o']=nupdate_o
 
-	allow_chart = kernel_data is not self.kernel_data['flow']
-	chart_data = self.kernel_data['chart']
-	nitermax_chart = chart_data.policy.niter_max if allow_chart else 0
-	policy.niter_chart = 0
+	useChart = self.hasChart and (kernel_data is not self.kernel_data['flow'])
 
-	if nitermax_chart>0:
+	if useChart:
+		chart_data = self.kernel_data['chart']
+		nitermax_chart = chart_data.policy.niter_max if allow_chart else 0
+		policy.niter_chart = 0
+
 		chart_kernel = chart_data.kernel
 		chart_args = (chart_data.args['mapping'],kernel_data.args['values'])
 
@@ -69,7 +67,7 @@ def InitStop(self,kernel_data):
 		if np.any(update_o): return False
 
 		# Apply boundary conditions if requested
-		if policy.niter_chart<nitermax_chart:
+		if useChart and policy.niter_chart<nitermax_chart:
 			policy.niter_chart+=1
 			chart_kernel((self.size_o,),(self.size_i,),chart_args+(update_o,))
 			if np.any(update_o): return False

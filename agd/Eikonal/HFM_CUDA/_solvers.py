@@ -80,7 +80,7 @@ def global_iteration(self,data):
 	updateNext_o = cp.zeros(self.shape_o,   dtype='uint8')
 	updateList_o = cp.ascontiguousarray(cp.flatnonzero(updateNow_o),dtype=self.int_t)
 	nitermax_o = data.policy.nitermax_o
-	stop = self.GetStop(data)
+	stop = self.InitStop(data)
 
 	for niter_o in range(nitermax_o):
 		data.kernel((updateList_o.size,),(self.size_i,), 
@@ -102,7 +102,7 @@ def adaptive_gauss_siedel_iteration(self,data):
 	update_o = cp.ascontiguousarray(trigger.astype(np.uint8))
 	policy = data.policy
 	nitermax_o = policy.nitermax_o
-	stop = self.GetStop(data)
+	stop = self.InitStop(data)
 
 	"""Pruning drops the complexity from N+eps*N^(1+1/d) to N, where N is the number 
 	of points and eps is a small but positive constant related with the block size. 
