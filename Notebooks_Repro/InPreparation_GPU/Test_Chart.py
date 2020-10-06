@@ -45,6 +45,7 @@ hfmIn = Eikonal.dictIn({
     'seed':[0.5,0.7],
     'exportValues':True,
     'factoringRadius':10,
+    'multiprecision':True,
 })
 r=1.1
 hfmIn.SetRect([[-r,r],[-r,r]],dimx=101)

@@ -49,8 +49,8 @@ def InitStop(self,kernel_data):
 			assert kernel_data is self.kernel_data['eikonal']
 			chart_kernel = chart_data.kernel_multip
 			chart_args = (chart_data.args['mapping'],
-				kernel_data.args['values'],kernel_data.args['valuesq'],
-				kernel_data.args['values_Next'],kernel_data.args['valuesq_Next'])
+				kernel_data.args['valuesNext'],kernel_data.args['valuesqNext'],
+				kernel_data.args['values'],kernel_data.args['valuesq'])
 
 		# TODO set some char_kernel constants, for 
 		# forwardAD or reverseAD which need several values to be pasted at each point
@@ -138,7 +138,7 @@ def SetChart(self):
 
 	if self.kernel_data['eikonal'].policy.multiprecision:
 		module_multip = cupy_module_helper.GetModule(
-			source+"#define multiprecision_macro 1\n",cuoptions)
+			"#define multiprecision_macro 1\n"+source,cuoptions)
 		chart_data.kernel_multip = module_multip.get_function('ChartPaste')
 		SetModuleConstant(module_multip,'multip_step',self.multip_step,self.float_t)
 		modules.append(module_multip)
