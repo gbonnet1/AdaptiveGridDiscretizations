@@ -50,7 +50,7 @@ class Interface(object):
 
 		self.ndim = len(hfmIn['dims'])
 		self.kernel_data = {key:SimpleNamespace()
-			for key in ('eikonal','flow','scheme','geodesic','forwardAD','reverseAD')}
+			for key in ('eikonal','flow','scheme','geodesic','forwardAD','reverseAD','chart')}
 		for value in self.kernel_data.values(): 
 			value.__dict__.update({'args':dict(),'policy':SimpleNamespace(),'stats':dict()})
 		# ['traits','source','policy','module','kernel','args','trigger','stats']
@@ -109,8 +109,8 @@ class Interface(object):
 		self.SetGeometry()
 		self.SetArgs()
 		self.SetKernel()
+		self.SetStop()
 		self.Solve('eikonal')
-		self.ChartGlue()
 		self.PostProcess()
 		self.SolveAD()
 		self.GetGeodesics()
@@ -128,8 +128,8 @@ class Interface(object):
 	SetGeometry = _SetGeometry.SetGeometry
 	SetArgs = _SetArgs.SetArgs
 	SetKernel = _Kernel.SetKernel
+	SetStop = _SetStop.SetStop
 	Solve = _solvers.Solve
-	ChartGlue = _Chart.ChartGlue
 	PostProcess = _PostProcess.PostProcess
 	SolveAD = _PostProcess.SolveAD
 	GetGeodesics = _GetGeodesics.GetGeodesics

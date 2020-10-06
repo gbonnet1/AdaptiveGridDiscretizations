@@ -79,17 +79,14 @@ def global_iteration(self,data):
 	updateNow_o  = cp.ones(	self.shape_o,   dtype='uint8')
 	updateNext_o = cp.zeros(self.shape_o,   dtype='uint8')
 	updateList_o = cp.ascontiguousarray(cp.flatnonzero(updateNow_o),dtype=self.int_t)
-	policy = data.policy
-	nitermax_o = policy.nitermax_o
+	nitermax_o = data.policy.nitermax_o
+	stop = self.GetStop(data)
 
 	for niter_o in range(nitermax_o):
-		val_old = data.args['values'].copy()
 		data.kernel((updateList_o.size,),(self.size_i,), 
 			KernelArgs(data) + (updateList_o,updateNext_o))
-		if policy.stop(updateNext_o): return niter_o
+		if stop(updateNext_o): return niter_o
 		updateNext_o.fill(0)
-#		if cp.any(updateNext_o): updateNext_o.fill(0)
-#		else: return niter_o
 	return nitermax_o
 
 def adaptive_gauss_siedel_iteration(self,data):
@@ -105,9 +102,7 @@ def adaptive_gauss_siedel_iteration(self,data):
 	update_o = cp.ascontiguousarray(trigger.astype(np.uint8))
 	policy = data.policy
 	nitermax_o = policy.nitermax_o
-	if policy.count_updates:
-		nupdate_o = cp.zeros(self.shape_o,dtype=self.int_t)
-		data.stats["nupdate_o"]=nupdate_o
+	stop = self.GetStop(data)
 
 	"""Pruning drops the complexity from N+eps*N^(1+1/d) to N, where N is the number 
 	of points and eps is a small but positive constant related with the block size. 
@@ -157,17 +152,12 @@ def adaptive_gauss_siedel_iteration(self,data):
 
 	else: # No pruning
 		for niter_o in range(nitermax_o):
-			if policy.stop(update_o): return niter_o
+			if stop(update_o): return niter_o
 			updateList_o = cp.ascontiguousarray(cp.flatnonzero(update_o), dtype=self.int_t)
 			update_o.fill(0)
-#			if policy.count_updates: nupdate_o += update_o
-#			print(update_o.astype(int)); print()
 #			if updateList_o.size==0: return niter_o
-#			for key,value in self.block.items(): print(key,type(value))
 			data.kernel((updateList_o.size,),(self.size_i,), 
 				KernelArgs(data) + (updateList_o,update_o))
-#			print(self.block['values'])
-#			print(self.block['values'],self.block['valuesNext'],self.block['values'] is self.block['valuesNext'])
 
 
 	return nitermax_o

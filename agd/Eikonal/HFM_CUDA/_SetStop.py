@@ -11,19 +11,116 @@ and calling again the solver, a prescribed number of times.
 import os
 import cupy as cp
 import numpy as np
+import functools
 
 from . import cupy_module_helper
 from .cupy_module_helper import SetModuleConstant
 from ... import FiniteDifferences as fd
+
+
+
+
+
+def InitStop(self,kernel_data):
+	"""
+	Setups the stopping criterion for the given solver.
+	"""
+
+	# Stopping criterion depends on update_o, which is the list of blocks marked for update.
+	# Eikonal stopping criterion will be copied for fowardAD and reverseAD.
+	
+	policy = kernel_data.policy
+	if policy.count_updates:
+		nupdate_o = cp.zeros(self.shape_o,dtype=self.int_t)
+		data.stats['nupdate_o']=nupdate_o
+
+	if self.chart is not None:
+		policy.niter_chart = self.chart['niter']
+		#TODO, eventually
+		if policy.multiprecision: raise ValueError("Not supported yet") 
+		if self.fowardAD or self.reverseAD: raise ValueError("Not supported yet")
+
+		chart_data = self.kernel_data['chart']
+		chart_kernel = chart_data.kernel
+		chart_args = (chart_data.args['mapping'],chart_data.args['paste'],
+			kernel_data.args['values'])
+		# Possibly set some char_kernel constants
+	else:
+		policy.niter_chart = 0
+
+	def stop(update_o):
+		# Track the number of updates if necessary
+		if policy.count_updates: nupdate_o+=update_o
+
+		# TODO : Stopping criterion based on accepted tips points ? 
+
+		# Continue normally if any block is marked for update
+		if np.any(update_o): return False
+
+		# Apply boundary conditions if requested
+		if policy.niter_chart>0:
+			policy.niter_chart-=1
+			chart_kernel(chart_args+(update_o,))
+			if np.any(update_o): return False
+		return True
+
+
+
+#	def stop_basic(update_o): 
+#		""""""
+#		return !np.any(update_o) 
+
+	# Flow uses only one iteration. But basic_stop helps detect non-converged iterations.
+#	self.kernel_data['flow'].stop = stop_basic
+
+	# By default, the eikonal policy uses the basic stopping criterion
+#	eikonal = self.kernel_data['eikonal']
+#	policy = eikonal.policy
+#	policy.stop = stop_basic
+
+
+	# In the case of a manifold with local charts, once the solver has stabilized
+	# (no point marked for update), the boundary data is pasted and it is relauched.
+#	SetChart(self)
+#	if self.chart is None: return
+
+#	def stop_chart(nupdate_o):
+#		if np.any(update_o): return False
+
+
+#def GetStop(self,kernel_data):
+	"""
+	Returns the stopping criterion of the kernel data, 
+	possibly with some decorations and initializations.
+	"""
+"""
+	policy = kernel_data.policy
+	if !policy.count_updates: return policy.stop
+
+	# Initialize update counter and decorate
+	nupdate_o = cp.zeros(self.shape_o,dtype=self.int_t)
+	data.stats['nupdate_o']=nupdate_o
+
+	@functools.wraps(policy.stop)
+	def stop_count(nupdate_o):
+		nupdate_o += update_o
+		return policy.stop(update_o)
+
+	return stop_count
+"""
 
 chart_help = """Use for a manifold defined by several local charts.
 Dictionary with members : 
  - mapping : mapping from one chart to the other. [Modified]
  - paste : where to paste values using the mapping, in the eikonal solver.
  - jump : where paths should jump using the mapping, in the geodesic solver.
- - neik : number of calls to the eikonal solver.
+ - niter : number of calls to the eikonal solver.
 """
-def ChartGlue(self):
+def SetChart(self,multip):
+	"""
+	Sets a pasting procedure for manifolds defined by several local charts.
+	"""
+
 	# Import the chart arguments, check their type, cast if necessary
 	self.chart = self.GetValue('chart',default=None,help=chart_help)
 	if self.chart is None: return
@@ -88,9 +185,11 @@ def ChartGlue(self):
 	print("mapping",args[2].shape,args[2].dtype)
 	print("paste",args[3].shape,args[3].dtype)
 
-	for i in range(neik-1):
-		kernel((self.size_o,),(self.size_i,),args)
-		self.Solve("eikonal")
+#	for i in range(neik-1):
+#		kernel((self.size_o,),(self.size_i,),args)
+#		self.Solve("eikonal")
+
+
 
 
 
