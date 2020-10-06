@@ -210,20 +210,27 @@ jump from rounded point.
 // The following must be defined externally
 const Int ndim_s; // Number of dimensions in mapping (first are broadcasted)
 const EuclT EuclT_chart; // EuclT value when a jump is to be done
-
-// Optionally
-#define chart_variance_macro
-const Scalar chart_variance; // Maximum variance allowed for the jump
 */
 const Int ncorner_s = 1<<ndim_s;
 __constant__ Int size_s;
 
+#ifndef chart_jump_variance_macro
+#define chart_jump_variance_macro 0
+#endif
+
+#if chart_jump_variance_macro
+__constant__ Scalar chart_jump_variance;
+#endif
+
 void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 	// Replaces x with mapped point.	
 
+	printf("In jump n_i = %i\n",threadIdx.x);
+	printf("original : %f,%f\n",x[0],x[1]);
+
 	// Get integer and floating point part of x. Care about array broadcasting
 	const Int ndim_b = ndim - ndim_s;
-	Int    xq_s[ndim_s]; // xq_s[ndim_s]
+	Int    xq_s[ndim_s]; 
 	Scalar xr_s[ndim_s];
 	Scalar * x_s = x+ndim_b; // x_s[ndim_s]
 	for(Int i=0; i<ndim_s; ++i){
@@ -235,10 +242,10 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 	Int    yq[ndim]; // Interpolation point
 	for(Int i=0; i<ndim_b; ++i) yq[i]=0; // Broadcasting first dimensions
 	
-	#ifdef chart_variance_macro
+	#if chart_jump_variance_macro
 	Scalar mapping_sum_s[ndim_s]; // Coordinates sum
 	Scalar mapping_sqs_s[ndim_s]; // Squared coordinates sum
-	for(Int i=0; i<ndim_s; ++i){mapping_sum[i]=0; mapping_sqs[i]=0;}
+	for(Int i=0; i<ndim_s; ++i){mapping_sum_s[i]=0; mapping_sqs_s[i]=0;}
 	#endif
 
 	for(Int icorner=0; icorner<ncorner_s; ++icorner){
@@ -248,29 +255,35 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 			yq[ndim_b+i] = xq_s[i] + eps;
 			w *= eps ? xr_s[i] : (1.-xr_s[i]);
 		}
-		const Int ny_s = Grid::Index_per(yq,shape_tot); // % size_s (un-necessary)
-		for(Int i=0; i<ndim_b; ++i){
+		const Int ny_s = Grid::Index_per(yq,shape_tot); // % size_s (unnecessary)
+		printf("yq %i,%i, w %f, ny_s %i\n", yq[0],yq[1],w,ny_s);
+		for(Int i=0; i<ndim_s; ++i){
 			const Scalar mapping = mapping_s[size_s*i+ny_s];
+//			printf("mapping %f",mapping);
 			x_s[i] += w * mapping;
-			#ifdef chart_variance_macro
+			#if chart_jump_variance_macro
 			mapping_sum_s[i]+=mapping;
 			mapping_sqs_s[i]+=mapping*mapping;
 			#endif
 		}
 	} // for icorner
 
-	#ifdef chart_variance_macro 
+	printf("mapped : %f,%f\n",x[0],x[1]);
+
+	#if chart_jump_variance_macro 
 	// Check the variance of the mapped values. If too large, use jump at rounded point.
 	Scalar mapping_var = 0.;
 	for(Int i=0; i<ndim_s; ++i){
 		mapping_var += mapping_sqs_s[i]/ncorner_s // Variance of i-th coordinate of mapping
 		 - (mapping_sum_s[i]*mapping_sum_s[i])/(ncorner_s*ncorner_s);}
-	if(mapping_var < chart_variance) return;
+
+	printf("mapping_var %f\n",mapping_var);
+	if(mapping_var < chart_jump_variance) return;
 
 	// Variance of mapped values is too large. Chart discontinuity detected. 
 	// Using mapping from nearest point
 	for(Int i=0; i<ndim_s; ++i){ yq[ndim_b+i] = xq_s[i] + (xr_s[i]>0.5 ? 1 : 0);}
-	const Int ny_s = Index_per(yq,shape_tot); // % size_s (un-necessary)
+	const Int ny_s = Grid::Index_per(yq,shape_tot); // % size_s (un-necessary)
 	for(Int i=0; i<ndim_b; ++i){x_s[i] = mapping_s[size_s*i+ny_s];}
 	#endif // chart_variance_macro
 }

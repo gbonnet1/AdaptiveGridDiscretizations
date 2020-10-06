@@ -63,6 +63,14 @@ def GetGeodesics(self):
 				'chart_macro':1,
 				'EuclT_chart':eucl_chart,
 				'ndim_s':mapping.ndim-1})
+			chart_jump_deviation = self.GetValue('chart_jump_deviation',default=np.inf,
+				help="Do not interpolate the jump coordinates, among pixel corners, "
+				" if their (adimensionized) standard deviation exceeds this threshold. "
+				"(Use if chart_mapping is discontinuous. Typical value : 5.) ")
+			if chart_jump_deviation is True: chart_jump_deviation=5
+			chart_jump_variance = chart_jump_deviation**2
+			if chart_jump_variance<np.inf: traits['chart_jump_variance_macro']=1
+
 		geodesic.traits=traits
 
 		# Get the module
@@ -111,8 +119,11 @@ def GetGeodesics(self):
 			chart_jump = self.GetValue('chart_jump',help="Where the geodesics should jump "
 				"to another local chart of the manifold")
 			chart_jump = np.broadcast_to(chart_jump,eucl.shape)
-			eucl[self.chart['jump']] = eucl_chart # Set special key for jump 
+			eucl[chart_jump] = eucl_chart # Set special key for jump 
 			SetCst('size_s',mapping.size/len(mapping),self.int_t)
+			if 'chart_jump_variance_macro' in traits: 
+				SetCst('chart_jump_variance',chart_jump_variance,self.float_t)
+
 		eucl = fd.block_expand(eucl,self.shape_i,mode='constant',constant_values=eucl_max)
 		eucl=cp.ascontiguousarray(eucl)
 

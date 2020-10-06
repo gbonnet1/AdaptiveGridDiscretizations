@@ -51,7 +51,8 @@ hfmIn.SetRect([[-r,r],[-r,r]],dimx=101)
 X = hfmIn.Grid()
 
 hfmIn['cost']=cost(X)
-#hfmIn.SetUniformTips((4,4))
+hfmIn.SetUniformTips((4,4))
+hfmIn['tip'] = hfmIn['tips'][0]
 
 if False:
 	# ----------------- No glue ---------------
@@ -66,6 +67,8 @@ if False:
 	plt.contourf(*X,values) 
 	plt.axis('equal')
 
+	for geo in hfmOut['geodesics']: plt.plot(*geo)
+
 	plt.subplot(1,2,2)
 	plt.title('Glued values')
 	plt.contourf(*X,glued_values) 
@@ -77,21 +80,25 @@ if True:
 	# Second 
 	hfmIn['chart_mapping']=glue(X)
 	hfmIn['chart_nitermax']=1
-	# chart_jump also, and we're done
-#	hfmIn['chart'] = {
-#		'mapping':glue(X),
-#		'paste':xp.full(hfmIn.shape,True,dtype=bool),
-#		'niter':1,
-#		'jump':norm(X)>=1.05
-#	}
+	hfmIn['chart_jump'] = norm(X,axis=0)>1.05
+	hfmIn['chart_jump_deviation']=0.2
 
 	hfmOut = hfmIn.Run()
 	values = hfmOut['values']
+
+	print(hfmOut.keys())
+	print(hfmOut['geodesic_stopping_criteria'])
+	for geo in hfmOut['geodesics']: print(geo[:,-1])
 
 	plt.figure(figsize=(16,7))
 	plt.subplot(1,2,1)
 	plt.title('Values of the solution')
 	plt.contourf(*X,values) 
 	plt.axis('equal')
+
+	plt.subplot(1,2,2)
+	plt.contourf(*X,hfmIn['chart_jump']) 
+	for geo in hfmOut['geodesics']: plt.plot(*geo)
+
 
 	plt.show()

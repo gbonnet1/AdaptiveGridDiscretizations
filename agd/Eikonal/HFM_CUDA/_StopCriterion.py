@@ -128,6 +128,7 @@ def SetChart(self):
 		'ndim':self.ndim,
 		'ndim_s':ndim_s,
 	}
+
 	cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 	date_modified = cupy_module_helper.getmtime_max(cuda_path)
 	source = cupy_module_helper.traits_header(traits)

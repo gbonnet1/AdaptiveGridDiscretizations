@@ -79,7 +79,7 @@ class Interface(object):
 			if array_float is False: return value
 			value = self.caster(value)
 			# Check shape
-			if array_float is tuple:
+			if isinstance(array_float,tuple):
 				shapeRef,shape = array_float,value.shape
 				if len(shapeRef)!=len(shape):
 					raise ValueError(f"Field key has incorrect number of dimensions. "
