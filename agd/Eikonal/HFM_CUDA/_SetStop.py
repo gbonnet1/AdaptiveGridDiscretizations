@@ -23,31 +23,42 @@ from ... import FiniteDifferences as fd
 
 def InitStop(self,kernel_data):
 	"""
-	Setups the stopping criterion for the given solver.
+	Returns the stopping criterion for the given kernel. 
 	"""
 
-	# Stopping criterion depends on update_o, which is the list of blocks marked for update.
-	# Eikonal stopping criterion will be copied for fowardAD and reverseAD.
-	
+	# Other kernels do not go through iterative solver
+	assert any(kernel_data is self.kernel_data[key] 
+		for key in ('eikonal', 'flow', 'forwardAD', 'reverseAD') )
+
 	policy = kernel_data.policy
+
+	#
 	if policy.count_updates:
 		nupdate_o = cp.zeros(self.shape_o,dtype=self.int_t)
 		data.stats['nupdate_o']=nupdate_o
 
-	if self.chart is not None:
-		policy.niter_chart = self.chart['niter']
-		#TODO, eventually
-		if policy.multiprecision: raise ValueError("Not supported yet") 
-		if self.fowardAD or self.reverseAD: raise ValueError("Not supported yet")
+	allow_chart = kernel_data is not self.kernel_data['flow']
+	chart_data = self.kernel_data['chart']
+	nitermax_chart = chart_data.policy.niter_max if allow_chart else 0
+	policy.niter_chart = 0
 
-		chart_data = self.kernel_data['chart']
+	if nitermax_chart>0:
 		chart_kernel = chart_data.kernel
-		chart_args = (chart_data.args['mapping'],chart_data.args['paste'],
-			kernel_data.args['values'])
-		# Possibly set some char_kernel constants
-	else:
-		policy.niter_chart = 0
+		chart_args = (chart_data.args['mapping'],kernel_data.args['values'])
 
+		# Multi-precision needs a different kernel and arguments
+		if policy.multiprecision: 
+			assert kernel_data is self.kernel_data['eikonal']
+			chart_kernel = chart_data.kernel_multip
+			chart_args = (chart_data.args['mapping'],
+				kernel_data.args['values'],kernel_data.args['valuesq'],
+				kernel_data.args['values_Next'],kernel_data.args['valuesq_Next'])
+
+		# TODO set some char_kernel constants, for 
+		# forwardAD or reverseAD which need several values to be pasted at each point
+		if self.forwardAD or self.reverseAD: raise ValueError("Not supported yet")
+
+	# Stopping criterion depends on update_o, which is the list of blocks marked for update.
 	def stop(update_o):
 		# Track the number of updates if necessary
 		if policy.count_updates: nupdate_o+=update_o
@@ -58,103 +69,66 @@ def InitStop(self,kernel_data):
 		if np.any(update_o): return False
 
 		# Apply boundary conditions if requested
-		if policy.niter_chart>0:
-			policy.niter_chart-=1
-			chart_kernel(chart_args+(update_o,))
+		if policy.niter_chart<nitermax_chart:
+			policy.niter_chart+=1
+			chart_kernel((self.size_o,),(self.size_i,),chart_args+(update_o,))
 			if np.any(update_o): return False
+
 		return True
 
+	return stop
 
-
-#	def stop_basic(update_o): 
-#		""""""
-#		return !np.any(update_o) 
-
-	# Flow uses only one iteration. But basic_stop helps detect non-converged iterations.
-#	self.kernel_data['flow'].stop = stop_basic
-
-	# By default, the eikonal policy uses the basic stopping criterion
-#	eikonal = self.kernel_data['eikonal']
-#	policy = eikonal.policy
-#	policy.stop = stop_basic
-
-
-	# In the case of a manifold with local charts, once the solver has stabilized
-	# (no point marked for update), the boundary data is pasted and it is relauched.
-#	SetChart(self)
-#	if self.chart is None: return
-
-#	def stop_chart(nupdate_o):
-#		if np.any(update_o): return False
-
-
-#def GetStop(self,kernel_data):
-	"""
-	Returns the stopping criterion of the kernel data, 
-	possibly with some decorations and initializations.
-	"""
-"""
-	policy = kernel_data.policy
-	if !policy.count_updates: return policy.stop
-
-	# Initialize update counter and decorate
-	nupdate_o = cp.zeros(self.shape_o,dtype=self.int_t)
-	data.stats['nupdate_o']=nupdate_o
-
-	@functools.wraps(policy.stop)
-	def stop_count(nupdate_o):
-		nupdate_o += update_o
-		return policy.stop(update_o)
-
-	return stop_count
-"""
-
-chart_help = """Use for a manifold defined by several local charts.
-Dictionary with members : 
- - mapping : mapping from one chart to the other. [Modified]
- - paste : where to paste values using the mapping, in the eikonal solver.
- - jump : where paths should jump using the mapping, in the geodesic solver.
- - niter : number of calls to the eikonal solver.
-"""
-def SetChart(self,multip):
+#chart_help = """Use for a manifold defined by several local charts.
+#Dictionary with members : 
+# - mapping : mapping from one chart to the other. [Modified]
+# - paste : where to paste values using the mapping, in the eikonal solver. (Useless)
+# - jump : where paths should jump using the mapping, in the geodesic solver.
+# - niter : number of calls to the eikonal solver.
+#"""
+def SetChart(self):
 	"""
 	Sets a pasting procedure for manifolds defined by several local charts.
 	"""
 
+	if self.HasValue('chart_mapping'): self.hasChart = True
+	else: self.hasChart=False; return 
+
 	# Import the chart arguments, check their type, cast if necessary
-	self.chart = self.GetValue('chart',default=None,help=chart_help)
-	if self.chart is None: return
-	
-	neik = self.chart['niter']
-#	if neik<=1: return
+	mapping = self.GetValue('chart_mapping',default=None,
+		help="Mapping from one local chart to another, "
+		"for eikonal equations defined on manifolds.")
+
+	chart_data = self.kernel_data['chart']
+	policy = chart_data.policy
+
+	policy.nitermax = self.GetValue('chart_nitermax',default=5,
+		help="Number of times the boundary conditions are updated in the eikonal solver, "
+		"with values from other local charts.")
 
 	# Adimensionize the mapping
-	mapping = cp.ascontiguousarray(cp.asarray(self.chart['mapping'],dtype=self.float_t))
 	shape_s = mapping.shape[1:]
 	mapping -= fd.as_field(self.hfmIn['origin'],shape_s,depth=1)
 	mapping /= fd.as_field(self.h,shape_s,depth=1)
 	mapping -= 0.5
+	chart_data.args['mapping'] = mapping
 
-	self.chart['mapping'] = mapping # Cast useful in geodesic solver also
-	paste = cp.ascontiguousarray(cp.asarray(self.chart['paste'],dtype=bool))
+#	if self.HasValue(
+#	paste = self.GetValue('chart_paste',default=None,
+#	paste = cp.ascontiguousarray(cp.asarray(self.chart['paste'],dtype=bool))
+#	chart_data.args['paste'] = paste
 
 	ndim_s = len(shape_s)
 	ndim_b = self.ndim-ndim_s
 	if ndim_b<0 or self.shape[ndim_b:]!=shape_s or len(mapping)!=self.ndim:
 		raise ValueError(f"Inconsistent shape of field chart['mapping'] : {mapping.shape}")
-	if paste.shape!=shape_s:
-		raise ValueError(f"Inconsistent shape of field chart['paste'] : {paste.shape}, expected {shape_s}")
-
-	# Prepare the kernel
-	eikonal = self.kernel_data['eikonal']
-	multip = eikonal.policy.multiprecision
+#	if paste.shape!=shape_s:
+#		raise ValueError(f"Inconsistent shape of field chart['paste'] : {paste.shape}, expected {shape_s}")
 
 	traits = {
 		'Int':self.int_t,
 		'Scalar':self.float_t,
 		'ndim':self.ndim,
 		'ndim_s':ndim_s,
-		'multiprecision_macro':multip,
 	}
 	cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
 	date_modified = cupy_module_helper.getmtime_max(cuda_path)
@@ -166,30 +140,25 @@ def SetChart(self,multip):
 	cuoptions = ("-default-device", f"-I {cuda_path}") 
 	source="\n".join(source)
 	module = cupy_module_helper.GetModule(source,cuoptions)
+	chart_data.kernel = module.get_function('Paste')
 
-	SetModuleConstant(module,'shape_tot',self.shape,self.int_t)
-	SetModuleConstant(module,'shape_i',self.shape_i,self.int_t)
-	SetModuleConstant(module,'shape_o',self.shape_o,self.int_t)
-	SetModuleConstant(module,'size_i',self.size_i,self.int_t)
-	SetModuleConstant(module,'size_s',np.prod(shape_s),self.int_t)
-	if multip: SetModuleConstant(multip,'multip_step',self.multip_step,self.float_t)
+	modules = [module]
 
-	# Trigger not adequate : ill shaped, and must be preserved for geodesics, etc
-	args = (eikonal.args['values'],eikonal.trigger,mapping,paste) 
-	if multip: args = (args[:1]+(eikonal.args['valuesq'],eikonal.args['valuesNext'],
-		eikonal.args['valuesqNext'])+args[1:])
-	kernel = module.get_function('Paste')
-	
-	print("vals",args[0].shape,args[0].dtype)
-	print("trigger",args[1].shape,args[1].dtype)
-	print("mapping",args[2].shape,args[2].dtype)
-	print("paste",args[3].shape,args[3].dtype)
+	if self.kernel_data['eikonal'].policy.multiprecision:
+		module_multip = cupy_module_helper.GetModule(
+			source+"#define multiprecision_macro 1\n",cuoptions)
+		chart_data.kernel_multip = module_multip.get_function('Paste')
+		SetModuleConstant(module_multip,'multip_step',self.multip_step,self.float_t)
+		modules.append(module_multip)
 
-#	for i in range(neik-1):
-#		kernel((self.size_o,),(self.size_i,),args)
-#		self.Solve("eikonal")
+	def SetCst(name,value,value_t):
+		for mod in modules: SetModuleConstant(mod,name,value,value_t)
 
-
+	SetCst('shape_tot',self.shape,self.int_t)
+	SetCst('shape_i',self.shape_i,self.int_t)
+	SetCst('shape_o',self.shape_o,self.int_t)
+	SetCst('size_i',self.size_i,self.int_t)
+	SetCst('size_s',np.prod(shape_s),self.int_t)
 
 
 

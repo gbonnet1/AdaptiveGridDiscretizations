@@ -13,6 +13,7 @@ _array_float_fields = {
 	'cost','speed','costVariation',
 	'inspectSensitivity','inspectSensitivityWeights','inspectSensitivityLengths',
 	'exportVoronoiFlags','factoringIndexShift',
+	'chart_mapping',
 }
 
 # Alternative key for setting or getting a single element

@@ -56,9 +56,9 @@ def GetGeodesics(self):
 		eucl_t = traits['EuclT']
 		eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
 		eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
-		if self.chart is not None: 
+		if self.hasChart: 
 			eucl_chart = eucl_max-1 if eucl_integral else np.finfo(eucl_t).max
-			mapping = self.chart['mapping']
+			mapping = self.kernel_data['chart'].args['mapping']
 			traits.update({
 				'chart_macro':1,
 				'EuclT_chart':eucl_chart,
@@ -106,9 +106,12 @@ def GetGeodesics(self):
 		eucl = inf_convolution.inf_convolution(eucl,eucl_kernel,periodic=self.periodic,
 			upper_saturation=eucl_max,overwrite=True,niter=int(np.ceil(eucl_bound)))
 		eucl[eucl>eucl_mult*eucl_bound] = eucl_max
-		if self.chart is not None: 
+		if self.hasChart: 
 			eucl[eucl==eucl_chart]=eucl_max
-			eucl[self.chart['jump']] = eucl_chart
+			chart_jump = self.GetValue('chart_jump',help="Where the geodesics should jump "
+				"to another local chart of the manifold")
+			chart_jump = np.broadcast_to(chart_jump,eucl.shape)
+			eucl[self.chart['jump']] = eucl_chart # Set special key for jump 
 			SetCst('size_s',mapping.size/len(mapping),self.int_t)
 		eucl = fd.block_expand(eucl,self.shape_i,mode='constant',constant_values=eucl_max)
 		eucl=cp.ascontiguousarray(eucl)
@@ -129,7 +132,7 @@ def GetGeodesics(self):
 		
 		flow = self.kernel_data['flow']
 		args = [flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl]
-		if self.chart is not None: args.append(mapping)
+		if self.hasChart is not None: args.append(mapping)
 
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)
 
@@ -164,5 +167,3 @@ def GetGeodesics(self):
 		if self.isCurvature and self.tips_Unoriented is not None:
 			self.hfmOut['geodesics_Unoriented']=geodesics[-len(self.tips_Unoriented):]
 		self.hfmOut['geodesic_stopping_criteria'] = stopping_criterion
-
-		if self.chart is not None: self.chart.pop('mapping') # Was modified ...

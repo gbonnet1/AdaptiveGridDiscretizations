@@ -59,6 +59,8 @@ Array suffix convention :
 extern "C" {
 
 __global__ void Paste(
+	const Scalar * __restrict__ mapping_s,
+
 	// Solution values
 	#if multiprecision_macro
 	const Scalar * __restrict__ u_t, const Int * __restrict__ uq_t,
@@ -67,11 +69,7 @@ __global__ void Paste(
 	Scalar * __restrict__ u_t,
 	#endif
 
-	BoolAtom * __restrict__ trigger_t,
-
-	// Where to paste
-	const Scalar * __restrict__ mapping_s,
-	const BoolAtom * __restrict__ pasting_s
+	BoolAtom * __restrict__ update_o
 	){
 
 // Get the current position, array indices
@@ -131,7 +129,7 @@ for(Int icorner=0; icorner<ncorner_s; ++icorner){
 
 // Compare values, update if necessary
 if(u_mapped < u_orig){ // Should exclude NaNs, Infs, from u_mapped. Compatible with multip.
-	trigger_t[n_t] = 1;
+	update_o[n_o] = 1;
 	#if multiprecision_macro
 	const Int uq_delta = floor(u_mapped/multip_step);
 	uqNext_t[n_t] = uq_orig + uq_delta;
