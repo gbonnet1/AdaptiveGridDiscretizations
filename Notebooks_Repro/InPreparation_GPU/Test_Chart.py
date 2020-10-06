@@ -51,9 +51,9 @@ hfmIn.SetRect([[-r,r],[-r,r]],dimx=101)
 X = hfmIn.Grid()
 
 hfmIn['cost']=cost(X)
-hfmIn.SetUniformTips((4,4))
+#hfmIn.SetUniformTips((4,4))
 
-if True:
+if False:
 	# ----------------- No glue ---------------
 	hfmOut = hfmIn.Run()
 
@@ -73,13 +73,25 @@ if True:
 
 	plt.show()
 
-if False:
+if True:
 	# Second 
-	hfmIn['chart'] = {
-		'mapping':glue(X),
-		'paste':xp.full(hfmIn.shape,True,dtype=bool),
-		'niter':1,
-		'jump':norm(X)>=1.05
-	}
+	hfmIn['chart_mapping']=glue(X)
+	hfmIn['chart_nitermax']=1
+	# chart_jump also, and we're done
+#	hfmIn['chart'] = {
+#		'mapping':glue(X),
+#		'paste':xp.full(hfmIn.shape,True,dtype=bool),
+#		'niter':1,
+#		'jump':norm(X)>=1.05
+#	}
 
-	hfmIn.Run()
+	hfmOut = hfmIn.Run()
+	values = hfmOut['values']
+
+	plt.figure(figsize=(16,7))
+	plt.subplot(1,2,1)
+	plt.title('Values of the solution')
+	plt.contourf(*X,values) 
+	plt.axis('equal')
+
+	plt.show()

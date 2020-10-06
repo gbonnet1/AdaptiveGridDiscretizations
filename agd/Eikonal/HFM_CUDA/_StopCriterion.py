@@ -38,7 +38,7 @@ def InitStop(self,kernel_data):
 
 	if useChart:
 		chart_data = self.kernel_data['chart']
-		nitermax_chart = chart_data.policy.niter_max if allow_chart else 0
+		nitermax_chart = chart_data.policy.nitermax
 		policy.niter_chart = 0
 
 		chart_kernel = chart_data.kernel
@@ -133,19 +133,19 @@ def SetChart(self):
 	source = cupy_module_helper.traits_header(traits)
 
 	source += [
-	'#include "Paste.h"',
+	'#include "ChartPaste.h"',
 	f"// Date cuda code last modified : {date_modified}"]
 	cuoptions = ("-default-device", f"-I {cuda_path}") 
 	source="\n".join(source)
 	module = cupy_module_helper.GetModule(source,cuoptions)
-	chart_data.kernel = module.get_function('Paste')
+	chart_data.kernel = module.get_function('ChartPaste')
 
 	modules = [module]
 
 	if self.kernel_data['eikonal'].policy.multiprecision:
 		module_multip = cupy_module_helper.GetModule(
 			source+"#define multiprecision_macro 1\n",cuoptions)
-		chart_data.kernel_multip = module_multip.get_function('Paste')
+		chart_data.kernel_multip = module_multip.get_function('ChartPaste')
 		SetModuleConstant(module_multip,'multip_step',self.multip_step,self.float_t)
 		modules.append(module_multip)
 

@@ -85,11 +85,7 @@ const Int n_t = Grid::Index_tot(x_t); // Index in arr_t
 if( !Grid::InRange_per(x_t,shape_tot) ) return; // Out of domain
 const Int n_s = Grid::Index_per(x_t,shape_tot) % size_s; // Index in arr_s
 
-// Check wether the mapped value must be pasted
-if(!pasting_s[n_s]) return;
-
 // Import the mapped point
-
 const Int ndim_b = ndim-ndim_s; // Broadcasted dimensions
 Int q_t[ndim_s]; Scalar r_t[ndim_s]; // integer, and fractional part of mapping
 
