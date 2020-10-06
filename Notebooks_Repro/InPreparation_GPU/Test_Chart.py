@@ -52,7 +52,7 @@ X = hfmIn.Grid()
 
 hfmIn['cost']=cost(X)
 hfmIn.SetUniformTips((4,4))
-hfmIn['tip'] = hfmIn['tips'][0]
+#hfmIn['tip'] = hfmIn['tips'][0]
 
 if False:
 	# ----------------- No glue ---------------
@@ -81,7 +81,7 @@ if True:
 	hfmIn['chart_mapping']=glue(X)
 	hfmIn['chart_nitermax']=1
 	hfmIn['chart_jump'] = norm(X,axis=0)>1.05
-	hfmIn['chart_jump_deviation']=0.2
+#	hfmIn['chart_jump_deviation']=0.2
 
 	hfmOut = hfmIn.Run()
 	values = hfmOut['values']

@@ -223,10 +223,7 @@ __constant__ Scalar chart_jump_variance;
 #endif
 
 void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
-	// Replaces x with mapped point.	
-
-	printf("In jump n_i = %i\n",threadIdx.x);
-	printf("original : %f,%f\n",x[0],x[1]);
+	// Replaces x with mapped point in the manifold local chart.	
 
 	// Get integer and floating point part of x. Care about array broadcasting
 	const Int ndim_b = ndim - ndim_s;
@@ -256,10 +253,8 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 			w *= eps ? xr_s[i] : (1.-xr_s[i]);
 		}
 		const Int ny_s = Grid::Index_per(yq,shape_tot); // % size_s (unnecessary)
-		printf("yq %i,%i, w %f, ny_s %i\n", yq[0],yq[1],w,ny_s);
 		for(Int i=0; i<ndim_s; ++i){
 			const Scalar mapping = mapping_s[size_s*i+ny_s];
-//			printf("mapping %f",mapping);
 			x_s[i] += w * mapping;
 			#if chart_jump_variance_macro
 			mapping_sum_s[i]+=mapping;
@@ -268,8 +263,6 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 		}
 	} // for icorner
 
-	printf("mapped : %f,%f\n",x[0],x[1]);
-
 	#if chart_jump_variance_macro 
 	// Check the variance of the mapped values. If too large, use jump at rounded point.
 	Scalar mapping_var = 0.;
@@ -277,7 +270,6 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 		mapping_var += mapping_sqs_s[i]/ncorner_s // Variance of i-th coordinate of mapping
 		 - (mapping_sum_s[i]*mapping_sum_s[i])/(ncorner_s*ncorner_s);}
 
-	printf("mapping_var %f\n",mapping_var);
 	if(mapping_var < chart_jump_variance) return;
 
 	// Variance of mapped values is too large. Chart discontinuity detected. 

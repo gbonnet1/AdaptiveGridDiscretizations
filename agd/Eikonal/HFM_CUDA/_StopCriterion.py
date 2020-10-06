@@ -110,17 +110,10 @@ def SetChart(self):
 	mapping -= 0.5
 	chart_data.args['mapping'] = mapping
 
-#	if self.HasValue(
-#	paste = self.GetValue('chart_paste',default=None,
-#	paste = cp.ascontiguousarray(cp.asarray(self.chart['paste'],dtype=bool))
-#	chart_data.args['paste'] = paste
-
 	ndim_s = len(shape_s)
 	ndim_b = self.ndim-ndim_s
 	if ndim_b<0 or self.shape[ndim_b:]!=shape_s or len(mapping)!=self.ndim:
 		raise ValueError(f"Inconsistent shape of field chart['mapping'] : {mapping.shape}")
-#	if paste.shape!=shape_s:
-#		raise ValueError(f"Inconsistent shape of field chart['paste'] : {paste.shape}, expected {shape_s}")
 
 	traits = {
 		'Int':self.int_t,

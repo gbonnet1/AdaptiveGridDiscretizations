@@ -63,7 +63,7 @@ def GetGeodesics(self):
 				'chart_macro':1,
 				'EuclT_chart':eucl_chart,
 				'ndim_s':mapping.ndim-1})
-			chart_jump_deviation = self.GetValue('chart_jump_deviation',default=np.inf,
+			chart_jump_deviation = self.GetValue('chart_jump_deviation',default=np.inf,array_float=tuple(),
 				help="Do not interpolate the jump coordinates, among pixel corners, "
 				" if their (adimensionized) standard deviation exceeds this threshold. "
 				"(Use if chart_mapping is discontinuous. Typical value : 5.) ")
