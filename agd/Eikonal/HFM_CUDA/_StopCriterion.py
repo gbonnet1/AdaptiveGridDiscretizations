@@ -70,7 +70,10 @@ def InitStop(self,kernel_data):
 		# Apply boundary conditions if requested
 		if useChart and policy.niter_chart<nitermax_chart:
 			policy.niter_chart+=1
+			if 'vals' not in self.hfmOut: self.hfmOut['vals']=[]
+			self.hfmOut['vals'].append(fd.block_squeeze(kernel_data.args['values'],self.shape))
 			chart_kernel((self.size_o,),(self.size_i,),chart_args+(update_o,))
+			self.hfmOut['vals'].append(fd.block_squeeze(kernel_data.args['values'],self.shape))
 			if np.any(update_o): return False
 
 		return True
@@ -106,6 +109,7 @@ def SetChart(self):
 
 	# Adimensionize the mapping
 	shape_s = mapping.shape[1:]
+	mapping = mapping.copy()
 	mapping -= fd.as_field(self.hfmIn['origin'],shape_s,depth=1)
 	mapping /= fd.as_field(self.h,shape_s,depth=1)
 	mapping -= 0.5
