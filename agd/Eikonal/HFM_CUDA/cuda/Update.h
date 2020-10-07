@@ -8,8 +8,7 @@
 #include "REDUCE_i.h"
 #include "GetBool.h"
 #include "Propagation.h"
-#include "Walls.h"
-
+#include "FiniteDifferences.h"
 /* Array suffix convention : 
  arr_t : shape_tot (Total domain shape)
  arr_o : shape_o (Grid shape)
@@ -63,6 +62,7 @@ __global__ void Update(
 	for(Int k=0; k<ndim; ++k){x_t[k] = x_o[k]*shape_i[k]+x_i[k];}
 	const Int n_t = n_o*size_i + n_i;
 
+	// ------- Get the scheme structure -------
 	#if geom_indep_macro
 	const int n_geom = (n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i);
 	EXPORT_SCHEME(if(n_o>=size_geom_o || n_i>=size_geom_i) return;)
@@ -71,20 +71,9 @@ __global__ void Update(
 	#endif
 
 	#if import_scheme_macro
-	
 		const Scalar * weights = weights_t+nactx*n_geom;
-		typedef const OffsetT (*OffsetVecT)[ndim]; // OffsetVecT[][ndim]
 		const OffsetVecT offsets = (OffsetVecT) (offsets_t + ndim*nactx*n_geom);
-		
-		/* // Strangely, simply copying the data at this point makes the code twice slower
-		ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
-		ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
-		for(Int i=0; i<nactx; ++i) {weights[i] = weights_t[i+nactx*n_geom];}
-		for(Int i=0; i<nactx; ++i) {
-			for(Int j=0; j<ndim; ++j){
-				offsets[i][j] = offsets_t[j+ndim*(i+nactx*n_geom)];}
-		}
-		*/
+		// Strangely, simply copying the data at this point makes the code twice slower
 		DRIFT(Sorry_drift_is_not_yet_compatible_with_scheme_precomputation;)
 	#else
 		ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
@@ -110,6 +99,7 @@ __global__ void Update(
 		return;
 	)
 
+	// ----------- Import the value at current position ----------
 	const Scalar u_old = u_t[n_t]; 
 	MULTIP(const Int uq_old = uq_t[n_t];)
 
@@ -129,89 +119,23 @@ __global__ void Update(
 	__syncthreads();
 	)
 
-	FACTOR(
-	Scalar x_rel[ndim]; // Relative position wrt the seed.
-	const bool factors = factor_rel(x_t,x_rel);
-	)
-
-	// Get the neighbor values, or their indices if interior to the block
-	Int    v_i[ntotx]; // Index of neighbor, if in the block
+	// ----------- Setup the finite differences --------
+	Int    v_i[ntotx]; // Index of neighbor, if inside the block
 	Scalar v_o[ntotx]; // Value of neighbor, if outside the block
-	MULTIP(Int vq_o[ntotx];)
+	MULTIP(Int vq_o[ntotx];) // Value of neighbor, complement, if outside the block
 	ORDER2(
 		Int v2_i[ntotx];
 		Scalar v2_o[ntotx];
 		MULTIP(Int vq2_o[ntotx];)
 		)
-	Int koff=0,kv=0; 
-	for(Int kmix=0; kmix<nmix; ++kmix){
-	for(Int kact=0; kact<nact; ++kact){
-		const OffsetT * e = offsets[koff]; // e[ndim]
-		++koff;
-		SHIFT(
-			Scalar fact[2]={0.,0.}; ORDER2(Scalar fact2[2]={0.,0.};)
-			FACTOR( if(factors){factor_sym(x_rel,e,fact ORDER2(,fact2));} )
-			DRIFT( const Scalar s = scal_vv(drift[kmix],e); fact[0] +=s; fact[1]-=s; )
-			)
 
-		for(Int s=0; s<2; ++s){
-			if(s==0 && kact>=nsym) continue;
-			OffsetT offset[ndim];
-			const Int eps=2*s-1; // direction of offset
-			mul_kv(eps,e,offset);
-
-			WALLS(
-			const bool visible = Visible(offset, x_t,wallDist_t, x_i,wallDist_i);
-			if(!visible){
-				v_i[kv]=-1; ORDER2(v2_i[kv]=-1;)
-				v_o[kv]=infinity(); ORDER2(v2_o[kv]=infinity();)
-				MULTIP(vq_o[kv]=0;  ORDER2(vq2_o[kv]=0;) )
-				{++kv; continue;}
-			})
-
-			Int y_t[ndim], y_i[ndim]; // Position of neighbor. 
-			add_vv(offset,x_t,y_t);
-			add_vv(offset,x_i,y_i);
-
-			if(local_i_macro && Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)))  {
-				v_i[kv] = Grid::Index(y_i,shape_i);
-				SHIFT(v_o[kv] = fact[s];)
-			} else {
-				v_i[kv] = -1;
-				if(Grid::InRange_per(y_t,shape_tot)) {
-					const Int ny_t = Grid::Index_tot(y_t);
-					v_o[kv] = u_t[ny_t] SHIFT(+fact[s]);
-					MULTIP(vq_o[kv] = uq_t[ny_t];)
-				} else {
-					v_o[kv] = infinity();
-					MULTIP(vq_o[kv] = 0;)
-				}
-			}
-
-			ORDER2(
-			add_vV(offset,y_t);
-			add_vV(offset,y_i);
-
-			if(local_i_macro && Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) ) {
-				v2_i[kv] = Grid::Index(y_i,shape_i);
-				SHIFT(v2_o[kv] = fact2[s];)
-			} else {
-				v2_i[kv] = -1;
-				if(Grid::InRange_per(y_t,shape_tot) ) {
-					const Int ny_t = Grid::Index_tot(y_t);
-					v2_o[kv] = u_t[ny_t] SHIFT(+fact2[s]);
-					MULTIP(vq2_o[kv] = uq_t[ny_t];)
-				} else {
-					v2_o[kv] = infinity();
-					MULTIP(vq2_o[kv] = 0;)
-				}
-			}
-			) // ORDER2
-
-			++kv;
-		} // for s 
-	} // for kact
-	} // for kmix
+	FiniteDifferences(
+		u_t,MULTIP(uq_t,)
+		WALLS(wallDist_t,wallDist_i,)
+		offsets,DRIFT(drift,)
+		v_i,v_o,MULTIP(vq_o,)
+		ORDER2(v2_i,v2_o,MULTIP(vq2_o,)) 
+		x_t,x_i);
 
 	__syncthreads(); // __shared__ u_i
 
