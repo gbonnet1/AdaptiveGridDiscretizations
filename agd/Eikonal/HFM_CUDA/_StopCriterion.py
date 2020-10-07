@@ -111,16 +111,19 @@ def SetChart(self):
 
 	# Adimensionize the mapping
 	shape_s = mapping.shape[1:]
+	ndim_s = len(shape_s)
+	ndim_b = self.ndim-ndim_s
+
+	origin,gridScales = [fd.as_field(e[ndim_b:],shape_s,depth=1) 
+		for e in (self.hfmIn['origin'],self.h)]
 	mapping = mapping.copy()
-	mapping -= fd.as_field(self.hfmIn['origin'],shape_s,depth=1)
-	mapping /= fd.as_field(self.h,shape_s,depth=1)
+	mapping -= origin
+	mapping /= gridScales
 	mapping -= 0.5
 	chart_data.args['mapping'] = mapping
 
-	ndim_s = len(shape_s)
-	ndim_b = self.ndim-ndim_s
-	if ndim_b<0 or self.shape[ndim_b:]!=shape_s or len(mapping)!=self.ndim:
-		raise ValueError(f"Inconsistent shape of field chart['mapping'] : {mapping.shape}")
+	if ndim_b<0 or self.shape[ndim_b:]!=shape_s or len(mapping)!=ndim_s:
+		raise ValueError(f"Inconsistent shape of field chart_mapping : {mapping.shape}")
 
 	eikonal = self.kernel_data['eikonal']
 	traits = {
