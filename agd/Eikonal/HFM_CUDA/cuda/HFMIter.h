@@ -56,8 +56,8 @@ void HFMIter(const bool active,
 	__syncthreads();
 
 	#else // Without strict_iter_i
-	MIX("strict_iter_i is needed with mix")
-	MULTIP("strict_iter_i is needed with multip")
+	MIX(strict_iter_i_is_needed_with_mix)
+	MULTIP(strict_iter_i_is_needed_with_multip)
 
 	if(active) {
 		Scalar u_new; MULTIP(Int uq_new;)
