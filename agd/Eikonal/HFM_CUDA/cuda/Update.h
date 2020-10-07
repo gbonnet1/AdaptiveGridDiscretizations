@@ -65,9 +65,6 @@ __global__ void Update(
 
 	#if geom_indep_macro
 	const int n_geom = (n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i);
-	if(debug_print && n_t==2){
-		printf("Update.h n_geom %i\n",n_geom);
-	}
 	EXPORT_SCHEME(if(n_o>=size_geom_o || n_i>=size_geom_i) return;)
 	#else
 	const int n_geom = n_t; 
@@ -105,9 +102,6 @@ __global__ void Update(
 		/* This precomputation step is mostly intended for the curvature penalized
 		models, which have complicated stencils, yet usually depending on 
 		a single parameter : the angular coordinate.*/
-		if(debug_print && n_t==2){
-			printf("weight %f offset %i",weights[0],offsets[0][0]);
-		}
 		for(Int i=0; i<nactx; ++i) {
 			weights_t[i+nactx*n_geom] = weights[i];
 			for(Int j=0; j<ndim; ++j){
@@ -168,12 +162,6 @@ __global__ void Update(
 
 			WALLS(
 			const bool visible = Visible(offset, x_t,wallDist_t, x_i,wallDist_i);
-			if(debug_print && n_i==3+3*8){
-				printf("offset %i,%i, x_t %i,%i, visible %i ",
-					offset[0],offset[1],x_t[0],x_t[1], visible);
-				printf("wallDist_i %i, %i, %i, %i\n",
-					wallDist_i[n_i],wallDist_i[n_i+8],wallDist_i[n_i+2*8],wallDist_i[n_i+3*8]);
-			}
 			if(!visible){
 				v_i[kv]=-1; ORDER2(v2_i[kv]=-1;)
 				v_o[kv]=infinity(); ORDER2(v2_o[kv]=infinity();)
@@ -185,7 +173,7 @@ __global__ void Update(
 			add_vv(offset,x_t,y_t);
 			add_vv(offset,x_i,y_i);
 
-			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)))  {
+			if(local_i_macro && Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)))  {
 				v_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v_o[kv] = fact[s];)
 			} else {
@@ -204,7 +192,7 @@ __global__ void Update(
 			add_vV(offset,y_t);
 			add_vV(offset,y_i);
 
-			if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) ) {
+			if(local_i_macro && Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_t,shape_tot)) ) {
 				v2_i[kv] = Grid::Index(y_i,shape_i);
 				SHIFT(v2_o[kv] = fact2[s];)
 			} else {
@@ -225,10 +213,6 @@ __global__ void Update(
 	} // for kact
 	} // for kmix
 
-/*	if(debug_print && n_i==3+3*8){
-		printf("v_i %i,%i,%i,%i\n", v_i[0],v_i[1],v_i[2],v_i[3]);
-		printf("v_o %f,%f,%f,%f\n", v_o[0],v_o[1],v_o[2],v_o[3]);
-	}*/
 	__syncthreads(); // __shared__ u_i
 
 	FLOW(

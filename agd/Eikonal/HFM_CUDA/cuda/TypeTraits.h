@@ -27,7 +27,9 @@ typedef unsigned char BoolAtom;
 const int debug_print = 0;
 #endif
 
+/*The solution is provided on a two level block grid, defined by shape_o and shape_i.*/
 #define bilevel_grid_macro
+#define local_i_macro true // shape_i grouped variables are a local block in space
 
 /** In multi-precision, we address float roundoff errors 
 by representing a real in the form u+uq*multip_step, where

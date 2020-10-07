@@ -36,7 +36,7 @@ bool Visible(const Int v[ndim],
 			diffl1 += abs(v[i]-w[i]);} // L1 norm of v-w
 
 		Int y_i[ndim]; add_vv(x_i,w,y_i);
-		if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_i,shape_tot)) ){
+		if(Grid::InRange(y_i,shape_i) PERIODIC(&& Grid::InRange(y_i,shape_tot)) && local_i_macro){
 			value = wallDist_i[Grid::Index(y_i,shape_i)];
 		} else {
 			Int y_t[ndim]; add_vv(x_t,w,y_t);
