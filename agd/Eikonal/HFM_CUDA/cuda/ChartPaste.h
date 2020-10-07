@@ -50,6 +50,13 @@ __constant__ Scalar multip_step;
 #else
 #define MULTIP(...) 
 #endif
+
+#if strict_iter_o_macro
+#define STRICT_ITER_O(...) __VA_ARGS__
+#else
+#define STRICT_ITER_O(...) 
+#endif
+
 /*
 Array suffix convention : 
  arr_t : bi-level array, with shape_i and shape_o sublevels.
@@ -62,12 +69,15 @@ __global__ void ChartPaste(
 	const Scalar * __restrict__ mapping_s,
 
 	// Solution values
-	#if multiprecision_macro
+	STRICT_ITER_O(const) Scalar * __restrict__ u_t, MULTIP(const Int * __restrict__ uq_t,) 
+	STRICT_ITER_O(Scalar * __restrict__ uNext_t, MULTIP(Int * __restrict__ uqNext_t,))
+
+/*	#if multiprecision_macro
 	const Scalar * __restrict__ u_t, const Int * __restrict__ uq_t,
 	Scalar * __restrict__ uNext_t, Int * __restrict__ uqNext_t,
 	#else 
 	Scalar * __restrict__ u_t,
-	#endif
+	#endif*/
 
 	BoolAtom * __restrict__ update_o
 	){
@@ -130,8 +140,10 @@ if(u_mapped < u_orig){ // Excludes NaNs, +Infs, from u_mapped. Compatible with m
 	const Int uq_delta = floor(u_mapped/multip_step);
 	uqNext_t[n_t] = uq_orig + uq_delta;
 	uNext_t[n_t] = u_mapped - uq_delta*multip_step;
+	#elif strict_iter_o_macro
+	uNext_t[n_t] = u_mapped;
 	#else
-	u_t[n_t] = u_mapped;
+	u_t[n_t] = u_mapped; // Could be buggy. Operation is not atomic ?
 	#endif
 }
 

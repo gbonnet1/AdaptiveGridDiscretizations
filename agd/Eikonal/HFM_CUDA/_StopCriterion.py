@@ -42,7 +42,9 @@ def InitStop(self,kernel_data):
 		policy.niter_chart = 0
 
 		chart_kernel = chart_data.kernel
-		chart_args = (chart_data.args['mapping'],kernel_data.args['values'])
+		if policy.strict_iter_o: chart_args = (chart_data.args['mapping'],
+			kernel_data.args['valuesNext'],kernel_data.args['values'])
+		else: chart_args = (chart_data.args['mapping'],kernel_data.args['values'])
 
 		# Multi-precision needs a different kernel and arguments
 		if policy.multiprecision: 
@@ -120,11 +122,13 @@ def SetChart(self):
 	if ndim_b<0 or self.shape[ndim_b:]!=shape_s or len(mapping)!=self.ndim:
 		raise ValueError(f"Inconsistent shape of field chart['mapping'] : {mapping.shape}")
 
+	eikonal = self.kernel_data['eikonal']
 	traits = {
 		'Int':self.int_t,
 		'Scalar':self.float_t,
 		'ndim':self.ndim,
 		'ndim_s':ndim_s,
+		'strict_iter_o_macro':eikonal.policy.strict_iter_o
 	}
 
 	cuda_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"cuda")
@@ -141,7 +145,8 @@ def SetChart(self):
 
 	modules = [module]
 
-	if self.kernel_data['eikonal'].policy.multiprecision:
+	# !!!! HERE !!!! strict_iter_o
+	if eikonal.policy.multiprecision:
 		module_multip = cupy_module_helper.GetModule(
 			"#define multiprecision_macro 1\n"+source,cuoptions)
 		chart_data.kernel_multip = module_multip.get_function('ChartPaste')
