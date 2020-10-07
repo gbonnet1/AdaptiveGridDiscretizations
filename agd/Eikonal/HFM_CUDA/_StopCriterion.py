@@ -100,7 +100,7 @@ def SetChart(self):
 	# Import the chart arguments, check their type, cast if necessary
 	mapping = self.GetValue('chart_mapping',default=None,
 		help="Mapping from one local chart to another, "
-		"for eikonal equations defined on manifolds.")
+		"for eikonal equations defined on manifolds. (Please set to NaN inside the walls.)")
 
 	chart_data = self.kernel_data['chart']
 	policy = chart_data.policy

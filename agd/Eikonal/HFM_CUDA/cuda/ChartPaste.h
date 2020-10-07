@@ -72,13 +72,6 @@ __global__ void ChartPaste(
 	STRICT_ITER_O(const) Scalar * __restrict__ u_t, MULTIP(const Int * __restrict__ uq_t,) 
 	STRICT_ITER_O(Scalar * __restrict__ uNext_t, MULTIP(Int * __restrict__ uqNext_t,))
 
-/*	#if multiprecision_macro
-	const Scalar * __restrict__ u_t, const Int * __restrict__ uq_t,
-	Scalar * __restrict__ uNext_t, Int * __restrict__ uqNext_t,
-	#else 
-	Scalar * __restrict__ u_t,
-	#endif*/
-
 	BoolAtom * __restrict__ update_o
 	){
 
@@ -108,8 +101,8 @@ for(Int i=0; i<ndim_s; ++i){
 
 	// Move inside points which are just slightly outside the domain
 	const Int q_max = shape_tot[ndim_b+i]-1;
-	if(q_t[i]==q_max && r_t[i]<=boundary_tol){  q_t[i]-=1; r_t[i]+=1;}
-	if(q_t[i]==-1    && r_t[i]>=1-boundary_tol){q_t[i]+=1; r_t[i]-=1;}
+	if(q_t[i]==q_max && r_t[i]<=boundary_tol){  q_t[i]-=1; r_t[i]=1;} //r_t[i]+=1;} // Monotony is safer..
+	if(q_t[i]==-1    && r_t[i]>=1-boundary_tol){q_t[i]+=1; r_t[i]=0;} //r_t[i]-=1;}
 
 	// Abort if point is fully outside the domain
 	if(q_t[i]>=q_max || q_t[i]<0) return; 
@@ -143,7 +136,7 @@ if(u_mapped < u_orig){ // Excludes NaNs, +Infs, from u_mapped. Compatible with m
 	#elif strict_iter_o_macro
 	uNext_t[n_t] = u_mapped;
 	#else
-	u_t[n_t] = u_mapped; // Could be buggy. Operation is not atomic ?
+	u_t[n_t] = u_mapped; 
 	#endif
 }
 
