@@ -100,6 +100,7 @@ Int x_o[ndim], Int & n_o){
 	
 void Finalize(
 	Scalar chg_i[size_i], PRUNING(Int * __restrict__ updateList_o,) 
+	FIM(const BoolAtom * __restrict__ scorePrev_o, BoolAtom * __restrict__ scoreNext_o,)
 	MINCHG_FREEZE(const Scalar * __restrict__ minChgPrev_o, Scalar * __restrict__ minChgNext_o, 
 	const BoolAtom * __restrict__ updatePrev_o,) BoolAtom * __restrict__ updateNext_o,  
 	Int x_o[ndim], Int n_o
@@ -112,14 +113,35 @@ void Finalize(
 	__syncthreads();  // Make u_i[0] accessible to all, also minChgPrev
 	Scalar minChg = chg_i[0];
 	
-		// Tag neighbor blocks, and this particular block, for update
-#if minChg_freeze_macro // Propagate if change is small enough
+	// Tag neighbor blocks, and this particular block, for update
+
+#if minChg_freeze_macro // Propagate if change is small enough (w.r.t global threshold)
 	const bool frozenPrev = minChgPrev>=minChgPrev_thres && minChgPrev!=infinity();
 	if(frozenPrev){minChg = min(minChg,minChgPrev);}
 	const bool propagate = minChg < minChgNext_thres;
 	const bool freeze = !propagate && minChg!=infinity();
 	if(n_i==size_i-2) {minChgNext_o[n_o] = minChg;}
-#else // Propagate as soon as something changed
+
+#elif fim_macro // FIM : Propagate if block has converged or is close to the front
+	
+	bool propagate = false;
+	if(minChg==infinity()) { // Block converged. 
+		scoreNext_o[n_o]=scoreConverged;
+		if(scorePrev_o[n_o]!=scoreConverged){
+			propagate = true;}
+	} else { // Block non-converged. Tag for next update.
+		updateNext_o[n_o]=1;
+		if(scoreConverged>1){ // Variant of FIM allowing wider fronts
+			// Get the maximal score among active neigbors. Substract one.
+			if(n_i<2*ndim){
+				// TODO. Check neighbors, etc
+			}
+		} else {
+			scoreNext_o[n_o] = 0;
+		}
+	}
+
+#else // AGSI : Propagate as soon as something changed
 	const bool propagate = minChg != infinity();
 #endif
 

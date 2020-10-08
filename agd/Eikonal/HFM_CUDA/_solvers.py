@@ -89,6 +89,30 @@ def global_iteration(self,data):
 		updateNext_o.fill(0)
 	return nitermax_o
 
+def fast_iterative_method(self,data):
+	"""
+	Applies (a variant of) the fast iterative method.
+	"""
+	trigger = data.trigger
+	if trigger.shape==self.shape: 
+		trigger = fd.block_expand(data.trigger,self.shape_i,
+		mode='constant',constant_values=False)
+	trigger = np.any(trigger.reshape(self.shape_o+(-1,)),axis=-1)
+
+	updatePrev_o = cp.ascontiguousarray(trigger.astype(np.uint8))
+	updateNext_o  = cp.zeros(self.shape_o, dtype='uint8')
+	updateScore_o = cp.zeros(self.shape_o, dtype='uint8')
+	policy = data.policy
+	nitermax_o = policy.nitermax_o
+	stop = self.InitStop(data)
+
+	# strict_iter_o needed
+	for niter_o in range(nitermax_o):
+		data.kernel((updateList_o.size,),(self.size_i,), 
+			KernelArgs(data) + (updateList_o,updatePrev_o,updateScore_o,updateNext_o))
+		if stop(updateNext_o): return niter_o
+	return nitermax_o
+
 def adaptive_gauss_siedel_iteration(self,data):
 	"""
 	Solves the eikonal equation by propagating updates, ignoring causality. 
@@ -104,11 +128,17 @@ def adaptive_gauss_siedel_iteration(self,data):
 	nitermax_o = policy.nitermax_o
 	stop = self.InitStop(data)
 
-	"""Pruning drops the complexity from N+eps*N^(1+1/d) to N, where N is the number 
-	of points and eps is a small but positive constant related with the block size. 
+	"""Pruning drops the complexity of one scheme iteration from N_act+eps*N to N_act, 
+	where N is the number of points, N_act is the number of active points, and eps is a 
+	small but positive constant related with the block size. 
 	However it usually has no effect on performance, or a slight negative effect, due
-	to the smallness of eps. Nevertheless, pruning allows the bound_active_blocks method,
-	which does, sometimes, have a significant positive effect on performance."""
+	to the smallness of eps. 
+
+	Nevertheless, pruning allows the bound_active_blocks method,
+	which does, sometimes, have a significant positive effect on performance.
+	It is somewhat related to the Group marching method, and tries to have similar 
+	arrival times among the front active points, to take advantage of causality.
+	"""
 	if data.traits['pruning_macro']:
 		updatePrev_o = update_o * (2*self.ndim+1) # Seeds cause their own initial update
 		updateNext_o = np.full_like(update_o,0)
@@ -126,9 +156,6 @@ def adaptive_gauss_siedel_iteration(self,data):
 			def minChg(): return tuple()
 
 		for niter_o in range(nitermax_o):
-									
-			#print(updatePrev_o)
-
 			updateList_o = np.repeat(updateList_o,2*self.ndim+1)
 			if updateList_o.size==0: return niter_o
 			data.kernel((updateList_o.size,),(self.size_i,), 
