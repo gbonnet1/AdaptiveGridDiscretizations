@@ -125,7 +125,7 @@ def GetGeodesics(self):
 				SetCst('chart_jump_variance',chart_jump_variance,self.float_t)
 
 		eucl = fd.block_expand(eucl,self.shape_i,mode='constant',constant_values=eucl_max)
-		eucl=cp.ascontiguousarray(eucl)
+		eucl = cp.ascontiguousarray(eucl)
 
 		# Run the geodesic ODE solver
 		stopping_criterion = list(("Stopping criterion",)*nGeodesics)
