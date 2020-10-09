@@ -132,7 +132,7 @@ ODEStop::Enum NormalizedFlow(
 
 	ODEStop::Enum result = ODEStop::Continue;
 	const bool newCell = Floor(x,xq); // Get the index of the cell containing x
-	Scalar weightsum_cache[ndim];
+	Scalar weightsum_cache[ncorners];
 	if(newCell){ // Load cell corners data (flow and dist)
 		for(Int icorner=0; icorner< ncorners; ++icorner){
 			// Get the i-th corner and its index in the total shape.

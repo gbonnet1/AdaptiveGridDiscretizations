@@ -140,7 +140,7 @@ It overalps significanty with Update.h, somewhat violating the DRY principle unf
 void GeodesicFlow(
 	flow_args_signature_macro
 	const Int x_t[ndim], const Int n_t,
-	Scalar flow_vector[ndim], Scalar & flow_weighsum, Scalar & dist){
+	Scalar flow_vector[ndim], Scalar & flow_weightsum, Scalar & dist){
 
 	const Int n_i = threadIdx.x;
 	fill_kV(Scalar(0),flow_vector);
@@ -232,10 +232,10 @@ void GeodesicFlow(
 void GeodesicFlow(
 	flow_args_signature_macro
 	const Int x_t[ndim], const Int n_t,
-	Scalar flow_vector[ndim], Scalar & flow_weighsum, Scalar & dist){
+	Scalar flow_vector[ndim], Scalar & flow_weightsum, Scalar & dist){
 
 	dist = u_t[n_t] MULTIP(+uq_t[n_t]*multip_step);
-
+	flow_weightsum = flow_weightsum_t[n_t];
 	for(Int k=0; k<ndim; ++k){
 		flow_vector[k] = flow_vector_t[n_t+size_tot*k];}
 }
