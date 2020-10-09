@@ -299,6 +299,27 @@ to take effect.
 #define PRUNING(...) 
 #endif
 
+/* The fast iterative method is an alternative to the AGSI, which limits the front width
+(to a single pixel in the original implementation). 
+*/
+#ifndef fim_macro
+#define fim_macro 0
+#endif
+
+#if fim_macro
+#define FIM(...) __VA_ARGS__
+#else
+#define FIM(...) 
+#endif
+
+// Wether the fim or the pruning macro is active
+#define pruning_fim_macro (pruning_macro || fim_macro)
+
+#if pruning_fim_macro
+#define PRUNING_FIM(...) __VA_ARGS__
+#else
+#define PRUNING_FIM(...) 
+#endif
 
 /** The following macros are for the extraction of the upwind geodesic flow. */
 // weights

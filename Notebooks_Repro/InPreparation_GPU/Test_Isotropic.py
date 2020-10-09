@@ -82,6 +82,7 @@ hfmIn['cost'] = xp.ones(hfmIn.shape,dtype='float32')
 #in_raw = hfmIn.RunGPU(returns='in_raw'); print(in_raw['in_raw']['source'])
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
+hfmIn.SetUniformTips((2,2))
 hfmOut = hfmIn.Run()
 
 #print(hfmOut['values'].shape)
@@ -91,6 +92,8 @@ hfmOut = hfmIn.Run()
 
 if len(hfmOut['values'])<32: print(hfmOut['values'])
 #print(f"niter_o : {hfmOut['niter_o']}")
+
+raise ValueError("finished here") # Code below needs updating
 
 #Comparison with CPU.
 
