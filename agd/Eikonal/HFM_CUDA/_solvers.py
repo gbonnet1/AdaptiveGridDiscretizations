@@ -37,6 +37,8 @@ def Solve(self,name):
 		niter_o = self.global_iteration(data)
 	elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
 		niter_o = self.adaptive_gauss_siedel_iteration(data)
+	elif solver in ('FIM','fast_iterative_method'):
+		niter_o = self.fast_iterative_method(data)
 	else: raise ValueError(f"Unrecognized solver : {solver}")
 	kernel_time = time.time() - kernel_start # TODO : use cuda event ...
 
@@ -93,13 +95,9 @@ def fast_iterative_method(self,data):
 	"""
 	Applies (a variant of) the fast iterative method.
 	"""
-	trigger = data.trigger
-	if trigger.shape==self.shape: 
-		trigger = fd.block_expand(data.trigger,self.shape_i,
-		mode='constant',constant_values=False)
-	trigger = np.any(trigger.reshape(self.shape_o+(-1,)),axis=-1)
-
-	updatePrev_o = cp.ascontiguousarray(trigger.astype(np.uint8))
+	updatePrev_o = fd.block_expand(data.trigger,self.shape_i,mode='constant',
+		constant_values=False).reshape(self.shape_o+(-1,)).any(axis=-1)
+	updatePrev_o = cp.ascontiguousarray(updatePrev_o.astype(np.uint8))
 	updateNext_o  = cp.zeros(self.shape_o, dtype='uint8')
 	updateScore_o = cp.zeros(self.shape_o, dtype='uint8')
 	policy = data.policy
@@ -118,12 +116,9 @@ def adaptive_gauss_siedel_iteration(self,data):
 	Solves the eikonal equation by propagating updates, ignoring causality. 
 	"""
 	
-	trigger = data.trigger
-	if trigger.shape==self.shape: 
-		trigger = fd.block_expand(data.trigger,self.shape_i,
-		mode='constant',constant_values=False)
-	trigger = np.any(trigger.reshape(self.shape_o+(-1,)),axis=-1)
-	update_o = cp.ascontiguousarray(trigger.astype(np.uint8))
+	update_o = fd.block_expand(data.trigger,self.shape_i,mode='constant',
+		constant_values=False).reshape(self.shape_o+(-1,)).any(axis=-1)
+	update_o = cp.ascontiguousarray(update_o.astype(np.uint8))
 	policy = data.policy
 	nitermax_o = policy.nitermax_o
 	stop = self.InitStop(data)

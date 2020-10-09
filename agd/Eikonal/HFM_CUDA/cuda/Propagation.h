@@ -123,7 +123,7 @@ void Finalize(
 	if(n_i==size_i-2) {minChgNext_o[n_o] = minChg;}
 
 #elif fim_macro // FIM : Propagate if block has converged or is close to the front
-	
+	const BoolAtom scoreConverged = 1;
 	bool propagate = false;
 	if(minChg==infinity()) { // Block converged. 
 		scoreNext_o[n_o]=scoreConverged;
