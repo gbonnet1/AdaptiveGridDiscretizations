@@ -15,24 +15,24 @@ and to avoid relying on compiled CPU code.)
 
 #include "static_assert.h"
 
-#ifndef Int_macro
+
+/* The following, or equivalents, must be defined in including file
+
 typedef int Int;
 const Int Int_Max = 2147483647;
-#endif
 
-#ifndef Scalar_macro
 typedef float Scalar;
-#endif
-Scalar infinity(){return 1./0.;}
 
-#ifndef EuclT_macro
 typedef unsigned char EuclT;
 const EuclT EuclT_Max = 255;
-#endif
 
-#ifndef ndim_macro
-const Int ndim = 2;
-#endif
+#define ndim_macro 2;
+*/
+
+#if !recompute_flow_macro
+
+const Int ndim = ndim_macro;
+Scalar infinity(){return 1./0.;}
 
 #ifndef periodic_macro
 #define PERIODIC(...) 
@@ -41,7 +41,6 @@ const Int ndim = 2;
 //const bool periodic[ndim]={false,true}; //must be defined
 #endif
 
-const Int ncorners = 1<<ndim;
 __constant__ Int shape_tot[ndim];
 __constant__ Int size_tot;
 
@@ -52,6 +51,10 @@ __constant__ Int size_i;
 
 #include "Geometry_.h"
 #include "Grid.h"
+
+#endif
+
+const Int ncorners = 1<<ndim;
 #include "GeodesicODE_Opt.h"
 
 __constant__ Int nGeodesics;
@@ -69,11 +72,6 @@ const Int nymin_delay
 
 // History length, used for the above delayed stopping criteria
 const Int hlen = 1 + (eucl_delay<nymin_delay ? nymin_delay : eucl_delay); 
-
-#ifndef debug_print_macro
-const Int debug_print = 0;
-#endif
-
 
 namespace ODEStop {
 enum Enum {

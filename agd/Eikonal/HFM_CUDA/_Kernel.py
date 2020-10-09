@@ -35,8 +35,9 @@ def SetKernelTraits(self):
 	policy.multiprecision = (self.GetValue('multiprecision',default=False,
 		help="Use multiprecision arithmetic, to improve accuracy") or 
 		self.GetValue('values_float64',default=False) )
+	
+	traits['multiprecision_macro']=policy.multiprecision
 	if policy.multiprecision: 
-		traits['multiprecision_macro']=1
 		traits['strict_iter_o_macro']=1
 		traits['strict_iter_i_macro']=1
 

@@ -7,13 +7,10 @@
 - recomputation of the geodesic flow vector, to save memory
 */
 
-#ifndef chart_macro
-#define chart_macro 0
-#endif
-
-#ifndef recompute_flow_macro
-#define recompute_flow_macro 0
-#endif
+/* The following macros must be defined outside, see below for details
+//#define chart_macro false
+//#define recompute_flow_macro false
+*/
 
 #if multiprecision_macro
 #define MULTIP(...) __VA_ARGS__
@@ -121,20 +118,22 @@ geodesic flow, in particular with models whose geometric information is small
 and as opposed to a point dependent Riemannian metric.) 
 
 It overalps significanty with Update.h, somewhat violating the DRY principle unfortunately.
+
+	\ // Problem data 
+	\ // Import the finite differences scheme 
+
 */
 
 #define flow_args_signature_macro \
 	const Scalar * __restrict__ u_t, MULTIP(const Int * __restrict__ uq_t,) \
-	// Problem data \
 	GEOM(const Scalar * __restrict__ geom_t,) \
 	const BoolPack * __restrict__ seeds_t, const Scalar * __restrict__ rhs_t, \
 	WALLS(const WallT * __restrict__ wallDist_t,) \
-	// Import the finite differences scheme \
 	IO_SCHEME( 	const Scalar  * __restrict__ weights_t, \
 				const OffsetT * __restrict__ offsets_t,) 
 
 #define flow_args_list_macro \
-	u_t, MULTIP(uq_t,) geom_t, seeds_t,rhs_t, \
+	u_t, MULTIP(uq_t,) GEOM(geom_t,) seeds_t,rhs_t, \
 	WALLS(wallDist_t,) IO_SCHEME(weights_t,offsets_t,) 
 
 void GeodesicFlow(
@@ -142,12 +141,17 @@ void GeodesicFlow(
 	const Int x_t[ndim], const Int n_t,
 	Scalar flow_vector[ndim], Scalar & flow_weightsum, Scalar & dist){
 
+	// Initializations
+	const Int n_o = n_t/size_i;
 	const Int n_i = threadIdx.x;
+	Int x_i[ndim]; 	
+	Grid::Position(n_i,shape_i,x_i);
+	
 	fill_kV(Scalar(0),flow_vector);
 	flow_weightsum=0;
 
 	// ------- Get the scheme structure -------
-	const int n_geom = geom_indep_macro ? 
+	const Int n_geom = geom_indep_macro ? 
 		((n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i)) : n_t;
 
 	#if import_scheme_macro

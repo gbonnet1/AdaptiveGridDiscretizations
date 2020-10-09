@@ -12,8 +12,8 @@ def default_traits(self):
 	'Scalar': np.float32,
 	'Int':    np.int32,
 	'OffsetT':np.int32,
-	'multiprecision_macro':0,
-	'pruning_macro':0,
+#	'multiprecision_macro':False,
+	'pruning_macro':False,
 	}
 
 	ndim = self.ndim

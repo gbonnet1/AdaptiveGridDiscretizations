@@ -30,7 +30,7 @@ hfmIn = Eikonal.dictIn({
 	'dims':(n,n),
 	'origin':[-0.5,-0.5],
 	'gridScale':1.,
-
+	'geodesic_recompute_flow':True,
 #	'order':2,
 #	'order2_threshold':0.3,
 	'factoringRadius':100,
@@ -82,7 +82,7 @@ hfmIn['cost'] = xp.ones(hfmIn.shape,dtype='float32')
 #in_raw = hfmIn.RunGPU(returns='in_raw'); print(in_raw['in_raw']['source'])
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
-#hfmIn.SetUniformTips((2,2))
+hfmIn.SetUniformTips((2,2))
 hfmOut = hfmIn.Run()
 
 #print(hfmOut['values'].shape)
