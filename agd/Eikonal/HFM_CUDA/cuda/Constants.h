@@ -60,9 +60,11 @@ bool factor_rel(const Int x_abs[ndim], Scalar x_rel[ndim]){
 }
 #endif
 
-ORDER2(
-__constant__ Scalar order2_threshold = 0.3;
-)
+// When to fall back to first order finite differences
+ORDER2(__constant__ Scalar order2_threshold = 0.3;)
+// Dictates the front width in the FIM variant (original FIM : scoreFront=2)
+FIM(__constant__ BoolAtom fim_front_width = 4;)
+
 
 // Get the parameters for curvature penalized models
 #if curvature_macro 

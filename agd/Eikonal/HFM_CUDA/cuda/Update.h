@@ -42,9 +42,9 @@ __global__ void Update(
 	FLOW_VECTOR(   Scalar  * __restrict__ flow_vector_t,) 
 
 	// where to update
-	Int * __restrict__ updateList_o, PRUNING_FIM( FIM(const) BoolAtom * __restrict__ updatePrev_o,) 
+	Int * __restrict__ updateList_o, 
 	FIM(const BoolAtom * __restrict__ scorePrev_o, BoolAtom * __restrict__ scoreNext_o,) 
-	BoolAtom * __restrict__ updateNext_o 
+	PRUNING(BoolAtom * __restrict__ updatePrev_o,) BoolAtom * __restrict__ updateNext_o 
 	){ 
 
 	__shared__ Int x_o[ndim];
@@ -203,7 +203,7 @@ __global__ void Update(
 	__syncthreads(); // Get all values before reduction
 
 	Propagation::Finalize(
-		u_i, PRUNING_FIM(updateList_o,) FIM(scorePrev_o,scoreNext_o,)
+		u_i, PRUNING(updateList_o,) FIM(scorePrev_o,scoreNext_o,)
 		MINCHG_FREEZE(minChgPrev_o, minChgNext_o, updatePrev_o,) updateNext_o,  
 		x_o, n_o);
 }

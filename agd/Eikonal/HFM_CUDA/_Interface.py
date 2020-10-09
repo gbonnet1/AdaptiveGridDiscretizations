@@ -137,9 +137,9 @@ class Interface(object):
 
 	CostMetric = _SetGeometry.CostMetric
 	SetRHS = _SetArgs.SetRHS
-	global_iteration = _solvers.global_iteration
-	adaptive_gauss_siedel_iteration = _solvers.adaptive_gauss_siedel_iteration
-	set_minChg_thres = _solvers.set_minChg_thres
+#	global_iteration = _solvers.global_iteration
+#	adaptive_gauss_siedel_iteration = _solvers.adaptive_gauss_siedel_iteration
+#	set_minChg_thres = _solvers.set_minChg_thres
 	SolveLinear = _PostProcess.SolveLinear
 	
 	@property

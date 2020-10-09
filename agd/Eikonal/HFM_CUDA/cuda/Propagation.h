@@ -14,22 +14,24 @@ __constant__ Scalar minChgPrev_thres, minChgNext_thres; // Previous and next thr
 )
 
 namespace Propagation {
+
+bool Neighbor(const Int x_o[__restrict__ ndim], Int neigh_o[__restrict__ ndim]){
+	// Returns immediate neighbor on the grid if x_i<2d.
+	// Also returns point itself if x_i = 2d. (Excluded in case of FIM)
+	// bool : wether neighbor is valid
+	const Int n_i = threadIdx.x;
+	copy_vV(x_o,neigh_o);
+	if(n_i>=2*ndim) {return n_i==2*ndim FIM(&& false);}
+
+	neigh_o[n_i/2] += 2*(n_i%2) -1;
+	return Grid::InRange(neigh_o,shape_o);
+}
+
 // Tag the neighbors for update
-void TagNeighborsForUpdate(const Int n_i, const Int x_o[ndim], BoolAtom * updateNext_o){
-	if(n_i>2*ndim) return;
-
-	Int k = n_i/2;
-	const Int s = n_i%2;
-	Int eps = 2*s-1;
-	if(n_i==2*ndim){k=0; eps=0;}
-
+void TagNeighborsForUpdate(const Int x_o[ndim], BoolAtom * updateNext_o){
 	Int neigh_o[ndim];
-	for(Int l=0; l<ndim; ++l) {neigh_o[l]=x_o[l];}
-	neigh_o[k]+=eps;
-/*	if(debug_print && n_i==2*ndim){printf("In TagNeighbors n_i=%i, x_o=%i,%i, neigh_o=%i,%i",
-		n_i,x_o[0],x_o[1],neigh_o[0],neigh_o[1]);}*/
-	if(Grid::InRange_per(neigh_o,shape_o)) {
-		updateNext_o[Grid::Index_per(neigh_o,shape_o)]=1 PRUNING(+n_i);}
+	if(Neighbor(x_o,neigh_o))
+		updateNext_o[Grid::Index_per(neigh_o,shape_o)]=1 PRUNING(+n_i);
 }
 
 bool Abort(Int * __restrict__ updateList_o, PRUNING(BoolAtom * __restrict__ updatePrev_o,) 
@@ -91,7 +93,7 @@ Int x_o[ndim], Int & n_o){
 	PRUNING(if(n_o==n_o_remove MINCHG_FREEZE(|| n_o==n_o_stayfrozen)) {return true;})
 
 	MINCHG_FREEZE(
-	if(n_o==n_o_unfreeze){TagNeighborsForUpdate(n_i,x_o,updateNext_o); return true;}
+	if(n_o==n_o_unfreeze){TagNeighborsForUpdate(x_o,updateNext_o); return true;}
 	if(n_i==0){updatePrev_o[n_o]=0;} // Cleanup required for MINCHG
 	)
 
@@ -123,29 +125,43 @@ void Finalize(
 	if(n_i==size_i-2) {minChgNext_o[n_o] = minChg;}
 
 #elif fim_macro // FIM : Propagate if block has converged or is close to the front
-	const BoolAtom scoreConverged = 1;
-	bool propagate = false;
-	if(minChg==infinity()) { // Block converged. 
-		scoreNext_o[n_o]=scoreConverged;
-		if(scorePrev_o[n_o]!=scoreConverged){
-			propagate = true;}
-	} else { // Block non-converged. Tag for next update.
-		updateNext_o[n_o]=1;
-		if(scoreConverged>1){ // Variant of FIM allowing wider fronts
-			// Get the maximal score among active neigbors. Substract one.
-			if(n_i<2*ndim){
-				// TODO. Check neighbors, etc
-			}
+	// Scorefront = Score if block was modified in previous iter, but not this one
+	const BoolAtom scoreFront = fim_front_width;
+	const BoolAtom scorePrev = scorePrev_o[n_o];
+	bool propagate;
+	BoolAtom scoreNext;
+	if(minChg==infinity()) { // Block is stabilized
+		const BoolAtom scorePrev = scorePrev_o[n_o];
+		if(scorePrev==0 || scorePrev==scoreFront){
+			// Unchanged block was already stabilized. 
+			scoreNext=0;
+			propagate=false;
 		} else {
-			scoreNext_o[n_o] = 0;
+			// Unchanged block has just stabilized.
+			scoreNext=scoreFront;
+			propagate=true;
 		}
+	} else { // Block non stabilized. 
+		scoreNext=1;
+		if(n_i==0) updateNext_o[n_o]=1; // Tag for next update
+		if(scoreFront>2){ // Variant of FIM allowing wider fronts
+			// Get the maximal scorePrev among active neigbors. Substract one yields ScoreNext.
+			Int neigh_o[ndim];
+			__shared__ BoolAtom scorePrev_neigh[2*ndim];
+			if(n_i<2*ndim) {scorePrev_neigh[n_i] = Neighbor(x_o,neigh_o) ? 
+				scorePrev_o[Grid::Index_per(neigh_o,shape_o)] : 0;}
+			__syncthreads();
+			// Score reflects closeness to the front. (Note: too lazy to do a reduction here)
+			for(Int i=0; i<2*ndim; ++i) {scoreNext = max(scoreNext, scorePrev_neigh[i]-1);}
+			}
+		propagate = scoreNext>1;
 	}
-
+	if(n_i==0) scoreNext_o[n_o]=scoreNext;
 #else // AGSI : Propagate as soon as something changed
 	const bool propagate = minChg != infinity();
 #endif
 
-	if(propagate){TagNeighborsForUpdate(n_i,x_o,updateNext_o);}
+	if(propagate){TagNeighborsForUpdate(x_o,updateNext_o);}
 	PRUNING(if(n_i==size_i-1){updateList_o[blockIdx.x] 
 		= propagate ? n_o : MINCHG_FREEZE(freeze ? (n_o+size_o) :) -1;})
 }

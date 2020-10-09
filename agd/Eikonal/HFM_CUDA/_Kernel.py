@@ -60,14 +60,18 @@ def SetKernelTraits(self):
 		help="Limit the number of active blocks in the front. " 
 		"Admissible values : (False,True, or positive integer)")
 	if policy.bound_active_blocks:
-		traits['minChg_freeze_macro']=1
-		traits['pruning_macro']=1
+		traits['minChg_freeze_macro']=True
+		traits['pruning_macro']=True
 
 	policy.solver = self.GetValue('solver',default='AGSI',
 		help="Choice of fixed point solver (AGSI, global_iteration)")
-	if policy.solver=='global_iteration' and traits.get('pruning_macro',0):
+	solverAltNames={'AGSI':'adaptive_gauss_siedel_iteration','FIM':'fast_iterative_method'}
+	policy.solver = solverAltNames.get(policy.solver,policy.solver)
+
+	if policy.solver=='global_iteration' and traits.get('pruning_macro',False):
 		raise ValueError("Incompatible options found for global_iteration solver "
 			"(bound_active_blocks, pruning)")
+	if policy.solver=='fast_iterative_method': traits['fim_macro']=True
 
 	policy.strict_iter_o = traits.get('strict_iter_o_macro',0)
 	self.float_t  = np.dtype(traits['Scalar'] ).type
@@ -127,8 +131,9 @@ def SetKernel(self):
 	flow = self.kernel_data['flow']
 	flow.traits = {
 		**eikonal.traits,
-		'pruning_macro':0,
-		'minChg_freeze_macro':0,
+		'pruning_macro':False,
+		'fim_macro':False,
+		'minChg_freeze_macro':False,
 		'niter_i':1,
 	}
 	flow.policy = copy.copy(eikonal.policy) 
@@ -183,7 +188,6 @@ def SetKernel(self):
 	self.size_tot = self.size_o * np.prod(self.shape_i)
 	SetCst('shape_tot',self.shape,int_t) # Used for periodicity
 	SetCst('size_tot', self.size_tot,  int_t) # Used for geom indexing
-
 
 	shape_geom_i,shape_geom_o = [s[self.geom_indep:] for s in (self.shape_i,self.shape_o)]
 	if self.geom_indep: # Geometry only depends on a subset of coordinates
@@ -251,6 +255,10 @@ def SetKernel(self):
 		help="Maximum number of iterations of the solver")
 	self.raiseOnNonConvergence = self.GetValue('raiseOnNonConvergence',default=True,
 		help="Raise an exception if a solver fails to converge")
+	if eikonal.policy.solver == 'fast_iterative_method':
+		SetModuleConstant(eikonal.module,'fim_front_width',self.GetValue('fim_front_width',
+			default=4,help="Dictates the max front width in the FIM variant.\n"
+			"(original FIM : 2. Must be >=2.)"),np.uint8)
 
 	# Sort the kernel arguments
 	args = eikonal.args

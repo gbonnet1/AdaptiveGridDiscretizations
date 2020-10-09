@@ -11,7 +11,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
 
 xp,Eikonal = [ad.cupy_friendly(e) for e in (xp,Eikonal)]
 
-n=8
+n=100
 hfmIn = Eikonal.dictIn({
     'model':'Isotropic2',
     'exportValues':1,
@@ -21,9 +21,9 @@ hfmIn = Eikonal.dictIn({
 #    'kernel':"dummy",
 #    'solver':'AGSI', 
 #    'solver':'global_iteration',
-	'solver':'FIM',
+	'solver':'FIM','fim_front_width':4,
     'raiseOnNonConvergence':False,
-#    'nitermax_o':1,
+#    'nitermax_o':30,
 #    'tol':1e-8,
     'multiprecision':False,
 #    'values_float64':True,

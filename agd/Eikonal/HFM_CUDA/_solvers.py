@@ -34,11 +34,11 @@ def Solve(self,name):
 	# Run
 	kernel_start = time.time()
 	if solver=='global_iteration':
-		niter_o = self.global_iteration(data)
-	elif solver in ('AGSI','adaptive_gauss_siedel_iteration'):
-		niter_o = self.adaptive_gauss_siedel_iteration(data)
-	elif solver in ('FIM','fast_iterative_method'):
-		niter_o = self.fast_iterative_method(data)
+		niter_o = global_iteration(self,data)
+	elif solver == 'adaptive_gauss_siedel_iteration':
+		niter_o = adaptive_gauss_siedel_iteration(self,data)
+	elif solver == 'fast_iterative_method':
+		niter_o = fast_iterative_method(self,data)
 	else: raise ValueError(f"Unrecognized solver : {solver}")
 	kernel_time = time.time() - kernel_start # TODO : use cuda event ...
 
@@ -95,20 +95,28 @@ def fast_iterative_method(self,data):
 	"""
 	Applies (a variant of) the fast iterative method.
 	"""
-	updatePrev_o = fd.block_expand(data.trigger,self.shape_i,mode='constant',
+	updateNext_o = fd.block_expand(data.trigger,self.shape_i,mode='constant',
 		constant_values=False).reshape(self.shape_o+(-1,)).any(axis=-1)
-	updatePrev_o = cp.ascontiguousarray(updatePrev_o.astype(np.uint8))
-	updateNext_o  = cp.zeros(self.shape_o, dtype='uint8')
-	updateScore_o = cp.zeros(self.shape_o, dtype='uint8')
+	updateNext_o = cp.ascontiguousarray(updateNext_o.astype(np.uint8))
+	scorePrev_o = cp.zeros(self.shape_o, dtype='uint8')
+	scoreNext_o = scorePrev_o.copy()
 	policy = data.policy
 	nitermax_o = policy.nitermax_o
 	stop = self.InitStop(data)
 
 	# strict_iter_o needed
 	for niter_o in range(nitermax_o):
-		data.kernel((updateList_o.size,),(self.size_i,), 
-			KernelArgs(data) + (updateList_o,updatePrev_o,updateScore_o,updateNext_o))
 		if stop(updateNext_o): return niter_o
+		updateList_o = cp.ascontiguousarray(cp.flatnonzero(updateNext_o), dtype=self.int_t)
+		scorePrev_o,scoreNext_o = scoreNext_o,scorePrev_o
+		updateNext_o.fill(0); scoreNext_o.fill(0)
+		data.kernel((updateList_o.size,),(self.size_i,), 
+			KernelArgs(data) + (updateList_o,scorePrev_o,scoreNext_o,updateNext_o))
+#		print("------------- scorePrev_o,scoreNext_o,updateNext_o -------------------")
+#		print(scorePrev_o)
+#		print(scoreNext_o)
+#		print(updateNext_o)
+
 	return nitermax_o
 
 def adaptive_gauss_siedel_iteration(self,data):
@@ -169,7 +177,7 @@ def adaptive_gauss_siedel_iteration(self,data):
 			updatePrev_o,updateNext_o = updateNext_o,updatePrev_o
 			updateList_o = updateList_o[updateList_o!=-1]
 			if policy.bound_active_blocks: 
-				self.set_minChg_thres(data,updateList_o,minChgNext_o)
+				set_minChg_thres(self,data,updateList_o,minChgNext_o)
 				minChgPrev_o,minChgNext_o = minChgNext_o,minChgPrev_o
 
 	else: # No pruning

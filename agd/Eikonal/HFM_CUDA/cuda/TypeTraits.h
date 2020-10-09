@@ -312,15 +312,6 @@ to take effect.
 #define FIM(...) 
 #endif
 
-// Wether the fim or the pruning macro is active
-#define pruning_fim_macro (pruning_macro || fim_macro)
-
-#if pruning_fim_macro
-#define PRUNING_FIM(...) __VA_ARGS__
-#else
-#define PRUNING_FIM(...) 
-#endif
-
 /** The following macros are for the extraction of the upwind geodesic flow. */
 // weights
 #ifndef flow_weights_macro 
