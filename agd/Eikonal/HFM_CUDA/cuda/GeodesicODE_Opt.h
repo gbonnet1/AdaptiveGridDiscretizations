@@ -15,6 +15,13 @@
 #define recompute_flow_macro 0
 #endif
 
+#if multiprecision_macro
+#define MULTIP(...) __VA_ARGS__
+__constant__ Scalar multip_step;
+#else
+#define MULTIP(...)
+#endif
+
 // ------------- chart jumps -----------------
 
 #if chart_macro

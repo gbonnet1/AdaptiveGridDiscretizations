@@ -111,7 +111,7 @@ associated distance value is judged to large. The neighbor flow values are reloa
 only if necessary. Also returns the euclidean distance (or other) from the best corner to 
 the target.
 Inputs : 
- - flow_vector_t, flow_weightsum_t, dist_t : data fields
+ - flow_args_signature_macro : data fields for flow import or recomputation
  - x : position where the flow is requested.
 Outputs :
  - flow : requested flow, normalized for unit euclidean norm.
@@ -126,9 +126,9 @@ Outputs :
 */
 ODEStop::Enum NormalizedFlow(
 	flow_args_signature_macro
-	const Scalar x[ndim], Scalar flow[ndim],
-	Int xq[ndim], Int & nymin, Scalar & dist_threshold,
-	Scalar flow_cache[ncorners][ndim], Scalar dist_cache[ncorners]){
+	const Scalar x[__restrict__ ndim], Scalar flow[__restrict__ ndim],
+	Int xq[__restrict__ ndim], Int & nymin, Scalar & dist_threshold,
+	Scalar flow_cache[__restrict__ ncorners][ndim], Scalar dist_cache[__restrict__ ncorners]){
 
 	ODEStop::Enum result = ODEStop::Continue;
 	const bool newCell = Floor(x,xq); // Get the index of the cell containing x
@@ -147,7 +147,7 @@ ODEStop::Enum NormalizedFlow(
 			GeodesicFlow(
 				flow_args_list_macro
 				yq,ny,
-				flow_cache[icorner],weightsum_cache[icorner],dist_cache[icorner])
+				flow_cache[icorner],weightsum_cache[icorner],dist_cache[icorner]);
 		} // for corner
 	} // if newCell
 
@@ -200,9 +200,9 @@ extern "C" {
 
 __global__ void GeodesicODE(
 	flow_args_signature_macro
-	const Scalar * dist_t, const EuclT * eucl_t,
-	CHART(const Scalar * mapping_s,)
-	Scalar * x_s, Int * len_s, ODEStopT * stop_s
+	const EuclT * __restrict__ eucl_t,
+	CHART(const Scalar * __restrict__ mapping_s,)
+	Scalar * __restrict__ x_s, Int * __restrict__ len_s, ODEStopT * __restrict__ stop_s
 	){
 
 	const Int tid = blockIdx.x * blockDim.x + threadIdx.x;

@@ -20,7 +20,7 @@ hfmIn = Eikonal.dictIn({
     'seeds':[[0,0]],
 #    'kernel':"dummy",
 #    'solver':'AGSI', 
-#    'solver':'global_iteration',
+    'solver':'global_iteration',
     'raiseOnNonConvergence':False,
 #    'nitermax_o':1,
 #    'tol':1e-8,
@@ -39,7 +39,7 @@ hfmIn = Eikonal.dictIn({
 #	'bound_active_blocks':True,
 	'traits':{
 #	'niter_i':10,
-#	'niter_i':8,'shape_i':(4,4),
+	'niter_i':8,'shape_i':(4,4),
 #	'niter_i':1,'shape_i':(8,8),
 #	'niter_i':16,'shape_i':(8,8),
 #	'niter_i':32,'shape_i':(16,16),
@@ -82,7 +82,7 @@ hfmIn['cost'] = xp.ones(hfmIn.shape,dtype='float32')
 #in_raw = hfmIn.RunGPU(returns='in_raw'); print(in_raw['in_raw']['source'])
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
-hfmIn.SetUniformTips((2,2))
+#hfmIn.SetUniformTips((2,2))
 hfmOut = hfmIn.Run()
 
 #print(hfmOut['values'].shape)

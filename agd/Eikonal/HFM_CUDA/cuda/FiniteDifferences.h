@@ -23,7 +23,7 @@ void FiniteDifferences(
 	Int * __restrict__ v_i, Scalar * __restrict__ v_o, MULTIP(Int * __restrict__ vq_o,)
 	ORDER2(Int * __restrict__ v2_i, Scalar * __restrict__ v2_o, MULTIP(Int * __restrict__ vq2_o,))
 	// Position of current point
-	const Int * __restrict__ x_i, const Int * __restrict__ x_t
+	const Int * __restrict__ x_t, const Int * __restrict__ x_i
 	){
 
 	FACTOR(

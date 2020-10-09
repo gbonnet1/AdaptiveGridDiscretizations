@@ -24,6 +24,7 @@ def GetGeodesics(self):
 			tips = np.concatenate((tips,tipsU)) if self.tips is not None else tipsU
 
 		geodesic = self.kernel_data['geodesic'] # Not using the common solver here
+		eikonal = self.kernel_data['eikonal']
 
 		# Set the kernel traits
 		geodesic_step = self.GetValue('geodesic_step',default=0.25,
@@ -51,7 +52,9 @@ def GetGeodesics(self):
 		traits.update({ # Non-negotiable
 			'ndim':self.ndim,
 			'Int':self.int_t,
-			'Scalar':self.float_t})
+			'Scalar':self.float_t,
+			'multiprecision_macro':eikonal.policy.multiprecision
+			})
 
 		eucl_t = traits['EuclT']
 		eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
@@ -77,6 +80,7 @@ def GetGeodesics(self):
 		geodesic.source = cupy_module_helper.traits_header(traits,
 			join=True,integral_max=True) + "\n"
 		geodesic.source += '#include "GeodesicODE.h"\n'+self.cuda_date_modified
+		print(geodesic.source)
 		geodesic.module = cupy_module_helper.GetModule(geodesic.source,self.cuoptions)
 		geodesic.kernel = geodesic.module.get_function('GeodesicODE')
 
@@ -105,7 +109,7 @@ def GetGeodesics(self):
 		eucl_bound = self.GetValue('geodesic_targetTolerance',default=eucl_bound_default,
 			help="Tolerance, in pixels, for declaring a seed as reached.")
 		# Note: self.seedTags includes the walls, which we do not want here, hence trigger
-		seeds = self.kernel_data['eikonal'].trigger
+		seeds = eikonal.trigger
 		eucl = np.full_like(seeds,eucl_max,dtype=eucl_t)
 		eucl[seeds] = 0
 		eucl_mult = 5 if eucl_integral else 1
@@ -141,9 +145,17 @@ def GetGeodesics(self):
 		max_len = self.GetValue("geodesic_max_length",default=max_len,
 			help="Maximum allowed length of geodesics.")
 		
-		flow = self.kernel_data['flow']
-		args = [flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl]
-		if self.hasChart: args.append(mapping)
+		argnames = [('values','eikonal'),('valuesq','eikonal'),
+		('flow_vector','flow'),('flow_weightsum','flow'),(eucl,None),('mapping','chart')]
+		args = []
+		for key,ker in argnames:
+			if ker is None: args.append(key); continue
+			ker_args = self.kernel_data[ker].args 
+			if key in ker_args: args.append(ker_args[key])
+
+#		flow = self.kernel_data['flow']
+#		args = [flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl]
+#		if self.hasChart: args.append(mapping)
 
 		args = tuple(cp.ascontiguousarray(arg) for arg in args)
 
