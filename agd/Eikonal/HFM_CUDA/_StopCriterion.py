@@ -29,10 +29,9 @@ def InitStop(self,kernel_data):
 
 	policy = kernel_data.policy
 
-	#
 	if policy.count_updates:
 		nupdate_o = cp.zeros(self.shape_o,dtype=self.int_t)
-		data.stats['nupdate_o']=nupdate_o
+		kernel_data.stats['nupdate_o']=nupdate_o
 
 	useChart = self.hasChart and (kernel_data is not self.kernel_data['flow'])
 
@@ -62,7 +61,9 @@ def InitStop(self,kernel_data):
 	# Stopping criterion depends on update_o, which is the list of blocks marked for update.
 	def stop(update_o):
 		# Track the number of updates if necessary
-		if policy.count_updates: nupdate_o+=update_o
+		if policy.count_updates: 
+			nonlocal nupdate_o
+			nupdate_o+=update_o
 
 		# TODO : Stopping criterion based on accepted tips points ? 
 
