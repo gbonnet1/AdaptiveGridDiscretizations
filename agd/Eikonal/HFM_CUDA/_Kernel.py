@@ -96,7 +96,6 @@ def SetKernel(self):
 
 	# ---- Produce a first kernel, for solving the eikonal equation ----
 	# Set a few last traits
-
 	policy = eikonal.policy
 	traits = eikonal.traits
 	traits.update({
@@ -186,7 +185,6 @@ def SetKernel(self):
 			join=True,size_of_shape=True,log2_size=True,integral_max=True) + "\n"
 		if online_flow: geodesic.source += model_source
 		geodesic.source += '#include "GeodesicODE.h"\n'+self.cuda_date_modified
-		print(geodesic.source)
 		geodesic.module = cupy_module_helper.GetModule(geodesic.source,self.cuoptions)
 
 	else: # No geodesic tips
@@ -332,9 +330,7 @@ def SetKernel(self):
 
 	# Sort the kernel arguments
 	args = eikonal.args
-	print(args.keys())
 	argnames = ('values','valuesq','valuesNext','valuesqNext',
 		'geom','seedTags','rhs','wallDist','weights','offsets')
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
-#	print(eikonal.args['wallDist'].dtype)
 	flow.args = eikonal.args.copy() # Further arguments added later

@@ -27,78 +27,12 @@ def GetGeodesics(self):
 	geodesic = self.kernel_data['geodesic'] 
 	eikonal = self.kernel_data['eikonal']
 
-	"""
-	# Set the kernel traits
-	geodesic_step = self.GetValue('geodesic_step',default=0.25,
-		help='Step size, in pixels, for the geodesic ODE solver')
-
-	geodesic_recompute_flow = self.GetValue('geodesic_recompute_flow',default=False,
-		help="Recompute the geodesic flow online when extracting geodesics (saves memory)")
-
-	eucl_delay = int(np.sqrt(self.ndim)/geodesic_step)
-	eucl_delay = self.GetValue('geodesic_PastSeed_delay',default=eucl_delay,
-		help="Delay, in iterations, for the 'PastSeed' stopping criterion of the "
-		"geodesic ODE solver") # Likely in curvature penalized models
-	nymin_delay = int(8.*np.sqrt(self.ndim)/geodesic_step)
-	nymin_delay = self.GetValue('geodesic_Stationnary_delay',default=nymin_delay,
-		help="Delay, in iterations, for the 'Stationnary' stopping criterion of the "
-		"geodesic ODE solver") # Rather unlikely
-
-	traits = { # Suggested defaults
-		'eucl_delay':int(eucl_delay),
-		'nymin_delay':int(nymin_delay),
-		'EuclT':np.uint8,
-		}
-	traits.update(self.GetValue('geodesic_traits',default=traits,
-		help='Traits for the geodesic backtracking kernel') )
-	if any(self.periodic):
-		traits['periodic'] = 1
-		traits['periodic_axes'] = self.periodic
-	traits.update({ # Non-negotiable
-		'ndim_macro':self.ndim,
-		'Int':self.int_t,
-		'Scalar':self.float_t,
-		'multiprecision_macro':eikonal.policy.multiprecision,
-		'recompute_flow_macro':geodesic_recompute_flow,
-		'chart_macro':self.hasChart,
-		})
-
-	eucl_t = traits['EuclT']
-	eucl_integral = np.dtype(eucl_t).kind in ('i','u') # signed or unsigned integer
-	eucl_max = np.iinfo(eucl_t).max if eucl_integral else np.inf
-	if self.hasChart: 
-		eucl_chart = eucl_max-1 if eucl_integral else np.finfo(eucl_t).max
-		mapping = self.kernel_data['chart'].args['mapping']
-		traits.update({
-			'EuclT_chart':eucl_chart,
-			'ndim_s':mapping.ndim-1})
-		chart_jump_deviation = self.GetValue('chart_jump_deviation',default=np.inf,array_float=tuple(),
-			help="Do not interpolate the jump coordinates, among pixel corners, "
-			" if their (adimensionized) standard deviation exceeds this threshold. "
-			"(Use if chart_mapping is discontinuous. Typical value : 5.) ")
-		if chart_jump_deviation is True: chart_jump_deviation=5
-		chart_jump_variance = chart_jump_deviation**2
-		if chart_jump_variance<np.inf: traits['chart_jump_variance_macro']=1
-
-	geodesic.traits=traits
-
-	# Get the module
-	geodesic.source = cupy_module_helper.traits_header(traits,
-		join=True,integral_max=True) + "\n"
-	geodesic.source += '#include "GeodesicODE.h"\n'+self.cuda_date_modified
-	if geodesic_recompute_flow: geodesic.source = self.kernel_data['flow'].source + geodesic.source
-	geodesic.module = cupy_module_helper.GetModule(geodesic.source,self.cuoptions)
-	geodesic.kernel = geodesic.module.get_function('GeodesicODE')
-"""
 	# Set the module constants (Other constants were set in SetKernel.)
 	def SetCst(*args):
 		cupy_module_helper.SetModuleConstant(geodesic.module,*args)
-#	SetCst('shape_o',self.shape_o,self.int_t)
 #	SetCst('shape_i',self.shape_i,self.int_t)
 #	SetCst('size_i', self.size_i, self.int_t)
 	shape_tot = self.shape
-#	SetCst('shape_tot',shape_tot,self.int_t)
-#	SetCst('size_tot',self.size_tot,self.int_t)
 	SetCst('geodesicStep',geodesic.policy.step,self.float_t)
 	typical_len = int(max(40,0.5*np.max(shape_tot)/geodesic.policy.step))
 	typical_len = self.GetValue('geodesic_typical_length',default=typical_len,
@@ -164,9 +98,8 @@ def GetGeodesics(self):
 	args = []
 	for key,ker in argnames:
 		ker_args = self.kernel_data[ker].args 
-		if key in ker_args: args.append(ker_args[key]); print(key,ker,"found")
-		else: print(key,ker,"not found")
-		
+		if key in ker_args: args.append(ker_args[key])
+
 	args = tuple(cp.ascontiguousarray(arg) for arg in args)
 	kernel = geodesic.module.get_function('GeodesicODE')
 
