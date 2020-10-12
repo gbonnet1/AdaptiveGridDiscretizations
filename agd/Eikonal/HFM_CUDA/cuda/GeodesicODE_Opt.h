@@ -12,13 +12,6 @@
 //#define recompute_flow_macro false
 */
 
-#if multiprecision_macro
-#define MULTIP(...) __VA_ARGS__
-__constant__ Scalar multip_step;
-#else
-#define MULTIP(...)
-#endif
-
 // ------------- chart jumps -----------------
 
 #if chart_macro
@@ -147,8 +140,11 @@ void GeodesicFlow(
 	flow_weightsum=0;
 
 	// ------- Get the scheme structure -------
-	const Int n_geom = geom_indep_macro ? 
-		((n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i)) : n_t;
+	#if geom_indep_macro
+	const Int n_geom = (n_o%size_geom_o)*size_geom_i + (n_i%size_geom_i);
+	#else
+	const Int n_geom = n_t;
+	#endif
 
 	#if import_scheme_macro
 		const Scalar * weights = weights_t+nactx*n_geom;
@@ -174,8 +170,6 @@ void GeodesicFlow(
 
 	dist = u_i[n_i] MULTIP(+ uq_i[n_i]*multip_step);
 
-	printf("x_t %i,%i, dist %f\n",x_t[0],x_t[1],dist);
-
 	// Apply boundary conditions
 	const bool isSeed = GetBool(seeds_t,n_t);
 	const Scalar rhs = rhs_t[n_t];
@@ -198,8 +192,6 @@ void GeodesicFlow(
 		v_i,v_o,MULTIP(vq_o,)
 		ORDER2(v2_i,v2_o,MULTIP(vq2_o,)) 
 		x_t,x_i);
-
-	printf("dist again %f\n",u_i[n_i]);
 
 	Scalar flow_weights[nact]; 
 	NSYM(Int active_side[nsym];) // C does not tolerate zero-length arrays.
@@ -224,7 +216,15 @@ void GeodesicFlow(
 		}
 	}
 }
+
+#else // --- Using a precomputed and imported flow vector field ---
+
+#if multiprecision_macro
+#define MULTIP(...) __VA_ARGS__
+__constant__ Scalar multip_step; 
 #else
+#define MULTIP(...)
+#endif
 
 #define flow_args_signature_macro \
 	const Scalar * __restrict__ u_t, MULTIP(const Int * __restrict__ uq_t,) \

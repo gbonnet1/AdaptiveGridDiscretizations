@@ -25,7 +25,7 @@ hfmIn = Eikonal.dictIn({
     'raiseOnNonConvergence':False,
 #    'nitermax_o':30,
 #    'tol':1e-8,
-#    'multiprecision':False,
+    'multiprecision':True,
 #    'values_float64':True,
 
 	'dims':(n,n),

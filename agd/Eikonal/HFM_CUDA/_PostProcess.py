@@ -75,14 +75,12 @@ def PostProcess(self):
 #		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
 #	if self.flow_needed:
 	self.Solve('flow')
-
-	self.flow_normalization = None
-	flow_normalization_needed = ( (self.forwardAD or self.reverseAD) 
-		and (self.model_ in ('Rander','AsymmetricQuadratic')) )
+	self.drift_model = self.model_ in ('Rander','AsymmetricQuadratic')
+	flow_normalization_needed = (self.forwardAD or self.reverseAD) and self.drift_model
 
 	if flow_normalization_needed or self.exportGeodesicFlow:
 		flow_vector = fd.block_squeeze(flow.args['flow_vector'],self.shape)
-		if flow_normalization_needed:
+		if self.drift_model:
 			self.flow_normalization = np.where(self.seedTags,1.,self.metric.norm(-flow_vector))
 			flow_vector/=self.flow_normalization # Flow on adimensionized grid
 		if self.exportGeodesicFlow:
@@ -175,7 +173,7 @@ def SolveAD(self):
 		grad = self.rhs.gradient()
 		rhs = np.where(self.seedTags, grad, grad*self.rhs.value)
 
-		if self.flow_normalization is not None: rhs*=self.flow_normalization
+		if self.drift_model: rhs*=self.flow_normalization
 		rhs = fd.block_expand(rhs,self.shape_i,mode='constant',constant_values=np.nan)
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
 		coef = np.moveaxis(fd.block_squeeze(valueVariation,self.shape),0,-1)
@@ -205,7 +203,7 @@ def SolveAD(self):
 		pos = tuple(self.seedIndices.T)
 		seedSensitivity = allSensitivity[pos]
 		allSensitivity[pos]=0
-		if self.flow_normalization is not None:
+		if self.drift_model:
 			allSensitivity/=ad.cupy_support.expand_dims(self.flow_normalization,axis=-1)
 		self.hfmOut['costSensitivity'] = allSensitivity 
 
