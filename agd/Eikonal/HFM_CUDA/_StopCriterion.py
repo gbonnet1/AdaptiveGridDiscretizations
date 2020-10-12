@@ -95,9 +95,8 @@ def SetChart(self):
 	Sets a pasting procedure for manifolds defined by several local charts.
 	"""
 
-	if self.HasValue('chart_mapping'): self.hasChart = True
-	else: self.hasChart=False; return 
-
+	if not self.hasChart: return
+	
 	# Import the chart arguments, check their type, cast if necessary
 	mapping = self.GetValue('chart_mapping',default=None,
 		help="Mapping from one local chart to another, "

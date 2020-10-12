@@ -50,6 +50,8 @@ def PostProcess(self):
 	self._values_expand=None
 	self._values=None
 
+	if not self.flow_needed: return
+
 	# Compute the geodesic flow, if needed, and related quantities
 	shape_oi = self.shape_o+self.shape_i
 	nact = self.nscheme['nact']
@@ -69,10 +71,10 @@ def PostProcess(self):
 	if flow.traits.get('flow_vector_macro',False):
 		flow.args['flow_vector']    = cp.empty((ndim,)+shape_oi,dtype=self.float_t)
 
-	self.flow_needed = any(flow.traits.get(key+"_macro",False) for key in 
-		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
-	if self.flow_needed:
-		self.Solve('flow')
+#	self.flow_needed = any(flow.traits.get(key+"_macro",False) for key in 
+#		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
+#	if self.flow_needed:
+	self.Solve('flow')
 
 	self.flow_normalization = None
 	flow_normalization_needed = ( (self.forwardAD or self.reverseAD) 

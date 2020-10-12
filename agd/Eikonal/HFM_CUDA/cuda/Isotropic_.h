@@ -2,11 +2,11 @@
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
-#define adaptive_offsets_macro 0
+#define adaptive_offsets_macro false
 
 #ifdef isotropic_macro // We're using the same file for the anisotropic diagonal model
-#define adaptive_weights_macro 0
-#define geom_macro 0 // No geometry for the isotropic metric (only a cost function)
+#define adaptive_weights_macro false
+#define geom_macro false // No geometry for the isotropic metric (only a cost function)
 #endif
 
 #include "TypeTraits.h"

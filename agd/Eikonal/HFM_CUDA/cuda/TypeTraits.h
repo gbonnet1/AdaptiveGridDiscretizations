@@ -29,13 +29,13 @@ const int debug_print = 0;
 
 /*The solution is provided on a two level block grid, defined by shape_o and shape_i.*/
 #define bilevel_grid_macro
-#define local_i_macro true // shape_i grouped variables are a local block in space
+//#define local_i_macro true // shape_i shared variables are a local block in space
 
 /** In multi-precision, we address float roundoff errors 
 by representing a real in the form u+uq*multip_step, where
 u is a float, uq is an integer, and multip_step is a constant.*/
 #ifndef multiprecision_macro
-#define multiprecision_macro 0
+#define multiprecision_macro false
 #endif
 
 #if multiprecision_macro
@@ -49,7 +49,7 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 /** Wether the finite differences scheme uses any symmetric offsets.
 (Possibly in addition to forward offsets.) */
 #ifndef nsym_macro
-#define nsym_macro 1
+#define nsym_macro true
 #endif
 
 #if nsym_macro
@@ -73,7 +73,7 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 
 // Wether the mix (min/max) depends on the geometry
 #ifndef adaptive_mix_macro
-#define adaptive_mix_macro 0
+#define adaptive_mix_macro false
 #endif
 
 #if adaptive_mix_macro
@@ -84,7 +84,7 @@ u is a float, uq is an integer, and multip_step is a constant.*/
 
 // Wether the mix depends on the step (e.g. successively min-max-min)
 #ifndef alternating_mix_macro
-#define alternating_mix_macro 0
+#define alternating_mix_macro false
 #endif
 
 #if alternating_mix_macro
@@ -115,7 +115,7 @@ each iteration*/
 /** Source factorization allows to improve the solution accuracy by subtracting, before 
 the finite differences computation, a expansion of the solution near the source.*/
 #ifndef factor_macro
-#define factor_macro 0
+#define factor_macro false
 #endif
 
 #if factor_macro
@@ -128,7 +128,7 @@ the finite differences computation, a expansion of the solution near the source.
 
 /** A drift can be introduced in some schemes */
 #ifndef drift_macro
-#define drift_macro 0
+#define drift_macro false
 #endif
 
 #if drift_macro
@@ -148,7 +148,7 @@ the finite differences computation, a expansion of the solution near the source.
 
 /** The second order scheme allows to improve accuracy*/
 #ifndef order2_macro
-#define order2_macro 0
+#define order2_macro false
 #endif
 
 #if order2_macro
@@ -159,22 +159,22 @@ the finite differences computation, a expansion of the solution near the source.
 
 // An inconclusive experiment on setting the switching threshold adaptively
 #ifndef order2_threshold_weighted_macro
-#define order2_threshold_weighted_macro 0
+#define order2_threshold_weighted_macro false
 #endif
 
 #ifndef order2_causal_macro
-#define order2_causal_macro 1
+#define order2_causal_macro true
 #endif
 /** Curvature penalized models have share a few specific features : 
 relaxation parameter, periodic boundary condition, xi and kappa constants, 
 position dependent metric. */
 #ifndef curvature_macro
-#define curvature_macro 0
+#define curvature_macro false
 #endif
 
 #if curvature_macro
 #define CURVATURE(...) __VA_ARGS__
-#define periodic_macro 1
+#define periodic_macro true 
 #else
 #define CURVATURE(...) 
 #endif
@@ -200,7 +200,7 @@ const Int geom_size = geom_macro;
 
 /** Some discretization schemes may be exported to speed up iterations*/
 #ifndef export_scheme_macro
-#define export_scheme_macro 0
+#define export_scheme_macro false
 #endif
 
 #if export_scheme_macro
@@ -210,7 +210,7 @@ const Int geom_size = geom_macro;
 #endif
 
 #ifndef import_scheme_macro
-#define import_scheme_macro 0
+#define import_scheme_macro false
 #endif
 
 #if import_scheme_macro
@@ -229,7 +229,7 @@ const Int geom_size = geom_macro;
 
 /** Wether the model depends on local geometrical data, aside from the cost function.*/
 #ifndef geom_macro
-#define geom_macro 1
+#define geom_macro true
 #endif
 
 #if geom_macro
@@ -240,7 +240,7 @@ const Int geom_size = geom_macro;
 
 /** Apply periodic boundary conditions on some of the axes.*/
 #ifndef periodic_macro
-#define periodic_macro 0
+#define periodic_macro false
 #endif
 
 #if periodic_macro
@@ -257,7 +257,7 @@ We can take advantage of this property to achieve better robustness of the solve
 (Otherwise, floating point roundoff errors often cause multiple useless additional iterations)
 */
 #ifndef decreasing_macro
-#define decreasing_macro 1
+#define decreasing_macro true
 #endif
 
 #if decreasing_macro
@@ -276,7 +276,7 @@ active blocks is specified. Blocks are then frozen, or not, depending on their m
 (minimal change) value.
 */
 #ifndef minChg_freeze_macro
-#define minChg_freeze_macro 0
+#define minChg_freeze_macro false
 #endif
 
 #if minChg_freeze_macro
@@ -303,7 +303,7 @@ to take effect.
 (to a single pixel in the original implementation). 
 */
 #ifndef fim_macro
-#define fim_macro 0
+#define fim_macro false
 #endif
 
 #if fim_macro
@@ -315,7 +315,7 @@ to take effect.
 /** The following macros are for the extraction of the upwind geodesic flow. */
 // weights
 #ifndef flow_weights_macro 
-#define flow_weights_macro 0
+#define flow_weights_macro false
 #endif
 
 #if flow_weights_macro
@@ -326,7 +326,7 @@ to take effect.
 
 // weightsum
 #ifndef flow_weightsum_macro
-#define flow_weightsum_macro 0
+#define flow_weightsum_macro false
 #endif
 
 #if flow_weightsum_macro
@@ -337,7 +337,7 @@ to take effect.
 
 // offets
 #ifndef flow_offsets_macro
-#define flow_offsets_macro 0
+#define flow_offsets_macro false
 #endif
 
 #if flow_offsets_macro
@@ -348,7 +348,7 @@ to take effect.
 
 // indices
 #ifndef flow_indices_macro
-#define flow_indices_macro 0
+#define flow_indices_macro false
 #endif
 
 #if flow_indices_macro
@@ -359,7 +359,7 @@ to take effect.
 
 // vector
 #ifndef flow_vector_macro
-#define flow_vector_macro 0
+#define flow_vector_macro false
 #endif
 
 #if flow_vector_macro
@@ -390,7 +390,7 @@ to take effect.
 /** Isotropic and diagonal metrics have special treatment, since they and offsets,
 and weights in the anisotropic case.*/
 #ifndef adaptive_weights_macro
-#define adaptive_weights_macro 1
+#define adaptive_weights_macro true
 #endif
 
 #if adaptive_weights_macro
@@ -400,7 +400,7 @@ and weights in the anisotropic case.*/
 #endif
 
 #ifndef adaptive_offsets_macro
-#define adaptive_offsets_macro 1
+#define adaptive_offsets_macro true
 #endif
 
 #if adaptive_offsets_macro
@@ -411,7 +411,7 @@ and weights in the anisotropic case.*/
 
 /** Dealing with walls in the domain */
 #ifndef walls_macro
-#define walls_macro 0
+#define walls_macro false
 #endif
 
 #if walls_macro
@@ -422,9 +422,9 @@ and weights in the anisotropic case.*/
 
 /** Method used for sorting the values before the update*/
 #ifndef merge_sort_macro
-#define merge_sort_macro 0
+#define merge_sort_macro false
 #endif
 
 #ifndef network_sort_macro
-#define network_sort_macro 0
+#define network_sort_macro false
 #endif

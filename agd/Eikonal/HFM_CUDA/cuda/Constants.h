@@ -77,7 +77,7 @@ __constant__ Scalar ixi; // inverse of the xi parameter, penalizing curvature
 __constant__ Scalar kappa;
 #endif
 
-const bool periodic_axes[3]={false,false,true};
+//const bool periodic_axes[3]={false,false,true}; // must be defined externally
 
 #if !theta_var_macro && !precomputed_scheme_macro
 // const Int nTheta must be defined in including file, and equal to shape_tot[2]

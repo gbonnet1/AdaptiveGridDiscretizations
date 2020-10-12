@@ -23,22 +23,23 @@ const Int Int_Max = 2147483647;
 
 typedef float Scalar;
 
-typedef unsigned char EuclT;
+typedef unsigned int EuclT;
 const EuclT EuclT_Max = 255;
+const EuclT EuclT_Chart = 254;
 
 #define ndim_macro 2;
 */
 
-#if !recompute_flow_macro
+#if !online_flow_macro
 
 const Int ndim = ndim_macro;
 Scalar infinity(){return 1./0.;}
 
-#ifndef periodic_macro
-#define PERIODIC(...) 
-#else
+#if periodic_macro
 #define PERIODIC(...) __VA_ARGS__
-//const bool periodic[ndim]={false,true}; //must be defined
+//const bool periodic[ndim]={false,true}; //must be defined in enclosing file
+#else
+#define PERIODIC(...) 
 #endif
 
 __constant__ Int shape_tot[ndim];
@@ -46,8 +47,8 @@ __constant__ Int size_tot;
 
 #define bilevel_grid_macro 
 __constant__ Int shape_o[ndim]; 
-__constant__ Int shape_i[ndim]; 
-__constant__ Int size_i;
+//__constant__ Int shape_i[ndim]; 
+//__constant__ Int size_i;
 
 #include "Geometry_.h"
 #include "Grid.h"
@@ -141,7 +142,7 @@ ODEStop::Enum NormalizedFlow(
 				continue;}
 			const Int ny = Grid::Index_tot(yq);
 			
-			// Load or recompute distance and flow 
+			// Load or compute distance and flow 
 			GeodesicFlow(
 				flow_args_list_macro
 				yq,ny,
@@ -243,7 +244,7 @@ __global__ void GeodesicODE(
 		eucl_p[l] = eucl_t[nymin];
 		
 		#if chart_macro 
-		const bool chart = eucl_p[l]==EuclT_chart; // Detect wether chart change needed
+		const bool chart = eucl_p[l]==EuclT_Chart; // Detect wether chart change needed
 		if(chart) {eucl_p[l] = eucl_p[(l-1+hlen)%hlen];} // use previous value
 		#endif
 

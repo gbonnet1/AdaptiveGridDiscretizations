@@ -108,32 +108,28 @@ void ChartJump(const Scalar * mapping_s, Scalar x[ndim]){
 #define CHART(...) 
 #endif // chart_macro
 
-// ----------------- flow recomputation --------------------
+// ----------------- flow online computation --------------------
 
-#if recompute_flow_macro
-/** (Optional) This function recomputes the geodesic flow, by calling the eikonal solver.
+#if online_flow_macro
+/** (Optional) This function computes the geodesic flow, by calling the eikonal solver.
 This allows so save a significant amount of memory in comparison with precomputing the 
 geodesic flow, in particular with models whose geometric information is small 
 (e.g. depending only on a subset of the coordinates, as the curvature penalized models, 
 and as opposed to a point dependent Riemannian metric.) 
 
 It overalps significanty with Update.h, somewhat violating the DRY principle unfortunately.
-
-	\ // Problem data 
-	\ // Import the finite differences scheme 
-
 */
 
 #define flow_args_signature_macro \
 	const Scalar * __restrict__ u_t, MULTIP(const Int * __restrict__ uq_t,) \
-	GEOM(const Scalar * __restrict__ geom_t,) \
+	const Scalar * __restrict__ geom_t, \
 	const BoolPack * __restrict__ seeds_t, const Scalar * __restrict__ rhs_t, \
 	WALLS(const WallT * __restrict__ wallDist_t,) \
 	IO_SCHEME( 	const Scalar  * __restrict__ weights_t, \
 				const OffsetT * __restrict__ offsets_t,) 
 
 #define flow_args_list_macro \
-	u_t, MULTIP(uq_t,) GEOM(geom_t,) seeds_t,rhs_t, \
+	u_t, MULTIP(uq_t,) geom_t, seeds_t,rhs_t, \
 	WALLS(wallDist_t,) IO_SCHEME(weights_t,offsets_t,) 
 
 void GeodesicFlow(
@@ -178,6 +174,8 @@ void GeodesicFlow(
 
 	dist = u_i[n_i] MULTIP(+ uq_i[n_i]*multip_step);
 
+	printf("x_t %i,%i, dist %f\n",x_t[0],x_t[1],dist);
+
 	// Apply boundary conditions
 	const bool isSeed = GetBool(seeds_t,n_t);
 	const Scalar rhs = rhs_t[n_t];
@@ -200,6 +198,8 @@ void GeodesicFlow(
 		v_i,v_o,MULTIP(vq_o,)
 		ORDER2(v2_i,v2_o,MULTIP(vq2_o,)) 
 		x_t,x_i);
+
+	printf("dist again %f\n",u_i[n_i]);
 
 	Scalar flow_weights[nact]; 
 	NSYM(Int active_side[nsym];) // C does not tolerate zero-length arrays.
@@ -243,4 +243,4 @@ void GeodesicFlow(
 	for(Int k=0; k<ndim; ++k){
 		flow_vector[k] = flow_vector_t[n_t+size_tot*k];}
 }
-#endif // recompute_flow_macro
+#endif // online_flow_macro

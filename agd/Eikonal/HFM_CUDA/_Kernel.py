@@ -9,6 +9,7 @@ import copy
 
 
 from . import kernel_traits
+from . import misc
 from .cupy_module_helper import SetModuleConstant,GetModule
 from . import cupy_module_helper
 from ... import AutomaticDifferentiation as ad
@@ -39,17 +40,17 @@ def SetKernelTraits(self):
 	
 	traits['multiprecision_macro']=policy.multiprecision
 	if policy.multiprecision: 
-		traits['strict_iter_o_macro']=1
-		traits['strict_iter_i_macro']=1
+		traits['strict_iter_o_macro']=True
+		traits['strict_iter_i_macro']=True
 
 	self.factoringRadius = self.GetValue('factoringRadius',default=0,
 		help="Use source factorization, to improve accuracy")
-	if self.factoringRadius: traits['factor_macro']=1
+	if self.factoringRadius: traits['factor_macro']=True
 
 	order = self.GetValue('order',default=1,
 		help="Use second order scheme to improve accuracy")
 	if order not in {1,2}: raise ValueError(f"Unsupported scheme order {order}")
-	if order==2: traits['order2_macro']=1
+	if order==2: traits['order2_macro']=True
 	self.order=order
 
 	if not self.isCurvature: # Dimension generic models
@@ -83,25 +84,29 @@ def SetKernelTraits(self):
 	self.caster = lambda x : cp.asarray(x,dtype=self.float_t)
 	self.nscheme = kernel_traits.nscheme(self)
 #	assert self.float_t == self.hfmIn.float_t # Not necessary for gpu_transfer
+	self.hasChart = self.HasValue('chart_mapping')
 
 def SetKernel(self):
 	"""
 	Setup the eikonal kernel, and (partly) the flow kernel
 	"""
 	if self.verbosity>=1: print("Preparing the GPU kernel")
-	modules = []
+	eikonal,geodesic,flow,scheme = [self.kernel_data[key] 
+		for key in ('eikonal','geodesic','flow','scheme')]
 
 	# ---- Produce a first kernel, for solving the eikonal equation ----
 	# Set a few last traits
-	eikonal = self.kernel_data['eikonal']
+
 	policy = eikonal.policy
 	traits = eikonal.traits
-	traits['import_scheme_macro'] = self.precompute_scheme
-	if self.periodic != self.periodic_default:
-		traits['periodic_macro']=1
-		traits['periodic_axes']=self.periodic
-	if self.model_=='Isotropic': traits['isotropic_macro']=1
-	if 'wallDist' in eikonal.args: traits['walls_macro']=1
+	traits.update({
+		'import_scheme_macro':self.precompute_scheme,
+		'local_i_macro':True, # threads work on a common block of solution
+		'periodic_macro':np.any(self.periodic),
+		'isotropic_macro': self.model_=='Isotropic', # Isotropic/diagonal switch
+		'walls_macro': 'wallDist' in eikonal.args,
+		})
+	if traits['periodic_macro']: traits['periodic_axes']=self.periodic
 	policy.count_updates = self.GetValue('count_updates',default=False,
 		help='Count the number of times each block is updated')
 
@@ -126,44 +131,106 @@ def SetKernel(self):
 
 	eikonal.source += model_source+self.cuda_date_modified
 	eikonal.module = GetModule(eikonal.source,self.cuoptions)
-	modules.append(eikonal.module)
 
-	# ---- Produce a second kernel for computing the geodesic flow ---
-	flow = self.kernel_data['flow']
-	flow.traits = {
-		**eikonal.traits,
-		'pruning_macro':False,
-		'fim_macro':False,
-		'minChg_freeze_macro':False,
-		'niter_i':1,
-	}
-	flow.policy = copy.copy(eikonal.policy) 
-	flow.policy.nitermax_o = 1
-	flow.policy.solver = 'global_iteration'
+	# ---- Produce a kernel for computing the geodesics ----
+	if self.hasTips:
+		geodesic.policy.online_flow=self.GetValue('geodesic_online_flow',default=False,
+			help="Compute the flow online when extracting geodesics (saves memory)")
+		online_flow = geodesic.policy.online_flow
 
-	if self.forwardAD or self.reverseAD:
-		for key in ('flow_weights','flow_weightsum','flow_indices'): 
-			flow.traits[key+"_macro"]=1
-	if self.hasTips: 
-		for key in ('flow_vector','flow_weightsum'): 
-			flow.traits[key+"_macro"]=1
-	if self.exportGeodesicFlow: flow.traits['flow_vector_macro']=1
-	if self.model_=='Rander' and (self.forwardAD or self.reverseAD): 
-		flow.traits['flow_vector_macro']=1
+		# Get step, and related stopping criteria (compile time specified these are array lengths)
+		geodesic.policy.step = self.GetValue('geodesic_step',default=0.25,
+			help='Step size, in pixels, for the geodesic ODE solver')
+		eucl_delay = int(self.GetValue('geodesic_PastSeed_delay',
+			default=np.sqrt(self.ndim)/geodesic.policy.step,
+			help="Delay, in iterations, for the 'PastSeed' stopping criterion of the "
+			"geodesic ODE solver")) # Likely in curvature penalized models
+		nymin_delay = int(self.GetValue('geodesic_Stationnary_delay',
+			default=8.*np.sqrt(self.ndim)/geodesic.policy.step,
+			help="Delay, in iterations, for the 'Stationnary' stopping criterion of the "
+			"geodesic ODE solver")) # Rather unlikely
 
-	flow.source = cupy_module_helper.traits_header(flow.traits,
-		join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"
-	flow.source += model_source+self.cuda_date_modified
-	flow.module = GetModule(flow.source,self.cuoptions)
-	modules.append(flow.module)
+		geodesic.policy.eucl_t = np.uint8
+		geodesic.policy.eucl_integral,geodesic.policy.eucl_max,geodesic.policy.eucl_chart \
+			= misc.integral_largest_nextlargest(geodesic.policy.eucl_t)
 
-	# ---- Produce a third kernel for precomputing the stencils (if requested) ----
+
+		geodesic.traits = { # Suggested defaults
+			**eikonal.traits,
+			'niter_i':1,
+			'eucl_delay':eucl_delay,
+			'nymin_delay':nymin_delay,
+			'EuclT':geodesic.policy.eucl_t,
+			'EuclT_chart':geodesic.policy.eucl_chart,
+			'online_flow_macro':online_flow,
+			'chart_macro':self.hasChart,
+			'flow_vector_macro':True,
+			'local_i_macro':False, # thread block does Not work on common solution block
+			}
+		geodesic.traits.update(self.GetValue('geodesic_traits',default=geodesic.traits,
+			help='Traits for the geodesic backtracking kernel') )
+
+		if self.hasChart: 
+			mapping = self.kernel_data['chart'].args['mapping']
+			geodesic.traits['ndim_s']=mapping.ndim-1
+			chart_jump_deviation = self.GetValue('chart_jump_deviation',
+				default=np.inf,array_float=tuple(),
+				help="Do not interpolate the jump coordinates, among pixel corners, "
+				" if their (adimensionized) standard deviation exceeds this threshold. "
+				"(Use if chart_mapping is discontinuous. Typical value : 5.) ")
+			if chart_jump_deviation is True: chart_jump_deviation=5
+			geodesic.policy.chart_jump_variance = chart_jump_deviation**2
+			geodesic.traits['chart_jump_variance_macro'] = chart_jump_deviation<np.inf
+
+		geodesic.source = cupy_module_helper.traits_header(geodesic.traits,
+			join=True,size_of_shape=True,log2_size=True,integral_max=True) + "\n"
+		if online_flow: geodesic.source += model_source
+		geodesic.source += '#include "GeodesicODE.h"\n'+self.cuda_date_modified
+		print(geodesic.source)
+		geodesic.module = cupy_module_helper.GetModule(geodesic.source,self.cuoptions)
+
+	else: # No geodesic tips
+		online_flow=True # Dummy value
+
+	# ---- Produce a kernel for computing the geodesic flow ---
+	self.flow_needed = (self.forwardAD or self.reverseAD or self.exportGeodesicFlow 
+		or not online_flow)
+	geodesic_outofline = None if online_flow else geodesic
+
+	if self.flow_needed:
+		flow.traits = {
+			**eikonal.traits,
+			'pruning_macro':False,
+			'fim_macro':False,
+			'minChg_freeze_macro':False,
+			'niter_i':1,
+		}
+		flow.policy = copy.copy(eikonal.policy) 
+		flow.policy.nitermax_o = 1
+		flow.policy.solver = 'global_iteration'
+
+		if self.forwardAD or self.reverseAD:
+			for key in ('flow_weights','flow_weightsum','flow_indices'): 
+				flow.traits[key+"_macro"]=True
+		if self.hasTips: 
+			for key in ('flow_vector','flow_weightsum'): 
+				flow.traits[key+"_macro"]=True
+		if self.exportGeodesicFlow: flow.traits['flow_vector_macro']=True
+		if self.model_=='Rander' and (self.forwardAD or self.reverseAD): 
+			flow.traits['flow_vector_macro']=True
+
+		flow.source = cupy_module_helper.traits_header(flow.traits,
+			join=True,size_of_shape=True,log2_size=True,integral_max=integral_max) + "\n"
+		flow.source += model_source+self.cuda_date_modified
+		flow.module = GetModule(flow.source,self.cuoptions)
+
+
+	# ---- Produce a kernel for precomputing the stencils (if requested) ----
 	if self.precompute_scheme:
-		scheme = self.kernel_data['scheme']
 		scheme.traits = {
 			**eikonal.traits,
-			'import_scheme_macro':0,
-			'export_scheme_macro':1,
+			'import_scheme_macro':False,
+			'export_scheme_macro':True,
 			}
 		for key in ('strict_iter_o_macro','multiprecision_macro',
 			'walls_macro','minChg_freeze_macro'):
@@ -174,66 +241,68 @@ def SetKernel(self):
 		scheme.source += model_source+self.cuda_date_modified
 		scheme.module = GetModule(scheme.source,self.cuoptions)
 
-		modules.append(scheme.module)
-
-	# Set the constants
-	def SetCst(*args,modules=modules):
-		for module in modules: SetModuleConstant(module,*args)
+	# ------- Set the constants of the cuda modules -------
+	def SetCst(*args,exclude=tuple()):
+		if not isinstance(exclude,tuple): exclude=(exclude,)
+		for kernel_data in [eikonal,geodesic,flow,scheme]: 
+			if kernel_data in exclude or kernel_data.module is None: continue
+			SetModuleConstant(kernel_data.module,*args)
 
 	float_t,int_t = self.float_t,self.int_t
 
 	self.size_o = np.prod(self.shape_o)
 	SetCst('shape_o',self.shape_o,int_t)
-	SetCst('size_o', self.size_o, int_t)
+	SetCst('size_o', self.size_o, int_t, exclude=geodesic_outofline)
 
 	self.size_tot = self.size_o * np.prod(self.shape_i)
-	SetCst('shape_tot',self.shape,int_t) # Used for periodicity
-	SetCst('size_tot', self.size_tot,  int_t) # Used for geom indexing
+	SetCst('shape_tot',self.shape,   int_t) # Used for periodicity
+	SetCst('size_tot', self.size_tot,int_t) # Used for geom indexing
 
 	shape_geom_i,shape_geom_o = [s[self.geom_indep:] for s in (self.shape_i,self.shape_o)]
 	if self.geom_indep: # Geometry only depends on a subset of coordinates
 		size_geom_i,size_geom_o = [np.prod(s,dtype=int) for s in (shape_geom_i,shape_geom_o)]
 		for key,value in [('size_geom_i',size_geom_i),('size_geom_o',size_geom_o),
-			('size_geom_tot',size_geom_i*size_geom_o)]: SetCst(key,value,int_t)
-	else: SetCst('size_geom_tot', self.size_tot,int_t)
+			('size_geom_tot',size_geom_i*size_geom_o)]: 
+			SetCst(key,value,int_t, exclude=geodesic_outofline)
+	else: SetCst('size_geom_tot', self.size_tot,int_t, exclude=geodesic_outofline)
 
 	if policy.multiprecision:
 		# Choose power of two, significantly less than h
 		h = float(np.min(self.h))
 		self.multip_step = 2.**np.floor(np.log2(h/10)) 
-		SetCst('multip_step',self.multip_step, float_t, modules=(eikonal.module,flow.module))
+		SetCst('multip_step',self.multip_step, float_t,exclude=(geodesic_outofline,scheme)) 
 		self.multip_max = np.iinfo(self.int_t).max*self.multip_step/2
-		SetCst('multip_max', self.multip_max, float_t, modules=(eikonal.module,flow.module))
+		SetCst('multip_max', self.multip_max, float_t, exclude=(geodesic_outofline,scheme))
 
-	if self.factoringRadius:
-		SetCst('factor_radius2',self.factoringRadius**2,float_t)
-		SetCst('factor_origin', self.seed,              float_t) # Single seed only
+	if self.factoringRadius: # Single seed only
+		SetCst('factor_origin', self.seed,              float_t,exclude=geodesic_outofline) 
+		SetCst('factor_radius2',self.factoringRadius**2,float_t,exclude=geodesic_outofline)
 		factor_metric = ad.remove_ad(self.CostMetric(self.seed).to_HFM())
 		# The drift part of a Rander metric can be ignored for factorization purposes 
 		if self.model_=='Rander': factor_metric = factor_metric[:-self.ndim]
 		elif self.model_=='Isotropic': factor_metric = factor_metric**2 
-		SetCst('factor_metric',factor_metric,float_t)
+		SetCst('factor_metric',factor_metric,float_t, exclude=geodesic_outofline)
 
 	if self.order==2:
 		order2_threshold = self.GetValue('order2_threshold',0.3,
 			help="Relative threshold on second order differences / first order difference,"
 			"beyond which the second order scheme deactivates")
-		SetCst('order2_threshold',order2_threshold,float_t)		
+		SetCst('order2_threshold',order2_threshold,float_t, exclude=geodesic_outofline)		
 	
 	if self.model_ =='Isotropic':
-		SetCst('weights', self.h**-2, float_t)
+		SetCst('weights', self.h**-2, float_t, exclude=geodesic_outofline)
 	if self.isCurvature:
 		nTheta = self.shape[2]
 		theta = self.hfmIn.Axes()[2]
 		eps = self.GetValue('eps',default=0.1,array_float=tuple(),
 			help='Relaxation parameter for the curvature penalized models')
-		SetCst('decomp_v_relax',eps**2,float_t)
+		SetCst('decomp_v_relax',eps**2,float_t, exclude=geodesic_outofline)
 
 		if traits['xi_var_macro']==0:    SetCst('ixi',  self.ixi,  float_t) # ixi = 1/xi
 		if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
 		if traits['theta_var_macro']==0: 
-			SetCst('cosTheta_s',np.cos(theta),float_t)
-			SetCst('sinTheta_s',np.sin(theta),float_t)
+			SetCst('cosTheta_s',np.cos(theta),float_t, exclude=geodesic_outofline)
+			SetCst('sinTheta_s',np.sin(theta),float_t, exclude=geodesic_outofline)
 
 	if self.precompute_scheme:
 		nactx = self.nscheme['nactx']
@@ -263,6 +332,7 @@ def SetKernel(self):
 
 	# Sort the kernel arguments
 	args = eikonal.args
+	print(args.keys())
 	argnames = ('values','valuesq','valuesNext','valuesqNext',
 		'geom','seedTags','rhs','wallDist','weights','offsets')
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])

@@ -6,6 +6,7 @@ from ...AutomaticDifferentiation import cupy_support as cps
 from ... import AutomaticDifferentiation as ad
 from ... import FiniteDifferences as fd
 
+
 def GetGeodesics(self):
 	if not self.hasTips: return
 	if self.tips is not None: tips = self.hfmIn.PointFromIndex(self.tips,to=True)
@@ -23,9 +24,10 @@ def GetGeodesics(self):
 		tipsU = np.squeeze(cps.take_along_axis(tipIndicesU,amin,axis=0),axis=0)
 		tips = np.concatenate((tips,tipsU)) if self.tips is not None else tipsU
 
-	geodesic = self.kernel_data['geodesic'] # Not using the common solver here
+	geodesic = self.kernel_data['geodesic'] 
 	eikonal = self.kernel_data['eikonal']
 
+	"""
 	# Set the kernel traits
 	geodesic_step = self.GetValue('geodesic_step',default=0.25,
 		help='Step size, in pixels, for the geodesic ODE solver')
@@ -87,18 +89,18 @@ def GetGeodesics(self):
 	if geodesic_recompute_flow: geodesic.source = self.kernel_data['flow'].source + geodesic.source
 	geodesic.module = cupy_module_helper.GetModule(geodesic.source,self.cuoptions)
 	geodesic.kernel = geodesic.module.get_function('GeodesicODE')
-
-	# Set the module constants
+"""
+	# Set the module constants (Other constants were set in SetKernel.)
 	def SetCst(*args):
 		cupy_module_helper.SetModuleConstant(geodesic.module,*args)
-	# Note: geodesic solver does not use bilevel array structure
-	SetCst('shape_o',self.shape_o,self.int_t)
-	SetCst('shape_i',self.shape_i,self.int_t)
-	SetCst('size_i', self.size_i, self.int_t)
+#	SetCst('shape_o',self.shape_o,self.int_t)
+#	SetCst('shape_i',self.shape_i,self.int_t)
+#	SetCst('size_i', self.size_i, self.int_t)
 	shape_tot = self.shape
-	SetCst('shape_tot',shape_tot,self.int_t)
-	SetCst('size_tot',self.size_tot,self.int_t)
-	typical_len = int(max(40,0.5*np.max(shape_tot)/geodesic_step))
+#	SetCst('shape_tot',shape_tot,self.int_t)
+#	SetCst('size_tot',self.size_tot,self.int_t)
+	SetCst('geodesicStep',geodesic.policy.step,self.float_t)
+	typical_len = int(max(40,0.5*np.max(shape_tot)/geodesic.policy.step))
 	typical_len = self.GetValue('geodesic_typical_length',default=typical_len,
 		help="Typical expected length of geodesics (number of points).")
 	# Typical geodesic length is max_len for the GPU solver, which computes just a part
@@ -109,6 +111,8 @@ def GetGeodesics(self):
 	nGeodesics=len(tips)
 
 	# Prepare the euclidean distance to seed estimate (for stopping criterion)
+	eucl_t,eucl_integral,eucl_max,eucl_chart = geodesic.policy.eucl_t, \
+		geodesic.policy.eucl_integral, geodesic.policy.eucl_max,geodesic.policy.eucl_chart
 	eucl_bound_default = 12 if self.isCurvature else 6
 	eucl_bound = self.GetValue('geodesic_targetTolerance',default=eucl_bound_default,
 		help="Tolerance, in pixels, for declaring a seed as reached.")
@@ -129,7 +133,7 @@ def GetGeodesics(self):
 		chart_jump = np.broadcast_to(chart_jump,eucl.shape)
 		eucl[chart_jump] = eucl_chart # Set special key for jump 
 		SetCst('size_s',mapping.size/len(mapping),self.int_t)
-		if 'chart_jump_variance_macro' in traits: 
+		if traits['chart_jump_variance_macro']: 
 			SetCst('chart_jump_variance',chart_jump_variance,self.float_t)
 
 	eucl = fd.block_expand(eucl,self.shape_i,mode='constant',constant_values=eucl_max)
@@ -146,12 +150,12 @@ def GetGeodesics(self):
 	geodesic_termination_codes = [
 		'Continue', 'AtSeed', 'InWall', 'Stationnary', 'PastSeed', 'VanishingFlow']
 
-	max_len = int(max(40,20*np.max(shape_tot)/geodesic_step))
+	max_len = int(max(40,20*np.max(shape_tot)/geodesic.policy.step))
 	max_len = self.GetValue("geodesic_max_length",default=max_len,
 		help="Maximum allowed length of geodesics.")
 	
-	
-	if geodesic_recompute_flow: flow_argnames = [(key,'eikonal') 
+	# Prepare the cuda kernel and arguments
+	if geodesic.policy.online_flow: flow_argnames = [(key,'eikonal') 
 		for key in ('geom','seedTags','rhs','wallDist','weights','offsets')]
 	else: flow_argnames = [('flow_vector','flow'),('flow_weightsum','flow')]
 
@@ -160,13 +164,11 @@ def GetGeodesics(self):
 	args = []
 	for key,ker in argnames:
 		ker_args = self.kernel_data[ker].args 
-		if key in ker_args: args.append(ker_args[key])
-
-#		flow = self.kernel_data['flow']
-#		args = [flow.args['flow_vector'],flow.args['flow_weightsum'],self.values_expand,eucl]
-#		if self.hasChart: args.append(mapping)
-
+		if key in ker_args: args.append(ker_args[key]); print(key,ker,"found")
+		else: print(key,ker,"not found")
+		
 	args = tuple(cp.ascontiguousarray(arg) for arg in args)
+	kernel = geodesic.module.get_function('GeodesicODE')
 
 	geoIt=0; geoMaxIt = int(np.ceil(max_len/typical_len))
 	while len(corresp)>0:
@@ -184,7 +186,7 @@ def GetGeodesics(self):
 		nBlocks = int(np.ceil(nGeo/block_size))
 
 		SetCst('nGeodesics', nGeo, self.int_t)
-		geodesic.kernel( (nBlocks,),(block_size,),args + (x_s,len_s,stop_s))
+		kernel( (nBlocks,),(block_size,),args + (x_s,len_s,stop_s))
 		corresp_next = []
 		for i,x,l,stop in zip(corresp,x_s,len_s,stop_s): 
 			geodesics[i].append(x[1:int(l)])

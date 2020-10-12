@@ -11,7 +11,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
 
 xp,Eikonal = [ad.cupy_friendly(e) for e in (xp,Eikonal)]
 
-n=100
+n=20
 hfmIn = Eikonal.dictIn({
     'model':'Isotropic2',
     'exportValues':1,
@@ -25,13 +25,13 @@ hfmIn = Eikonal.dictIn({
     'raiseOnNonConvergence':False,
 #    'nitermax_o':30,
 #    'tol':1e-8,
-    'multiprecision':False,
-    'values_float64':True,
+#    'multiprecision':False,
+#    'values_float64':True,
 
 	'dims':(n,n),
 	'origin':[-0.5,-0.5],
 	'gridScale':1.,
-#	'geodesic_recompute_flow':True,
+#	'geodesic_online_flow':True,
 #	'order':2,
 #	'order2_threshold':0.3,
 	'factoringRadius':100,
@@ -84,10 +84,12 @@ hfmIn['cost'] = xp.ones(hfmIn.shape,dtype='float32')
 
 #out_raw = hfmIn.RunGPU(returns='out_raw'); print(out_raw); hfmOut = out_raw['hfmOut']
 hfmIn.SetUniformTips((2,2))
+#hfmIn['tip'] = hfmIn['tips'][0]
 hfmOut = hfmIn.Run()
 
 
 print(hfmOut['geodesic_stopping_criteria'])
+#print(hfmOut['geodesics'])
 #print(hfmOut['values'].shape)
 #print(hfmOut)
 
