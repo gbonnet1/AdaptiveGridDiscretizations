@@ -24,8 +24,7 @@ def values_expand(self):
 		values = eikonal.args['values']
 		if eikonal.policy.multiprecision:
 			valuesq = eikonal.args['valuesq']
-			if self.GetValue('values_float64',default=False,
-				help="Export values using the float64 data type"):
+			if eikonal.policy.values_float64:
 				float64_t = np.dtype('float64').type
 				self._values_expand = (values.astype(float64_t) 
 					+ float64_t(self.multip_step) * valuesq)

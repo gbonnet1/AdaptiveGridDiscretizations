@@ -26,12 +26,12 @@ hfmIn = Eikonal.dictIn({
 #    'nitermax_o':30,
 #    'tol':1e-8,
     'multiprecision':False,
-#    'values_float64':True,
+    'values_float64':True,
 
 	'dims':(n,n),
 	'origin':[-0.5,-0.5],
 	'gridScale':1.,
-	'geodesic_recompute_flow':True,
+#	'geodesic_recompute_flow':True,
 #	'order':2,
 #	'order2_threshold':0.3,
 	'factoringRadius':100,
@@ -86,6 +86,8 @@ hfmIn['cost'] = xp.ones(hfmIn.shape,dtype='float32')
 hfmIn.SetUniformTips((2,2))
 hfmOut = hfmIn.Run()
 
+
+print(hfmOut['geodesic_stopping_criteria'])
 #print(hfmOut['values'].shape)
 #print(hfmOut)
 

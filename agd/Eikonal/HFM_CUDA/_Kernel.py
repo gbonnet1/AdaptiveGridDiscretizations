@@ -31,10 +31,11 @@ def SetKernelTraits(self):
 		help="Optional trait parameters for the eikonal kernel."))
 	eikonal.traits = traits
 
+	policy.values_float64 = self.GetValue('values_float64',default=False,
+		help="Export values using the float64 data type")
 
-	policy.multiprecision = (self.GetValue('multiprecision',default=False,
-		help="Use multiprecision arithmetic, to improve accuracy") or 
-		self.GetValue('values_float64',default=False) )
+	policy.multiprecision = policy.values_float64 or self.GetValue('multiprecision',
+		default=False, help="Use multiprecision arithmetic, to improve accuracy") 
 	
 	traits['multiprecision_macro']=policy.multiprecision
 	if policy.multiprecision: 
