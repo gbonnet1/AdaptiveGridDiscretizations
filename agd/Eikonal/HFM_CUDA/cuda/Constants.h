@@ -97,7 +97,6 @@ void get_ixi_kappa_theta(
 	sinTheta = geom[k]; ++k;
 	#else
 	const Int iTheta = x[2];
-//	theta = (2.*pi*x[2])/shape_tot[2];  // Now using precomputed trigonometric tables
 	cosTheta = cosTheta_s[iTheta];
 	sinTheta = sinTheta_s[iTheta];
 	#endif // theta_var_macro
