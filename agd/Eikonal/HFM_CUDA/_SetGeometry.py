@@ -46,6 +46,12 @@ def SetGeometry(self):
 		self.h = self.GetValue('gridScales',array_float=(self.ndim,),
 			help="Axis independent scales of the computational grid")
 
+	if policy.multiprecision:
+		# Choose power of two, significantly less than h
+		hmin = float(np.min(self.h))
+		self.multip_step = 2.**np.floor(np.log2(hmin/10)) 
+		self.multip_max = np.iinfo(self.int_t).max*self.multip_step/2
+
 	self.h_broadcasted = fd.as_field(self.h,self.shape,depth=1)
 
 	# Get the metric 

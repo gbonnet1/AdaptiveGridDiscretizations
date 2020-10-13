@@ -160,7 +160,7 @@ def SetKernel(self):
 			'eucl_delay':eucl_delay,
 			'nymin_delay':nymin_delay,
 			'EuclT':geodesic.policy.eucl_t,
-			'EuclT_chart':geodesic.policy.eucl_chart,
+			'EuclT_Chart':geodesic.policy.eucl_chart,
 			'online_flow_macro':online_flow,
 			'chart_macro':self.hasChart,
 			'flow_vector_macro':True,
@@ -186,6 +186,10 @@ def SetKernel(self):
 		if online_flow: geodesic.source += model_source
 		geodesic.source += '#include "GeodesicODE.h"\n'+self.cuda_date_modified
 		geodesic.module = cupy_module_helper.GetModule(geodesic.source,self.cuoptions)
+		if self.hasChart: 
+			SetModuleConstant(geodesic.module,'size_s',mapping.size/len(mapping),self.int_t)
+			if geodesic.traits['chart_jump_variance_macro']: 
+				SetModuleConstant(geodesic.module,'chart_jump_variance',chart_jump_variance,self.float_t)
 
 	else: # No geodesic tips
 		online_flow=True # Dummy value
@@ -265,11 +269,7 @@ def SetKernel(self):
 	else: SetCst('size_geom_tot', self.size_tot,int_t, exclude=geodesic_outofline)
 
 	if policy.multiprecision:
-		# Choose power of two, significantly less than h
-		h = float(np.min(self.h))
-		self.multip_step = 2.**np.floor(np.log2(h/10)) 
 		SetCst('multip_step',self.multip_step, float_t,exclude=(geodesic_outofline,scheme)) 
-		self.multip_max = np.iinfo(self.int_t).max*self.multip_step/2
 		SetCst('multip_max', self.multip_max, float_t, exclude=(geodesic_outofline,scheme))
 
 	if self.factoringRadius: # Single seed only

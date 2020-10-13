@@ -86,7 +86,7 @@ def InitStop(self,kernel_data):
 #chart_help = """Use for a manifold defined by several local charts.
 #Dictionary with members : 
 # - mapping : mapping from one chart to the other. [Modified]
-# - paste : where to paste values using the mapping, in the eikonal solver. (Useless)
+# - paste : where to paste values using the mapping, in the eikonal solver. (Useless ?)
 # - jump : where paths should jump using the mapping, in the geodesic solver.
 # - niter : number of calls to the eikonal solver.
 #"""
@@ -148,7 +148,6 @@ def SetChart(self):
 
 	modules = [module]
 
-	# !!!! HERE !!!! strict_iter_o
 	if eikonal.policy.multiprecision:
 		module_multip = cupy_module_helper.GetModule(
 			"#define multiprecision_macro 1\n"+source,cuoptions)

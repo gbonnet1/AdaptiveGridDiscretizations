@@ -66,10 +66,7 @@ def GetGeodesics(self):
 			"to another local chart of the manifold")
 		chart_jump = np.broadcast_to(chart_jump,eucl.shape)
 		eucl[chart_jump] = eucl_chart # Set special key for jump 
-		SetCst('size_s',mapping.size/len(mapping),self.int_t)
-		if traits['chart_jump_variance_macro']: 
-			SetCst('chart_jump_variance',chart_jump_variance,self.float_t)
-
+		
 	eucl = fd.block_expand(eucl,self.shape_i,mode='constant',constant_values=eucl_max)
 	eucl = cp.ascontiguousarray(eucl)
 	geodesic.args['eucl'] = eucl
