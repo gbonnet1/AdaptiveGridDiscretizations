@@ -49,6 +49,9 @@ class Interface(object):
 		if self.model.endswith("Ext2"): self.model=self.model[:-4]+"2"
 
 		self.ndim = len(hfmIn['dims'])
+		if self.isCurvature: 
+			self.ndim_phys = (self.ndim+1)//2
+			self.ndim_ang = self.ndim-self.ndim_phys
 		self.kernel_data = {key:SimpleNamespace()
 			for key in ('eikonal','flow','scheme','geodesic','forwardAD','reverseAD','chart')}
 		for value in self.kernel_data.values(): 
@@ -150,7 +153,8 @@ class Interface(object):
 
 	@property
 	def isCurvature(self):
-		return self.model in ['ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2']
+		return self.model in ['ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
+		'ReedsSheppGPU3']
 
 	@property
 	def metric(self):
@@ -169,10 +173,10 @@ class Interface(object):
 		elif ishape==tuple(): # Constant field
 			return np.broadcast_to(e.reshape(oshape+(1,)*self.ndim),oshape+shape)
 		elif self.isCurvature:
-			if ishape==shape[2:]:  # Angular field
-				return np.broadcast_to(e.reshape(oshape+(1,1)+ishape),oshape+shape)
-			elif ishape==shape[:2]: # Physical field
-				return np.broadcast_to(e.reshape(oshape+ishape+(1,)), oshape+shape)
+			if ishape==shape[self.ndim_phys:]:  # Angular field
+				return np.broadcast_to(e.reshape(oshape+(1,)*self.ndim_phys+ishape),oshape+shape)
+			elif ishape==shape[:self.ndim_phys]: # Physical field
+				return np.broadcast_to(e.reshape(oshape+ishape+(1,)*self.ndim_ang), oshape+shape)
 		raise ValueError(f"Field {name} has incorrect dimensions. Found {e.shape}, "
 			f"whereas domain has shape {shape}")
 

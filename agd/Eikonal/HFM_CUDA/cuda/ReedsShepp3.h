@@ -3,8 +3,9 @@
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 namespace dim3 {
-#include "Geometry3.h"
+#include "Geometry3.h" // Dimension used for Selling decomposition
 }
+const Int ndim = 5;
 
 #if foward_macro // Reeds-Shepp forward model
 const Int nsym = 2; // Isotropic metric on the sphere
@@ -15,51 +16,79 @@ const Int nfwd = 0;
 #endif
 
 #include "Constants.h"
+__constant__ Scalar ixi; // inverse of the xi parameter, penalizing curvature 
 
 namespace SphereProjection {
+	
 const Int ndim=2; // Dimension of the sphere
-__constant__ Scalar gridscale;
+#include "Geometry_.h"
+__constant__ Scalar h;
+__constant__ Scalar r;
+#if sphere_macro
+__constant__ Scalar sep_r;
+#endif
 
-bool toplane(const Int x_t[ndim], Scalar x_p[ndim]){
-//	const Int n = shape_tot[
-	const bool second_chart = x_t[0]<n;
-	if(second_chart) x_t[0] -= n+1;
-	for(Int i=0; i<ndim; ++i){x_p[i] = (x_t[i]-0.5*n+1.)*gridscale;}
-}
-Scalar tocost(Scalar x_p[ndim]){
-	Scalar s=0; 
-	for(Int i=0; i<ndim; ++i) {s+=x_p[i]*x_p[i];}
-	return 2./(1.+s);
-}
-Scalar tosphere(const Scalar x_p[ndim], bool second_chart, Scalar x_sp[ndim+1]){
-	copy_vV(x_p,x_sp);
-	Scalar s=0; 
-	for(Int i=0; i<ndim; ++i) {s+=x_p[i]*x_p[i];}
-	x_sp[ndim] = (1-s)/2.;
-	if(second_chart) x_sp[ndim] *= -1.;
+// Returns a three dimensional point in the unit sphere, and a conformal cost
+Scalar conformal_cost(const Int x[ndim], Scalar q[ndim+1]){
+	// Get the position in equator
+	Scalar x_p[ndim];
+	#if sphere_macro
+	x_p[0] = (x[0]+0.5)*h;
+	const bool first_chart = x_p[0] < 2*r+sep_r;
+	x_p[0] -= first_chart ? r : (3*r+2*sep_r);
+	#endif
+	for(Int i=sphere_macro; i<ndim; ++i){x_p[i] = (x[i]+0.5)*h-r;}
+
+	// Compute the conformal cost
+	const Scalar s = norm2_v(x_p);
 	const Scalar cost = 2./(1.+s);
-	for(Int i=0; i<=ndim; ++i) x_sp[i]*cost;
+
+	// Compute the projection of the sphere
+	mul_kvV(cost,x_p,q);
+	q[ndim] = (1-s)/(1+s);
+	#if sphere_macro
+	if(first_chart) {q[ndim] *= -1;}
+	#endif
 	return cost;
 }
 
-}
+} // Sphere projection
+
 
 #if !precomputed_scheme_macro
 void scheme(GEOM(const Scalar geom[geom_size],)  const Int x_t[ndim],
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
 
-	// Last two coordinates of x_t correspond to sphere.
-	Scalar x_plane[2]; Scalar x_sphere[3]; 
-	const bool second_chart  = SphereProjection::toplane(&x_t[3],x_plane);
-	const Scalar sphere_cost = SphereProjection::tosphere(x_plane,second_chart,x_sphere);
+	Scalar x_sphere[3];
+	const Scalar cost = conformal_cost(&x_t[3],x_sphere);
 
 	// First two weights and offsets are for the sphere geometry
 	fill_kV(0,offsets[0]); offsets[0][3]=1;
-	weights[0] = sphere_cost;
 	fill_kV(0,offsets[1]); offsets[1][4]=1;
+	weights[0] = (ixi*ixi)/(cost*cost);
 	weights[1] = weights[0];
 
 	// Other weights and offsets are decomposition of direction
-	
+	OffsetT offsets3[dim3::symdim][3]; 
+	#if dual_macro
+	Scalar m[dim3::symdim];
+	self_outer_v(x_sphere,m); _missing_eps_
+	Int k=0; 
+	for(Int i=0; i<3; ++i){
+		for(Int j=0; j<=i; ++j){
+			m[k] = (i==j) - m[k];
+			++k;
+		}
+	}
+	dim3::decomp_m(m,&weights[2],offsets3);
+	// One may want to prune these offsets as in ReedsShepp2
+	#else
+	dim3::decomp_v(x_sphere, &weights[2], offsets3);
+	#endif
+	for(Int i=0; i<dim3::symdim; ++i){
+		for(Int j=0; j<3; ++j) {offsets[2+i][j] = offsets3[i][j];}
+		offsets[2+i][3]=0;
+		offsets[2+i][4]=0;
+	}
 }
 #endif // precomputed scheme

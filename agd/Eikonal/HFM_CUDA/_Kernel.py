@@ -289,7 +289,7 @@ def SetKernel(self):
 	
 	if self.model_ =='Isotropic':
 		SetCst('weights', self.h**-2, float_t, exclude=geodesic_outofline)
-	if self.isCurvature:
+	if self.isCurvature and self.ndim_phys==2:
 		nTheta = self.shape[2]
 		theta = self.hfmIn.Axes()[2]
 		eps = self.GetValue('eps',default=0.1,array_float=tuple(),
@@ -301,6 +301,10 @@ def SetKernel(self):
 		if traits['theta_var_macro']==0: 
 			SetCst('cosTheta_s',np.cos(theta),float_t, exclude=geodesic_outofline)
 			SetCst('sinTheta_s',np.sin(theta),float_t, exclude=geodesic_outofline)
+	elif self.isCurvature and self.ndim_phys==3:
+		SetCst("SphereProjection::h",self.h_per,float_t,exclude=geodesic_outofline)
+		SetCst("SphereProjection::r",self.sphere_radius,float_t,exclude=geodesic_outofline)
+		if traits['
 
 	if self.precompute_scheme:
 		nactx = self.nscheme['nactx']

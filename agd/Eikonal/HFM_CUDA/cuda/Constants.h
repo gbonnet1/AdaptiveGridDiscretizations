@@ -66,7 +66,7 @@ ORDER2(__constant__ Scalar order2_threshold = 0.3;)
 FIM(__constant__ BoolAtom fim_front_width = 4;)
 
 
-// Get the parameters for curvature penalized models
+// Get the parameters for (two dimensional) curvature penalized models
 #if curvature_macro 
 
 #if xi_var_macro==0

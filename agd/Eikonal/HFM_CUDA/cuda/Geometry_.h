@@ -1,5 +1,5 @@
-/* This file is missing a #pragma once, because it is sometimes useful to include it 
-within several namespaces, where the constant ndim takes different values.*/ 
+/* This file is purposedly missing a #pragma once, because it is sometimes useful to 
+include it within several namespaces, where the constant ndim takes different values.*/ 
 
 // Copyright 2020 Jean-Marie Mirebeau, University Paris-Sud, CNRS, University Paris-Saclay
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
@@ -182,6 +182,16 @@ void madd_kmM(const T k, const T x[symdim], T y[__restrict__ symdim]){
 	for(Int i=0; i<symdim; ++i){y[i]+=k*x[i];} }
 
 // ------ Special matrices ------
+
+void identity_M(Scalar m[symdim]){
+	Int k=0;
+	for(Int i=0; i<ndim; ++i){
+		for(Int j=0; j<=i; ++j){
+			m[k]=(i==j);
+			++k;
+		}
+	}
+}
 
 template<typename T>
 void identity_A(T a[ndim][ndim]){

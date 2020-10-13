@@ -52,7 +52,7 @@ SEModels = {'ReedsShepp2','ReedsSheppForward2','Elastica2','Dubins2',
 'ReedsShepp3','ReedsSheppForward3'}
 
 # These models do not follow the usual dimension naming convention (physical dimension last)
-dimModels = {'ElasticaExt2_5':3,'Riemann3_Periodic':3} 
+dimModels = {'ElasticaExt2_5':3,'Riemann3_Periodic':3,'ReedsSheppGPU3':5} 
 
 class dictOut(MutableMapping):
 	"""

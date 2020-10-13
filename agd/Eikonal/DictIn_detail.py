@@ -174,8 +174,9 @@ def SetSphere(self,dimsp,separation=5,radius=1.1):
 		gridScales_rect = self['gridScales'][:vdim_rect]
 	elif 'dims' in self: # Some rectangle R^(d-k) is already set
 		dims_rect = self['dims']
-		origin_rect = self.get('origin',self.xp.zeros_like(dims))
-		gridScales_rect = self.gridScales
+		origin_rect = self.get('origin',np.zeros_like(dims_rect))
+		if 'gridScales' in self: gridScales_rect = self['gridScales']
+		else: gridScales_rect = self['gridScale']*np.ones_like(dims_rect) 
 	else: # Nothing set. All coordinates are sphere like, d=k
 		dims_rect = self.array_float_caster(tuple())
 		origin_rect = dims_rect.copy()

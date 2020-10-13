@@ -24,27 +24,33 @@ def SetGeometry(self):
 	# Domain shape and grid scale
 	self.shape = self.hfmIn.shape
 
-	self.periodic_default = (False,False,True) if self.isCurvature else (False,)*self.ndim
-	self.periodic = self.GetValue('periodic',default=self.periodic_default,
+	if self.isCurvature and self.ndim_phys==2: periodic_default = (False,False,True)
+	else: periodic_default = (False,)*self.ndim
+	self.periodic = self.GetValue('periodic',default=periodic_default,
 		help="Apply periodic boundary conditions on some axes")
 	self.shape_o = tuple(fd.round_up_ratio(self.shape,self.shape_i))
 	if policy.bound_active_blocks is True: 
 		policy.bound_active_blocks = 12*np.prod(self.shape_o) / np.max(self.shape_o)
 	
 	# Set the discretization gridScale(s)
-	if self.isCurvature:
+	if self.isCurvature and self.ndim_phys==2:
 		self.h_base = self.GetValue('gridScale',array_float=tuple(),
 			help="Scale of the physical (not angular) grid.")
 		self.h_per = self.hfmIn.Axes()[2][1] #self.caster(2.*np.pi / self.shape[2] )
 		self.h = self.caster((self.h_base,self.h_base,self.h_per))
 
-	elif self.HasValue('gridScale') or self.isCurvature:
+	elif self.HasValue('gridScale'):
 		self.h = cp.broadcast_to(self.GetValue('gridScale',array_float=tuple(),
 			help="Scale of the computational grid"), (self.ndim,))
 
 	else:
 		self.h = self.GetValue('gridScales',array_float=(self.ndim,),
 			help="Axis independent scales of the computational grid")
+	if self.isCurvature
+		if self.ndim_phys==3:
+			self.h_base = self.h[0]
+			self.h_per  = self.h[3]
+		h_ratio = self.h_per/self.h_base
 
 	if policy.multiprecision:
 		# Choose power of two, significantly less than h
@@ -75,12 +81,9 @@ def SetGeometry(self):
 			if ad.cupy_generic.isndarray(value): 
 				setattr(self,key,metricClass.from_HFM(value))
 
-#	self.drift = self.GetValue('drift', default=None, verbosity=3, array_float=True,
-#		help="Drift introduced in the eikonal equation, becoming F^*(grad u - drift)=1")
-
 	# Set the geometry
 
-	if self.isCurvature:
+	if self.isCurvature and self.ndim_phys==2:
 		# Geometry defined using the xi, kappa and theta parameters
 		xi = self.GetValue('xi',array_float=True,
 			help="Cost of rotation for the curvature penalized models")
@@ -90,7 +93,6 @@ def SetGeometry(self):
 			help="Deviation from horizontality, for the curvature penalized models")
 
 		# Scale h_base is taken care of through the 'cost' field
-		h_ratio = self.h_per/self.h_base
 		self.ixi    = 1/(xi*h_ratio)
 		self.kappa = kappa/h_ratio
 		# Large arrays are passed as geometry data, and scalar entries as module constants
@@ -108,6 +110,22 @@ def SetGeometry(self):
 			np.cos(self.theta),np.sin(self.theta)) if e.ndim>0]
 		if len(geom)>0: self.geom = ad.array(geom)
 		else: self.geom = cp.zeros((0,self.shape[2]), dtype=self.float_t)
+	
+	elif self.isCurvature and self.ndim_phys==3:
+		# No geometry field. Metric is built in
+		self.geom = cp.array(0.,dtype=self.float_t)
+		self.ixi = 1/(h_ratio*self.GetValue('xi',array_float=True,
+			help="Cost of rotation for the curvature penalized models"))
+		self.sphere_radius = self.h_per * self.shape[-1]
+		if self.shape[-1]==self.shape[-2]: self.separation_radius = None
+		else: self.separation_radius = self.h_per * (self.shape[-2]/2-self.shape[-1])
+		traits['sphere_macro']  = self.separation_radius is not None
+		traits['forward_macro'] = self.GetValue('forward',default=False,
+			help="Use the Reeds-Shepp forward model")
+		traits['dual_macro'] = self.GetValue('dual',default=False,
+			help="Use the Reeds-Shepp dual model")
+		if traits['forward_macro'] and (!traits['sphere_macro'] or traits['dual_macro']):
+			raise ValueError("Incompatible traits for the Reeds-Shepp model.")
 
 	else:
 		if self._metric is not None: self._metric = self._metric.with_costs(self.h)
@@ -149,7 +167,7 @@ def SetGeometry(self):
 	if geom_shape!=self.shape[self.geom_indep:]:
 		raise ValueError("Inconsistent dimensions for geometry data. "
 			"It should match (the last coordinates of) domain shape.")
-	if self.isCurvature: assert self.geom_indep<=2
+	if self.isCurvature: assert self.geom_indep<=self.ndim_phys
 
 	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(
 		self.geom,self.shape_i[self.geom_indep:],mode='constant',constant_values=np.inf))
@@ -170,7 +188,8 @@ def SetGeometry(self):
 	self.tips = self.GetValue('tips',default=None,array_float=(-1,self.ndim),
 		help="Tips from which to compute the minimal geodesics")
 	if self.isCurvature:
-		self.tips_Unoriented=self.GetValue('tips_Unoriented',default=None,array_float=(-1,2),
+		self.tips_Unoriented=self.GetValue('tips_Unoriented',default=None,
+			array_float=(-1,self.ndim_phys),
 			help="Compute a geodesic from the most favorable orientation")
 	self.hasTips = (self.tips is not None 
 		or (self.isCurvature and self.tips_Unoriented is not None))
@@ -187,7 +206,7 @@ def SetGeometry(self):
 		costVariation = self.GetValue('costVariation',default=None,
 			help="First order variation of the cost function")
 		if costVariation is not None: self.cost = ad.Dense.new(self.cost,costVariation)
-	if self.isCurvature: self.cost = self.cost*self.h_base
+	if self.isCurvature: self.cost = self.cost*self.h_base 
 	self.cost = self.as_field(self.cost,'cost')
 
 	# Cost related parameters
