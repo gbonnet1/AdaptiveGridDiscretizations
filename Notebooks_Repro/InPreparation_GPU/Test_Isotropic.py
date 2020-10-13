@@ -11,7 +11,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
 
 xp,Eikonal = [ad.cupy_friendly(e) for e in (xp,Eikonal)]
 
-n=20
+n=8
 hfmIn = Eikonal.dictIn({
     'model':'Isotropic2',
     'exportValues':1,
@@ -23,9 +23,9 @@ hfmIn = Eikonal.dictIn({
 #    'solver':'global_iteration',
 	'solver':'FIM','fim_front_width':4,
     'raiseOnNonConvergence':False,
-#    'nitermax_o':30,
+    'nitermax_o':10,
 #    'tol':1e-8,
-    'multiprecision':True,
+#    'multiprecision':True,
 #    'values_float64':True,
 
 	'dims':(n,n),
@@ -79,6 +79,9 @@ if False:
 #hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
 hfmIn['cost'] = xp.ones(hfmIn.shape,dtype='float32')
 
+hfmIn['walls'] = xp.full(hfmIn.shape,False,dtype='bool')
+hfmIn['walls'][3,3]=True
+hfmIn['cost'][hfmIn['walls']] = np.nan
 
 #in_raw = hfmIn.RunGPU(returns='in_raw'); print(in_raw['in_raw']['source'])
 

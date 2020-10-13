@@ -199,7 +199,7 @@ def SetGeometry(self):
 		if isinstance(tol,str) and tol=="_Dummy":
 			cost_bound = ad.remove_ad(self.cost)
 			if not self.isCurvature: cost_bound = cost_bound*self.metric.cost_bound()
-			mean_cost_bound = np.mean(cost_bound)
+			mean_cost_bound = np.nanmean(cost_bound)
 			tol = mean_cost_bound * float_resolution * 5.
 			self.hfmOut['keys']['default']['tol']=self.float_t(float(tol))
 	policy.atol = self.GetValue('atol',default=tol,array_float=tuple(),
