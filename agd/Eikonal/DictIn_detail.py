@@ -127,7 +127,7 @@ def proj_tosphere(x):
 	x -> (2 x,1-|x∏^2)/(1+|x|^2)
 	""" 
 	sq = lp.dot_VV(x,x)
-	return np.append(x,np.expand_dims((1.-sq)/2.,axis=0),axis=0) * (2./(1.+sq))
+	return np.concatenate((x,np.expand_dims((1.-sq)/2.,axis=0)),axis=0) * (2./(1.+sq))
 def proj_fromsphere(q): 
 	"""
 	Maps a point of the sphere to the equatorial plane, by projection.
@@ -140,7 +140,7 @@ def sphere_tosphere(x,chart):
 	"""
 	See proj_tosphere. Last component is reversed according to chart.
 	"""
-	y = proj_tosphere[x] 
+	y = proj_tosphere(x)
 	y[-1] *= chart
 	return y
 def sphere_fromsphere(q,chart):
@@ -149,9 +149,9 @@ def sphere_fromsphere(q,chart):
 	"""
 	q=q.copy()
 	q[-1] *= chart
-	return proj_toplane(q)
+	return proj_fromsphere(q)
 
-def SetSphere(self,dimsp,separation=5,radius=1.1,radius2=np.inf):
+def SetSphere(self,dimsp,separation=5,radius=1.1):
 	"""
 	Setups the manifold R^(d-k) x S^k, using the equatorial projection for the sphere S^k.
 	Only compatible with the GPU accelerated eikonal solver. 
@@ -159,7 +159,6 @@ def SetSphere(self,dimsp,separation=5,radius=1.1,radius2=np.inf):
 		dimsp (int): the discretization of a half sphere involves dimsp^k pixels.
 		radius (optional, float > 1): each local chart has base domain [-radius,radius]^k.
 		  (This is NOT the radius of the sphere, which is 1, but of the parametrization.)
-		radius2 : Set a narrow boundary band by eliminating faraway points.
 		separation (optional, int) : number of pixels separating the two local charts.
 			Set to false to define a projective space using a single chart. 
 	Side effects : 
@@ -184,10 +183,11 @@ def SetSphere(self,dimsp,separation=5,radius=1.1,radius2=np.inf):
 
 	vdim_rect = len(dims_rect)
 	vdim_sphere = self.vdim-vdim_rect # Dimension of the sphere
+	gridScale_sphere = 2*radius/dimsp
 
 	if separation: # Sphere manifold, described using two charts
 		separation_radius = separation*gridScale_sphere /2
-		center_radius = radius + separtion_radius
+		center_radius = radius + separation_radius
 
 		dims_sphere = (2*dimsp + separation,) + (dimsp,)*(vdim_sphere-1)
 		origin_sphere = (-2*radius-separation_radius,) + (-radius,)*(vdim_sphere-1)
@@ -200,8 +200,8 @@ def SetSphere(self,dimsp,separation=5,radius=1.1,radius2=np.inf):
 			assert len(x)==vdim_sphere
 			x = x.copy()
 			chart = np.where(np.abs(x[0])>=separation_radius,np.sign(x[0]),np.nan)
-			x[0] -= center_radius*s
-			return x[0],chart
+			x[0] -= center_radius*chart
+			return x,chart
 
 		def sphere_togrid(x,chart):
 			"""
@@ -210,22 +210,26 @@ def SetSphere(self,dimsp,separation=5,radius=1.1,radius2=np.inf):
 			"""
 			assert len(x)==vdim_sphere
 			x=x.copy()
+			mixed_chart = x[0]*chart < -radius # The two coordinate charts would get mixed
+			x[:,mixed_chart] = np.nan
 			x[0] += chart*center_radius
 			return x
 	else: # Projective space, described using a single chart
 		dims_sphere = (dimsp,)*vdim_sphere
 		origin_sphere = (-radius,)*vdim_sphere
 
-	gridScale_sphere = 2*radius/dimsp
+	dims_sphere,origin_sphere,gridScales_sphere = [self.array_float_caster(e) 
+		for e in (dims_sphere,origin_sphere, (gridScale_sphere,)*vdim_sphere)]
+
 	self['dims'] = np.concatenate((dims_rect,dims_sphere),axis=0)
 	self['gridScales'] = np.concatenate(
-		(gridScales_rect,(gridScale_sphere,)*vdim_sphere),axis=0)
+		(gridScales_rect,gridScales_sphere),axis=0)
 	self.pop('gridScale',None)
 	self['origin'] = np.concatenate((origin_rect,origin_sphere),axis=0)
 
 	# Produce a coordinate system, and set the jumps, etc
 	aX = self.Axes()[vdim_rect:]
-	X = self.array_float_caster(np.meshgrid(aX,indexing='ij'))
+	X = self.array_float_caster(np.meshgrid(*aX,indexing='ij'))
 	if separation: X,chart = sphere_fromgrid(X)
 	X2 = lp.dot_VV(X,X)
 
@@ -234,9 +238,9 @@ def SetSphere(self,dimsp,separation=5,radius=1.1,radius2=np.inf):
 	self['chart_jump'] = X2 > radius_jump**2
 	if separation:
 		self['chart_mapping'] = sphere_togrid(
-			sphere_toplane(sphere_tosphere(X,chart),-chart),-chart)
+			sphere_fromsphere(sphere_tosphere(X,chart),-chart),-chart)
 		return {'from_grid':sphere_fromgrid,'to_grid':sphere_togrid,
 			'from_sphere':sphere_fromsphere,'to_sphere':sphere_tosphere} 
 	else:
-		self['chart_mapping'] = proj_toplane(-proj_tosphere(X))
+		self['chart_mapping'] = proj_fromsphere(-proj_tosphere(X))
 		return {'from_sphere':proj_fromsphere,'to_sphere':proj_tosphere}
