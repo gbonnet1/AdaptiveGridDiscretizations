@@ -53,8 +53,7 @@ def SetKernelTraits(self):
 	if order==2: traits['order2_macro']=True
 	self.order=order
 
-	if not self.isCurvature: # Dimension generic models
-		traits['ndim_macro'] = int(self.model[-1])
+	traits['ndim_macro'] = self.ndim
 	if self.model_ == 'Rander':
 		traits['drift_macro']=1
 	if self.model == 'ReedsSheppGPU3':
