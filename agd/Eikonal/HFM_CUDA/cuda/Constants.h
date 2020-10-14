@@ -66,6 +66,14 @@ ORDER2(__constant__ Scalar order2_threshold = 0.3;)
 FIM(__constant__ BoolAtom fim_front_width = 4;)
 
 
+#if decomp_v_macro
+// This relaxation parameter for the self_outer product, to make it non-degenerate.
+__constant__ Scalar decomp_v_relax = 0.01; 
+// This relaxation parameter promotes offsets aligned with the differentiation direction.
+DECOMP_V_ALIGN(__constant__ Scalar decomp_v_cosmin2 = 2./3.;) 
+#endif
+
+
 // Get the parameters for (two dimensional) curvature penalized models
 #if curvature_macro 
 

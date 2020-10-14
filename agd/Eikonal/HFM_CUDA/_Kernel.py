@@ -55,8 +55,11 @@ def SetKernelTraits(self):
 
 	if not self.isCurvature: # Dimension generic models
 		traits['ndim_macro'] = int(self.model[-1])
-	if self.model.startswith('Rander'):
+	if self.model_ == 'Rander':
 		traits['drift_macro']=1
+	if self.model == 'ReedsSheppGPU3':
+		traits['forward_macro'] = self.GetValue('forward',default=False,
+			help="Use the Reeds-Shepp forward model")
 
 	policy.bound_active_blocks = self.GetValue('bound_active_blocks',default=False,
 		help="Limit the number of active blocks in the front. " 
@@ -129,6 +132,7 @@ def SetKernel(self):
 		help="Options passed via cupy.RawKernel to the cuda compiler")
 
 	eikonal.source += model_source+self.cuda_date_modified
+	print(eikonal.source)
 	eikonal.module = GetModule(eikonal.source,self.cuoptions)
 
 	# ---- Produce a kernel for computing the geodesics ----
@@ -289,22 +293,26 @@ def SetKernel(self):
 	
 	if self.model_ =='Isotropic':
 		SetCst('weights', self.h**-2, float_t, exclude=geodesic_outofline)
-	if self.isCurvature and self.ndim_phys==2:
-		nTheta = self.shape[2]
-		theta = self.hfmIn.Axes()[2]
+	if self.isCurvature:
 		eps = self.GetValue('eps',default=0.1,array_float=tuple(),
 			help='Relaxation parameter for the curvature penalized models')
 		SetCst('decomp_v_relax',eps**2,float_t, exclude=geodesic_outofline)
 
-		if traits['xi_var_macro']==0:    SetCst('ixi',  self.ixi,  float_t) # ixi = 1/xi
-		if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
-		if traits['theta_var_macro']==0: 
-			SetCst('cosTheta_s',np.cos(theta),float_t, exclude=geodesic_outofline)
-			SetCst('sinTheta_s',np.sin(theta),float_t, exclude=geodesic_outofline)
-	elif self.isCurvature and self.ndim_phys==3:
-		SetCst("SphereProjection::h",self.h_per,float_t,exclude=geodesic_outofline)
-		SetCst("SphereProjection::r",self.sphere_radius,float_t,exclude=geodesic_outofline)
-		if traits['
+		if self.ndim_phys==2:
+			nTheta = self.shape[2]
+			theta = self.hfmIn.Axes()[2]
+
+			if traits['xi_var_macro']==0:    SetCst('ixi',  self.ixi,  float_t) # ixi = 1/xi
+			if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
+			if traits['theta_var_macro']==0: 
+				SetCst('cosTheta_s',np.cos(theta),float_t, exclude=geodesic_outofline)
+				SetCst('sinTheta_s',np.sin(theta),float_t, exclude=geodesic_outofline)
+				
+		elif self.ndim_phys==3:
+			SetCst('sphere_proj_h',self.h_per,float_t,exclude=geodesic_outofline)
+			SetCst('sphere_proj_r',self.sphere_radius,float_t,exclude=geodesic_outofline)
+			if traits['sphere_macro']: SetCst('sphere_proj_sep_r',self.separation_radius,
+				float_t,exclude=geodesic_outofline)
 
 	if self.precompute_scheme:
 		nactx = self.nscheme['nactx']

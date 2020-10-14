@@ -54,6 +54,6 @@ void decomp_m(const Scalar m[symdim], Scalar weights[symdim], OffsetT offsets[sy
 	}
 }
 
-CURVATURE(
+#if decomp_v_macro
 #include "Decomp_v_.h"
-)
+#endif

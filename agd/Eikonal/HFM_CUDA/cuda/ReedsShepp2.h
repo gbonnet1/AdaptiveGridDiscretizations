@@ -25,13 +25,14 @@ void scheme(GEOM(const Scalar geom[geom_size],) const Int x[ndim],
 	decomp_m(m,weights,offsets);
 
 	// Prune offsets which deviate too much
+	DECOMP_V_ALIGN(
 	const Scalar w[ndim] = {v[1],-v[0],0}; // cross product of v and {0,0,1}
 	const Scalar ww = scal_vv(w,w);
 	for(Int k=0; k<symdim; ++k){
 		const Int * e = offsets[k]; // e[ndim]
 		const Scalar we = scal_vv(w,e), ee = scal_vv(e,e);
 		if(we*we >= ee*ww*(1-decomp_v_cosmin2)){weights[k]=0;}
-	}
+	})
 }
 #endif
 #include "Update.h"

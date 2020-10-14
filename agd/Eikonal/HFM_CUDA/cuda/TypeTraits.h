@@ -181,6 +181,9 @@ position dependent metric. */
 
 #if curvature_macro
 
+#define local_scheme_macro true
+#define decomp_v_macro true
+
 #define geom_macro (xi_var_macro + kappa_var_macro + 2*theta_var_macro)
 const Int geom_size = geom_macro;
 
@@ -236,6 +239,17 @@ const Int geom_size = geom_macro;
 #define GEOM(...) __VA_ARGS__
 #else 
 #define GEOM(...)
+#endif
+
+/** Wether the scheme depends on the position in the domain*/
+#ifndef local_scheme_macro
+#define local_scheme_macro false
+#endif
+
+#if local_scheme_macro
+#define LOCAL_SCHEME(...) __VA_ARGS__
+#else
+#define LOCAL_SCHEME(...) 
 #endif
 
 /** Apply periodic boundary conditions on some of the axes.*/
@@ -427,4 +441,20 @@ and weights in the anisotropic case.*/
 
 #ifndef network_sort_macro
 #define network_sort_macro false
+#endif
+
+/** Apply Voronoi's decomposition to a relaxation of the rank one matrix v v^T*/
+#ifndef decomp_v_macro
+#define decomp_v_macro false
+#endif
+
+// Eliminate offsets which deviate too much from the direction of v
+#ifndef decomp_v_align_macro
+#define decomp_v_align_macro true
+#endif
+
+#if decomp_v_align_macro
+#define DECOMP_V_ALIGN(...) __VA_ARGS__
+#else
+#define DECOMP_V_ALIGN(...) 
 #endif

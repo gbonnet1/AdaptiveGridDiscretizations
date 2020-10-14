@@ -46,7 +46,7 @@ def SetGeometry(self):
 	else:
 		self.h = self.GetValue('gridScales',array_float=(self.ndim,),
 			help="Axis independent scales of the computational grid")
-	if self.isCurvature
+	if self.isCurvature:
 		if self.ndim_phys==3:
 			self.h_base = self.h[0]
 			self.h_per  = self.h[3]
@@ -113,18 +113,17 @@ def SetGeometry(self):
 	
 	elif self.isCurvature and self.ndim_phys==3:
 		# No geometry field. Metric is built in
-		self.geom = cp.array(0.,dtype=self.float_t)
+		self.geom = cp.zeros((0,*self.shape[3:]),dtype=self.float_t) # Dummy
 		self.ixi = 1/(h_ratio*self.GetValue('xi',array_float=True,
 			help="Cost of rotation for the curvature penalized models"))
 		self.sphere_radius = self.h_per * self.shape[-1]
 		if self.shape[-1]==self.shape[-2]: self.separation_radius = None
 		else: self.separation_radius = self.h_per * (self.shape[-2]/2-self.shape[-1])
+		traits = eikonal.traits
 		traits['sphere_macro']  = self.separation_radius is not None
-		traits['forward_macro'] = self.GetValue('forward',default=False,
-			help="Use the Reeds-Shepp forward model")
 		traits['dual_macro'] = self.GetValue('dual',default=False,
 			help="Use the Reeds-Shepp dual model")
-		if traits['forward_macro'] and (!traits['sphere_macro'] or traits['dual_macro']):
+		if traits['forward_macro'] and (traits['dual_macro'] or not traits['sphere_macro']):
 			raise ValueError("Incompatible traits for the Reeds-Shepp model.")
 
 	else:

@@ -65,6 +65,10 @@ def nscheme(self):
 	elif model=='Elastica':
 		nFejer = self.kernel_data['eikonal'].traits.get('nFejer_macro',5)
 		nfwd = nFejer*symdim
+	elif self.model=='ReedsSheppGPU3':
+		if self.kernel_data['eikonal'].traits['forward_macro']: nsym=2; nfwd=6
+		else: nsym=8
+	else: raise ValueError('Unsupported model')
 
 	nact = nsym+nfwd # max number of active offsets
 	ntot = 2*nsym+nfwd

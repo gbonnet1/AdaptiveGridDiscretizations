@@ -84,7 +84,7 @@ __global__ void Update(
 		GEOM(Scalar geom[geom_size];
 		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_geom+size_geom_tot*k];})
 		ADAPTIVE_MIX(const bool mix_is_min = )
-		scheme(GEOM(geom,) CURVATURE(x_t,) weights, offsets DRIFT(,drift) );
+		scheme(GEOM(geom,) LOCAL_SCHEME(x_t,) weights, offsets DRIFT(,drift) );
 	#endif
 
 

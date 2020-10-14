@@ -18,8 +18,21 @@ n=50
 hfmIn = Eikonal.dictIn({
     'model':'ReedsSheppGPU3',
     'cost':1.,
+    'seed':[0,0,0,0,0],
+    
+    # Define euclidean geometry on R^3 x S^2, for illustration
+    'eps':1,
+    'xi':1,
+    'traits':{'decomp_v_align_macro':False},
+    
+    # Recompute flow at geodesic extraction
+#    'geodesic_online_flow':True,
+
 #    'dual':True,
+#    'forward':True,    
 })
 hfmIn.SetRect([[-1,1],[-1,1],[-1,1]],dimx=n)
-hfmIn.SetSphere(dimsp=n,separation=False)
+transformations = hfmIn.SetSphere(dimsp=32,separation=False) # projective model
+#hfmIn.SetUniformTips((3,3,3,3,3))
 
+hfmOut = hfmIn.Run()
