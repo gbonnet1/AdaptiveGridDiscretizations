@@ -59,7 +59,7 @@ def nscheme(self):
 	nsym=0 # Number of symmetric offsets
 	nfwd=0 # Number of forward offsets
 	nmix=1 # maximum or minimum of nmix schemes
-	if model=='Isotropic':              nsym = ndim
+	if model in ('Isotropic','Diagonal'):nsym = ndim
 	elif model in ('Riemann','Rander'): nsym = decompdim
 	elif model=='ReedsShepp':           nsym = decompdim
 	elif model=='ReedsSheppForward':    nsym = 1; nfwd = decompdim
