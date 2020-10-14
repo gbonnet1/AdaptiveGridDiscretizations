@@ -9,6 +9,8 @@ const Int nsym = 1; // Number of symmetric offsets
 const Int nfwd = symdim; // Number of forward offsets
 
 #include "Constants.h"
+#include "decomp_v_.h"
+
 #if !precomputed_scheme_macro
 void scheme(GEOM(const Scalar geom[geom_size],) const Int x[ndim],
 	Scalar weights[nactx], Int offsets[nactx][ndim]){

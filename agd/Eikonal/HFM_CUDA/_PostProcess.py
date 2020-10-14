@@ -148,7 +148,7 @@ def SolveAD(self):
 	Forward and reverse differentiation of the HFM.
 	"""
 	if not (self.forwardAD or self.reverseAD): return
-	if self.chart is not None: 
+	if self.hasChart: 
 		raise ValueError("Sorry, forward and reversed AD not yet supported with charts")
 	eikonal = self.kernel_data['eikonal']
 	flow = self.kernel_data['flow']
@@ -174,11 +174,10 @@ def SolveAD(self):
 		rhs = np.where(self.seedTags, grad, grad*self.rhs.value)
 
 		if self.drift_model: rhs*=self.flow_normalization
-		rhs = fd.block_expand(rhs,self.shape_i,mode='constant',constant_values=np.nan)
+		rhs = cp.ascontiguousarray(fd.block_expand(rhs,self.shape_i,
+			mode='constant',constant_values=np.nan))
 		valueVariation = self.SolveLinear(rhs,diag,indices,weights,dist,'forwardAD')
 		coef = np.moveaxis(fd.block_squeeze(valueVariation,self.shape),0,-1)
-#		coef[self.walls]=np.nan
-#		self.hfmOut['valueVariation'] = coef
 		val = self.values
 		self._values = ad.Dense.new(val,cp.asarray(coef,val.dtype))
 
@@ -188,8 +187,8 @@ def SolveAD(self):
 		rhs = self.GetValue('sensitivity',help='Reverse automatic differentiation')
 		if rhs.shape[:-1]!=self.shape: 
 			raise ValueError(f"Reverse AD rhs shape {rhs.shape} does not start with {self.shape}")
-		rhs = fd.block_expand(np.moveaxis(rhs,-1,0),self.shape_i,
-			mode='constant',constant_values=np.nan)
+		rhs = cp.ascontiguousarray(fd.block_expand(np.moveaxis(rhs,-1,0),self.shape_i,
+			mode='constant',constant_values=np.nan))
 
 		# Get the matrix structure
 		invalid_index = np.iinfo(self.int_t).max
@@ -198,7 +197,6 @@ def SolveAD(self):
 		# By default, weightsT[indicesT==invalid_index]=0
 
 		allSensitivity = self.SolveLinear(rhs,diag,indicesT,weightsT,-dist,'reverseAD')
-#		allSensitivity[self.walls]=np.nan
 		allSensitivity = np.moveaxis(fd.block_squeeze(allSensitivity,self.shape),0,-1)
 		pos = tuple(self.seedIndices.T)
 		seedSensitivity = allSensitivity[pos]

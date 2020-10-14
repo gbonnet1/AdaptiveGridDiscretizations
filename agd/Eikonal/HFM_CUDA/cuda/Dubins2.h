@@ -12,6 +12,7 @@ const Int nsym = 0; // Number of symmetric offsets
 const Int nfwd = symdim; // Number of forward offsets
 
 #include "Constants.h"
+#include "decomp_v_.h"
 
 // Maximum of a family of two schemes. -> take the minimal update among the two.
 const bool mix_is_min = true; 

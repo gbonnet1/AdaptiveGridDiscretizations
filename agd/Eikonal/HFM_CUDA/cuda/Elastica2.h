@@ -3,7 +3,7 @@
 // Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 #define nsym_macro 0 // Only uses forward offsets
-#define curvature_macro 1
+#define curvature_macro true
 #include "Geometry3.h"
 
 /**Fejer quadrature rule for integration*/
@@ -52,6 +52,7 @@ const Int nsym = 0; // Number of symmetric offsets
 const Int nfwd = nFejer*symdim; // Number of forward offsets
 
 #include "Constants.h"
+#include "Decomp_v_.h"
 
 #if !precomputed_scheme_macro
 void scheme(GEOM(const Scalar geom[geom_size],) Int x[ndim],

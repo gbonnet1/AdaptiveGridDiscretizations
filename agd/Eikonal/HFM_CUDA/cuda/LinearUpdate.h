@@ -46,6 +46,9 @@ typedef unsigned char BoolAtom;
 #define PERIODIC(...) 
 #endif
 
+// No FIM here for now
+#define FIM(...) 
+
 #ifndef debug_print_macro
 const Int debug_print = 0;
 #endif
@@ -54,6 +57,7 @@ __constant__ Int shape_o[ndim];
 __constant__ Int size_o;
 __constant__ Int size_tot;
 
+#include "Geometry_.h"
 #include "Propagation.h" // Cannot include earlier
 
 #ifndef dummy_init_macro

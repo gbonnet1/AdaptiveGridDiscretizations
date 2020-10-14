@@ -248,8 +248,9 @@ def SetGeometry(self):
 		# This value indicates 'far from wall', and visibility computation is bypassed
 		wallDist[wallDist>wallDistBound] = wallDistMax_t 
 		self.wallDist = wallDist
-		eikonal.args['wallDist'] = fd.block_expand(wallDist,self.shape_i,
-			mode='constant',constant_values=np.iinfo(wallDist_t).max)
+		eikonal.args['wallDist'] = cp.ascontiguousarray(fd.block_expand(wallDist,
+			self.shape_i,mode='constant',constant_values=wallDistMax_t))
+
 	self.walls = walls
 
 

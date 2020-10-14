@@ -120,7 +120,7 @@ def SetRHS(self):
 	seedTags[pos] = True
 	eikonal.trigger = seedTags
 
-	if 'wallDist' in eikonal.args: 
+	if self.walls is not None:
 		seedTags = np.logical_or(seedTags,self.walls)
 		rhs[self.walls] = np.inf
 
@@ -152,7 +152,10 @@ def SetArgs(self):
 	eikonal.args['rhs'] = cp.ascontiguousarray(fd.block_expand(ad.remove_ad(self.rhs),
 		shape_i,mode='constant',constant_values=np.inf))
 	self.forwardAD = ad.is_ad(self.rhs)
+
+	# Cleanup
 	if not self.forwardAD: self.rhs = (None,"Deleted in SetArgs")
+	if self.walls is not None: self.walls = (None,"Deleted in SetGeometry") 
 
 	if np.prod(self.shape_i)%8!=0:
 		raise ValueError('Product of shape_i must be a multiple of 8')
@@ -171,6 +174,4 @@ def SetArgs(self):
 		eikonal.args['valuesNext']=block_values.copy()
 		if policy.multiprecision:
 			eikonal.args['valuesqNext']=block_valuesq.copy()
-
-	self.print_big_arrays(locals())
 

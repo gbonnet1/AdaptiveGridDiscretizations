@@ -6,6 +6,7 @@ import cupy as cp
 import os
 from collections import OrderedDict
 import copy
+import itertools
 
 
 from . import kernel_traits
@@ -67,7 +68,8 @@ def SetKernelTraits(self):
 		traits['minChg_freeze_macro']=True
 		traits['pruning_macro']=True
 
-	policy.solver = self.GetValue('solver',default='AGSI',
+	policy.solver = self.GetValue('solver',
+		default='FIM' if self.HasValue('fim_front_width') else 'AGSI',
 		help="Choice of fixed point solver (AGSI, global_iteration)")
 	solverAltNames={'AGSI':'adaptive_gauss_siedel_iteration','FIM':'fast_iterative_method'}
 	policy.solver = solverAltNames.get(policy.solver,policy.solver)
@@ -103,7 +105,7 @@ def SetKernel(self):
 	traits.update({
 		'import_scheme_macro':self.precompute_scheme,
 		'local_i_macro':True, # threads work on a common block of solution
-		'periodic_macro':np.any(self.periodic),
+		'periodic_macro': bool(np.any(self.periodic)),
 		'isotropic_macro': self.model_=='Isotropic', # Isotropic/diagonal switch
 		'walls_macro': 'wallDist' in eikonal.args,
 		})
@@ -246,55 +248,57 @@ def SetKernel(self):
 		scheme.module = GetModule(scheme.source,self.cuoptions)
 
 	# ------- Set the constants of the cuda modules -------
-	def SetCst(*args,exclude=tuple()):
-		if not isinstance(exclude,tuple): exclude=(exclude,)
-		for kernel_data in [eikonal,geodesic,flow,scheme]: 
-			if kernel_data in exclude or kernel_data.module is None: continue
-			SetModuleConstant(kernel_data.module,*args)
+	def SetCst(*args,exclude=None,include=None):
+		datas = [eikonal,flow,scheme]
+		if online_flow: datas.append(geodesic) # included by default iff online flow
+		if exclude is not None:  datas.remove(exclude)
+		if include is not None and include not in datas: datas.append(include)
+		datas = [data for data in datas if data.module is not None]
+		for kernel_data in datas: SetModuleConstant(kernel_data.module,*args)
 
 	float_t,int_t = self.float_t,self.int_t
 
 	self.size_o = np.prod(self.shape_o)
-	SetCst('shape_o',self.shape_o,int_t)
-	SetCst('size_o', self.size_o, int_t, exclude=geodesic_outofline)
+	SetCst('shape_o',self.shape_o,int_t, include=geodesic)
+	SetCst('size_o', self.size_o, int_t)
 
 	self.size_tot = self.size_o * np.prod(self.shape_i)
-	SetCst('shape_tot',self.shape,   int_t) # Used for periodicity
-	SetCst('size_tot', self.size_tot,int_t) # Used for geom indexing
+	SetCst('shape_tot',self.shape,   int_t, include=geodesic) # Used for periodicity
+	SetCst('size_tot', self.size_tot,int_t, include=geodesic) # Used for geom indexing
 
 	shape_geom_i,shape_geom_o = [s[self.geom_indep:] for s in (self.shape_i,self.shape_o)]
 	if self.geom_indep: # Geometry only depends on a subset of coordinates
 		size_geom_i,size_geom_o = [np.prod(s,dtype=int) for s in (shape_geom_i,shape_geom_o)]
 		for key,value in [('size_geom_i',size_geom_i),('size_geom_o',size_geom_o),
 			('size_geom_tot',size_geom_i*size_geom_o)]: 
-			SetCst(key,value,int_t, exclude=geodesic_outofline)
-	else: SetCst('size_geom_tot', self.size_tot,int_t, exclude=geodesic_outofline)
+			SetCst(key,value,int_t)
+	else: SetCst('size_geom_tot', self.size_tot,int_t)
 
 	if policy.multiprecision:
-		SetCst('multip_step',self.multip_step, float_t,exclude=(geodesic_outofline,scheme)) 
-		SetCst('multip_max', self.multip_max, float_t, exclude=(geodesic_outofline,scheme))
+		SetCst('multip_step',self.multip_step, float_t,exclude=scheme) 
+		SetCst('multip_max', self.multip_max, float_t, exclude=scheme)
 
 	if self.factoringRadius: # Single seed only
-		SetCst('factor_origin', self.seed,              float_t,exclude=geodesic_outofline) 
-		SetCst('factor_radius2',self.factoringRadius**2,float_t,exclude=geodesic_outofline)
+		SetCst('factor_origin', self.seed,              float_t) 
+		SetCst('factor_radius2',self.factoringRadius**2,float_t)
 		factor_metric = ad.remove_ad(self.CostMetric(self.seed).to_HFM())
 		# The drift part of a Rander metric can be ignored for factorization purposes 
 		if self.model_=='Rander': factor_metric = factor_metric[:-self.ndim]
 		elif self.model_=='Isotropic': factor_metric = factor_metric**2 
-		SetCst('factor_metric',factor_metric,float_t, exclude=geodesic_outofline)
+		SetCst('factor_metric',factor_metric,float_t)
 
 	if self.order==2:
 		order2_threshold = self.GetValue('order2_threshold',0.3,
 			help="Relative threshold on second order differences / first order difference,"
 			"beyond which the second order scheme deactivates")
-		SetCst('order2_threshold',order2_threshold,float_t, exclude=geodesic_outofline)		
+		SetCst('order2_threshold',order2_threshold,float_t)		
 	
 	if self.model_ =='Isotropic':
-		SetCst('weights', self.h**-2, float_t, exclude=geodesic_outofline)
+		SetCst('weights', self.h**-2, float_t)
 	if self.isCurvature:
 		eps = self.GetValue('eps',default=0.1,array_float=tuple(),
 			help='Relaxation parameter for the curvature penalized models')
-		SetCst('decomp_v_relax',eps**2,float_t, exclude=geodesic_outofline)
+		SetCst('decomp_v_relax',eps**2,float_t)
 
 		if self.ndim_phys==2:
 			nTheta = self.shape[2]
@@ -303,14 +307,14 @@ def SetKernel(self):
 			if traits['xi_var_macro']==0:    SetCst('ixi',  self.ixi,  float_t) # ixi = 1/xi
 			if traits['kappa_var_macro']==0: SetCst('kappa',self.kappa,float_t)
 			if traits['theta_var_macro']==0: 
-				SetCst('cosTheta_s',np.cos(theta),float_t, exclude=geodesic_outofline)
-				SetCst('sinTheta_s',np.sin(theta),float_t, exclude=geodesic_outofline)
+				SetCst('cosTheta_s',np.cos(theta),float_t)
+				SetCst('sinTheta_s',np.sin(theta),float_t)
 				
 		elif self.ndim_phys==3:
-			SetCst('sphere_proj_h',self.h_per,float_t,exclude=geodesic_outofline)
-			SetCst('sphere_proj_r',self.sphere_radius,float_t,exclude=geodesic_outofline)
-			if traits['sphere_macro']: SetCst('sphere_proj_sep_r',self.separation_radius,
-				float_t,exclude=geodesic_outofline)
+			SetCst('sphere_proj_h',self.h_per,float_t)
+			SetCst('sphere_proj_r',self.sphere_radius,float_t)
+			if traits['sphere_macro']: 
+				SetCst('sphere_proj_sep_r',self.separation_radius,float_t)
 
 	if self.precompute_scheme:
 		nactx = self.nscheme['nactx']
@@ -344,6 +348,3 @@ def SetKernel(self):
 		'geom','seedTags','rhs','wallDist','weights','offsets')
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
 	flow.args = eikonal.args.copy() # Further arguments added later
-
-	print("In SetKernel")
-	self.print_big_arrays(locals())

@@ -77,11 +77,11 @@ DECOMP_V_ALIGN(__constant__ Scalar decomp_v_cosmin2 = 2./3.;)
 // Get the parameters for (two dimensional) curvature penalized models
 #if curvature_macro 
 
-#if xi_var_macro==0
+#if !xi_var_macro
 __constant__ Scalar ixi; // inverse of the xi parameter, penalizing curvature 
 #endif
 
-#if kappa_var_macro==0
+#if !kappa_var_macro
 __constant__ Scalar kappa;
 #endif
 

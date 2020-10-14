@@ -53,7 +53,3 @@ void decomp_m(const Scalar m[symdim], Scalar weights[symdim], OffsetT offsets[sy
 		cross_vv(sb[k],sb[l],offsets[r]);
 	}
 }
-
-#if decomp_v_macro
-#include "Decomp_v_.h"
-#endif
