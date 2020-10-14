@@ -30,8 +30,7 @@ void scheme(GEOM(const Scalar geom[geom_size],) const Int x[ndim],
 	for(Int k=0; k<symdim; ++k){
 		const Int * e = offsets[k]; // e[ndim]
 		const Scalar we = scal_vv(w,e), ee = scal_vv(e,e);
-		if(we*we >= ee*ww*(1-decomp_v_cosmin2)){
-			weights[k]=0;}
+		if(we*we >= ee*ww*(1-decomp_v_cosmin2)){weights[k]=0;}
 	}
 }
 #endif

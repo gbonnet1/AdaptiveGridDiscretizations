@@ -12,6 +12,7 @@ def GetGeodesics(self):
 	if self.tips is not None: tips = self.hfmIn.PointFromIndex(self.tips,to=True)
 	
 	if self.isCurvature and self.tips_Unoriented is not None:
+		assert self.ndim_phys==2 # TODO : ReedsShepp3
 		tipsU = self.tips_Unoriented
 		tipsU = self.hfmIn.OrientedPoints(tipsU)
 		tipsU = self.hfmIn.PointFromIndex(tipsU,to=True)

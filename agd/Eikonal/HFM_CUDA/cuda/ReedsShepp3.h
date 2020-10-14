@@ -70,19 +70,28 @@ void scheme(GEOM(const Scalar geom[geom_size],)  const Int x_t[ndim],
 
 	// Other weights and offsets are decomposition of direction
 	OffsetT offsets3[dim3::symdim][3]; 
+
 	#if dual_macro
+	// Enforces motion orthogonal to x_sphere
 	Scalar m[dim3::symdim];
-	self_outer_v(x_sphere,m); _missing_eps_
+	dim3::self_outer_v(x_sphere,m);
+	const Scalar lambda = 1-decomp_v_relax;
 	Int k=0; 
 	for(Int i=0; i<3; ++i){
 		for(Int j=0; j<=i; ++j){
-			m[k] = (i==j) - m[k];
+			m[k] = (i==j) - decomp_v_relax*m[k];
 			++k;
 		}
 	}
 	dim3::decomp_m(m,&weights[2],offsets3);
-	// One may want to prune these offsets as in ReedsShepp2
+	// Prune these offsets as in ReedsShepp2
+	for(Int k=0; k<symdim; ++k){
+		const Int * e = offsets3[k]; // e[3]
+		const Scalar xe = dim3::scal_vv(x_sphere,e), ee = scal_vv(e,e), xx=1;//Unit vector
+		if(xe * xe >= ee * xx * (1-decomp_v_cosmin2)){weights[2+k]=0;}
+	}
 	#else
+	// Enforces motion (positively) colinear with x_sphere
 	dim3::decomp_v(x_sphere, &weights[2], offsets3);
 	#endif
 	for(Int i=0; i<dim3::symdim; ++i){
