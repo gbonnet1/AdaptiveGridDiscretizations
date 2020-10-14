@@ -5,7 +5,7 @@ from ... import AutomaticDifferentiation as ad
 from ... import FiniteDifferences as fd
 
 def SetRHS(self):
-	rhs = self.cost.copy()
+	rhs = self.cost.copy() # Avoid side effect on input variable
 	seedTags = cp.full(self.shape,False,dtype=bool)
 
 	eikonal = self.kernel_data['eikonal']
@@ -80,6 +80,8 @@ def SetRHS(self):
 				seedValues_rev = neighValues_rev+0.5*(metric0.norm(diff)+metric1.norm(diff))
 			seedIndices = neigh
 
+	self.cost = (None,"Deleted in SetRHS")
+
 	if seedsU is not None:
 		# Unoriented seeds are simply rounded
 		seedValuesU = cp.zeros(len(seedsU),dtype=self.float_t)
@@ -99,7 +101,6 @@ def SetRHS(self):
 
 	if seeds is None and seedsU is None:
 		self.rhs = rhs
-		self.forwardAD = ad.is_ad(rhs)
 		self.seedTags = seedTags
 
 		if eikonal.policy.solver=='global_iteration': return
@@ -123,7 +124,6 @@ def SetRHS(self):
 		seedTags = np.logical_or(seedTags,self.walls)
 		rhs[self.walls] = np.inf
 
-	self.forwardAD = ad.is_ad(rhs)
 	self.rhs = rhs
 	self.seedTags = seedTags
 	if self.reverseAD: 
@@ -138,15 +138,21 @@ def SetArgs(self):
 	
 	values = self.GetValue('values',default=None,array_float=self.shape,
 		help="Initial values for the eikonal solver")
-	if values is None: values = cp.full(self.shape,np.inf,dtype=self.float_t)
-	block_values = cp.ascontiguousarray(fd.block_expand(values,shape_i,
-		mode='constant',constant_values=np.inf))
+	if values is None: 
+		block_values = cp.full(self.shape_o+self.shape_i,np.inf,dtype=self.float_t)
+	else: 
+		block_values = cp.ascontiguousarray(fd.block_expand(values,shape_i,
+			mode='constant',constant_values=np.inf))
+		values = (None,"Deleted in SetArgs")
+
 	eikonal.args['values']	= block_values
 
 	# Set the RHS and seed tags
 	self.SetRHS()
-	eikonal.args['rhs'] = fd.block_expand(ad.remove_ad(self.rhs),shape_i,
-		mode='constant',constant_values=np.inf)
+	eikonal.args['rhs'] = cp.ascontiguousarray(fd.block_expand(ad.remove_ad(self.rhs),
+		shape_i,mode='constant',constant_values=np.inf))
+	self.forwardAD = ad.is_ad(self.rhs)
+	if not self.forwardAD: self.rhs = (None,"Deleted in SetArgs")
 
 	if np.prod(self.shape_i)%8!=0:
 		raise ValueError('Product of shape_i must be a multiple of 8')
@@ -165,3 +171,6 @@ def SetArgs(self):
 		eikonal.args['valuesNext']=block_values.copy()
 		if policy.multiprecision:
 			eikonal.args['valuesqNext']=block_valuesq.copy()
+
+	self.print_big_arrays(locals())
+

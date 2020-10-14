@@ -38,10 +38,14 @@ class Interface(object):
 		'help':OrderedDict(),
 		'kernelStats':OrderedDict(),
 		} }
+
 		self.verbosity = 1
+		self.clear_hfmIn = False
 
 		self.verbosity = self.GetValue('verbosity',default=1,
 			help="Choose the amount of detail displayed on the run")
+		self.clear_hfmIn = self.GetValue('clear_hfmIn',default=False,
+			help="Delete hfmIn member fields. (May save memory.)")
 		
 		self.model = self.GetValue('model',help='Minimal path model to be solved.')
 		# Unified treatment of standard and extended curvature models
@@ -59,6 +63,7 @@ class Interface(object):
 				'stats':dict(),'module':None})
 		# ['traits','source','policy','module','kernel','args','trigger','stats']
 
+
 	@property # Dimension agnostic model
 	def model_(self): return self.model[:-1]
 		
@@ -72,6 +77,7 @@ class Interface(object):
 		Get a value from a dictionnary, printing some help if requested.
 		"""
 		# We only import arguments once, otherwise risks of issues with multiple defaults
+		# Also, this allows to delete arguments and potentially save space
 		assert key not in self.hfmOut['keys']['help']
 
 		self.hfmOut['keys']['help'][key] = help
@@ -80,6 +86,7 @@ class Interface(object):
 		if key in self.hfmIn:
 			self.hfmOut['keys']['used'].append(key)
 			value = self.hfmIn[key]
+			if self.clear_hfmIn: self.hfmIn[key] = (None,"Deleted in GetValue")
 			if array_float is False: return value
 			value = self.caster(value)
 			# Check shape
@@ -194,7 +201,11 @@ class Interface(object):
 		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
 			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
 
-
+	def print_big_arrays(self,data):
+		for name,value in ad.Base.array_members(data,
+			iterables=(type(self),type(self.hfmIn),tuple,list,dict,SimpleNamespace)):
+			ratio = value.nbytes/self.hfmIn.size
+			if ratio>0.1: print(name,f"{ratio:.2f}")
 
 
 

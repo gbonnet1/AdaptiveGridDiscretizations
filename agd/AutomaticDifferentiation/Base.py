@@ -305,6 +305,34 @@ def cupy_variant(cls):
 		else: return cls(value,*args,**kwargs)
 	return cls_cupy,new
 
+def array_members(data,iterables=(tuple,list,dict)):
+	"""Returns the list of all arrays in given structure, with their access paths"""
+	arrays = []
+	def check(path,arr):
+		if isndarray(arr):
+			name = ".".join(path)
+			for namelist,value in arrays:
+				if arr.data==value.data:
+					namelist.append(name)
+					break
+			else:
+				arrays.append(([name],arr))
+
+	def check_members(prefix,data):
+		for name,value in items(data):
+			name2 = prefix+(name,)
+			if isinstance(value,iterables): check_members(name2,value)
+			else: check(name2,value)
+
+	def items(data):
+		if hasattr(data,'items'): return data.items()
+		if isinstance(data,(list,tuple)): 
+			return [(str(i),value) for i,value in enumerate(data)]
+		else: return data.__dict__.items()
+
+	check_members(tuple(),data)
+	return arrays
+
 # -------- numpy __array_function__ mechanism ---------
 
 """

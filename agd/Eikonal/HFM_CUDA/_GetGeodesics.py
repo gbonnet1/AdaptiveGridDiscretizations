@@ -101,6 +101,9 @@ def GetGeodesics(self):
 	args = tuple(cp.ascontiguousarray(arg) for arg in args)
 	kernel = geodesic.module.get_function('GeodesicODE')
 
+	print("In geodesicODE")
+	self.print_big_arrays(locals())
+
 	geoIt=0; geoMaxIt = int(np.ceil(max_len/typical_len))
 	while len(corresp)>0:
 		if geoIt>=geoMaxIt: 

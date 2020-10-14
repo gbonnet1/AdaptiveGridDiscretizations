@@ -26,10 +26,11 @@ def Solve(self,name):
 
 	#Check args
 	assert isinstance(data.args,collections.OrderedDict)
-	for key,value in data.args.items(): data.args[key] = cp.ascontiguousarray(value)
 	for key,value in data.args.items():
+		if not value.flags.c_contiguous: 
+			raise ValueError(f"Non contiguous array {key} in kernel {name}.")
 		if value.dtype.type not in (self.float_t,self.int_t,np.uint8):
-			raise ValueError(f"Inconsistent type {value.dtype.type} for key {key}")
+			raise ValueError(f"Inconsistent type {value.dtype.type} for key {key}.")
 
 	# Run
 	kernel_start = time.time()

@@ -131,7 +131,6 @@ def SetKernel(self):
 		help="Options passed via cupy.RawKernel to the cuda compiler")
 
 	eikonal.source += model_source+self.cuda_date_modified
-	print(eikonal.source)
 	eikonal.module = GetModule(eikonal.source,self.cuoptions)
 
 	# ---- Produce a kernel for computing the geodesics ----
@@ -345,3 +344,6 @@ def SetKernel(self):
 		'geom','seedTags','rhs','wallDist','weights','offsets')
 	eikonal.args = OrderedDict([(key,args[key]) for key in argnames if key in args])
 	flow.args = eikonal.args.copy() # Further arguments added later
+
+	print("In SetKernel")
+	self.print_big_arrays(locals())
