@@ -13,14 +13,15 @@ from ... import Metrics
 
 # This file implements some member functions of the Interface class of HFM_CUDA
 
-def CostMetric(self,x):
-	return self._CostMetric.at(x)
-
 def SetGeometry(self):
 	if self.verbosity>=1: print("Preparing the domain data (shape,metric,...)")
 	eikonal = self.kernel_data['eikonal']
 	policy = eikonal.policy
 
+	# These options allow to delete the metric and dual metric, when they are converted 
+	self._metric_delete_dual = False 
+	self._CostMetric_delete_dual = False
+	
 	# Domain shape and grid scale
 	self.shape = self.hfmIn.shape
 
@@ -158,7 +159,17 @@ def SetGeometry(self):
 			eikonal.traits['SubRiemann_Pruning_macro']=1
 			
 		else: raise ValueError("Unrecognized model")
-		
+	
+	 # Dual metric is useless now, except for generating the primal one
+	if self._metric is not None: self._dualMetric = (None,"Deleted in SetGeometry")
+	self._metric_delete_dual = True
+
+	print("--- Set Geometry 0 ---")
+	self.print_big_arrays(locals())
+
+
+
+
 	# Check wether the geometry only depends on a subset of the coordinates
 	geom_shape = self.geom.shape[1:]
 	self.geom_indep = len(self.shape)-len(geom_shape)
@@ -170,6 +181,8 @@ def SetGeometry(self):
 
 	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(
 		self.geom,self.shape_i[self.geom_indep:],mode='constant',constant_values=np.inf))
+
+	self.geom = (None,"Deleted in SetGeometry")
 
 	precompute_excluded_schemes = (
 		'Isotropic','Diagonal', # Precomputation is useless, since stencil is trivial
@@ -231,6 +244,8 @@ def SetGeometry(self):
 			'minChg_delta_min',default=float(np.min(self.h))/10.,
 			help="Minimal threshold increase with bound_active_blocks method")
 
+	self._CostMetric_delete_metric = not self.drift_model # Metric will not be needed anymore
+
 	# Walls
 	walls = self.GetValue('walls',default=None,help='Obstacles in the domain')
 	if walls is not None:
@@ -252,6 +267,9 @@ def SetGeometry(self):
 			self.shape_i,mode='constant',constant_values=wallDistMax_t))
 
 	self.walls = walls
+
+	print("--- Set Geometry ---")
+	self.print_big_arrays(locals())
 
 
 

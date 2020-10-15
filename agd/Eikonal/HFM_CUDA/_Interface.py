@@ -86,7 +86,9 @@ class Interface(object):
 		if key in self.hfmIn:
 			self.hfmOut['keys']['used'].append(key)
 			value = self.hfmIn[key]
-			if self.clear_hfmIn: self.hfmIn[key] = (None,"Deleted in GetValue")
+			if self.clear_hfmIn:
+				if isinstance(value,Metrics.Base) or ad.isndarray(value) and value.size>100:
+					self.hfmIn.store[key] = (None,"Deleted in GetValue")
 			if array_float is False: return value
 			value = self.caster(value)
 			# Check shape
@@ -146,17 +148,24 @@ class Interface(object):
 	SolveAD = _PostProcess.SolveAD
 	GetGeodesics = _GetGeodesics.GetGeodesics
 
-	CostMetric = _SetGeometry.CostMetric
 	SetRHS = _SetArgs.SetRHS
-#	global_iteration = _solvers.global_iteration
-#	adaptive_gauss_siedel_iteration = _solvers.adaptive_gauss_siedel_iteration
-#	set_minChg_thres = _solvers.set_minChg_thres
 	SolveLinear = _PostProcess.SolveLinear
 	
-	@property
-	def values_expand(self): return _PostProcess.values_expand(self)
-	@property
-	def values(self): return _PostProcess.values(self)
+	def FinalCheck(self):
+		if self.GetValue('exportValues',False,help="Return the solution numerical values"):
+			self.hfmOut['values'] = self.values
+		self.extractValues = self.GetValue('extractValues',False,
+			help="Return the solution numerical values separately from other data")
+		self.retself = self.GetValue('retself',False,
+			help="Return the class instance that did the work")
+		self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
+		self.hfmOut['solverGPUTime'] = self.kernel_data['eikonal'].stats['time']
+		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys()) 
+			-set(self.hfmOut['keys']['used']) ) # Used by interface
+		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
+			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
+
+# --- Specific model properties ---
 
 	@property
 	def isCurvature(self):
@@ -164,13 +173,37 @@ class Interface(object):
 		'ReedsSheppGPU3']
 
 	@property
+	def drift_model(self):
+		return self.model_ in ('Rander','AsymmetricQuadratic')
+
+# ---- Metrics ---
+
+	@property
 	def metric(self):
-		if self._metric is None: self._metric = self._dualMetric.dual()
+		"""Adimensionized metric"""
+		if self._metric is None: 
+			self._metric = self._dualMetric.dual()
+			if self._metric_delete_dual: self._dualMetric = (None,"Deleted in metric")
 		return self._metric
+
+	def CostMetric(self,x):
+		"""Adimensionized interpolated metric""" 
+		if self._CostMetric is None:
+			self._CostMetric = self.metric.with_cost(self.cost)
+			# TODO : remove. No need to create this grid for our interpolation
+			grid = ad.array(np.meshgrid(*(cp.arange(s,dtype=self.float_t) 
+				for s in self.shape), indexing='ij')) # Adimensionized coordinates
+			self._CostMetric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
+			if self._CostMetric_delete_dual: self._metric = (None,"Deleted in CostMetric")
+		return self._CostMetric.at(x) 
+
 	@property
 	def dualMetric(self):
+		"""Adimensionized dual metric"""
 		if self._dualMetric is None: self._dualMetric = self._metric.dual()
 		return self._dualMetric
+
+# ----- Array manipulation -----
 
 	def as_field(self,e,name,depth=0):
 		shape = self.hfmIn.shape
@@ -187,25 +220,18 @@ class Interface(object):
 		raise ValueError(f"Field {name} has incorrect dimensions. Found {e.shape}, "
 			f"whereas domain has shape {shape}")
 
-	def FinalCheck(self):
-		if self.GetValue('exportValues',False,help="Return the solution numerical values"):
-			self.hfmOut['values'] = self.values
-		self.extractValues = self.GetValue('extractValues',False,
-			help="Return the solution numerical values separately from other data")
-		self.retself = self.GetValue('retself',False,
-			help="Return the class instance that did the work")
-		self.hfmOut['stats'] = {key:value.stats for key,value in self.kernel_data.items()}
-		self.hfmOut['solverGPUTime'] = self.kernel_data['eikonal'].stats['time']
-		self.hfmOut['keys']['unused'] = list(set(self.hfmIn.keys()) 
-			-set(self.hfmOut['keys']['used']) ) # Used by interface
-		if self.verbosity>=1 and self.hfmOut['keys']['unused']:
-			print(f"!! Warning !! Unused keys from user : {self.hfmOut['keys']['unused']}")
-
 	def print_big_arrays(self,data):
 		for name,value in ad.Base.array_members(data,
-			iterables=(type(self),type(self.hfmIn),tuple,list,dict,SimpleNamespace)):
+			iterables=(type(self),type(self.hfmIn),Metrics.Base,
+				tuple,list,dict,SimpleNamespace)):
 			ratio = value.nbytes/self.hfmIn.size
 			if ratio>0.1: print(name,f"{ratio:.2f}")
+
+	@property
+	def values_expand(self): return _PostProcess.values_expand(self)
+	@property
+	def values(self): return _PostProcess.values(self)
+
 
 
 

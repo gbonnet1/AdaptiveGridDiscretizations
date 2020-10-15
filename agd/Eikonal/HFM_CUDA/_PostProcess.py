@@ -72,7 +72,6 @@ def PostProcess(self):
 		flow.args['flow_vector']    = cp.empty((ndim,)+shape_oi,dtype=self.float_t)
 
 	self.Solve('flow')
-	self.drift_model = self.model_ in ('Rander','AsymmetricQuadratic')
 	flow_normalization_needed = (self.forwardAD or self.reverseAD) and self.drift_model
 
 	if flow_normalization_needed or self.exportGeodesicFlow:
@@ -83,6 +82,7 @@ def PostProcess(self):
 		if self.exportGeodesicFlow:
 			flow_vector *= -self.h_broadcasted  
 			self.hfmOut['flow'] = flow_vector
+
 	
 def SolveLinear(self,rhs,diag,indices,weights,chg,kernelName):
 	"""

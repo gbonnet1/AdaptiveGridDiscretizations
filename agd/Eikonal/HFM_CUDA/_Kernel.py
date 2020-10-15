@@ -134,7 +134,6 @@ def SetKernel(self):
 		help="Options passed via cupy.RawKernel to the cuda compiler")
 
 	eikonal.source += model_source+self.cuda_date_modified
-	print(eikonal.source)
 	eikonal.module = GetModule(eikonal.source,self.cuoptions)
 
 	nofront_traits = { # For the other kernels, disables the front related options

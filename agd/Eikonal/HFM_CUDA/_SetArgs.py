@@ -3,6 +3,7 @@ import cupy as cp
 from .inf_convolution import inf_convolution
 from ... import AutomaticDifferentiation as ad
 from ... import FiniteDifferences as fd
+from ... import Metrics
 
 def SetRHS(self):
 	rhs = self.cost.copy() # Avoid side effect on input variable
@@ -40,13 +41,6 @@ def SetRHS(self):
 
 		if self.reverseAD: seedValues_rev=ad.Sparse.identity(constant=ad.remove_ad(seedValues))
 
-		if seedRadius>0 or self.factoringRadius>0:
-			self._CostMetric = self.metric.with_cost(self.cost)
-			# TODO : remove. No need to create this grid for our interpolation
-			grid = ad.array(np.meshgrid(*(cp.arange(s,dtype=self.float_t) 
-				for s in self.shape), indexing='ij')) # Adimensionized coordinates
-			self._CostMetric.set_interpolation(grid,periodic=self.periodic) # First order interpolation
-
 		if seedRadius==0.: # Round seeds to closest grid point
 			seedIndices = np.round(seeds).astype(int)
 		else: # Spread seed over given radius, compute appropriate seedValues
@@ -80,6 +74,10 @@ def SetRHS(self):
 				seedValues_rev = neighValues_rev+0.5*(metric0.norm(diff)+metric1.norm(diff))
 			seedIndices = neigh
 
+	# Cleanup memory. CostMetric and 
+	if self._CostMetric_delete_metric and isinstance(self._metric,Metrics.Base): 
+		self._metric = (None,"Deleted in SetRHS")
+	self._CostMetric = (None,"Deleted in SetRHS")
 	self.cost = (None,"Deleted in SetRHS")
 
 	if seedsU is not None:
