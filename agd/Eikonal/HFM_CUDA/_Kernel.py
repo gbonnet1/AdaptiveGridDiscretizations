@@ -68,8 +68,9 @@ def SetKernelTraits(self):
 		traits['minChg_freeze_macro']=True
 		traits['pruning_macro']=True
 
-	policy.solver = self.GetValue('solver',
-		default='FIM' if self.HasValue('fim_front_width') else 'AGSI',
+	if self.HasValue('fim_front_width') or self.fim_front_width_default:policy.solver='FIM'
+	else: policy.solver = 'AGSI'
+	policy.solver = self.GetValue('solver',policy.solver,
 		help="Choice of fixed point solver (AGSI, global_iteration)")
 	solverAltNames={'AGSI':'adaptive_gauss_siedel_iteration','FIM':'fast_iterative_method'}
 	policy.solver = solverAltNames.get(policy.solver,policy.solver)
@@ -87,7 +88,7 @@ def SetKernelTraits(self):
 	self.size_i = np.prod(self.shape_i)
 	self.caster = lambda x : cp.asarray(x,dtype=self.float_t)
 	self.nscheme = kernel_traits.nscheme(self)
-#	assert self.float_t == self.hfmIn.float_t # Not necessary for gpu_transfer
+#	assert self.float_t == self.hfmIn.float_t # Not satisfied with gpu_transfer
 	self.hasChart = self.HasValue('chart_mapping')
 
 def SetKernel(self):
@@ -133,7 +134,16 @@ def SetKernel(self):
 		help="Options passed via cupy.RawKernel to the cuda compiler")
 
 	eikonal.source += model_source+self.cuda_date_modified
+	print(eikonal.source)
 	eikonal.module = GetModule(eikonal.source,self.cuoptions)
+
+	nofront_traits = { # For the other kernels, disables the front related options
+		**eikonal.traits,
+		'pruning_macro':False,
+		'fim_macro':False,
+		'minChg_freeze_macro':False,
+		'niter_i':1,
+	}
 
 	# ---- Produce a kernel for computing the geodesics ----
 	if self.hasTips:
@@ -159,8 +169,7 @@ def SetKernel(self):
 
 
 		geodesic.traits = { # Suggested defaults
-			**eikonal.traits,
-			'niter_i':1,
+			**nofront_traits,
 			'eucl_delay':eucl_delay,
 			'nymin_delay':nymin_delay,
 			'EuclT':geodesic.policy.eucl_t,
@@ -205,11 +214,7 @@ def SetKernel(self):
 
 	if self.flow_needed:
 		flow.traits = {
-			**eikonal.traits,
-			'pruning_macro':False,
-			'fim_macro':False,
-			'minChg_freeze_macro':False,
-			'niter_i':1,
+			**nofront_traits
 		}
 		flow.policy = copy.copy(eikonal.policy) 
 		flow.policy.nitermax_o = 1
@@ -234,7 +239,7 @@ def SetKernel(self):
 	# ---- Produce a kernel for precomputing the stencils (if requested) ----
 	if self.precompute_scheme:
 		scheme.traits = {
-			**eikonal.traits,
+			**nofront_traits,
 			'import_scheme_macro':False,
 			'export_scheme_macro':True,
 			}
@@ -339,7 +344,8 @@ def SetKernel(self):
 		help="Raise an exception if a solver fails to converge")
 	if eikonal.policy.solver == 'fast_iterative_method':
 		SetModuleConstant(eikonal.module,'fim_front_width',self.GetValue('fim_front_width',
-			default=4,help="Dictates the max front width in the FIM variant.\n"
+			default=self.fim_front_width_default,
+			help="Dictates the max front width in the FIM variant.\n"
 			"(original FIM : 2. Must be >=2.)"),np.uint8)
 
 	# Sort the kernel arguments

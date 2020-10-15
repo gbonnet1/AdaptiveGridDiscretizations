@@ -29,7 +29,7 @@ hfmIn = Eikonal.dictIn({
 hfmIn.SetRect([[-1,1],[-1,1]],dimx=n+1,sampleBoundary=True)
 hfmIn.nTheta = nTheta
 """
-xi=0.3
+xi=0.7
 hfmIn = Eikonal.dictIn({
     'model':'Dubins2', # Dubins model, extended (customizable) variant    
     'exportValues':1,
@@ -37,9 +37,14 @@ hfmIn = Eikonal.dictIn({
     'speed':1.,    
     
     'seed':(0,0,0), # Central seed, with horizontal tangent
+#    'fim_front_width':5, # Best for Reeds-Shepp forward (some improvement)
+#    'fim_front_width':4, # Best for Elastica2 (significant improvement)
+#    'traits':{'shape_i':(4,4,4),'niter_i':2}, # Best for Dubins (negligible improvement)
+
 #    'tips':[(np.cos(t),np.sin(t),0) for t in np.linspace(0,2*np.pi,20)], # Tips on circle, with horizontal tangents    
 })
-hfmIn.SetRect(sides=[[-1.5,1.5],[-1.5,1.5]],dimx = 151) # Physical domain
+hfmIn.SetRect(sides=[[-1.5,1.5],[-1.5,1.5]],dimx = 301) # Physical domain
+#hfmIn.SetRect(sides=[[-1.5,1.5],[-1.5,1.5]],dimx = 2001) # Physical domain. OK on 8GB card
 hfmIn.nTheta = 96 # Angular resolution
 
 hfmOut=hfmIn.Run()

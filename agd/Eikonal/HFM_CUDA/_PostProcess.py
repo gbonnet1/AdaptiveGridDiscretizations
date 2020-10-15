@@ -71,9 +71,6 @@ def PostProcess(self):
 	if flow.traits.get('flow_vector_macro',False):
 		flow.args['flow_vector']    = cp.empty((ndim,)+shape_oi,dtype=self.float_t)
 
-#	self.flow_needed = any(flow.traits.get(key+"_macro",False) for key in 
-#		('flow_weights','flow_weightsum','flow_offsets','flow_indices','flow_vector'))
-#	if self.flow_needed:
 	self.Solve('flow')
 	self.drift_model = self.model_ in ('Rander','AsymmetricQuadratic')
 	flow_normalization_needed = (self.forwardAD or self.reverseAD) and self.drift_model

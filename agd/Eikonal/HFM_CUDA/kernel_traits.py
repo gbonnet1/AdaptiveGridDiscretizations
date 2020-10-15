@@ -7,6 +7,7 @@ def default_traits(self):
 	"""
 	Default traits of the GPU implementation of an HFM model.
 	(self is an instance of the class Interface from file interface.py)
+	Side effect : sets the default FIM front width. (None : AGSI is fine.)
 	"""
 	traits = {
 	'Scalar': np.float32,
@@ -19,30 +20,75 @@ def default_traits(self):
 	ndim = self.ndim
 	model = self.model
 
-	if model=='Isotropic2':
-		#Large shape, many iterations, to take advantage of block based causality
-		traits.update({'shape_i':(24,24),'niter_i':48,})
-	elif ndim==2: traits.update({'shape_i':(8,8),'niter_i':16,})
-
-	# Curvature penalized models get special treatment
-	elif model in ('ReedsShepp2','ReedsSheppForward2'): 
+	if   model == 'ReedsShepp2': 
 		traits.update({'shape_i':(4,4,4),'niter_i':6})
-	elif model in ('Dubins2','Elastica2'):
+		fim_front_width = None
+	elif model == 'ReedsSheppForward2':
+		traits.update({'shape_i':(4,4,4),'niter_i':6})
+		fim_front_width = 5
+	elif model == 'Elastica2':
 		# Small shape, single iteration, since stencils are too wide anyway
+		traits.update({'shape_i':(4,4,2),'niter_i':1,'merge_sort_macro':True})
+		fim_front_width = 4
+	elif model == 'Dubins2':
 		traits.update({'shape_i':(4,4,2),'niter_i':1})
+		#traits.update({'shape_i':(4,4,4),'niter_i':2}) # Similar, often slightly better
+		fim_front_width = None
+				
 
+	elif model == 'AsymmetricQuadratic2':
+		traits.update({'shape_i':(8,8),'niter_i':10})
+		fim_front_width = 6
+	elif model == 'AsymmetricQuadratic3':
+		traits.update({'shape_i':(4,4,4),'niter_i':4})
+		fim_front_width = 5
 
-	elif ndim==3:
-		traits.update({'shape_i':(4,4,4),'niter_i':12,})
-	elif ndim==4:
-		traits.update({'shape_i':(4,4,4,4),'niter_i':16,})
-	elif ndim==5:
-		traits.update({'shape_i':(2,2,2,2,2),'niter_i':10,})
+	elif model == 'TTI2':
+		traits.update({'shape_i':(8,8),'niter_i':10,'nmix_macro':7})
+		fim_front_width = 6
+	elif model == 'TTI3':
+		traits.update({'shape_i':(4,4,4),'niter_i':3,'nmix_macro':7})
+		fim_front_width = 6
+
+	elif model == 'Rander2':
+		traits.update({'shape_i':(8,8),'niter_i':12})
+		fim_front_width = 8
+	elif model == 'Rander3':
+		traits.update({'shape_i':(4,4,4),'niter_i':8})
+		fim_front_width = 8
+
+	elif model == 'Riemann2':
+		traits.update({'shape_i':(8,8),'niter_i':8})
+		fim_front_width = 4
+	elif model == 'Riemann3':
+		traits.update({'shape_i':(4,4,4),'niter_i':4})
+		fim_front_width = 6
+	elif model == 'Riemann4':
+		traits.update({'shape_i':(4,4,4,2),'niter_i':3})
+		fim_front_width = None
+	elif model == 'Riemann5':
+		traits.update({'shape_i':(2,2,2,2,2),'niter_i':3}) # Untested
+		fim_front_width = None
+		
+	elif model in ('Isotropic2','Diagonal2'):
+		#Alternative : Large shape, many iterations, to take advantage of block based causality 
+		traits.update({'shape_i':(24,24),'niter_i':48,})
+		fim_front_width = None
+		# Alternative, more standard and reasonable shape
+		#traits.update({'shape_i':(8,8),'niter_i':16,})
+	elif model in ('Isotropic3','Diagonal3'):
+		traits.update({'shape_i':(4,4,4),'niter_i':8,})
+		fim_front_width = 4
+	elif model in ('Isotropic4','Diagonal4'):
+		traits.update({'shape_i':(4,4,4,4),'niter_i':8,}) # Untested
+		fim_front_width = None
+	elif model in ('Isotropic5','Diagonal5'):
+		traits.update({'shape_i':(2,2,2,2,2),'niter_i':10,}) # Untested
+		fim_front_width = None
 	else:
 		raise ValueError("Unsupported model")
 
-	if model=='Elastica2': traits['merge_sort_macro']=1
-	if model.startswith('TTI'): traits.update({'nmix_macro':7})
+	self.fim_front_width_default = fim_front_width
 	return traits
 
 def nscheme(self):
