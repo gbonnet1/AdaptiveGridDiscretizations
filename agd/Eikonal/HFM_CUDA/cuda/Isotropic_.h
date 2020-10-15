@@ -4,7 +4,7 @@
 
 #define adaptive_offsets_macro false
 
-#ifdef isotropic_macro // We're using the same file for the anisotropic diagonal model
+#if isotropic_macro // We're using the same file for the anisotropic diagonal model
 #define adaptive_weights_macro false
 #define geom_macro false // No geometry for the isotropic metric (only a cost function)
 #endif
