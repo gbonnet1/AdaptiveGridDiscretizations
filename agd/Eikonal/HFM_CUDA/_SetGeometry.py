@@ -164,12 +164,6 @@ def SetGeometry(self):
 	if self._metric is not None: self._dualMetric = (None,"Deleted in SetGeometry")
 	self._metric_delete_dual = True
 
-	print("--- Set Geometry 0 ---")
-	self.print_big_arrays(locals())
-
-
-
-
 	# Check wether the geometry only depends on a subset of the coordinates
 	geom_shape = self.geom.shape[1:]
 	self.geom_indep = len(self.shape)-len(geom_shape)
@@ -267,9 +261,5 @@ def SetGeometry(self):
 			self.shape_i,mode='constant',constant_values=wallDistMax_t))
 
 	self.walls = walls
-
-	print("--- Set Geometry ---")
-	self.print_big_arrays(locals())
-
 
 
