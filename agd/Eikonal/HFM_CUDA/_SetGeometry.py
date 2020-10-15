@@ -173,8 +173,12 @@ def SetGeometry(self):
 			"It should match (the last coordinates of) domain shape.")
 	if self.isCurvature: assert self.geom_indep<=self.ndim_phys
 
-	eikonal.args['geom'] = cp.ascontiguousarray(fd.block_expand(
-		self.geom,self.shape_i[self.geom_indep:],mode='constant',constant_values=np.inf))
+	block_geom = fd.block_expand(self.geom,self.shape_i[self.geom_indep:],
+		mode='constant',constant_values=np.inf)
+	if not eikonal.traits['geom_first_macro'] and block_geom.ndim==2*self.ndim+1: 
+		block_geom = np.moveaxis(block_geom,0,-1)
+	eikonal.args['geom'] = cp.ascontiguousarray(block_geom)
+	block_geom=None
 
 	self.geom = (None,"Deleted in SetGeometry")
 

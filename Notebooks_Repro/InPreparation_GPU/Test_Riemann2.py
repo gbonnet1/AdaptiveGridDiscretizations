@@ -25,7 +25,7 @@ hfmIn = Eikonal.dictIn({
     'seed':[0.,0.,0.],
     'exportValues':1,
     'clear_hfmIn':True,
-#    'traits':{'niter_i':4},'fim_front_width':6,
+#    'traits':{'geom_first_macro':False,},
 })
 hfmIn.SetRect([[-np.pi,np.pi],[-np.pi,np.pi],[-np.pi,np.pi]],dimx=301,sampleBoundary=True)
 hfmIn.SetUniformTips((4,4,4))

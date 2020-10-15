@@ -15,6 +15,7 @@ def default_traits(self):
 	'OffsetT':np.int32,
 #	'multiprecision_macro':False,
 	'pruning_macro':False,
+	'geom_first_macro':True,
 	}
 
 	ndim = self.ndim

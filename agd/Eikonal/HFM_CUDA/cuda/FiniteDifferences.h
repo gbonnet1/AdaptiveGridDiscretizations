@@ -13,6 +13,7 @@ The values associated to other finite diffferences are imported.
 typedef const OffsetT (*OffsetVecT)[ndim]; // OffsetVecT[][ndim]
 typedef const Scalar (*DriftVecT)[ndim]; // DriftVectT[][ndim]
 
+
 void FiniteDifferences(
 	// Value function (problem unknown)
 	const Scalar * __restrict__ u_t, MULTIP(const Int * __restrict__ uq_t,) 

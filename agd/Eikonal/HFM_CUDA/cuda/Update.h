@@ -81,8 +81,12 @@ __global__ void Update(
 		ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
 		DRIFT(Scalar drift[nmix][ndim];)
 
+	#if geom_first_macro
 		GEOM(Scalar geom[geom_size];
 		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_geom+size_geom_tot*k];})
+	#else
+		const Scalar * geom = geom_t + n_geom*geom_size;
+	#endif
 		ADAPTIVE_MIX(const bool mix_is_min = )
 		scheme(GEOM(geom,) LOCAL_SCHEME(x_t,) weights, offsets DRIFT(,drift) );
 	#endif
