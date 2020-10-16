@@ -148,6 +148,7 @@ void GeodesicFlow(
 
 	#if import_scheme_macro
 		const Scalar * weights = weights_t+nactx*n_geom;
+		typedef const OffsetT (*OffsetVecT)[ndim]; // OffsetVecT[][ndim]
 		const OffsetVecT offsets = (OffsetVecT) (offsets_t + ndim*nactx*n_geom);
 		DRIFT(Sorry_drift_is_not_yet_compatible_with_scheme_precomputation;)
 	#else
@@ -185,6 +186,8 @@ void GeodesicFlow(
 		MULTIP(Int vq2_o[ntotx];)
 		)
 
+	#include "FiniteDifferences.h"
+/*
 	FiniteDifferences(
 		u_t,MULTIP(uq_t,)
 		WALLS(wallDist_t,wallDist_i,)
@@ -192,7 +195,7 @@ void GeodesicFlow(
 		v_i,v_o,MULTIP(vq_o,)
 		ORDER2(v2_i,v2_o,MULTIP(vq2_o,)) 
 		x_t,x_i);
-
+*/
 	Scalar flow_weights[nact]; 
 	NSYM(Int active_side[nsym];) // C does not tolerate zero-length arrays.
 	Int kmix=0; 

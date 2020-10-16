@@ -8,7 +8,11 @@
 #include "REDUCE_i.h"
 #include "GetBool.h"
 #include "Propagation.h"
-#include "FiniteDifferences.h"
+#include "Walls.h"
+
+#define finitedifferences_inlinecode_macro true
+//#include "FiniteDifferences.h"
+
 /* Array suffix convention : 
  arr_t : shape_tot (Total domain shape)
  arr_o : shape_o (Grid shape)
@@ -73,10 +77,11 @@ __global__ void Update(
 
 	#if import_scheme_macro
 		const Scalar * weights = weights_t+nactx*n_geom;
+		typedef const OffsetT (*OffsetVecT)[ndim]; // OffsetVecT[][ndim]
 		const OffsetVecT offsets = (OffsetVecT) (offsets_t + ndim*nactx*n_geom);
 		// Strangely, simply copying the data at this point makes the code twice slower
 		DRIFT(Sorry_drift_is_not_yet_compatible_with_scheme_precomputation;)
-	#else
+	#else // Compute the scheme 
 		ADAPTIVE_WEIGHTS(Scalar weights[nactx];)
 		ADAPTIVE_OFFSETS(OffsetT offsets[nactx][ndim];)
 		DRIFT(Scalar drift[nmix][ndim];)
@@ -85,11 +90,12 @@ __global__ void Update(
 		GEOM(Scalar geom[geom_size];
 		for(Int k=0; k<geom_size; ++k){geom[k] = geom_t[n_geom+size_geom_tot*k];})
 	#else
-		const Scalar * geom = geom_t + n_geom*geom_size;
+		GEOM(const Scalar * geom = geom_t + n_geom*geom_size;)
 	#endif
+
 		ADAPTIVE_MIX(const bool mix_is_min = )
 		scheme(GEOM(geom,) LOCAL_SCHEME(x_t,) weights, offsets DRIFT(,drift) );
-	#endif
+	#endif // import_scheme_macro
 
 
 	EXPORT_SCHEME( 
@@ -134,13 +140,17 @@ __global__ void Update(
 		MULTIP(Int vq2_o[ntotx];)
 		)
 
+/*
+  // Weird (compilation ?) bug when called as a function 
 	FiniteDifferences(
 		u_t,MULTIP(uq_t,)
 		WALLS(wallDist_t,wallDist_i,)
 		offsets,DRIFT(drift,)
 		v_i,v_o,MULTIP(vq_o,)
 		ORDER2(v2_i,v2_o,MULTIP(vq2_o,)) 
-		x_t,x_i);
+		x_t,x_i);*/
+
+	#include "FiniteDifferences.h"
 
 	__syncthreads(); // __shared__ u_i
 
@@ -149,6 +159,22 @@ __global__ void Update(
 	NSYM(Int active_side[nsym];) // C does not tolerate zero-length arrays.
 	Int kmix=0; 
 	) 
+
+/*	if(threadIdx.x==0 && blockIdx.x==0){
+		printf("x_t %i,%i,%i\n",x_t[0],x_t[1],x_t[2]);
+	}*/
+/*
+	if(x_t[0]==16 && x_t[1]==28 && x_t[2]==8){
+//		printf("ixi %f, kappa %f, x %i,%i,%i, cT,sT %f,%f, relax %f,%f \n",
+//			ixi,kappa,x[0],x[1],x[2],cT,sT, decomp_v_relax,decomp_v_cosmin2);
+//		for(int i=0; i<30; ++i){printf("%f ",weights[i]);}
+//		for(int i=0; i<30; ++i){printf("%i ",v_i[i]);}
+		printf("v_i %i, offset %i,%i,%i, ",v_i[1],offsets[1][0],offsets[1][1],offsets[1][2]);
+		printf("x_i %i,%i,%i",x_i[0],x_i[1],x_i[2]);
+		printf("nsym %i, nfwd %i, nmix %i, nact %i, nactx %i, ntotx %i",nsym, nfwd, nmix, nact, nactx, ntotx);
+		printf("\n");
+	}
+*/
 
 	// Compute and save the values
 	HFMIter(!isSeed, 
