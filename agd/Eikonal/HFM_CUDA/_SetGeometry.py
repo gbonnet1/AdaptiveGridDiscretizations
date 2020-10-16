@@ -21,6 +21,9 @@ def SetGeometry(self):
 	# These options allow to delete the metric and dual metric, when they are converted 
 	self._metric_delete_dual = False 
 	self._CostMetric_delete_dual = False
+	self._metric = None
+	self._dualMetric = None
+	self._CostMetric = None
 	
 	# Domain shape and grid scale
 	self.shape = self.hfmIn.shape

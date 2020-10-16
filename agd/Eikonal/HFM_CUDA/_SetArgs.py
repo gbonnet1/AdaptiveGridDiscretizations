@@ -74,11 +74,14 @@ def SetRHS(self):
 				seedValues_rev = neighValues_rev+0.5*(metric0.norm(diff)+metric1.norm(diff))
 			seedIndices = neigh
 
+		if self.factoringRadius:
+			self.factor_metric = self.CostMetric(self.seed)
+
 	# Cleanup memory. CostMetric and 
 	if self._CostMetric_delete_metric and isinstance(self._metric,Metrics.Base): 
 		self._metric = (None,"Deleted in SetRHS")
-	self._CostMetric = (None,"Deleted in SetRHS")
-	self.cost = (None,"Deleted in SetRHS")
+	if isinstance(self._CostMetric,Metrics.Base): self._CostMetric = (None,"Deleted in SetRHS")
+	if ad.isndarray(self.cost): self.cost = (None,"Deleted in SetRHS")
 
 	if seedsU is not None:
 		# Unoriented seeds are simply rounded

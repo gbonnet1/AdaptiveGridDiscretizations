@@ -1,6 +1,7 @@
 import sys; sys.path.insert(0,"../..") # Allow import of agd from parent directory 
 
 from agd import Eikonal
+from agd import Metrics
 import numpy as np; xp=np
 import time
 from agd.AutomaticDifferentiation.Optimization import norm_infinity
@@ -77,7 +78,13 @@ if False:
 #print(help(hfmIn.SetRect))
 
 #hfmIn.SetRect([[-1,1],[-1,1]],dimx=8)
-hfmIn['cost'] = xp.ones(hfmIn.shape,dtype='float32')
+hfmIn['cost'] = 1*xp.ones(hfmIn.shape,dtype='float32')
+
+if True:
+	hfmIn.update({
+		'model':'Diagonal2',
+		'metric':Metrics.Diagonal((2.,2.)),
+		})
 
 hfmIn['walls'] = xp.full(hfmIn.shape,False,dtype='bool')
 hfmIn['walls'][3,3]=True

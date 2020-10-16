@@ -2,6 +2,7 @@
 # Distributed WITHOUT ANY WARRANTY. Licensed under the Apache License, Version 2.0, see http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
+import cupy as cp
 from collections import OrderedDict
 from types import SimpleNamespace
 import numbers
