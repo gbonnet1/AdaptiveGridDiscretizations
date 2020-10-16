@@ -18,7 +18,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000, formatter=dict(float=lambda 
 xp,plt,Eikonal = [ad.cupy_friendly(e) for e in (xp,plt,Eikonal)]
 
 hfmIn = Eikonal.dictIn({
-    'model':'Elastica2',
+    'model':'ReedsSheppForward2',
     'exportValues':True,
     'seed':[0,0,0],
     'xi':0.3,
