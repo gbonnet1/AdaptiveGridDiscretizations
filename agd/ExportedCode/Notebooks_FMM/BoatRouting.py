@@ -57,7 +57,8 @@ def Currents(θ,ϕ):
     return bump0*ω0+bump1*ω1
 
 def ArrivalTime(hfmIn,params):
-    hfmIn = copy(hfmIn) 
+    hfmIn = copy(hfmIn)
+#    if hfmIn.xp is not np: hfmIn['solver']='AGSI' #TODO : why needed ?
     hfmIn['metric'] = metric(params)
     hfmIn['exportGeodesicFlow']=1
     cache = Eikonal.Cache(needsflow=True)
@@ -65,10 +66,9 @@ def ArrivalTime(hfmIn,params):
     
     flow = hfmOut['flow']
     no_flow = np.all(flow==0,axis=0)
-    flow[:,no_flow]=np.nan  # No flow at the seed point, avoid zero divide
-    flow_norm = hfmIn['metric'].norm(flow)
+    flow[:,no_flow]=np.nan  # No flow at the seed point, avoid zero divide    
     route = route_min(flow,params)
-    costVariation = route['time']/flow_norm
+    costVariation = route['time']
     costVariation[no_flow] = 0
     hfmIn['costVariation'] = np.expand_dims(costVariation,axis=-1)
     
