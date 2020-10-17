@@ -4,6 +4,7 @@
 import numpy as np
 import cupy as cp
 from collections import OrderedDict
+import copy
 
 from . import kernel_traits
 from . import _solvers
@@ -103,7 +104,9 @@ def SolveLinear(self,rhs,diag,indices,weights,chg,kernelName):
 
 #	print(data.traits,data.source)
 	data.module = cupy_module_helper.GetModule(data.source, self.cuoptions)
-	data.policy = eikonal.policy
+	data.policy = copy.copy(eikonal.policy)
+	if data.policy.solver=='fast_iterative_method': 
+		data.policy.solver='adaptive_gauss_siedel_iteration'
 
 	# Setup the kernel
 	def SetCst(*args): cupy_module_helper.SetModuleConstant(data.module,*args)
@@ -119,7 +122,7 @@ def SolveLinear(self,rhs,diag,indices,weights,chg,kernelName):
 		self.linear_atol = self.GetValue('linear_atol',default=None,
 			help="Absolute convergence tolerance for the linear systems")
 		if self.linear_atol is None: 
-			self.linear_rtol*np.mean(np.abs(rhs[np.isfinite(rhs)]))
+			self.linear_atol=self.linear_rtol*np.mean(np.abs(rhs[np.isfinite(rhs)]))
 		self.hfmOut['keys']['default']['linear_atol']=self.linear_atol
 
 	SetCst('rtol',self.linear_rtol,self.float_t)
@@ -165,7 +168,7 @@ def SolveAD(self):
 	
 	indices = flow.args['flow_indices'] 
 	weights = flow.args['flow_weights']
-
+	
 	if self.forwardAD:
 		grad = self.rhs.gradient()
 		rhs = np.where(self.seedTags, grad, grad*self.rhs.value)
