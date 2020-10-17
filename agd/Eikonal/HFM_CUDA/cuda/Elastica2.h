@@ -6,10 +6,9 @@
 #define curvature_macro true
 #include "Geometry3.h"
 
-/**Fejer quadrature rule for integration*/
-#ifndef nFejer_macro
-#define nFejer_macro 5
-#endif
+/**Fejer quadrature rule for integration
+#define nFejer_macro 5 // Must be defined in enclosing file
+*/
 
 const Int nFejer = nFejer_macro;
 
@@ -55,7 +54,7 @@ const Int nfwd = nFejer*symdim; // Number of forward offsets
 #include "Decomp_v_.h"
 
 #if !precomputed_scheme_macro
-void scheme(GEOM(const Scalar geom[geom_size],) Int x[ndim],
+void scheme(GEOM(const Scalar geom[geom_size],) const Int x[ndim],
 	Scalar weights[nactx], OffsetT offsets[nactx][ndim]){
 	XI_VAR(Scalar ixi;) KAPPA_VAR(Scalar kappa;) 
 	Scalar cT, sT; // cos(theta), sin(theta)
@@ -71,7 +70,8 @@ void scheme(GEOM(const Scalar geom[geom_size],) Int x[ndim],
 		const Scalar s = wFejer_s[l];
 		for(Int i=0; i<symdim; ++i) weights[l*symdim+i] *= s;
 	}
-}
+} 
+	
 #endif
 
 #include "Update.h"

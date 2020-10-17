@@ -114,7 +114,7 @@ def SetGeometry(self):
 			np.cos(self.theta),np.sin(self.theta)) if e.ndim>0]
 		if len(geom)>0: self.geom = ad.array(geom)
 		else: self.geom = cp.zeros((0,self.shape[2]), dtype=self.float_t)
-	
+
 	elif self.isCurvature and self.ndim_phys==3:
 		# No geometry field. Metric is built in
 		self.geom = cp.zeros((0,*self.shape[3:]),dtype=self.float_t) # Dummy
@@ -187,13 +187,15 @@ def SetGeometry(self):
 
 	precompute_excluded_schemes = (
 		'Isotropic','Diagonal', # Precomputation is useless, since stencil is trivial
-		'AsymmetricQuadratic','Rander', # TODO : precomputation does not handle dift yet
-		'TTI' # TODO : precomputation does not handle adaptive mix_is_min yet
+		'AsymmetricQuadratic','Rander', # TODO (?) precomputation does not handle drift yet
+		'TTI' # TODO (?) precomputation does not handle adaptive mix_is_min yet
 		)
 
-	self.precompute_scheme = self.GetValue('precompute_scheme',
-		default = self.geom_indep>0 and self.model_ not in precompute_excluded_schemes,
+	if self.model_ in precompute_excluded_schemes: self.precompute_scheme=False
+	else: self.precompute_scheme = self.GetValue('precompute_scheme',
+		default = self.geom_indep>0,
 		help = "Precompute and store the finite difference scheme stencils")
+
 
 	# geometrical data related with geodesics 
 	self.exportGeodesicFlow = self.GetValue('exportGeodesicFlow',default=False,

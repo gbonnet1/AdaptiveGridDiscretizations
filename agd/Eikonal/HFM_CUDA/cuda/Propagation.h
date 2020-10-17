@@ -24,7 +24,7 @@ bool Neighbor(const Int x_o[__restrict__ ndim], Int neigh_o[__restrict__ ndim]){
 	if(n_i>=2*ndim) {return n_i==2*ndim FIM(&& false);}
 
 	neigh_o[n_i/2] += 2*(n_i%2) -1;
-	return Grid::InRange(neigh_o,shape_o);
+	return Grid::InRange_per(neigh_o,shape_o);
 }
 
 // Tag the neighbors for update

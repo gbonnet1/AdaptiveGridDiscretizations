@@ -29,7 +29,8 @@ def default_traits(self):
 		fim_front_width = 5
 	elif model == 'Elastica2':
 		# Small shape, single iteration, since stencils are too wide anyway
-		traits.update({'shape_i':(4,4,2),'niter_i':1,'merge_sort_macro':True})
+		traits.update({'shape_i':(4,4,2),'niter_i':1,
+			'merge_sort_macro':True,'nFejer_macro':5})
 		fim_front_width = 4
 	elif model == 'Dubins2':
 		traits.update({'shape_i':(4,4,2),'niter_i':1})
@@ -108,23 +109,26 @@ def nscheme(self):
 	nmix=1 # maximum or minimum of nmix schemes
 	if model in ('Isotropic','Diagonal'):nsym = ndim
 	elif model in ('Riemann','Rander'): nsym = decompdim
+
 	elif model=='ReedsShepp':           nsym = decompdim
 	elif model=='ReedsSheppForward':    nsym = 1; nfwd = decompdim
 	elif model=='Dubins':               nfwd = decompdim; nmix = 2
-	elif model=='AsymmetricQuadratic':  nsym = decompdim; nmix = 3
-	elif model=='TTI':					nsym = decompdim; nmix = traits['nmix_macro']
-	elif model=='Elastica':
-		nFejer = self.kernel_data['eikonal'].traits.get('nFejer_macro',5)
-		nfwd = nFejer*decompdim
+	elif model=='Elastica':             nfwd = traits['nFejer_macro']*decompdim
 	elif self.model=='ReedsSheppGPU3':
 		if traits['forward_macro']: nsym=2; nfwd=6
 		else: nsym=2+6
+
+	elif model=='AsymmetricQuadratic':  nsym = decompdim; nmix = 3
+	elif model=='TTI':					nsym = decompdim; nmix = traits['nmix_macro']
+
 	else: raise ValueError('Unsupported model')
 
 	nact = nsym+nfwd # max number of active offsets
 	ntot = 2*nsym+nfwd
 	nactx = nact*nmix
 	ntotx = ntot*nmix
+
+
 
 	return {'nsym':nsym,'nfwd':nfwd,'nmix':nmix,
 	'nact':nact,'ntot':ntot,'nactx':nactx,'ntotx':ntotx}
