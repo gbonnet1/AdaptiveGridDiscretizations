@@ -3,8 +3,7 @@
 from ... import AutomaticDifferentiation as ad
 if ad.cupy_generic.cp is None: raise ad.DeliberateNotebookError('Cupy module required')
 from ... import Eikonal
-from ... import LinearParallel as lp
-from ... import FiniteDifferences as fd
+from ... import Metrics
 import agd.AutomaticDifferentiation.cupy_generic as cugen
 norm_infinity = ad.Optimization.norm_infinity
 Eikonal.dictIn.default_mode = 'gpu'
@@ -24,20 +23,14 @@ variants_basic = (
 )
 
 variants_ext = (
-    [{},{"seedRadius":2.},{"factoringRadius":10.,'factoringPointChoice':'Key'}], # source factorization ?
-    [{},{'multiprecision':True}] # Reduce floating point roundoff errors
-)
-
-variants_ext2 = (
     [{},{'order':2}], # second order scheme ?
     [{},{"seedRadius":2.},{"factoringRadius":10.,'factoringPointChoice':'Key'}], # source factorization ?
     [{},{'multiprecision':True}] # Reduce floating point roundoff errors
 )
 
-
 def RunCompare(gpuIn,check=True,check_ratio=0,variants=None,**kwargs):
     # Dispatch the common variants if requested
-    if isinstance(variants,str): variants = {'basic':variants_basic,'ext':variants_ext,'ext2':variants_ext2}[variants]
+    if isinstance(variants,str): variants = {'basic':variants_basic,'ext':variants_ext}[variants]
     if variants:
         for variant in variants[0]:
             RunCompare(gpuIn,check=check,check_ratio=check_ratio,variants=variants[1:],**kwargs,**variant)

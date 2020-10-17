@@ -19,7 +19,7 @@ const bool mix_is_min = true;
 
 
 #if !import_scheme_macro
-bool scheme(GEOM(const Scalar geom[geom_size],) const Int x[ndim],
+bool scheme(GEOM(const Scalar geom[geom_size],) Int x[ndim],
 	Scalar weights[nactx], Int offsets[nactx][ndim]){
 	XI_VAR(Scalar ixi;) KAPPA_VAR(Scalar kappa;) 
 	Scalar cT, sT; // cos(theta), sin(theta)

@@ -4,7 +4,7 @@ In particular, decomp_m must be defined.
 */
 
 // Based on Selling decomposition, with some relaxation, reorienting of offsets, and pruning of weights
-void decomp_v(const Scalar v[ndim], Scalar weights[decompdim], OffsetT offsets[decompdim][ndim]){
+void decomp_v(const Scalar v[ndim], Scalar weights[symdim], OffsetT offsets[symdim][ndim]){
 
 	// Build and decompose the relaxed self outer product of v
 	Scalar m[symdim];
