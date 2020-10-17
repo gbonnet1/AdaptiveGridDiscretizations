@@ -71,7 +71,6 @@ void scheme(GEOM(const Scalar geom[geom_size],) const Int x[ndim],
 		for(Int i=0; i<symdim; ++i) weights[l*symdim+i] *= s;
 	}
 } 
-	
 #endif
 
 #include "Update.h"

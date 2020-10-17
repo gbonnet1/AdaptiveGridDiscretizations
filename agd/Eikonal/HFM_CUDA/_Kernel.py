@@ -342,10 +342,13 @@ def SetKernel(self):
 	self.raiseOnNonConvergence = self.GetValue('raiseOnNonConvergence',default=True,
 		help="Raise an exception if a solver fails to converge")
 	if eikonal.policy.solver == 'fast_iterative_method':
-		SetModuleConstant(eikonal.module,'fim_front_width',self.GetValue('fim_front_width',
+		fim_front_width = self.GetValue('fim_front_width',
 			default=self.fim_front_width_default,
 			help="Dictates the max front width in the FIM variant.\n"
-			"(original FIM : 2. Must be >=2.)"),np.uint8)
+			"(original FIM : 2. Must be >=2.)")
+		if fim_front_width is None: 
+			raise ValueError("Please specify an fim_front_width (integer >=2)")
+		SetModuleConstant(eikonal.module,'fim_front_width',fim_front_width,np.uint8)
 
 	# Sort the kernel arguments
 	args = eikonal.args
