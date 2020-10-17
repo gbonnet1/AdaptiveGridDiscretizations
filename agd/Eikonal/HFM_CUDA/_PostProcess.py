@@ -4,7 +4,6 @@
 import numpy as np
 import cupy as cp
 from collections import OrderedDict
-import copy
 
 from . import kernel_traits
 from . import _solvers
@@ -104,9 +103,7 @@ def SolveLinear(self,rhs,diag,indices,weights,chg,kernelName):
 
 #	print(data.traits,data.source)
 	data.module = cupy_module_helper.GetModule(data.source, self.cuoptions)
-	data.policy = copy.copy(eikonal.policy)
-	if data.policy.solver == 'fast_iterative_method':
-		data.policy.solver = 'adaptive_gauss_siedel_iteration'
+	data.policy = eikonal.policy
 
 	# Setup the kernel
 	def SetCst(*args): cupy_module_helper.SetModuleConstant(data.module,*args)
