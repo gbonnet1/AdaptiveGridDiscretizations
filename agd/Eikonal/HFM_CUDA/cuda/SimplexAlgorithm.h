@@ -298,7 +298,7 @@ Scalar simplex(SimplexData & d, Scalar ret[SIMPLEX_MAX_M+SIMPLEX_MAX_N])
 {
 	const double infeasible = initialise_simplex(d);
     if (infeasible) { // infeasible
-        printf("infeasible ? %f, %i\n",1000000*infeasible, infeasible!=0);
+//        printf("infeasible ? %f, %i\n",1000000*infeasible, infeasible!=0);
 		ret[0] = infeasible; // How much to offset the constraint values to be feasible
 		return -INFINITY;
     }
